@@ -11,6 +11,89 @@ from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
 
+class Knob:
+    """
+    Knob - simple class with a "setKnob" method.
+    A Knob instance is attached to a Param instance, e.g., param.attach(knob)
+    Base class is for documentation purposes.
+    """
+    def setKnob(self, value):
+        pass
+
+
+class Param:
+    """
+    The idea of the "Param" class is that some parameter in the GUI may have
+    several knobs that both control it and reflect the parameter's state, e.g.
+    a slider, text, and dragging can all change the value of the frequency in
+    the waveform of this example.
+    The class allows a cleaner way to update/"feedback" to the other knobs when
+    one is being changed.  Also, this class handles min/max constraints for all
+    the knobs.
+    Idea - knob list - in "set" method, knob object is passed as well
+      - the other knobs in the knob list have a "set" method which gets
+        called for the others.
+    """
+    def __init__(self, initialValue=None, minimum=0., maximum=1.):
+        self.minimum = minimum
+        self.maximum = maximum
+        if initialValue != self.constrain(initialValue):
+            raise ValueError('illegal initial value')
+        self.value = initialValue
+        self.knobs = []
+
+    def attach(self, knob):
+        self.knobs += [knob]
+
+    def set(self, value, knob=None):
+        self.value = value
+        self.value = self.constrain(value)
+        for feedbackKnob in self.knobs:
+            if feedbackKnob != knob:
+                feedbackKnob.setKnob(self.value)
+        return self.value
+
+    def constrain(self, value):
+        if value <= self.minimum:
+            value = self.minimum
+        if value >= self.maximum:
+            value = self.maximum
+        return value
+
+
+class SliderGroup(Knob):
+    def __init__(self, parent, label, param):
+        self.sliderLabel = wx.StaticText(parent, label=label)
+        self.sliderText = wx.TextCtrl(parent, -1, style=wx.TE_PROCESS_ENTER)
+        self.slider = wx.Slider(parent, -1)
+        self.slider.SetMax(param.maximum*1000)
+        self.setKnob(param.value)
+
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sizer.Add(self.sliderLabel, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
+        sizer.Add(self.sliderText, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
+        sizer.Add(self.slider, 1, wx.EXPAND)
+        self.sizer = sizer
+
+        self.slider.Bind(wx.EVT_SLIDER, self.sliderHandler)
+        self.sliderText.Bind(wx.EVT_TEXT_ENTER, self.sliderTextHandler)
+
+        self.param = param
+        self.param.attach(self)
+
+    def sliderHandler(self, evt):
+        value = evt.GetInt() / 1000.
+        self.param.set(value)
+
+    def sliderTextHandler(self, evt):
+        value = float(self.sliderText.GetValue())
+        self.param.set(value)
+
+    def setKnob(self, value):
+        self.sliderText.SetValue('%g'%value)
+        self.slider.SetValue(value*1000)
+
+
 class MainWindow(wx.Frame):
     """ We simply derive a new class of Frame """
     def __init__(self, parent, title):
@@ -24,7 +107,7 @@ class MainWindow(wx.Frame):
         # wx.ID_ABOUT and wx.ID_EXIT are standard IDs provided by wxWidgets.
         menuAbout = filemenu.Append(wx.ID_ABOUT, '&About', ' Information about this program')
         menuExit = filemenu.Append(wx.ID_EXIT,'E&xit', 'Terminate the program')
-        menuOpen = filemenu.Append(wx.ID_OPEN, '&Open', ' Open the file')
+        menuOpen = filemenu.Append(wx.ID_OPEN, '&Open Directory\tCtrl+o', ' Open the Directory')
 
         # create the menubar
         menuBar = wx.MenuBar()
@@ -42,17 +125,19 @@ class MainWindow(wx.Frame):
 
         self.Show(True)
     def OnAbout(self,e):
-        # A message dialo box with an OK buttion. wx.OK is a standardID in wxWidgets.
+        # A message dialog box with an OK buttion. wx.OK is a standardID in wxWidgets.
         dlg = wx.MessageDialog(self, 'A small text editor', 'About Simple Editor', wx.OK)
         dlg.ShowModal() # show it
         dlg.Destroy() # destroy it when finished
 
     def OnExit(self, e):
         self.Close(True)
-        print self.dirname
+
         
     def pathOK(self):
-        """ Test to see if the current path contains tristan files """
+        """ Test to see if the current path contains tristan files 
+        using regular expressions. """
+
         f_re = re.compile('flds.tot.*')
         p_re = re.compile('prtl.tot.*')
         s_re = re.compile('spect.*')
@@ -65,14 +150,12 @@ class MainWindow(wx.Frame):
     
     def OnOpen(self,e):
         """open a file"""
-        self.dirname = ''
-
         dlg = wx.DirDialog(self, 'Choose the directory of the output files.', style = wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
         if dlg.ShowModal() == wx.ID_OK:
             self.dirname = dlg.GetPath()
         dlg.Destroy()
         if not self.pathOK():
-            self.findDir('Directory must contain either the output all of the following: flds.tot.*, ptrl.tot.*, params.*, spect.*') 
+            self.findDir('Directory must contain either the output directory or all of the following: flds.tot.*, ptrl.tot.*, params.*, spect.*') 
             
         
     def findDir(self, dlgstr = 'Choose the directory of the output files.'):
@@ -91,7 +174,7 @@ class MainWindow(wx.Frame):
                 self.dirname = dlg.GetPath()
             dlg.Destroy()
             if not self.pathOK() :
-                self.findDir('Directory must contain all of the following: flds.tot.*, ptrl.tot.*,params.*, spect.*')
+                self.findDir('Directory must contain either the output directory or all of the following: flds.tot.*, ptrl.tot.*, params.*, spect.*')
     
 app = wx.App(False)
 frame = MainWindow(None, 'Iseult')
