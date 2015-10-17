@@ -8,17 +8,28 @@ Patrick Crumley, patrick.crumley@gmail.com
 Dependencies:
 -------------
 
-matplotlib, wxpython, h5py
+Python packages required: matplotlib, wxpython, h5py
+
+This should work on Windows, MacOS & Linux.
 
 To get this working on orbital type the following:
-
-module load python/2.7
-module load hdf5/gcc/1.8.12
-module load h5py27/2.2.1/hdf5-1.8.12
+```bash
+$ module load python/2.7
+$ module load hdf5/gcc/1.8.12
+$ module load h5py27/2.2.1/hdf5-1.8.12
+```
 
 To run:
-chmod +x ./iseult
-./iseult
+
+```bash
+$ cd /path/to/Iseult/
+$ chmod +x ./iseult
+$ ./iseult
+```
+
+If you are in the path to your tristan output files or the parent directory of
+the output directory, Iseult automatically loads your Tristan-MP data. 
+Otherwise you can open it through the file menu.
 
 Enjoy!
 
