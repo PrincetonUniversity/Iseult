@@ -14,6 +14,14 @@ from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
 
+class FilesWrapper(object):
+    """A simple class wrapper to allow us to make lists of the seperate paths
+    of the files and store one of the loaded hdf5 files"""
+    def __init__(self, plist=[],f_hdf5=''):
+         self.paths = plist
+         self.file = f_hdf5
+
+
 
 class Knob:
     """
@@ -137,23 +145,23 @@ class IntSliderGroup(Knob):
 class CanvasPanel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent)
-        self.figure = Figure()
-        self.canvas = FigCanvas(self, -1, self.figure)
-        self.sizer = wx.BoxSizer(wx.VERTICAL)
-        self.Bind(wx.EVT_SIZE, self.sizeHandler)
-        
+        print self.Parent.dirname
+        self.draw()
+
+
     def sizeHandler(self, *args, **kwargs):
         self.canvas.SetSize(self.GetSize())
 
     def draw(self):
+        self.figure = Figure()
+        self.canvas = FigCanvas(self, -1, self.figure)
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self.Bind(wx.EVT_SIZE, self.sizeHandler)
         self.axes = self.figure.add_subplot(111)
-        t = arange(0.0, 3.0, 0.01)
-        s = sin(2 * pi * self.omega * t)
-        self.axes.plot(t, s)
+        self.axes.hist2d(self.Parent.prtl.file['xi'][:],self.Parent.prtl.file['ui'][:], bins = [200,200],cmap = new_cmaps.magma, norm = mcolors.PowerNorm(0.4))
         self.canvas.draw()
 
     def setKnob(self, value):
-        self.omega = value
         self.draw()
 
 
@@ -177,14 +185,35 @@ class MainWindow(wx.Frame):
         menuBar.Append(filemenu, '&File') # Adding the 'filemenu; to the MenuBar
         self.SetMenuBar(menuBar) # Add the menubar to the frame
 
-        # Look for the tristan output files
+        # create a bunch of regular expressions used to search for files
+        f_re = re.compile('flds.tot.*')
+        p_re = re.compile('prtl.tot.*')
+        s_re = re.compile('spect.*')
+        par_re = re.compile('param.*')
+        self.re_list = [f_re, p_re, s_re, par_re]
+
+        # make a bunch of objects that will store all our file names & values
+        self.flds = FilesWrapper()
+        self.prtl = FilesWrapper()
+        self.param = FilesWrapper()
+        self.spect = FilesWrapper()
+        self.file_list = [self.flds, self.prtl,  self.spect, self.param]
+
+        # Look for the tristan output files and load the file paths into
+        # previous objects
         self.dirname = os.curdir
         self.findDir()
+
+
+        # Load the first time of all the files using h5py
+        for elm in self.file_list:
+            print elm.paths[0]
+            elm.file = h5py.File(os.path.join(self.dirname,elm.paths[0]), 'r')
 
         # Make the knob & slider that will control the time slice of the
         # simulation
 
-        self.timeStep = Param(1, minimum=1, maximum=int(len(os.listdir(self.dirname))/4))
+        self.timeStep = Param(1, minimum=1, maximum=len(self.flds.paths))
         self.timeStep.attach(self)
 
         self.timeSliderGroup = IntSliderGroup(self, label=' n:', \
@@ -207,7 +236,10 @@ class MainWindow(wx.Frame):
         self.Show(True)
 
     def setKnob(self, value):
-        pass
+        for elm in self.file_list:
+            elm.file.close()
+            elm.file = h5py.File(os.path.join(self.dirname,elm.paths[value-1]), 'r')
+
 
 
 
@@ -223,16 +255,15 @@ class MainWindow(wx.Frame):
 
     def pathOK(self):
         """ Test to see if the current path contains tristan files
-        using regular expressions. """
+        using regular expressions, then generate the lists of files
+        to iterate over"""
 
-        f_re = re.compile('flds.tot.*')
-        p_re = re.compile('prtl.tot.*')
-        s_re = re.compile('spect.*')
-        par_re = re.compile('param.*')
-        re_list = [f_re, p_re, s_re,par_re]
         is_okay = True
-        for r in re_list:
-            is_okay &= len(filter(r.match, os.listdir(self.dirname))) > 0
+        for i in range(len(self.re_list)):
+            self.file_list[i].paths = (filter(self.re_list[i].match, os.listdir(self.dirname)))
+            self.file_list[i].paths.sort()
+            is_okay &= len(self.file_list[i].paths) > 0
+
         return is_okay
 
     def OnOpen(self,e):
@@ -252,7 +283,7 @@ class MainWindow(wx.Frame):
         dirlist = os.listdir(self.dirname)
         if 'output' in dirlist:
             self.dirname = os.path.join(self.dirname, 'output')
-        elif not self.pathOK():
+        if not self.pathOK():
             dlg = wx.DirDialog(self,
                                dlgstr,
                                style = wx.DD_DEFAULT_STYLE
