@@ -33,25 +33,25 @@ Otherwise you can open it through the file menu.
 
 Enjoy!
 
-Implemented:
-------------
-Time stepping (need to add playback, stepping, and refreshing the directory)
-Basic 1 plot
+| Implemented: |
+| ------------ |
+| Time stepping (need to add playback, stepping, and refreshing the directory) |
+| Basic 1 plot |
 
-Left to Implement:
-------------------
-All the plot types
-shock-finding
-ability to modularly add or remove plots.
-plot control panel to edit things about it (colormap, ylimits, etc.)
-gifs
-figure saving
-Much much more...
+| Left to Implement:|
+| ------------------ |
+| All the plot types |
+| shock-finding |
+| ability to modularly add or remove plots. |
+| plot control panel to edit things about it (colormap, ylimits, etc.) |
+| gifs |
+| figure saving |
+| Much much more... |
 
 Resources:
 ----------
 Use the following to learn how to hack this program:
 
-http://www.wxpython.org -- I highly recommend downloading the wxPython Demo
-http://matplotlib.org
-http://h5py.org
+| http://www.wxpython.org |
+| http://matplotlib.org |
+| http://h5py.org |
