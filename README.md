@@ -28,19 +28,25 @@ $ ./iseult
 ```
 
 If you are in the path to your tristan output files or the parent directory of
-the output directory, Iseult automatically loads your Tristan-MP data. 
+the output directory, Iseult automatically loads your Tristan-MP data.
 Otherwise you can open it through the file menu.
 
 Enjoy!
 
 Implemented:
 ------------
-Nothing :(
+Time stepping (need to add playback, stepping, and refreshing the directory)
+Basic 1 plot
 
 Left to Implement:
 ------------------
-
-... Everything
+All the plot types
+shock-finding
+ability to modularly add or remove plots.
+plot control panel to edit things about it (colormap, ylimits, etc.)
+gifs
+figure saving
+Much much more...
 
 Resources:
 ----------
