@@ -73,6 +73,7 @@ class FloatSliderGroup(Knob):
         self.sliderText = wx.TextCtrl(parent, -1, style=wx.TE_PROCESS_ENTER)
         self.slider = wx.Slider(parent, -1)
         self.slider.SetMax(param.maximum*1000)
+        self.slider.SetMax(param.minimum*1000)
         self.setKnob(param.value)
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -96,38 +97,70 @@ class FloatSliderGroup(Knob):
         self.param.set(value)
 
     def setKnob(self, value):
+
         self.sliderText.SetValue('%g'%value)
         self.slider.SetValue(value*1000)
+
+class IntSliderGroup(Knob):
+    def __init__(self, parent, label, param):
+        self.sliderLabel = wx.StaticText(parent, label=label)
+        self.sliderText = wx.TextCtrl(parent, -1, style=wx.TE_PROCESS_ENTER)
+        self.slider = wx.Slider(parent, -1)
+        self.slider.SetMax(param.maximum)
+        self.slider.SetMin(param.minimum)
+        self.setKnob(param.value)
+
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sizer.Add(self.sliderLabel, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
+        sizer.Add(self.sliderText, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
+        sizer.Add(self.slider, 1, wx.EXPAND)
+        self.sizer = sizer
+
+        self.slider.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.sliderHandler)
+        self.sliderText.Bind(wx.EVT_TEXT_ENTER, self.sliderTextHandler)
+
+        self.param = param
+        self.param.attach(self)
+
+    def sliderHandler(self, evt):
+        value = evt.GetInt()
+        self.param.set(value)
+
+    def sliderTextHandler(self, evt):
+        value = float(self.sliderText.GetValue())
+        self.param.set(value)
+
+    def setKnob(self, value):
+        self.sliderText.SetValue('%g'%value)
+        self.slider.SetValue(value)
 
 class CanvasPanel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent)
         self.figure = Figure()
-        self.axes = self.figure.add_subplot(111)
         self.canvas = FigCanvas(self, -1, self.figure)
         self.sizer = wx.BoxSizer(wx.VERTICAL)
-        self.sizer.Add(self.canvas, 1, wx.LEFT | wx.TOP | wx.GROW)
-        self.SetSizer(self.sizer)
-        self.Fit()
+        self.Bind(wx.EVT_SIZE, self.sizeHandler)
+        
+    def sizeHandler(self, *args, **kwargs):
+        self.canvas.SetSize(self.GetSize())
 
-    def setKnob(self, value):
-        self.figure = Figure()
+    def draw(self):
         self.axes = self.figure.add_subplot(111)
-        self.canvas = FigCanvas(self, -1, self.figure)
-        self.sizer = wx.BoxSizer(wx.VERTICAL)
-        self.sizer.Add(self.canvas, 1, wx.LEFT | wx.TOP | wx.GROW)
-        self.SetSizer(self.sizer)
-        self.Fit()
-        self.omega = value
         t = arange(0.0, 3.0, 0.01)
         s = sin(2 * pi * self.omega * t)
         self.axes.plot(t, s)
+        self.canvas.draw()
+
+    def setKnob(self, value):
+        self.omega = value
+        self.draw()
 
 
 class MainWindow(wx.Frame):
     """ We simply derive a new class of Frame """
     def __init__(self, parent, title):
-        wx.Frame.__init__(self, parent, title =title, size = (200,100))
+        wx.Frame.__init__(self, parent, title =title)
 
         self.CreateStatusBar() # A statusbar in the bottom of the window
         # intialize the working directory
@@ -154,23 +187,8 @@ class MainWindow(wx.Frame):
         self.timeStep = Param(1, minimum=1, maximum=int(len(os.listdir(self.dirname))/4))
         self.timeStep.attach(self)
 
-
-        self.sliderLabel = wx.StaticText(self, label='n:')
-        self.sliderText = wx.TextCtrl(self, size=(50,-1), style=wx.TE_PROCESS_ENTER)
-        self.slider = wx.Slider(self, -1)
-        self.setKnob(self.timeStep.value)
-
-        self.slider.SetMax(self.timeStep.maximum)
-        self.slider.SetMin(self.timeStep.minimum)
-
-        sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(self.sliderLabel, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
-        sizer.Add(self.sliderText, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
-        sizer.Add(self.slider, 1, wx.EXPAND)
-        self.sizer = sizer
-
-        self.slider.Bind(wx.EVT_SLIDER, self.timeHandler)
-        self.sliderText.Bind(wx.EVT_TEXT_ENTER, self.timeTextHandler)
+        self.timeSliderGroup = IntSliderGroup(self, label=' n:', \
+            param=self.timeStep)
 
 
         self.graph = CanvasPanel(self)
@@ -178,9 +196,7 @@ class MainWindow(wx.Frame):
 
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(self.graph,1, wx.EXPAND)
-        controlsizer = wx.BoxSizer(wx.HORIZONTAL)
-
-        mainsizer.Add(self.sizer, flag = wx.ALIGN_CENTER | wx.ALL, border=5)
+        mainsizer.Add(self.timeSliderGroup.sizer, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
         self.SetSizerAndFit(mainsizer)
 
         # Set events.
@@ -190,17 +206,10 @@ class MainWindow(wx.Frame):
 
         self.Show(True)
 
-    def timeHandler(self, evt):
-        value = evt.GetInt()
-        self.timeStep.set(value)
-
-    def timeTextHandler(self, evt):
-        value = float(self.sliderText.GetValue())
-        self.timeStep.set(value)
-
     def setKnob(self, value):
-        self.sliderText.SetValue('%g'%value)
-        self.slider.SetValue(value)
+        pass
+
+
 
     # Define the Main Window functions
     def OnAbout(self,e):
