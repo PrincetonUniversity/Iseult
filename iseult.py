@@ -142,21 +142,19 @@ class IntSliderGroup(Knob):
         self.sliderText.SetValue('%g'%value)
         self.slider.SetValue(value)
 
-class CanvasPanel(wx.Panel):
+class CanvasPanel(wx.Window):
     def __init__(self, parent):
-        wx.Panel.__init__(self, parent)
-        print self.Parent.dirname
+        wx.Window.__init__(self, parent)
         self.draw()
-
 
     def sizeHandler(self, *args, **kwargs):
         self.canvas.SetSize(self.GetSize())
 
     def draw(self):
-        self.figure = Figure()
+        self.figure = Figure(figsize=(5, 2), dpi=100)
         self.canvas = FigCanvas(self, -1, self.figure)
-        self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.Bind(wx.EVT_SIZE, self.sizeHandler)
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.axes = self.figure.add_subplot(111)
         self.axes.hist2d(self.Parent.prtl.file['xi'][:],self.Parent.prtl.file['ui'][:], bins = [200,200],cmap = new_cmaps.magma, norm = mcolors.PowerNorm(0.4))
         self.canvas.draw()
@@ -210,6 +208,10 @@ class MainWindow(wx.Frame):
             print elm.paths[0]
             elm.file = h5py.File(os.path.join(self.dirname,elm.paths[0]), 'r')
 
+
+        # Make some sizers:
+        mainsizer = wx.BoxSizer(wx.VERTICAL)
+        grid =  wx.GridBagSizer(hgap = 1, vgap = 1)
         # Make the knob & slider that will control the time slice of the
         # simulation
 
@@ -219,13 +221,41 @@ class MainWindow(wx.Frame):
         self.timeSliderGroup = IntSliderGroup(self, label=' n:', \
             param=self.timeStep)
 
+        self.graph1 = CanvasPanel(self)
+        self.timeStep.attach(self.graph1)
+        boxsize1 = wx.BoxSizer(wx.VERTICAL)
+        boxsize1.Add(self.graph1, 1,  wx.EXPAND)
+        grid.Add(boxsize1, pos=(0,0))
 
-        self.graph = CanvasPanel(self)
-        self.timeStep.attach(self.graph)
+        self.graph2 = CanvasPanel(self)
+        self.timeStep.attach(self.graph2)
+        grid.Add(self.graph2, pos=(0,1))
 
-        mainsizer = wx.BoxSizer(wx.VERTICAL)
-        mainsizer.Add(self.graph,1, wx.EXPAND)
-        mainsizer.Add(self.timeSliderGroup.sizer, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
+        self.graph3 = CanvasPanel(self)
+        self.timeStep.attach(self.graph3)
+        grid.Add(self.graph3, pos=(1,0))
+
+        self.graph4 = CanvasPanel(self)
+        self.timeStep.attach(self.graph4)
+        grid.Add(self.graph4, pos=(1,1))
+
+        self.graph5 = CanvasPanel(self)
+        self.timeStep.attach(self.graph5)
+        grid.Add(self.graph5, pos=(2,0))
+
+        self.graph6 = CanvasPanel(self)
+        self.timeStep.attach(self.graph6)
+        grid.Add(self.graph6, pos=(2,1))
+
+        for i in range(2):
+            grid.AddGrowableCol(i)
+        for i in range(3):
+            grid.AddGrowableRow(i)
+
+
+
+        mainsizer.Add(grid,1, wx.EXPAND)
+        mainsizer.Add(self.timeSliderGroup.sizer,0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
         self.SetSizerAndFit(mainsizer)
 
         # Set events.
@@ -246,7 +276,7 @@ class MainWindow(wx.Frame):
     # Define the Main Window functions
     def OnAbout(self,e):
         # A message dialog box with an OK buttion. wx.OK is a standardID in wxWidgets.
-        dlg = wx.MessageDialog(self, 'A small text editor', 'About Simple Editor', wx.OK)
+        dlg = wx.MessageDialog(self, 'A plotting program for Tristan-MP output files', 'About Iseult', wx.OK)
         dlg.ShowModal() # show it
         dlg.Destroy() # destroy it when finished
 

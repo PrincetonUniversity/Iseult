@@ -50,8 +50,9 @@ Enjoy!
 
 Resources:
 ----------
-Use the following to learn how to hack this program:
-
+| Useful links |
+| ----------------------- |
+| http://python.org
 | http://www.wxpython.org |
 | http://matplotlib.org |
 | http://h5py.org |
