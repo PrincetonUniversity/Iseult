@@ -43,7 +43,6 @@ class Knob:
     def setKnob(self, value):
         pass
 
-
 class Param:
     """
     The idea of the "Param" class is that some parameter in the GUI may have
@@ -69,13 +68,19 @@ class Param:
         self.knobs += [knob]
 
     def set(self, value, knob=None):
-        self.value = value
         self.value = self.constrain(value)
         for feedbackKnob in self.knobs:
             if feedbackKnob != knob:
                 feedbackKnob.setKnob(self.value)
         return self.value
 
+    def setMax(self, max_arg, knob=None):
+        self.maximum = max_arg
+        self.value = self.constrain(self.value)
+        for feedbackKnob in self.knobs:
+            if feedbackKnob != knob:
+                feedbackKnob.setKnob(self.value)
+        return self.value
     def constrain(self, value):
         if value <= self.minimum:
             value = self.minimum
@@ -136,7 +141,9 @@ class PlaybackGroup(Knob):
         self.slider.SetMin(param.minimum)
         self.skipSize = 1
         self.waitTime = .2 # 24 fps (may be much slower because of the plotting time)
-        self.setKnob(param.value)
+        self.param = param
+
+        self.setKnob(self.param.value)
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
 
@@ -171,8 +178,8 @@ class PlaybackGroup(Knob):
         self.playButton.Bind(wx.EVT_BUTTON, self.onPlay)
         self.prefButton.Bind(wx.EVT_BUTTON, self.openPrefs)
 
-        self.param = param
         self.param.attach(self)
+
 
     def openPrefs(self, evt):
         win = SettingsFrame(self.Parent, -1, "This is a wx.Frame", size=(350, 200),
@@ -196,7 +203,7 @@ class PlaybackGroup(Knob):
                 self.param.set(self.param.value + self.skipSize)
                 start = time.time()
         self.playButton.SetValue(0)
-        
+
     def sliderHandler(self, evt):
         value = evt.GetInt()
         self.param.set(value)
@@ -208,6 +215,7 @@ class PlaybackGroup(Knob):
     def setKnob(self, value):
         self.sliderText.SetValue('%g'%value)
         self.slider.SetValue(value)
+        self.slider.SetMax(self.param.maximum)
 
 class CanvasPanel(wx.Window):
     def __init__(self, parent):
@@ -237,12 +245,75 @@ class SettingsFrame(wx.Frame):
 
         wx.Frame.__init__(self, parent, ID, title, pos, size, style)
         panel = wx.Panel(self, -1)
+        self.parent = parent
+        #Create some sizers
+        mainSizer=  wx.BoxSizer(wx.VERTICAL)
+        grid =  wx.GridBagSizer(hgap = 5, vgap = 5)
+        hSizer=  wx.BoxSizer(wx.HORIZONTAL)
+        self.quote = wx.StaticText(self, label='Your Quote: ', pos=(20,30))
+        grid.Add(self.quote, pos=(0,0))
 
-        button = wx.Button(panel, 1003, "Close Me")
-        button.SetPosition((15, 15))
-        self.Bind(wx.EVT_BUTTON, self.OnCloseMe, button)
-        self.Bind(wx.EVT_CLOSE, self.OnCloseWindow)
 
+
+        # A multiline TextCtrl - This is here to show how the events
+        # work in this program, don't pay too much attention to it
+        self.logger = wx.TextCtrl(self, size=(200,300), style= wx.TE_MULTILINE| wx.TE_READONLY)
+
+        # A button
+        self.button = wx.Button(self, label='Reload Directory')
+        self.Bind(wx.EVT_BUTTON, self.OnReload, self.button)
+
+        # the edit control - one line version.
+        self.lblname = wx.StaticText(self, label = 'Your name: ')
+        grid.Add(self.lblname, pos=(1,0))
+        self.editname = wx.TextCtrl(self, value= 'Enter your name', size = (140,-1))
+        grid.Add(self.editname, pos=(1,1))
+        self.Bind(wx.EVT_TEXT, self.EvtText, self.editname)
+        self.Bind(wx.EVT_CHAR, self.EvtChar, self.editname)
+        self.Show()
+
+        # the combobox Control
+        self.sampleList = ['Friends', 'advertising', 'web search', 'yellow pages']
+        self.lblhear = wx.StaticText(self, label='How did you hear from us?')
+        grid.Add(self.lblhear, pos=(3,0))
+        self.edithear = wx.ComboBox(self, size = (95,-1), choices = self.sampleList, style = wx.CB_DROPDOWN)
+        grid.Add(self.edithear, pos=(3,1))
+        self.Bind(wx.EVT_COMBOBOX, self.EvtComboBox, self.edithear)
+        self.Bind(wx.EVT_TEXT, self.EvtText, self.edithear)
+
+        # add a spacer to the sizer
+        grid.Add((10, 40), pos=(2,0))
+
+        # checkbox
+        self.insure = wx.CheckBox(self, label = 'Do you want Insured Shipment?')
+        grid.Add(self.insure, pos = (4,0), span=(1,2), flag=wx.BOTTOM, border=5)
+        self.Bind(wx.EVT_CHECKBOX, self.EvtCheckBox, self.insure)
+
+        # Radio Boxes
+        radioList =['Blue', 'Red', 'Yellow', 'Orange', 'Green', 'Purple', 'Navy Blue', 'Black', 'Gray']
+        rb = wx.RadioBox(self, label='What color would you like?', choices=radioList, majorDimension =3, style=wx.RA_SPECIFY_COLS)
+        grid.Add(rb, pos=(5,0), span=(1,2))
+        self.Bind(wx.EVT_RADIOBOX, self.EvtRadioBox, rb)
+
+        hSizer.Add(grid, 0, wx.ALL, 5)
+        hSizer.Add(self.logger)
+        mainSizer.Add(hSizer, 0, wx.ALL, 5)
+        mainSizer.Add(self.button, 0, wx.LEFT)
+        self.SetSizerAndFit(mainSizer)
+    # Define functions for the events
+    def EvtRadioBox(self, event):
+        self.logger.AppendText('EvtRadioBox: %d\n' % event.GetInt())
+    def EvtComboBox(self, event):
+        self.logger.AppendText('EvtComboBox: %s\n' % event.GetString())
+    def OnReload(self, event):
+        self.parent.findDir()
+    def EvtText(self, event):
+        self.logger.AppendText('EvtText: %s\n' % event.GetString())
+    def EvtChar(self, event):
+        self.logger.AppendText('EvtChar: %d\n' % event.GetKeyCode())
+        event.Skip()
+    def EvtCheckBox(self, event):
+        self.logger.AppendText('EvtCheckBox: %d\n' % event.Checked())
 
     def OnCloseMe(self, event):
         self.Close(True)
@@ -284,25 +355,26 @@ class MainWindow(wx.Frame):
         self.spect = FilesWrapper()
         self.file_list = [self.flds, self.prtl,  self.spect, self.param]
 
+
+        # Make the know that will hold the timestep info
+        self.timeStep = Param(1, minimum=1, maximum=1000)
+
         # Look for the tristan output files and load the file paths into
         # previous objects
         self.dirname = os.curdir
         self.findDir()
 
-
         # Load the first time step of all the files using h5py
         for elm in self.file_list:
             elm.file = h5py.File(os.path.join(self.dirname,elm.paths[0]), 'r')
 
+        self.timeStep.attach(self)
 
         # Make some sizers:
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         grid =  wx.GridBagSizer(hgap = 0.5, vgap = 0.5)
-        # Make the knob & slider that will control the time slice of the
+        # Make the playback controsl that will control the time slice of the
         # simulation
-
-        self.timeStep = Param(1, minimum=1, maximum=len(self.flds.paths))
-        self.timeStep.attach(self)
 
         self.timeSliderGroup = PlaybackGroup(self, label=' n:', \
             param=self.timeStep)
@@ -370,7 +442,7 @@ class MainWindow(wx.Frame):
             self.file_list[i].paths = (filter(self.re_list[i].match, os.listdir(self.dirname)))
             self.file_list[i].paths.sort()
             is_okay &= len(self.file_list[i].paths) > 0
-
+        self.timeStep.setMax(len(self.file_list[i].paths))
         return is_okay
 
     def OnOpen(self,e):
