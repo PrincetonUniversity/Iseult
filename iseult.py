@@ -21,6 +21,12 @@ class FilesWrapper(object):
          self.paths = plist
          self.file = f_hdf5
 
+class FigWrapper(object):
+    """A simple class wrapper that will eventually hold all of the information
+    about each figure in the plot"""
+    def __init__(self, ctype='', graph=''):
+         self.chartType = ctype
+         self.graph = graph
 
 
 class Knob:
@@ -145,16 +151,16 @@ class IntSliderGroup(Knob):
 class CanvasPanel(wx.Window):
     def __init__(self, parent):
         wx.Window.__init__(self, parent)
-        self.draw()
-
-    def sizeHandler(self, *args, **kwargs):
-        self.canvas.SetSize(self.GetSize())
-
-    def draw(self):
         self.figure = Figure(figsize=(5, 2), dpi=100)
         self.canvas = FigCanvas(self, -1, self.figure)
         self.Bind(wx.EVT_SIZE, self.sizeHandler)
-        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self.draw()
+
+    def sizeHandler(self, *args, **kwargs):
+        '''Make it so the plot scales with resizing of the window'''
+        self.canvas.SetSize(self.GetSize())
+
+    def draw(self):
         self.axes = self.figure.add_subplot(111)
         self.axes.hist2d(self.Parent.prtl.file['xi'][:],self.Parent.prtl.file['ui'][:], bins = [200,200],cmap = new_cmaps.magma, norm = mcolors.PowerNorm(0.4))
         self.canvas.draw()
@@ -203,9 +209,8 @@ class MainWindow(wx.Frame):
         self.findDir()
 
 
-        # Load the first time of all the files using h5py
+        # Load the first time step of all the files using h5py
         for elm in self.file_list:
-            print elm.paths[0]
             elm.file = h5py.File(os.path.join(self.dirname,elm.paths[0]), 'r')
 
 
@@ -221,31 +226,20 @@ class MainWindow(wx.Frame):
         self.timeSliderGroup = IntSliderGroup(self, label=' n:', \
             param=self.timeStep)
 
-        self.graph1 = CanvasPanel(self)
-        self.timeStep.attach(self.graph1)
-        boxsize1 = wx.BoxSizer(wx.VERTICAL)
-        boxsize1.Add(self.graph1, 1,  wx.EXPAND)
-        grid.Add(boxsize1, pos=(0,0))
-
-        self.graph2 = CanvasPanel(self)
-        self.timeStep.attach(self.graph2)
-        grid.Add(self.graph2, pos=(0,1))
-
-        self.graph3 = CanvasPanel(self)
-        self.timeStep.attach(self.graph3)
-        grid.Add(self.graph3, pos=(1,0))
-
-        self.graph4 = CanvasPanel(self)
-        self.timeStep.attach(self.graph4)
-        grid.Add(self.graph4, pos=(1,1))
-
-        self.graph5 = CanvasPanel(self)
-        self.timeStep.attach(self.graph5)
-        grid.Add(self.graph5, pos=(2,0))
-
-        self.graph6 = CanvasPanel(self)
-        self.timeStep.attach(self.graph6)
-        grid.Add(self.graph6, pos=(2,1))
+        # Make the Figures
+        self.Fig1 = FigWrapper()
+        self.Fig2 = FigWrapper()
+        self.Fig3 = FigWrapper()
+        self.Fig4 = FigWrapper()
+        self.Fig5 = FigWrapper()
+        self.Fig6 = FigWrapper()
+        self.FigList = [self.Fig1, self.Fig2, self.Fig3, self.Fig4, self.Fig5, self.Fig6]
+        col_counter = 0
+        for elm in self.FigList:
+            elm.graph = CanvasPanel(self)
+            self.timeStep.attach(elm.graph)
+            grid.Add(elm.graph, pos=(col_counter/2,col_counter%2), flag = wx.EXPAND)
+            col_counter += 1
 
         for i in range(2):
             grid.AddGrowableCol(i)
@@ -267,7 +261,9 @@ class MainWindow(wx.Frame):
 
     def setKnob(self, value):
         for elm in self.file_list:
+            # close the previous HDF5 file
             elm.file.close()
+            # Open the new file
             elm.file = h5py.File(os.path.join(self.dirname,elm.paths[value-1]), 'r')
 
 
