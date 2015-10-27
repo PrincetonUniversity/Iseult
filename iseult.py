@@ -4,11 +4,13 @@ import re # regular expressions
 import os # Used to make the code portable
 import h5py # Allows us the read the data files
 from thread import start_new_thread
-import time
+import time,string
 import matplotlib
 import new_cmaps
 
 import wx.lib.buttons as buttons
+import  wx.lib.intctrl
+from wx.lib.masked import NumCtrl
 #import icon as icn
 import matplotlib.colors as mcolors
 from numpy import arange, sin, pi
@@ -32,6 +34,54 @@ class FigWrapper(object):
     def __init__(self, ctype='', graph=''):
          self.chartType = ctype
          self.graph = graph
+
+class MyValidator(wx.PyValidator):
+    def __init__(self, flag=None, pyVar=None):
+        wx.PyValidator.__init__(self)
+        self.flag = flag
+        self.Bind(wx.EVT_CHAR, self.OnChar)
+
+    def Clone(self):
+        return MyValidator(self.flag)
+
+    def Validate(self, win):
+        tc = self.GetWindow()
+        val = tc.GetValue()
+
+        if self.flag == 'ALPHA_ONLY':
+            for x in val:
+                if x not in string.letters:
+                    return False
+
+        elif self.flag == 'DIGIT_ONLY':
+            for x in val:
+                if x not in '0123456789.':
+                    return False
+
+        return True
+
+
+    def OnChar(self, event):
+        key = event.GetKeyCode()
+
+        if key < wx.WXK_SPACE or key == wx.WXK_DELETE or key > 255:
+            event.Skip()
+            return
+
+        if self.flag == 'ALPHA_ONLY' and chr(key) in string.letters:
+            event.Skip()
+            return
+
+        if self.flag == 'DIGIT_ONLY' and chr(key) in '0123456789.':
+            event.Skip()
+            return
+
+        if not wx.Validator_IsSilent():
+            wx.Bell()
+
+        # Returning without calling even.Skip eats the event before it
+        # gets to the text control
+        return
 
 
 class Knob:
@@ -231,7 +281,7 @@ class CanvasPanel(wx.Window):
 
     def draw(self):
         self.axes = self.figure.add_subplot(111)
-        self.axes.hist2d(self.Parent.prtl.file['xi'][:],self.Parent.prtl.file['ui'][:], bins = [200,200],cmap = new_cmaps.magma, norm = mcolors.PowerNorm(0.4))
+        self.axes.hist2d(self.Parent.prtl.file['xi'][:],self.Parent.prtl.file['ui'][:], bins = [200,200],cmap = new_cmaps.cmaps[self.Parent.cmap], norm = mcolors.PowerNorm(0.4))
         self.canvas.draw()
 
     def setKnob(self, value):
@@ -239,79 +289,70 @@ class CanvasPanel(wx.Window):
 
 class SettingsFrame(wx.Frame):
     def __init__(
-            self, parent, ID, title, pos=wx.DefaultPosition,
+            self, parent, ID, title='Playback Settings', pos=wx.DefaultPosition,
             size=wx.DefaultSize, style=wx.DEFAULT_FRAME_STYLE
             ):
 
-        wx.Frame.__init__(self, parent, ID, title, pos, size, style)
+        wx.Frame.__init__(self, parent, ID, 'Playback Settings', pos, size, style)
         panel = wx.Panel(self, -1)
         self.parent = parent
         #Create some sizers
-        mainSizer=  wx.BoxSizer(wx.VERTICAL)
-        grid =  wx.GridBagSizer(hgap = 5, vgap = 5)
-        hSizer=  wx.BoxSizer(wx.HORIZONTAL)
-        self.quote = wx.StaticText(self, label='Your Quote: ', pos=(20,30))
-        grid.Add(self.quote, pos=(0,0))
-
-
-
-        # A multiline TextCtrl - This is here to show how the events
-        # work in this program, don't pay too much attention to it
-        self.logger = wx.TextCtrl(self, size=(200,300), style= wx.TE_MULTILINE| wx.TE_READONLY)
+        self.mainsizer = wx.BoxSizer(wx.VERTICAL)
+        grid =  wx.GridBagSizer(hgap = 10, vgap = 10)
 
         # A button
         self.button = wx.Button(self, label='Reload Directory')
         self.Bind(wx.EVT_BUTTON, self.OnReload, self.button)
 
-        # the edit control - one line version.
-        self.lblname = wx.StaticText(self, label = 'Your name: ')
-        grid.Add(self.lblname, pos=(1,0))
-        self.editname = wx.TextCtrl(self, value= 'Enter your name', size = (140,-1))
-        grid.Add(self.editname, pos=(1,1))
-        self.Bind(wx.EVT_TEXT, self.EvtText, self.editname)
-        self.Bind(wx.EVT_CHAR, self.EvtChar, self.editname)
-        self.Show()
+        # Make a button to change the skip size
+        self.lblskip = wx.StaticText(self, label = 'Skip Size')
+        grid.Add(self.lblskip, pos=(0,0))
+        self.enterSkipSize = wx.lib.intctrl.IntCtrl(self, value = self.parent.timeSliderGroup.skipSize, size=( 50, -1 ) )
+        grid.Add(self.enterSkipSize, pos=(0,1))
+        self.Bind(wx.lib.intctrl.EVT_INT, self.EvtSkipSize, self.enterSkipSize)
+
+        # Make a button to change the time
+        self.lblwait = wx.StaticText(self, label = 'Playback time delay')
+        grid.Add(self.lblwait, pos=(1,0))
+        self.enterWait =wx.TextCtrl(self, -1,
+                                str(self.parent.timeSliderGroup.waitTime),
+                                validator = MyValidator('DIGIT_ONLY'))
+        grid.Add(self.enterWait, pos=(1,1))
+        self.Bind(wx.lib.intctrl.EVT_INT, self.EvtWait, self.enterWait)
 
         # the combobox Control
-        self.sampleList = ['Friends', 'advertising', 'web search', 'yellow pages']
-        self.lblhear = wx.StaticText(self, label='How did you hear from us?')
-        grid.Add(self.lblhear, pos=(3,0))
-        self.edithear = wx.ComboBox(self, size = (95,-1), choices = self.sampleList, style = wx.CB_DROPDOWN)
-        grid.Add(self.edithear, pos=(3,1))
-        self.Bind(wx.EVT_COMBOBOX, self.EvtComboBox, self.edithear)
-        self.Bind(wx.EVT_TEXT, self.EvtText, self.edithear)
+        self.cmapList = ['magma', 'inferno', 'plasma', 'viridis']
+        self.lblcmap = wx.StaticText(self, label='Choose Color Map')
+        grid.Add(self.lblcmap, pos=(2,0))
+        self.choosecmap = wx.ListBox(self, size = (95,-1), choices = self.cmapList, style = wx.LB_SINGLE)
+        self.choosecmap.SetStringSelection(self.parent.cmap)
+        grid.Add(self.choosecmap, pos=(2,1))
 
-        # add a spacer to the sizer
-        grid.Add((10, 40), pos=(2,0))
+        self.Bind(wx.EVT_LISTBOX, self.EvtChooseCmap, self.choosecmap)
+        self.Bind(wx.EVT_LISTBOX_DCLICK, self.EvtChooseCmap, self.choosecmap)
 
-        # checkbox
-        self.insure = wx.CheckBox(self, label = 'Do you want Insured Shipment?')
-        grid.Add(self.insure, pos = (4,0), span=(1,2), flag=wx.BOTTOM, border=5)
-        self.Bind(wx.EVT_CHECKBOX, self.EvtCheckBox, self.insure)
-
-        # Radio Boxes
-        radioList =['Blue', 'Red', 'Yellow', 'Orange', 'Green', 'Purple', 'Navy Blue', 'Black', 'Gray']
-        rb = wx.RadioBox(self, label='What color would you like?', choices=radioList, majorDimension =3, style=wx.RA_SPECIFY_COLS)
-        grid.Add(rb, pos=(5,0), span=(1,2))
-        self.Bind(wx.EVT_RADIOBOX, self.EvtRadioBox, rb)
-
-        hSizer.Add(grid, 0, wx.ALL, 5)
-        hSizer.Add(self.logger)
-        mainSizer.Add(hSizer, 0, wx.ALL, 5)
-        mainSizer.Add(self.button, 0, wx.LEFT)
-        self.SetSizerAndFit(mainSizer)
+        grid.Add(self.button, (3,0), span= (1,2), flag=wx.CENTER)
+        self.mainsizer.Add(grid,0, border=15)
+        self.SetSizerAndFit(self.mainsizer)
     # Define functions for the events
+    def EvtSkipSize(self, evt):
+        self.parent.timeSliderGroup.skipSize = evt.GetValue()
+
+    def EvtWait(self, evt):
+        self.parent.timeSliderGroup.waitTime = Float(evt.GetValue())
+
+    def EvtChooseCmap(self, event):
+        self.parent.cmap = event.GetString()
+        self.parent.refreshAllGraphs()
+
+
     def EvtRadioBox(self, event):
         self.logger.AppendText('EvtRadioBox: %d\n' % event.GetInt())
-    def EvtComboBox(self, event):
+    def EvtListBox(self, event):
         self.logger.AppendText('EvtComboBox: %s\n' % event.GetString())
     def OnReload(self, event):
         self.parent.findDir()
-    def EvtText(self, event):
-        self.logger.AppendText('EvtText: %s\n' % event.GetString())
-    def EvtChar(self, event):
-        self.logger.AppendText('EvtChar: %d\n' % event.GetKeyCode())
-        event.Skip()
+
     def EvtCheckBox(self, event):
         self.logger.AppendText('EvtCheckBox: %d\n' % event.Checked())
 
@@ -347,6 +388,10 @@ class MainWindow(wx.Frame):
         s_re = re.compile('spect.*')
         par_re = re.compile('param.*')
         self.re_list = [f_re, p_re, s_re, par_re]
+
+        # Set the default color map
+
+        self.cmap = 'inferno'
 
         # make a bunch of objects that will store all our file names & values
         self.flds = FilesWrapper()
@@ -411,7 +456,9 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnOpen, menuOpen)
 
         self.Show(True)
-
+    def refreshAllGraphs(self):
+        for elm in self.FigList:
+            elm.graph.draw()
     def setKnob(self, value):
         for elm in self.file_list:
             # close the previous HDF5 file
