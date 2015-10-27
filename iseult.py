@@ -84,8 +84,6 @@ class Param:
         return value
 
 
-
-
 class FloatSliderGroup(Knob):
     def __init__(self, parent, label, param):
         self.sliderLabel = wx.StaticText(parent, label=label)
@@ -130,13 +128,14 @@ def scale_bitmap(bitmap, width, height, flip=False):
 
 class PlaybackGroup(Knob):
     def __init__(self, parent, label, param):
+        self.Parent = parent
         self.sliderLabel = wx.StaticText(parent, label=label)
         self.sliderText = wx.TextCtrl(parent, -1, style=wx.TE_PROCESS_ENTER)
         self.slider = wx.Slider(parent, -1)
         self.slider.SetMax(param.maximum)
         self.slider.SetMin(param.minimum)
         self.skipSize = 1
-        self.waitTime = 1./24 # 24 fps (may be much slower because of the plotting time)
+        self.waitTime = .2 # 24 fps (may be much slower because of the plotting time)
         self.setKnob(param.value)
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -145,12 +144,14 @@ class PlaybackGroup(Knob):
         self.pauseIcon = scale_bitmap(wx.Bitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),'icons', 'pause.png')), 35,35)
         self.skip_r_Icon = scale_bitmap(wx.Bitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),'icons', 'skip.png')), 35,35)
         self.skip_l_Icon = scale_bitmap(wx.Bitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),'icons', 'skip.png')), 35,35, True)
+        self.prefIcon = scale_bitmap(wx.Bitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),'icons', 'params.png')), 35,35)
 
         self.skiplButton = wx.BitmapButton(parent, -1, self.skip_l_Icon, size = (35,35), style  = wx.NO_BORDER)
         self.playButton = buttons.GenBitmapToggleButton(parent, -1, self.playIcon, size = (35,35),
                             style = wx.NO_BORDER)
         self.playButton.SetBitmapSelected(self.pauseIcon)
         self.skiprButton = wx.BitmapButton(parent, -1, self.skip_r_Icon, size = (35,35), style  = wx.NO_BORDER)
+        self.prefButton = wx.BitmapButton(parent, -1, self.prefIcon, size = (35,35), style  = wx.NO_BORDER)
 
         sizer.Add(self.skiplButton, 0, wx.EXPAND)
         sizer.Add(self.playButton, 0, wx.EXPAND)
@@ -158,6 +159,8 @@ class PlaybackGroup(Knob):
         sizer.Add(self.sliderLabel, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
         sizer.Add(self.sliderText, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
         sizer.Add(self.slider, 1, wx.EXPAND)
+        sizer.Add(self.prefButton, 0, wx.EXPAND)
+
         self.sizer = sizer
 
         self.slider.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.sliderHandler)
@@ -166,8 +169,15 @@ class PlaybackGroup(Knob):
         self.skiplButton.Bind(wx.EVT_BUTTON, self.skipLeft)
         self.skiprButton.Bind(wx.EVT_BUTTON, self.skipRight)
         self.playButton.Bind(wx.EVT_BUTTON, self.onPlay)
+        self.prefButton.Bind(wx.EVT_BUTTON, self.openPrefs)
+
         self.param = param
         self.param.attach(self)
+
+    def openPrefs(self, evt):
+        win = SettingsFrame(self.Parent, -1, "This is a wx.Frame", size=(350, 200),
+                  style = wx.DEFAULT_FRAME_STYLE)
+        win.Show(True)
 
     def skipLeft(self, evt):
         self.param.set(self.param.value - self.skipSize)
@@ -177,6 +187,7 @@ class PlaybackGroup(Knob):
 
     def onPlay(self, evt):
         start_new_thread(self.playLoop, (self,))
+
     def playLoop(self, evt):
         start = time.time()
         while self.playButton.GetValue() and self.param.value <self.param.maximum:
@@ -185,6 +196,7 @@ class PlaybackGroup(Knob):
                 self.param.set(self.param.value + self.skipSize)
                 start = time.time()
         self.playButton.SetValue(0)
+        
     def sliderHandler(self, evt):
         value = evt.GetInt()
         self.param.set(value)
@@ -217,6 +229,26 @@ class CanvasPanel(wx.Window):
     def setKnob(self, value):
         self.draw()
 
+class SettingsFrame(wx.Frame):
+    def __init__(
+            self, parent, ID, title, pos=wx.DefaultPosition,
+            size=wx.DefaultSize, style=wx.DEFAULT_FRAME_STYLE
+            ):
+
+        wx.Frame.__init__(self, parent, ID, title, pos, size, style)
+        panel = wx.Panel(self, -1)
+
+        button = wx.Button(panel, 1003, "Close Me")
+        button.SetPosition((15, 15))
+        self.Bind(wx.EVT_BUTTON, self.OnCloseMe, button)
+        self.Bind(wx.EVT_CLOSE, self.OnCloseWindow)
+
+
+    def OnCloseMe(self, event):
+        self.Close(True)
+
+    def OnCloseWindow(self, event):
+        self.Destroy()
 
 class MainWindow(wx.Frame):
     """ We simply derive a new class of Frame """

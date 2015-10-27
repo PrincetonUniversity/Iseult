@@ -35,7 +35,7 @@ Enjoy!
 
 | Implemented: |
 | ------------ |
-| Time stepping (need to add playback, stepping, and refreshing the directory) |
+| Time stepping |
 | Basic 1 plot |
 
 | Left to Implement:|
