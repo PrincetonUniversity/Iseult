@@ -3,8 +3,13 @@ import wx # allows us to make the GUI
 import re # regular expressions
 import os # Used to make the code portable
 import h5py # Allows us the read the data files
+from thread import start_new_thread
+import time
 import matplotlib
 import new_cmaps
+
+import wx.lib.buttons as buttons
+#import icon as icn
 import matplotlib.colors as mcolors
 from numpy import arange, sin, pi
 
@@ -115,16 +120,41 @@ class FloatSliderGroup(Knob):
         self.sliderText.SetValue('%g'%value)
         self.slider.SetValue(value*1000)
 
-class IntSliderGroup(Knob):
+def scale_bitmap(bitmap, width, height, flip=False):
+    image = wx.ImageFromBitmap(bitmap)
+    image = image.Scale(width, height, wx.IMAGE_QUALITY_HIGH)
+    if flip:
+        image = image.Mirror()
+    result = wx.BitmapFromImage(image)
+    return result
+
+class PlaybackGroup(Knob):
     def __init__(self, parent, label, param):
         self.sliderLabel = wx.StaticText(parent, label=label)
         self.sliderText = wx.TextCtrl(parent, -1, style=wx.TE_PROCESS_ENTER)
         self.slider = wx.Slider(parent, -1)
         self.slider.SetMax(param.maximum)
         self.slider.SetMin(param.minimum)
+        self.skipSize = 1
+        self.waitTime = 1./24 # 24 fps (may be much slower because of the plotting time)
         self.setKnob(param.value)
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        self.playIcon = scale_bitmap(wx.Bitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),'icons', 'play.png')), 35,35)
+        self.pauseIcon = scale_bitmap(wx.Bitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),'icons', 'pause.png')), 35,35)
+        self.skip_r_Icon = scale_bitmap(wx.Bitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),'icons', 'skip.png')), 35,35)
+        self.skip_l_Icon = scale_bitmap(wx.Bitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),'icons', 'skip.png')), 35,35, True)
+
+        self.skiplButton = wx.BitmapButton(parent, -1, self.skip_l_Icon, size = (35,35), style  = wx.NO_BORDER)
+        self.playButton = buttons.GenBitmapToggleButton(parent, -1, self.playIcon, size = (35,35),
+                            style = wx.NO_BORDER)
+        self.playButton.SetBitmapSelected(self.pauseIcon)
+        self.skiprButton = wx.BitmapButton(parent, -1, self.skip_r_Icon, size = (35,35), style  = wx.NO_BORDER)
+
+        sizer.Add(self.skiplButton, 0, wx.EXPAND)
+        sizer.Add(self.playButton, 0, wx.EXPAND)
+        sizer.Add(self.skiprButton, 0, wx.EXPAND)
         sizer.Add(self.sliderLabel, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
         sizer.Add(self.sliderText, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
         sizer.Add(self.slider, 1, wx.EXPAND)
@@ -133,9 +163,28 @@ class IntSliderGroup(Knob):
         self.slider.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.sliderHandler)
         self.sliderText.Bind(wx.EVT_TEXT_ENTER, self.sliderTextHandler)
 
+        self.skiplButton.Bind(wx.EVT_BUTTON, self.skipLeft)
+        self.skiprButton.Bind(wx.EVT_BUTTON, self.skipRight)
+        self.playButton.Bind(wx.EVT_BUTTON, self.onPlay)
         self.param = param
         self.param.attach(self)
 
+    def skipLeft(self, evt):
+        self.param.set(self.param.value - self.skipSize)
+
+    def skipRight(self, evt):
+        self.param.set(self.param.value + self.skipSize)
+
+    def onPlay(self, evt):
+        start_new_thread(self.playLoop, (self,))
+    def playLoop(self, evt):
+        start = time.time()
+        while self.playButton.GetValue() and self.param.value <self.param.maximum:
+            time.sleep(0.02)
+            if time.time()-start > self.waitTime:
+                self.param.set(self.param.value + self.skipSize)
+                start = time.time()
+        self.playButton.SetValue(0)
     def sliderHandler(self, evt):
         value = evt.GetInt()
         self.param.set(value)
@@ -216,14 +265,14 @@ class MainWindow(wx.Frame):
 
         # Make some sizers:
         mainsizer = wx.BoxSizer(wx.VERTICAL)
-        grid =  wx.GridBagSizer(hgap = 1, vgap = 1)
+        grid =  wx.GridBagSizer(hgap = 0.5, vgap = 0.5)
         # Make the knob & slider that will control the time slice of the
         # simulation
 
         self.timeStep = Param(1, minimum=1, maximum=len(self.flds.paths))
         self.timeStep.attach(self)
 
-        self.timeSliderGroup = IntSliderGroup(self, label=' n:', \
+        self.timeSliderGroup = PlaybackGroup(self, label=' n:', \
             param=self.timeStep)
 
         # Make the Figures
