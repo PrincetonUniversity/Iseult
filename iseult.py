@@ -7,10 +7,8 @@ from thread import start_new_thread
 import time,string
 import matplotlib
 import new_cmaps
-
 import wx.lib.buttons as buttons
 import  wx.lib.intctrl
-from wx.lib.masked import NumCtrl
 #import icon as icn
 import matplotlib.colors as mcolors
 from numpy import arange, sin, pi
@@ -232,7 +230,7 @@ class PlaybackGroup(Knob):
 
 
     def openPrefs(self, evt):
-        win = SettingsFrame(self.Parent, -1, "This is a wx.Frame", size=(350, 200),
+        win = SettingsFrame(self.Parent, -1, "Playback Settings", size=(350, 200),
                   style = wx.DEFAULT_FRAME_STYLE)
         win.Show(True)
 
@@ -274,7 +272,9 @@ class CanvasPanel(wx.Window):
         self.canvas = FigCanvas(self, -1, self.figure)
         self.Bind(wx.EVT_SIZE, self.sizeHandler)
         self.draw()
-
+        self.Bind(wx.EVT_ENTER_WINDOW, self.onEnter)
+        self.Bind(wx.EVT_LEAVE_WINDOW, self.onLeave)
+        self.Bind(wx.EVT_LEFT_UP, self.openGraphPrefs)
     def sizeHandler(self, *args, **kwargs):
         '''Make it so the plot scales with resizing of the window'''
         self.canvas.SetSize(self.GetSize())
@@ -284,16 +284,26 @@ class CanvasPanel(wx.Window):
         self.axes.hist2d(self.Parent.prtl.file['xi'][:],self.Parent.prtl.file['ui'][:], bins = [200,200],cmap = new_cmaps.cmaps[self.Parent.cmap], norm = mcolors.PowerNorm(0.4))
         self.canvas.draw()
 
+    def onEnter(self, evt):
+        if not self.HasCapture():
+            self.CaptureMouse()
+    def onLeave(self, evt):
+        if self.HasCapture():
+            self.ReleaseMouse()
+    def openGraphPrefs(self, evt):
+        win = SettingsFrame(self.Parent, -1, "Chart Settings", size=(350, 200),
+                          style = wx.DEFAULT_FRAME_STYLE)
+        win.Show(True)
     def setKnob(self, value):
         self.draw()
 
 class SettingsFrame(wx.Frame):
     def __init__(
-            self, parent, ID, title='Playback Settings', pos=wx.DefaultPosition,
+            self, parent, ID, title, pos=wx.DefaultPosition,
             size=wx.DefaultSize, style=wx.DEFAULT_FRAME_STYLE
             ):
 
-        wx.Frame.__init__(self, parent, ID, 'Playback Settings', pos, size, style)
+        wx.Frame.__init__(self, parent, ID, title, pos, size, style)
         panel = wx.Panel(self, -1)
         self.parent = parent
         #Create some sizers
