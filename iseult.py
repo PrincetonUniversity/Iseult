@@ -7,11 +7,11 @@ from thread import start_new_thread
 import time,string
 import matplotlib
 import new_cmaps
+import numpy as np
 import wx.lib.buttons as buttons
 import  wx.lib.intctrl
 #import icon as icn
 import matplotlib.colors as mcolors
-from numpy import arange, sin, pi
 
 matplotlib.use('WXAgg')
 from matplotlib.figure import Figure
@@ -25,6 +25,33 @@ class FilesWrapper(object):
     def __init__(self, plist=[],f_hdf5=''):
          self.paths = plist
          self.file = f_hdf5
+
+class ParamsWrapper(object):
+    """ A simple class wrapper that allows us to store all of the params
+    used by tristan_analysis.pro, it takes the hd5f file from tristan 'param.*' and then saves
+    all of the parameters we need"""
+    def __init__(self, paramfile):
+        self.c_omp = paramfile['c_omp'][0]
+        self.mi = paramfile['mi'][0]
+        self.me = paramfile['me'][0]
+        self.sizex = paramfile['sizex'][0]
+        self.sizey = paramfile['sizey'][0]
+        self.ppc0 = paramfile['ppc0'][0]
+        self.btheta = np.rad2deg(paramfile['btheta'][0])
+        self.gamma0 = paramfile['gamma0'][0]
+        self.mxl = np.zeros(self.sizex)
+        self.myl = np.zeros(self.sizey)
+        self.istep = paramfile['istep'][0]
+        self.interval = paramfile['interval'][0]
+        self.c = paramfile['c'][0]
+        self.mx0 = paramfile['mx0'][0]
+        self.my0 = paramfile['my0'][0]
+        self.ix=np.floor((self.my0-1)*.5/self.istep)
+## Time stuff, need to think about what to do with this stuff
+#            tf=n_elements(filenames2)
+#        	tarr=(indgen(tf)+1)*c/c_omp*interval
+
+
 
 class FigWrapper(object):
     """A simple class wrapper that will eventually hold all of the information
@@ -268,7 +295,7 @@ class PlaybackGroup(Knob):
 class CanvasPanel(wx.Window):
     def __init__(self, parent):
         wx.Window.__init__(self, parent)
-        self.figure = Figure(figsize=(5, 2), dpi=100)
+        self.figure = Figure(figsize=(3, 1), dpi=100)
         self.canvas = FigCanvas(self, -1, self.figure)
         self.Bind(wx.EVT_SIZE, self.sizeHandler)
         self.draw()
@@ -375,7 +402,7 @@ class SettingsFrame(wx.Frame):
 class MainWindow(wx.Frame):
     """ We simply derive a new class of Frame """
     def __init__(self, parent, title):
-        wx.Frame.__init__(self, parent, title =title)
+        wx.Frame.__init__(self, parent, title =title, pos = (-1,-1))
 
         self.CreateStatusBar() # A statusbar in the bottom of the window
         # intialize the working directory
@@ -423,6 +450,9 @@ class MainWindow(wx.Frame):
         for elm in self.file_list:
             elm.file = h5py.File(os.path.join(self.dirname,elm.paths[0]), 'r')
 
+        self.cur_param = ParamsWrapper(self.param.file)
+        print self.cur_param.btheta
+
         self.timeStep.attach(self)
 
         # Make some sizers:
@@ -458,7 +488,14 @@ class MainWindow(wx.Frame):
 
         mainsizer.Add(grid,1, wx.EXPAND)
         mainsizer.Add(self.timeSliderGroup.sizer,0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
+
         self.SetSizerAndFit(mainsizer)
+#        self.Center()
+        APPWIDTH = 1400
+        APPHEIGHT = 800
+        self.SetSizeWH(APPWIDTH, APPHEIGHT)
+        self.Center=()
+
 
         # Set events.
         self.Bind(wx.EVT_MENU, self.OnAbout, menuAbout)
