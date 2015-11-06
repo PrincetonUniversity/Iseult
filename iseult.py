@@ -10,7 +10,6 @@ import new_cmaps
 import numpy as np
 import wx.lib.buttons as buttons
 import  wx.lib.intctrl
-#import icon as icn
 import matplotlib.colors as mcolors
 
 matplotlib.use('WXAgg')
@@ -19,38 +18,79 @@ from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
 
-class FilesWrapper(object):
-    """A simple class wrapper to allow us to make lists of the seperate paths
-    of the files and store one of the loaded hdf5 files"""
-    def __init__(self, plist=[],f_hdf5=''):
-         self.paths = plist
-         self.file = f_hdf5
-
-class ParamsWrapper(object):
+class ParamWrapper(object):
     """ A simple class wrapper that allows us to store all of the params
     used by tristan_analysis.pro, it takes the hd5f file from tristan 'param.*' and then saves
     all of the parameters we need"""
-    def __init__(self, paramfile):
-        self.c_omp = paramfile['c_omp'][0]
-        self.mi = paramfile['mi'][0]
-        self.me = paramfile['me'][0]
-        self.sizex = paramfile['sizex'][0]
-        self.sizey = paramfile['sizey'][0]
-        self.ppc0 = paramfile['ppc0'][0]
-        self.btheta = np.rad2deg(paramfile['btheta'][0])
-        self.gamma0 = paramfile['gamma0'][0]
+    def __init__(self):
+        self.curdir =  ''
+        self.paths = []
+
+    def Update(self, t_arg):
+        f = h5py.File(os.path.join(self.curdir,self.paths[t_arg-1]), 'r')
+        self.c_omp = f['c_omp'][0]
+        self.mi = f['mi'][0]
+        self.me = f['me'][0]
+        self.sizex = f['sizex'][0]
+        self.sizey = f['sizey'][0]
+        self.ppc0 = f['ppc0'][0]
+        self.btheta = np.rad2deg(f['btheta'][0])
+        self.gamma0 = f['gamma0'][0]
         self.mxl = np.zeros(self.sizex)
         self.myl = np.zeros(self.sizey)
-        self.istep = paramfile['istep'][0]
-        self.interval = paramfile['interval'][0]
-        self.c = paramfile['c'][0]
-        self.mx0 = paramfile['mx0'][0]
-        self.my0 = paramfile['my0'][0]
+        self.istep = f['istep'][0]
+        self.interval = f['interval'][0]
+        self.c = f['c'][0]
+        self.mx0 = f['mx0'][0]
+        self.my0 = f['my0'][0]
         self.ix=np.floor((self.my0-1)*.5/self.istep)
-## Time stuff, need to think about what to do with this stuff
-#            tf=n_elements(filenames2)
+        f.close()
+#           tf=n_elements(filenames2)
 #        	tarr=(indgen(tf)+1)*c/c_omp*interval
 
+class PrtlWrapper(object):
+    """ A simple class wrapper that allows us to store all of the params
+    used by tristan_analysis.pro, it takes the hd5f file from tristan 'param.*' and then saves
+    all of the parameters we need"""
+    def __init__(self):
+        self.curdir =  ''
+        self.paths = []
+
+    def Update(self, t_arg):
+        f = h5py.File(os.path.join(self.curdir,self.paths[t_arg-1]), 'r')
+        self.xi = f['xi'][:]
+        self.ui = f['ui'][:]
+        f.close()
+#           tf=n_elements(filenames2)
+#        	tarr=(indgen(tf)+1)*c/c_omp*interval
+
+class SpectWrapper(object):
+    """ A simple class wrapper that allows us to store all of the params
+    used by tristan_analysis.pro, it takes the hd5f file from tristan 'param.*' and then saves
+    all of the parameters we need"""
+#    def __init__(self, fldsfile):
+
+    def __init__(self):
+        self.curdir =  ''
+        self.paths = []
+
+    def Update(self, t_arg):
+        f = h5py.File(os.path.join(self.curdir,self.paths[t_arg-1]), 'r')
+        f.close()
+
+class FldsWrapper(object):
+
+    """ A simple class wrapper that takes the hd5f file from tristan 'flds.*'
+    and then saves all of the parameters we need"""
+#    def __init__(self, fldsfile):
+
+    def __init__(self):
+        self.curdir = ''
+        self.paths = []
+
+    def Update(self, t_arg):
+        f = h5py.File(os.path.join(self.curdir,self.paths[t_arg-1]), 'r')
+        f.close()
 
 
 class FigWrapper(object):
@@ -308,7 +348,7 @@ class CanvasPanel(wx.Window):
 
     def draw(self):
         self.axes = self.figure.add_subplot(111)
-        self.axes.hist2d(self.Parent.prtl.file['xi'][:],self.Parent.prtl.file['ui'][:], bins = [200,200],cmap = new_cmaps.cmaps[self.Parent.cmap], norm = mcolors.PowerNorm(0.4))
+        self.axes.hist2d(self.Parent.prtl.xi,self.Parent.prtl.ui, bins = [200,200],cmap = new_cmaps.cmaps[self.Parent.cmap], norm = mcolors.PowerNorm(0.4))
         self.canvas.draw()
 
     def onEnter(self, evt):
@@ -431,10 +471,10 @@ class MainWindow(wx.Frame):
         self.cmap = 'inferno'
 
         # make a bunch of objects that will store all our file names & values
-        self.flds = FilesWrapper()
-        self.prtl = FilesWrapper()
-        self.param = FilesWrapper()
-        self.spect = FilesWrapper()
+        self.flds = FldsWrapper()
+        self.prtl = PrtlWrapper()
+        self.param = ParamWrapper()
+        self.spect = SpectWrapper()
         self.file_list = [self.flds, self.prtl,  self.spect, self.param]
 
 
@@ -446,12 +486,12 @@ class MainWindow(wx.Frame):
         self.dirname = os.curdir
         self.findDir()
 
-        # Load the first time step of all the files using h5py
-        for elm in self.file_list:
-            elm.file = h5py.File(os.path.join(self.dirname,elm.paths[0]), 'r')
 
-        self.cur_param = ParamsWrapper(self.param.file)
-        print self.cur_param.btheta
+
+        # Load the first time step (i.e. t=1) of all the files using h5py
+        for elm in self.file_list:
+            elm.Update(1)
+
 
         self.timeStep.attach(self)
 
@@ -508,10 +548,8 @@ class MainWindow(wx.Frame):
             elm.graph.draw()
     def setKnob(self, value):
         for elm in self.file_list:
-            # close the previous HDF5 file
-            elm.file.close()
-            # Open the new file
-            elm.file = h5py.File(os.path.join(self.dirname,elm.paths[value-1]), 'r')
+            # Pass the new t_arg
+            elm.Update(value)
 
 
 
@@ -533,6 +571,7 @@ class MainWindow(wx.Frame):
 
         is_okay = True
         for i in range(len(self.re_list)):
+            self.file_list[i].curdir = self.dirname
             self.file_list[i].paths = (filter(self.re_list[i].match, os.listdir(self.dirname)))
             self.file_list[i].paths.sort()
             is_okay &= len(self.file_list[i].paths) > 0
