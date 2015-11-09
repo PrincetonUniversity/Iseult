@@ -28,21 +28,48 @@ class ParamWrapper(object):
 
     def Update(self, t_arg):
         f = h5py.File(os.path.join(self.curdir,self.paths[t_arg-1]), 'r')
+        self.acool = f['acool'][0]
+        self.bphi = np.rad2deg(f['bphi'][0])
+        self.btheta = np.rad2deg(f['btheta'][0])
+        self.c = f['c'][0]
         self.c_omp = f['c_omp'][0]
-        self.mi = f['mi'][0]
+        self.caseinit = f['caseinit'][0]
+        self.cooling = f['cooling'][0]
+        self.delgam = f['delgam'][0]
+        self.dlapion = f['dlapion'][0]
+        self.dlaplec = f['dlaplec'][0]
+        self.dummy = f['dummy'][0]
+        self.gamma0 = f['gamma0'][0]
+        self.interval = f['interval'][0]
+        self.istep = f['istep'][0]
+        self.istep1 = f['istep1'][0]
         self.me = f['me'][0]
+        self.mi = f['mi'][0]
+        self.mx = f['mx'][:]
+        self.mx0 = f['mx0'][0]
+        self.my = f['my'][:]
+        self.my0 = f['my0'][0]
+        self.mz0 = f['mz0'][0]
+        self.ntimes = f['ntimes'][0]
+        self.pltstart = f['pltstart'][0]
+        self.ppc0 = f['ppc0'][0]
+        self.qi = f['qi'][0]
+        self.sigma = f['sigma'][0]
         self.sizex = f['sizex'][0]
         self.sizey = f['sizey'][0]
-        self.ppc0 = f['ppc0'][0]
-        self.btheta = np.rad2deg(f['btheta'][0])
-        self.gamma0 = f['gamma0'][0]
+        self.splitratio = f['splitratio'][0]
+        self.stride = f['stride'][0]
+        self.testendion = f['testendion'][0]
+        self.testendlec = f['testendlec'][0]
+        self.teststarti = f['teststarti'][0]
+        self.teststartl = f['teststartl'][0]
+        self.time = f['time'][0]
+        self.torqint = f['torqint'][0]
+        self.walloc = f['walloc'][0]
+        self.xinject2 = f['xinject2'][0]
+
         self.mxl = np.zeros(self.sizex)
         self.myl = np.zeros(self.sizey)
-        self.istep = f['istep'][0]
-        self.interval = f['interval'][0]
-        self.c = f['c'][0]
-        self.mx0 = f['mx0'][0]
-        self.my0 = f['my0'][0]
         self.ix=np.floor((self.my0-1)*.5/self.istep)
         f.close()
 #           tf=n_elements(filenames2)
@@ -58,11 +85,27 @@ class PrtlWrapper(object):
 
     def Update(self, t_arg):
         f = h5py.File(os.path.join(self.curdir,self.paths[t_arg-1]), 'r')
-        self.xi = f['xi'][:]
+        self.che = f['che'][:]
+        self.chi = f['chi'][:]
+        self.gammae = f['gammae'][:]
+        self.gammai = f['gammai'][:]
+        self.inde = f['inde'][:]
+        self.indi = f['indi'][:]
+        self.proce = f['proce'][:]
+        self.proci = f['proci'][:]
+        self.ue = f['ue'][:] # velocity in the x-direction
         self.ui = f['ui'][:]
+        self.ve = f['ve'][:] # velocity in the y-direction
+        self.vi = f['vi'][:]
+        self.we = f['we'][:] # velocity in the z-direction
+        self.wi = f['wi'][:]
+        self.xe = f['xe'][:]
+        self.xi = f['xi'][:]
+        self.ye = f['ye'][:]
+        self.yi = f['yi'][:]
+        self.ze = f['ze'][:]
+        self.zi = f['zi'][:]
         f.close()
-#           tf=n_elements(filenames2)
-#        	tarr=(indgen(tf)+1)*c/c_omp*interval
 
 class SpectWrapper(object):
     """ A simple class wrapper that allows us to store all of the params
@@ -76,6 +119,17 @@ class SpectWrapper(object):
 
     def Update(self, t_arg):
         f = h5py.File(os.path.join(self.curdir,self.paths[t_arg-1]), 'r')
+        self.dens = f['dens'][:]
+        self.dgam = f['dgam'][0]
+        self.gamma = f['gamma'][:]
+        self.gmax = f['gmax'][0]
+        self.gmin = f['gmin'][0]
+        self.spece = f['spece'][:]
+        self.specerest = f['specerest'][:]
+        self.specp = f['specp'][:]
+        self.specprest = f['specprest'][:]
+        self.umean = f['umean'][:]
+        self.xsl = f['xsl'][:]
         f.close()
 
 class FldsWrapper(object):
@@ -364,6 +418,38 @@ class CanvasPanel(wx.Window):
     def setKnob(self, value):
         self.draw()
 
+class TestPanel(wx.Window):
+    def __init__(self, parent):
+        wx.Window.__init__(self, parent)
+        self.figure = Figure(figsize=(3, 1), dpi=100)
+        self.canvas = FigCanvas(self, -1, self.figure)
+        self.Bind(wx.EVT_SIZE, self.sizeHandler)
+        self.draw()
+        self.Bind(wx.EVT_ENTER_WINDOW, self.onEnter)
+        self.Bind(wx.EVT_LEAVE_WINDOW, self.onLeave)
+        self.Bind(wx.EVT_LEFT_UP, self.openGraphPrefs)
+    def sizeHandler(self, *args, **kwargs):
+        '''Make it so the plot scales with resizing of the window'''
+        self.canvas.SetSize(self.GetSize())
+
+    def draw(self):
+        self.axes = self.figure.add_subplot(111)
+        self.axes.hist2d(self.Parent.prtl.xe,self.Parent.prtl.ue, bins = [200,200],cmap = new_cmaps.cmaps[self.Parent.cmap], norm = mcolors.PowerNorm(0.4))
+        self.canvas.draw()
+
+    def onEnter(self, evt):
+        if not self.HasCapture():
+            self.CaptureMouse()
+    def onLeave(self, evt):
+        if self.HasCapture():
+            self.ReleaseMouse()
+    def openGraphPrefs(self, evt):
+        win = SettingsFrame(self.Parent, -1, "Chart Settings", size=(350, 200),
+                          style = wx.DEFAULT_FRAME_STYLE)
+        win.Show(True)
+    def setKnob(self, value):
+        self.draw()
+
 class SettingsFrame(wx.Frame):
     def __init__(
             self, parent, ID, title, pos=wx.DefaultPosition,
@@ -515,10 +601,15 @@ class MainWindow(wx.Frame):
         col_counter = 0
         for elm in self.FigList:
             elm.graph = CanvasPanel(self)
-            self.timeStep.attach(elm.graph)
+#            self.timeStep.attach(elm.graph)
             grid.Add(elm.graph, pos=(col_counter/2,col_counter%2), flag = wx.EXPAND)
             col_counter += 1
+        x = self.Fig3.graph
+        self.Fig3.graph = TestPanel(self)
 
+        grid.Replace(x, self.Fig3.graph)#pos=(0,1))
+        x.Destroy()
+#        grid.Add(self.Fig3.graph, pos=(0,1), flag = wx.EXPAND)
         for i in range(2):
             grid.AddGrowableCol(i)
         for i in range(3):
@@ -543,6 +634,7 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnOpen, menuOpen)
 
         self.Show(True)
+
     def refreshAllGraphs(self):
         for elm in self.FigList:
             elm.graph.draw()
@@ -550,6 +642,8 @@ class MainWindow(wx.Frame):
         for elm in self.file_list:
             # Pass the new t_arg
             elm.Update(value)
+        # refresh the graphs
+        self.refreshAllGraphs()
 
 
 
