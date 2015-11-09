@@ -418,23 +418,50 @@ class CanvasPanel(wx.Window):
     def setKnob(self, value):
         self.draw()
 
-class TestPanel(wx.Window):
+class PhasePanel(wx.Window):
     def __init__(self, parent):
         wx.Window.__init__(self, parent)
+
+        self.norm = mcolors.Normalize()
+        self.mom_dim = 0
+        self.prtl_type = 1 # 1 == electron, 0 == ion
+
         self.figure = Figure(figsize=(3, 1), dpi=100)
         self.canvas = FigCanvas(self, -1, self.figure)
         self.Bind(wx.EVT_SIZE, self.sizeHandler)
+
+
         self.draw()
         self.Bind(wx.EVT_ENTER_WINDOW, self.onEnter)
         self.Bind(wx.EVT_LEAVE_WINDOW, self.onLeave)
         self.Bind(wx.EVT_LEFT_UP, self.openGraphPrefs)
+
+
     def sizeHandler(self, *args, **kwargs):
         '''Make it so the plot scales with resizing of the window'''
         self.canvas.SetSize(self.GetSize())
 
     def draw(self):
+        if self.prtl_type == 0:
+            self.x_values = self.Parent.prtl.xi
+            if self.mom_dim == 0:
+                self.y_values = self.Parent.prtl.ui
+            if self.mom_dim == 1:
+                self.y_values = self.Parent.prtl.vi
+            if self.mom_dim == 2:
+                self.y_values = self.Parent.prtl.wi
+
+        if self.prtl_type == 1:
+            self.x_values = self.Parent.prtl.xe
+            if self.mom_dim == 0:
+                self.y_values = self.Parent.prtl.ue
+            if self.mom_dim == 1:
+                self.y_values = self.Parent.prtl.ve
+            if self.mom_dim == 2:
+                self.y_values = self.Parent.prtl.we
+
         self.axes = self.figure.add_subplot(111)
-        self.axes.hist2d(self.Parent.prtl.xe,self.Parent.prtl.ue, bins = [200,200],cmap = new_cmaps.cmaps[self.Parent.cmap], norm = mcolors.PowerNorm(0.4))
+        self.axes.hist2d(self.x_values,self.y_values, bins = [200,200],cmap = new_cmaps.cmaps[self.Parent.cmap], norm =self.norm )
         self.canvas.draw()
 
     def onEnter(self, evt):
@@ -444,11 +471,47 @@ class TestPanel(wx.Window):
         if self.HasCapture():
             self.ReleaseMouse()
     def openGraphPrefs(self, evt):
-        win = SettingsFrame(self.Parent, -1, "Chart Settings", size=(350, 200),
+        win = PhaseSettings(self, -1, "Chart Settings", size=(350, 200),
                           style = wx.DEFAULT_FRAME_STYLE)
         win.Show(True)
     def setKnob(self, value):
         self.draw()
+
+class PhaseSettings(wx.Frame):
+    def __init__(
+            self, parent, ID, title, pos=wx.DefaultPosition,
+            size=wx.DefaultSize, style=wx.DEFAULT_FRAME_STYLE
+            ):
+
+        wx.Frame.__init__(self, parent, ID, title, pos, size, style)
+        panel = wx.Panel(self, -1)
+        self.parent = parent
+        #Create some sizers
+        self.mainsizer = wx.BoxSizer(wx.VERTICAL)
+#        grid =  wx.GridBagSizer(hgap = 10, vgap = 10)
+        # the Radiobox Control
+        self.dimList = ['x-px', 'x-py', 'x-pz']
+        self.rbDim = wx.RadioBox(
+                self, -1,'Choose Dim.', wx.DefaultPosition, wx.DefaultSize,
+                self.dimList, 1, wx.RA_SPECIFY_COLS
+                )
+        self.mainsizer.Add(self.rbDim)
+
+        self.Bind(wx.EVT_RADIOBOX, self.EvtRadioDim, self.rbDim)
+
+        self.SetSizerAndFit(self.mainsizer)
+    # Define functions for the events
+
+    def EvtRadioDim(self, evt):
+        self.parent.mom_dim = evt.GetInt()
+        self.parent.draw()
+
+    def OnCloseMe(self, event):
+        self.Close(True)
+
+    def OnCloseWindow(self, event):
+        self.Destroy()
+
 
 class SettingsFrame(wx.Frame):
     def __init__(
@@ -508,16 +571,8 @@ class SettingsFrame(wx.Frame):
         self.parent.cmap = event.GetString()
         self.parent.refreshAllGraphs()
 
-
-    def EvtRadioBox(self, event):
-        self.logger.AppendText('EvtRadioBox: %d\n' % event.GetInt())
-    def EvtListBox(self, event):
-        self.logger.AppendText('EvtComboBox: %s\n' % event.GetString())
     def OnReload(self, event):
         self.parent.findDir()
-
-    def EvtCheckBox(self, event):
-        self.logger.AppendText('EvtCheckBox: %d\n' % event.Checked())
 
     def OnCloseMe(self, event):
         self.Close(True)
@@ -601,11 +656,10 @@ class MainWindow(wx.Frame):
         col_counter = 0
         for elm in self.FigList:
             elm.graph = CanvasPanel(self)
-#            self.timeStep.attach(elm.graph)
             grid.Add(elm.graph, pos=(col_counter/2,col_counter%2), flag = wx.EXPAND)
             col_counter += 1
         x = self.Fig3.graph
-        self.Fig3.graph = TestPanel(self)
+        self.Fig3.graph = PhasePanel(self)
 
         grid.Replace(x, self.Fig3.graph)#pos=(0,1))
         x.Destroy()
