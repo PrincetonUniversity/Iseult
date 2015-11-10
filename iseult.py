@@ -19,9 +19,11 @@ from matplotlib.backends.backend_wxagg import \
     NavigationToolbar2WxAgg as NavigationToolbar
 
 class ParamWrapper(object):
-    """ A simple class wrapper that allows us to store all of the params
-    used by tristan_analysis.pro, it takes the hd5f file from tristan 'param.*' and then saves
-    all of the parameters we need"""
+
+    """ A simple class wrapper that allows us to store all of the params found
+    in the hd5f file from tristan 'param.*' and then saves all of the parameters
+    using the name in the h5py file"""
+
     def __init__(self):
         self.curdir =  ''
         self.paths = []
@@ -76,9 +78,10 @@ class ParamWrapper(object):
 #        	tarr=(indgen(tf)+1)*c/c_omp*interval
 
 class PrtlWrapper(object):
-    """ A simple class wrapper that allows us to store all of the params
-    used by tristan_analysis.pro, it takes the hd5f file from tristan 'param.*' and then saves
-    all of the parameters we need"""
+
+    """ A simple class wrapper that allows us to store all of the arrays found
+    in the hd5f file from tristan 'ptrl.tot.*' '"""
+
     def __init__(self):
         self.curdir =  ''
         self.paths = []
@@ -108,10 +111,11 @@ class PrtlWrapper(object):
         f.close()
 
 class SpectWrapper(object):
-    """ A simple class wrapper that allows us to store all of the params
-    used by tristan_analysis.pro, it takes the hd5f file from tristan 'param.*' and then saves
-    all of the parameters we need"""
-#    def __init__(self, fldsfile):
+
+    """ A simple class wrapper that allows us to store all of the params used by
+    tristan_analysis.pro, it takes the hd5f file from tristan 'param.*' and then
+    saves all of the parameters we need"""
+
 
     def __init__(self):
         self.curdir =  ''
@@ -135,8 +139,8 @@ class SpectWrapper(object):
 class FldsWrapper(object):
 
     """ A simple class wrapper that takes the hd5f file from tristan 'flds.*'
-    and then saves all of the parameters we need"""
-#    def __init__(self, fldsfile):
+    and then saves all of the arrays in numpy objects"""
+
 
     def __init__(self):
         self.curdir = ''
@@ -213,6 +217,7 @@ class Knob:
         pass
 
 class Param:
+
     """
     The idea of the "Param" class is that some parameter in the GUI may have
     several knobs that both control it and reflect the parameter's state, e.g.
@@ -221,6 +226,7 @@ class Param:
     The class allows a cleaner way to update/"feedback" to the other knobs when
     one is being changed.  Also, this class handles min/max constraints for all
     the knobs.
+
     Idea - knob list - in "set" method, knob object is passed as well
       - the other knobs in the knob list have a "set" method which gets
         called for the others.
@@ -396,6 +402,7 @@ class CanvasPanel(wx.Window):
         self.Bind(wx.EVT_ENTER_WINDOW, self.onEnter)
         self.Bind(wx.EVT_LEAVE_WINDOW, self.onLeave)
         self.Bind(wx.EVT_LEFT_UP, self.openGraphPrefs)
+
     def sizeHandler(self, *args, **kwargs):
         '''Make it so the plot scales with resizing of the window'''
         self.canvas.SetSize(self.GetSize())
@@ -422,9 +429,11 @@ class PhasePanel(wx.Window):
     def __init__(self, parent):
         wx.Window.__init__(self, parent)
 
-        self.norm = mcolors.Normalize()
+        self.norm = mcolors.PowerNorm(0.4)
         self.mom_dim = 0
-        self.prtl_type = 1 # 1 == electron, 0 == ion
+        self.prtl_type = 0 # 1 == electron, 0 == ion
+        self.norm_type = "PowerNorm"
+        self.pow_num = 0.4
 
         self.figure = Figure(figsize=(3, 1), dpi=100)
         self.canvas = FigCanvas(self, -1, self.figure)
@@ -442,6 +451,15 @@ class PhasePanel(wx.Window):
         self.canvas.SetSize(self.GetSize())
 
     def draw(self):
+        # Choose the normalization
+        if self.norm_type =="Linear":
+            self.norm = mcolors.Normalize()
+        elif self.norm_type =="LogNorm":
+            self.norm = mcolors.LogNorm()
+        else:
+            self.norm = mcolors.PowerNorm(self.pow_num)
+
+        # Choose the particle type and px, py, or pz
         if self.prtl_type == 0:
             self.x_values = self.Parent.prtl.xi
             if self.mom_dim == 0:
@@ -461,7 +479,7 @@ class PhasePanel(wx.Window):
                 self.y_values = self.Parent.prtl.we
 
         self.axes = self.figure.add_subplot(111)
-        self.axes.hist2d(self.x_values,self.y_values, bins = [200,200],cmap = new_cmaps.cmaps[self.Parent.cmap], norm =self.norm )
+        self.axes.hist2d(self.x_values,self.y_values, bins = [200,200],cmap = new_cmaps.cmaps[self.Parent.cmap], norm = self.norm )
         self.canvas.draw()
 
     def onEnter(self, evt):
@@ -488,22 +506,73 @@ class PhaseSettings(wx.Frame):
         self.parent = parent
         #Create some sizers
         self.mainsizer = wx.BoxSizer(wx.VERTICAL)
-#        grid =  wx.GridBagSizer(hgap = 10, vgap = 10)
+        grid =  wx.GridBagSizer(hgap = 10, vgap = 10)
         # the Radiobox Control
+        self.prtlList = ['ion', 'electron']
+        self.rbPrtl = wx.RadioBox(
+                self, -1,'Particle', wx.DefaultPosition, wx.DefaultSize,
+                self.prtlList,  1, wx.RA_SPECIFY_COLS
+                )
+        self.rbPrtl.SetSelection(self.parent.prtl_type)
+        self.Bind(wx.EVT_RADIOBOX, self.EvtRadioPrtl, self.rbPrtl)
+
+        grid.Add(self.rbPrtl, pos = (1,0))
         self.dimList = ['x-px', 'x-py', 'x-pz']
         self.rbDim = wx.RadioBox(
-                self, -1,'Choose Dim.', wx.DefaultPosition, wx.DefaultSize,
-                self.dimList, 1, wx.RA_SPECIFY_COLS
+                self, -1,'Dimension', wx.DefaultPosition, wx.DefaultSize,
+                self.dimList,  1, wx.RA_SPECIFY_COLS
                 )
-        self.mainsizer.Add(self.rbDim)
+        self.rbDim.SetSelection(self.parent.mom_dim)
+        grid.Add(self.rbDim, pos = (1,1))
 
         self.Bind(wx.EVT_RADIOBOX, self.EvtRadioDim, self.rbDim)
+
+        grid1 = wx.GridBagSizer()
+
+        # Group of controls for the cmap normalization:
+        self.rbLinear = wx.RadioButton(self, -1, "Linear", style = wx.RB_GROUP)
+        self.rbLog = wx.RadioButton(self, -1, "LogNorm" )
+        self.rbPow = wx.RadioButton(self, -1, "PowerNorm" )
+        self.rbPowNum = wx.TextCtrl(self , -1, str(self.parent.pow_num),
+        validator = MyValidator('DIGIT_ONLY') )
+        grid1.Add( self.rbLinear, pos = (0,0), flag = wx.ALIGN_LEFT|wx.LEFT|wx.RIGHT|wx.TOP, border = 5)
+        grid1.Add( self.rbLog, pos = (1,0), flag = wx.ALIGN_LEFT|wx.LEFT|wx.RIGHT|wx.TOP, border = 5)
+        grid1.Add( self.rbPow, pos = (2,0), flag = wx.ALIGN_LEFT|wx.LEFT|wx.RIGHT|wx.TOP, border = 5)
+        grid1.Add( self.rbPowNum, pos = (2,1), flag = wx.ALIGN_LEFT|wx.LEFT|wx.RIGHT|wx.TOP, border = 5)
+
+        self.Bind(wx.EVT_RADIOBUTTON, self.EvtRadioNorm, self.rbLinear)
+        self.Bind(wx.EVT_RADIOBUTTON, self.EvtRadioNorm, self.rbLog)
+        self.Bind(wx.EVT_RADIOBUTTON, self.EvtRadioNorm, self.rbPow)
+        self.Bind(wx.EVT_TEXT, self.EvtNormNumSet, self.rbPowNum)
+
+        self.mainsizer.Add(grid,0, border=15)
+        self.mainsizer.Add(grid1, 0, border = 15)
 
         self.SetSizerAndFit(self.mainsizer)
     # Define functions for the events
 
     def EvtRadioDim(self, evt):
         self.parent.mom_dim = evt.GetInt()
+        self.parent.draw()
+
+    def EvtRadioNorm(self, evt):
+
+        self.parent.norm_type = evt.GetEventObject().GetLabel()
+        self.parent.draw()
+
+    def EvtNormNumSet(self, evt):
+        tmp_num = evt.GetString()
+        if not tmp_num:
+            tmp_num = 1E-3
+        elif float(tmp_num)<=1E-3:
+            tmp_num = 1E-3
+        else:
+            tmp_num = float(tmp_num)
+        self.parent.pow_num = tmp_num
+        self.parent.draw()
+
+    def EvtRadioPrtl(self, evt):
+        self.parent.prtl_type = evt.GetInt()
         self.parent.draw()
 
     def OnCloseMe(self, event):
@@ -544,7 +613,7 @@ class SettingsFrame(wx.Frame):
                                 str(self.parent.timeSliderGroup.waitTime),
                                 validator = MyValidator('DIGIT_ONLY'))
         grid.Add(self.enterWait, pos=(1,1))
-        self.Bind(wx.lib.intctrl.EVT_INT, self.EvtWait, self.enterWait)
+        self.Bind(wx.EVT_TEXT, self.EvtWait, self.enterWait)
 
         # the combobox Control
         self.cmapList = ['magma', 'inferno', 'plasma', 'viridis']
@@ -565,7 +634,7 @@ class SettingsFrame(wx.Frame):
         self.parent.timeSliderGroup.skipSize = evt.GetValue()
 
     def EvtWait(self, evt):
-        self.parent.timeSliderGroup.waitTime = Float(evt.GetValue())
+        self.parent.timeSliderGroup.waitTime = float(evt.GetString())
 
     def EvtChooseCmap(self, event):
         self.parent.cmap = event.GetString()
