@@ -13,9 +13,9 @@ from matplotlib.backends.backend_wxagg import \
     NavigationToolbar2WxAgg as NavigationToolbar
 
 class PhasePanel(wx.Window):
-    def __init__(self, parent):
+    def __init__(self, parent, figwrapper):
         wx.Window.__init__(self, parent)
-
+        self.FigWrap = figwrapper
         self.norm = mcolors.PowerNorm(0.4)
         self.mom_dim = 0
         self.prtl_type = 0 # 1 == electron, 0 == ion
@@ -40,7 +40,7 @@ class PhasePanel(wx.Window):
         '''Make it so the plot scales with resizing of the window'''
         self.canvas.SetSize(self.GetSize())
 
-    def draw(self):
+    def draw(self, kwargs=''):
         # Choose the normalization
         if self.norm_type =="Linear":
             self.norm = mcolors.Normalize()
@@ -51,25 +51,25 @@ class PhasePanel(wx.Window):
 
         # Choose the particle type and px, py, or pz
         if self.prtl_type == 0:
-            self.x_values = self.Parent.prtl.xi
+            self.x_values = self.FigWrap.LoadKey('xi')
             if self.mom_dim == 0:
-                self.y_values = self.Parent.prtl.ui
+                self.y_values = self.FigWrap.LoadKey('ui')
             if self.mom_dim == 1:
-                self.y_values = self.Parent.prtl.vi
+                self.y_values = self.FigWrap.LoadKey('vi')
             if self.mom_dim == 2:
-                self.y_values = self.Parent.prtl.wi
+                self.y_values = self.FigWrap.LoadKey('wi')
 
         if self.prtl_type == 1:
-            self.x_values = self.Parent.prtl.xe
+            self.x_values = self.FigWrap.LoadKey('xe')
             if self.mom_dim == 0:
-                self.y_values = self.Parent.prtl.ue
+                self.y_values = self.FigWrap.LoadKey('ue')
             if self.mom_dim == 1:
-                self.y_values = self.Parent.prtl.ve
+                self.y_values = self.FigWrap.LoadKey('ve')
             if self.mom_dim == 2:
-                self.y_values = self.Parent.prtl.we
+                self.y_values = self.FigWrap.LoadKey('we')
 
         self.figure.clf()
-        gs = GridSpec(100,100,bottom=0.1,left=0.1,right=0.9, top = 0.9)
+        gs = GridSpec(100,100,bottom=0.1,left=0.1,right=0.95, top = 0.95)
 
         if self.show_cbar:
             self.axes = self.figure.add_subplot(gs[20:,:])

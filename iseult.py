@@ -4,6 +4,7 @@ import re # regular expressions
 import os # Used to make the code portable
 import h5py # Allows us the read the data files
 from thread import start_new_thread
+from threading import Thread
 import time,string
 import matplotlib
 import new_cmaps
@@ -20,145 +21,20 @@ from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
 
-class ParamWrapper(object):
-
-    """ A simple class wrapper that allows us to store all of the params found
-    in the hd5f file from tristan 'param.*' and then saves all of the parameters
-    using the name in the h5py file"""
-
-    def __init__(self):
-        self.curdir =  ''
-        self.paths = []
-
-    def Update(self, t_arg):
-        f = h5py.File(os.path.join(self.curdir,self.paths[t_arg-1]), 'r')
-        self.acool = f['acool'][0]
-        self.bphi = np.rad2deg(f['bphi'][0])
-        self.btheta = np.rad2deg(f['btheta'][0])
-        self.c = f['c'][0]
-        self.c_omp = f['c_omp'][0]
-        self.caseinit = f['caseinit'][0]
-        self.cooling = f['cooling'][0]
-        self.delgam = f['delgam'][0]
-        self.dlapion = f['dlapion'][0]
-        self.dlaplec = f['dlaplec'][0]
-        self.dummy = f['dummy'][0]
-        self.gamma0 = f['gamma0'][0]
-        self.interval = f['interval'][0]
-        self.istep = f['istep'][0]
-        self.istep1 = f['istep1'][0]
-        self.me = f['me'][0]
-        self.mi = f['mi'][0]
-        self.mx = f['mx'][:]
-        self.mx0 = f['mx0'][0]
-        self.my = f['my'][:]
-        self.my0 = f['my0'][0]
-        self.mz0 = f['mz0'][0]
-        self.ntimes = f['ntimes'][0]
-        self.pltstart = f['pltstart'][0]
-        self.ppc0 = f['ppc0'][0]
-        self.qi = f['qi'][0]
-        self.sigma = f['sigma'][0]
-        self.sizex = f['sizex'][0]
-        self.sizey = f['sizey'][0]
-        self.splitratio = f['splitratio'][0]
-        self.stride = f['stride'][0]
-        self.testendion = f['testendion'][0]
-        self.testendlec = f['testendlec'][0]
-        self.teststarti = f['teststarti'][0]
-        self.teststartl = f['teststartl'][0]
-        self.time = f['time'][0]
-        self.torqint = f['torqint'][0]
-        self.walloc = f['walloc'][0]
-        self.xinject2 = f['xinject2'][0]
-
-        self.mxl = np.zeros(self.sizex)
-        self.myl = np.zeros(self.sizey)
-        self.ix=np.floor((self.my0-1)*.5/self.istep)
-        f.close()
-#           tf=n_elements(filenames2)
-#        	tarr=(indgen(tf)+1)*c/c_omp*interval
-
-class PrtlWrapper(object):
-
-    """ A simple class wrapper that allows us to store all of the arrays found
-    in the hd5f file from tristan 'ptrl.tot.*' '"""
-
-    def __init__(self):
-        self.curdir =  ''
-        self.paths = []
-
-    def Update(self, t_arg):
-        f = h5py.File(os.path.join(self.curdir,self.paths[t_arg-1]), 'r')
-        self.che = f['che'][:]
-        self.chi = f['chi'][:]
-        self.gammae = f['gammae'][:]
-        self.gammai = f['gammai'][:]
-        self.inde = f['inde'][:]
-        self.indi = f['indi'][:]
-        self.proce = f['proce'][:]
-        self.proci = f['proci'][:]
-        self.ue = f['ue'][:] # velocity in the x-direction
-        self.ui = f['ui'][:]
-        self.ve = f['ve'][:] # velocity in the y-direction
-        self.vi = f['vi'][:]
-        self.we = f['we'][:] # velocity in the z-direction
-        self.wi = f['wi'][:]
-        self.xe = f['xe'][:]
-        self.xi = f['xi'][:]
-        self.ye = f['ye'][:]
-        self.yi = f['yi'][:]
-        self.ze = f['ze'][:]
-        self.zi = f['zi'][:]
-        f.close()
-
-class SpectWrapper(object):
-
-    """ A simple class wrapper that allows us to store all of the params used by
-    tristan_analysis.pro, it takes the hd5f file from tristan 'param.*' and then
-    saves all of the parameters we need"""
-
-
-    def __init__(self):
-        self.curdir =  ''
-        self.paths = []
-
-    def Update(self, t_arg):
-        f = h5py.File(os.path.join(self.curdir,self.paths[t_arg-1]), 'r')
-        self.dens = f['dens'][:]
-        self.dgam = f['dgam'][0]
-        self.gamma = f['gamma'][:]
-        self.gmax = f['gmax'][0]
-        self.gmin = f['gmin'][0]
-        self.spece = f['spece'][:]
-        self.specerest = f['specerest'][:]
-        self.specp = f['specp'][:]
-        self.specprest = f['specprest'][:]
-        self.umean = f['umean'][:]
-        self.xsl = f['xsl'][:]
-        f.close()
-
-class FldsWrapper(object):
-
-    """ A simple class wrapper that takes the hd5f file from tristan 'flds.*'
-    and then saves all of the arrays in numpy objects"""
-
-
-    def __init__(self):
-        self.curdir = ''
-        self.paths = []
-
-    def Update(self, t_arg):
-        f = h5py.File(os.path.join(self.curdir,self.paths[t_arg-1]), 'r')
-        f.close()
-
-
-class FigWrapper(object):
-    """A simple class wrapper that will eventually hold all of the information
+class FigWrapper:
+    """A simple class  that will eventually hold all of the information
     about each figure in the plot"""
-    def __init__(self, ctype='', graph=''):
-         self.chartType = ctype
-         self.graph = graph
+
+    def __init__(self, parent, ctype='', graph=''):
+        self.parent = parent
+        self.chartType = ctype
+        self.graph = graph
+        self.tmp = []
+    def LoadKey(self, h5key):
+        for elm in self.parent.path_list:
+            with h5py.File(os.path.join(self.parent.dirname,elm[self.parent.timeStep.value-1]), 'r') as f:
+                if h5key in f.keys():
+                    return f[h5key][:]
 
 
 class Knob:
@@ -346,39 +222,6 @@ class PlaybackGroup(Knob):
         self.slider.SetValue(value)
         self.slider.SetMax(self.param.maximum)
 
-class CanvasPanel(wx.Window):
-    def __init__(self, parent):
-        wx.Window.__init__(self, parent)
-        self.figure = Figure(figsize=(3, 1), dpi=100)
-        self.canvas = FigCanvas(self, -1, self.figure)
-        self.Bind(wx.EVT_SIZE, self.sizeHandler)
-        self.draw()
-        self.Bind(wx.EVT_ENTER_WINDOW, self.onEnter)
-        self.Bind(wx.EVT_LEAVE_WINDOW, self.onLeave)
-        self.Bind(wx.EVT_LEFT_UP, self.openGraphPrefs)
-
-    def sizeHandler(self, *args, **kwargs):
-        '''Make it so the plot scales with resizing of the window'''
-        self.canvas.SetSize(self.GetSize())
-
-    def draw(self):
-        self.axes = self.figure.add_subplot(111)
-        self.axes.hist2d(self.Parent.prtl.xi,self.Parent.prtl.ui, bins = [200,200],cmap = new_cmaps.cmaps[self.Parent.cmap], norm = mcolors.PowerNorm(0.4))
-        self.canvas.draw()
-
-    def onEnter(self, evt):
-        if not self.HasCapture():
-            self.CaptureMouse()
-    def onLeave(self, evt):
-        if self.HasCapture():
-            self.ReleaseMouse()
-    def openGraphPrefs(self, evt):
-        win = SettingsFrame(self.Parent, -1, "Chart Settings", size=(350, 200),
-                          style = wx.DEFAULT_FRAME_STYLE)
-        win.Show(True)
-    def setKnob(self, value):
-        self.draw()
-
 class SettingsFrame(wx.Frame):
     def __init__(
             self, parent, ID, title, pos=wx.DefaultPosition,
@@ -470,20 +313,19 @@ class MainWindow(wx.Frame):
         f_re = re.compile('flds.tot.*')
         p_re = re.compile('prtl.tot.*')
         s_re = re.compile('spect.*')
-        par_re = re.compile('param.*')
-        self.re_list = [f_re, p_re, s_re, par_re]
+        param_re = re.compile('param.*')
+        self.re_list = [f_re, p_re, s_re, param_re]
+
+        flds_paths = []
+        prtl_paths = []
+        param_paths = []
+        spect_paths = []
+
+        self.path_list = [flds_paths, prtl_paths, param_paths, spect_paths]
 
         # Set the default color map
 
         self.cmap = 'inferno'
-
-        # make a bunch of objects that will store all our file names & values
-        self.flds = FldsWrapper()
-        self.prtl = PrtlWrapper()
-        self.param = ParamWrapper()
-        self.spect = SpectWrapper()
-        self.file_list = [self.flds, self.prtl,  self.spect, self.param]
-
 
         # Make the know that will hold the timestep info
         self.timeStep = Param(1, minimum=1, maximum=1000)
@@ -492,12 +334,6 @@ class MainWindow(wx.Frame):
         # previous objects
         self.dirname = os.curdir
         self.findDir()
-
-
-
-        # Load the first time step (i.e. t=1) of all the files using h5py
-        for elm in self.file_list:
-            elm.Update(1)
 
 
         self.timeStep.attach(self)
@@ -512,21 +348,21 @@ class MainWindow(wx.Frame):
             param=self.timeStep)
 
         # Make the Figures
-        self.Fig1 = FigWrapper()
-        self.Fig1.graph = PhasePanel(self)
+        self.Fig1 = FigWrapper(self)
+        self.Fig1.graph = PhasePanel(self, self.Fig1)
 
-        self.Fig2 = FigWrapper()
-        self.Fig2.graph = PhasePanel(self)
+        self.Fig2 = FigWrapper(self)
+        self.Fig2.graph = PhasePanel(self, self.Fig2)
         self.Fig2.graph.prtl_type = 1
         self.Fig2.graph.draw()
-        self.Fig3 = FigWrapper()
-        self.Fig3.graph = CanvasPanel(self)
-        self.Fig4 = FigWrapper()
-        self.Fig4.graph = CanvasPanel(self)
-        self.Fig5 = FigWrapper()
-        self.Fig5.graph = CanvasPanel(self)
-        self.Fig6 = FigWrapper()
-        self.Fig6.graph = CanvasPanel(self)
+        self.Fig3 = FigWrapper(self)
+        self.Fig3.graph = PhasePanel(self, self.Fig3)
+        self.Fig4 = FigWrapper(self)
+        self.Fig4.graph = PhasePanel(self, self.Fig4)
+        self.Fig5 = FigWrapper(self)
+        self.Fig5.graph = PhasePanel(self, self.Fig5)
+        self.Fig6 = FigWrapper(self)
+        self.Fig6.graph = PhasePanel(self, self.Fig6)
         self.FigList = [self.Fig1, self.Fig2, self.Fig3, self.Fig4, self.Fig5, self.Fig6]
         col_counter = 0
         for elm in self.FigList:
@@ -567,12 +403,22 @@ class MainWindow(wx.Frame):
         self.Show(True)
         self.SetTitle('Iseult: Showing n = %s' % self.timeStep.value)
     def refreshAllGraphs(self):
+        tlist = []
         for elm in self.FigList:
-            elm.graph.draw()
+            x = Thread(target=elm.graph.draw, args=())
+            x.start()
+            tlist.append(x)
+        is_Done = False
+        while not is_Done:
+            time.sleep(0.02)
+            is_Done = True
+            for elm in tlist:
+                is_Done &= not elm.isAlive()
+
     def setKnob(self, value):
-        for elm in self.file_list:
+#        for elm in self.file_list:
             # Pass the new t_arg
-            elm.Update(value)
+#            elm.Update(value)
         # Set the title
 
         frame.SetTitle('Iseult: Showing n = %s' % value)
@@ -594,14 +440,13 @@ class MainWindow(wx.Frame):
         """ Test to see if the current path contains tristan files
         using regular expressions, then generate the lists of files
         to iterate over"""
-
         is_okay = True
+
         for i in range(len(self.re_list)):
-            self.file_list[i].curdir = self.dirname
-            self.file_list[i].paths = (filter(self.re_list[i].match, os.listdir(self.dirname)))
-            self.file_list[i].paths.sort()
-            is_okay &= len(self.file_list[i].paths) > 0
-        self.timeStep.setMax(len(self.file_list[i].paths))
+            self.path_list[i]= (filter(self.re_list[i].match, os.listdir(self.dirname)))
+            self.path_list[i].sort()
+            is_okay &= len(self.path_list[i]) > 0
+        self.timeStep.setMax(len(self.path_list[0]))
         return is_okay
 
     def OnOpen(self,e):
