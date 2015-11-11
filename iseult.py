@@ -426,13 +426,14 @@ class MainWindow(wx.Frame):
         self.SetTitle('Iseult: Showing n = %s' % self.timeStep.value)
 
     def ChangeGraph(self):
-
         self.mainsizer.Hide(self.grid)
         self.mainsizer.Remove(self.grid)
         self.mainsizer.Detach(self.timeSliderGroup.sizer)
 
         self.grid =  wx.GridBagSizer(hgap = 0.5, vgap = 0.5)
+        cur_size = self.GetSizeTuple()
         col_counter = 0
+
         for elm in self.FigList:
 #            elm.graph.Destroy()
             elm.SetGraph(self, elm, overwrite = False )
@@ -449,10 +450,8 @@ class MainWindow(wx.Frame):
         self.mainsizer.Add(self.timeSliderGroup.sizer,0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
 
         self.SetSizerAndFit(self.mainsizer)
-        APPWIDTH = 1400
-        APPHEIGHT = 800
-        self.SetSizeWH(APPWIDTH, APPHEIGHT)
-        self.Center=()
+        self.SetSizeWH(cur_size[0], cur_size[1])
+#        self.Center=()
 #        self.mainsizer.Add(self.timeSliderGroup.sizer,0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
 
 

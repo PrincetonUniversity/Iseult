@@ -36,14 +36,15 @@ Enjoy!
 | Implemented: |
 | ------------ |
 | Time stepping |
-| Basic 1 plot |
+| Basic plotting |
+| ability to modularly change plots. |
+| plot control panel to edit things about indv. plots|
+
 
 | Left to Implement:|
 | ------------------ |
 | All the plot types |
 | shock-finding |
-| ability to modularly add or remove plots. |
-| plot control panel to edit things about it (colormap, ylimits, etc.) |
 | gifs |
 | figure saving |
 | Much much more... |
