@@ -15,7 +15,7 @@ from matplotlib.backends.backend_wxagg import \
 class TestPanel(wx.Window):
     # Put the list of all of the parameters for this plot
     plot_param_list = ['mom_dim', 'norm_type', 'prtl_type', 'pow_num', 'show_cbar', 'weighted']
-    def __init__(self, parent, figwrapper):
+    def __init__(self, parent, figwrapper, overwrite = True):
         wx.Window.__init__(self, parent)
         self.FigWrap = figwrapper
         self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
@@ -76,7 +76,7 @@ class TestPanel(wx.Window):
         if self.HasCapture():
             self.ReleaseMouse()
     def openGraphPrefs(self, evt):
-        win = PhaseSettings(self, -1, "Chart Settings",
+        win = TestSettings(self, -1, "Chart Settings",
                           style = wx.DEFAULT_FRAME_STYLE)
         win.Show(True)
 

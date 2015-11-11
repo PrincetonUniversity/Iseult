@@ -43,7 +43,7 @@ class FigWrapper:
 
     def ChangeGraph(self, str_arg):
         self.chartType = str_arg
-        self.parent.ChangeGraph(self)
+        self.parent.ChangeGraph()
 
     def GenParamDict(self):
         # Generate a dictionary that will store all of the params at dict['ctype']['param_name']
@@ -62,7 +62,7 @@ class FigWrapper:
 
         return self.PlotParamsDict[ctype][pname]
 
-    def SetGraph(self, parent, FigWrap, ctype=None):
+    def SetGraph(self, parent, FigWrap, ctype = None, overwrite = True):
         if ctype:
             self.chartType = ctype
         self.graph = self.PlotTypeDict[self.chartType](parent, self)
@@ -369,7 +369,7 @@ class MainWindow(wx.Frame):
         self.timeStep.attach(self)
 
         # Make some sizers:
-        mainsizer = wx.BoxSizer(wx.VERTICAL)
+        self.mainsizer = wx.BoxSizer(wx.VERTICAL)
         self.grid =  wx.GridBagSizer(hgap = 0.5, vgap = 0.5)
         # Make the playback controsl that will control the time slice of the
         # simulation
@@ -404,10 +404,10 @@ class MainWindow(wx.Frame):
 
 
 
-        mainsizer.Add(self.grid,1, wx.EXPAND)
-        mainsizer.Add(self.timeSliderGroup.sizer,0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
+        self.mainsizer.Add(self.grid,1, wx.EXPAND)
+        self.mainsizer.Add(self.timeSliderGroup.sizer,0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
 
-        self.SetSizerAndFit(mainsizer)
+        self.SetSizerAndFit(self.mainsizer)
 #        self.Center()
         APPWIDTH = 1400
         APPHEIGHT = 800
@@ -425,17 +425,41 @@ class MainWindow(wx.Frame):
         self.Show(True)
         self.SetTitle('Iseult: Showing n = %s' % self.timeStep.value)
 
-    def ChangeGraph(self, figwrapper):
-        x = self.Fig1.graph
-        self.Fig1.SetGraph(self, self.Fig1)
-        self.grid.Remove(x)
-        self.Fig1.graph.draw()
-#        x.Destroy()
-#        print x
-#        self.grid.Remove(x)
-#        figwrapper.SetGraph(self, figwrapper)
+    def ChangeGraph(self):
 
-#        x.Destroy()
+        self.mainsizer.Hide(self.grid)
+        self.mainsizer.Remove(self.grid)
+        self.mainsizer.Detach(self.timeSliderGroup.sizer)
+
+        self.grid =  wx.GridBagSizer(hgap = 0.5, vgap = 0.5)
+        col_counter = 0
+        for elm in self.FigList:
+#            elm.graph.Destroy()
+            elm.SetGraph(self, elm, overwrite = False )
+            self.grid.Add(elm.graph, pos=(col_counter/2,col_counter%2), flag = wx.EXPAND)
+            col_counter += 1
+        for i in range(2):
+            self.grid.AddGrowableCol(i)
+        for i in range(3):
+            self.grid.AddGrowableRow(i)
+
+
+#        self.grid = new_grid
+        self.mainsizer.Add(self.grid,1, wx.EXPAND)
+        self.mainsizer.Add(self.timeSliderGroup.sizer,0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
+
+        self.SetSizerAndFit(self.mainsizer)
+        APPWIDTH = 1400
+        APPHEIGHT = 800
+        self.SetSizeWH(APPWIDTH, APPHEIGHT)
+        self.Center=()
+#        self.mainsizer.Add(self.timeSliderGroup.sizer,0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
+
+
+
+
+#        self.grid = new_grid
+#        self.refreshAllGraphs()
 
 
     def refreshAllGraphs(self):

@@ -15,19 +15,19 @@ from matplotlib.backends.backend_wxagg import \
 class PhasePanel(wx.Window):
     # Put the list of all of the parameters for this plot
     plot_param_list = ['mom_dim', 'norm_type', 'prtl_type', 'pow_num', 'show_cbar', 'weighted']
-    def __init__(self, parent, figwrapper):
+    def __init__(self, parent, figwrapper, overwrite = True):
         wx.Window.__init__(self, parent)
         self.FigWrap = figwrapper
         self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
         self.chartType = self.FigWrap.chartType
 
-        self.SetPlotParam('mom_dim', 0)
-        self.SetPlotParam('prtl_type', 0)
-        self.SetPlotParam('norm_type', "PowerNorm")
-        self.SetPlotParam('pow_num', 0.4)
-
-        self.SetPlotParam('show_cbar', True)
-        self.SetPlotParam('weighted', False)
+        if not self.GetPlotParam('mom_dim'):
+            self.SetPlotParam('mom_dim', 0)
+            self.SetPlotParam('prtl_type', 0)
+            self.SetPlotParam('norm_type', "PowerNorm")
+            self.SetPlotParam('pow_num', 0.4)
+            self.SetPlotParam('show_cbar', True)
+            self.SetPlotParam('weighted', False)
 
         self.figure = Figure(figsize=(3, 1), dpi=100)
         self.canvas = FigCanvas(self, -1, self.figure)
