@@ -13,17 +13,21 @@ from matplotlib.backends.backend_wxagg import \
     NavigationToolbar2WxAgg as NavigationToolbar
 
 class PhasePanel(wx.Window):
+    # Put the list of all of the parameters for this plot
+    plot_param_list = ['mom_dim', 'norm_type', 'prtl_type', 'pow_num', 'show_cbar', 'weighted']
     def __init__(self, parent, figwrapper):
         wx.Window.__init__(self, parent)
         self.FigWrap = figwrapper
-        self.norm = mcolors.PowerNorm(0.4)
-        self.mom_dim = 0
-        self.prtl_type = 0 # 1 == electron, 0 == ion
-        self.norm_type = "PowerNorm"
-        self.pow_num = 0.4
+        self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
+        self.chartType = self.FigWrap.chartType
 
-        self.show_cbar = True
-        self.weighted = False
+        self.SetPlotParam('mom_dim', 0)
+        self.SetPlotParam('prtl_type', 0)
+        self.SetPlotParam('norm_type', "PowerNorm")
+        self.SetPlotParam('pow_num', 0.4)
+
+        self.SetPlotParam('show_cbar', True)
+        self.SetPlotParam('weighted', False)
 
         self.figure = Figure(figsize=(3, 1), dpi=100)
         self.canvas = FigCanvas(self, -1, self.figure)
@@ -40,38 +44,47 @@ class PhasePanel(wx.Window):
         '''Make it so the plot scales with resizing of the window'''
         self.canvas.SetSize(self.GetSize())
 
+    def UpdatePowNum(self, value):
+        self.SetPlotParam('pow_num', value)
+        if self.GetPlotParam('norm_type') == "PowerNorm":
+            self.draw()
+
+    def ChangePlotType(self, str_arg):
+        self.FigWrap.ChangeGraph(str_arg)
+
+
     def draw(self, kwargs=''):
         # Choose the normalization
-        if self.norm_type =="Linear":
+        if self.GetPlotParam('norm_type') =="Linear":
             self.norm = mcolors.Normalize()
-        elif self.norm_type =="LogNorm":
+        elif self.GetPlotParam('norm_type') == "LogNorm":
             self.norm = mcolors.LogNorm()
         else:
-            self.norm = mcolors.PowerNorm(self.pow_num)
+            self.norm = mcolors.PowerNorm(self.FigWrap.GetPlotParam('pow_num'))
 
         # Choose the particle type and px, py, or pz
-        if self.prtl_type == 0:
+        if self.GetPlotParam('prtl_type') == 0:
             self.x_values = self.FigWrap.LoadKey('xi')
-            if self.mom_dim == 0:
+            if self.GetPlotParam('mom_dim') == 0:
                 self.y_values = self.FigWrap.LoadKey('ui')
-            if self.mom_dim == 1:
+            if self.GetPlotParam('mom_dim') == 1:
                 self.y_values = self.FigWrap.LoadKey('vi')
-            if self.mom_dim == 2:
+            if self.GetPlotParam('mom_dim') == 2:
                 self.y_values = self.FigWrap.LoadKey('wi')
 
-        if self.prtl_type == 1:
+        if self.GetPlotParam('prtl_type') == 1:
             self.x_values = self.FigWrap.LoadKey('xe')
-            if self.mom_dim == 0:
+            if self.GetPlotParam('mom_dim') == 0:
                 self.y_values = self.FigWrap.LoadKey('ue')
-            if self.mom_dim == 1:
+            if self.GetPlotParam('mom_dim') == 1:
                 self.y_values = self.FigWrap.LoadKey('ve')
-            if self.mom_dim == 2:
+            if self.GetPlotParam('mom_dim') == 2:
                 self.y_values = self.FigWrap.LoadKey('we')
 
         self.figure.clf()
         gs = GridSpec(100,100,bottom=0.1,left=0.1,right=0.95, top = 0.95)
 
-        if self.show_cbar:
+        if self.GetPlotParam('show_cbar'):
             self.axes = self.figure.add_subplot(gs[20:,:])
             self.axC = self.figure.add_subplot(gs[:5,:])
             self.cax = self.axes.hist2d(self.x_values,self.y_values, bins = [200,200],cmap = new_cmaps.cmaps[self.Parent.cmap], norm = self.norm)
@@ -81,6 +94,12 @@ class PhasePanel(wx.Window):
             self.cax = self.axes.hist2d(self.x_values,self.y_values, bins = [200,200],cmap = new_cmaps.cmaps[self.Parent.cmap], norm = self.norm)
 
         self.canvas.draw()
+
+    def GetPlotParam(self, keyname):
+        return self.FigWrap.GetPlotParam(keyname)
+
+    def SetPlotParam(self, keyname, value):
+        self.FigWrap.SetPlotParam(keyname, value)
 
     def onEnter(self, evt):
         if not self.HasCapture():
@@ -102,16 +121,30 @@ class PhaseSettings(wx.Frame):
         wx.Frame.__init__(self, parent, ID, title, pos, size, style)
         panel = wx.Panel(self, -1)
         self.parent = parent
+
         #Create some sizers
         self.mainsizer = wx.BoxSizer(wx.VERTICAL)
         grid =  wx.GridBagSizer(hgap = 10, vgap = 10)
+
+        # Create the ComboBox that Chooses the Chart Type:
+        # the combobox Control
+        self.lblcmap = wx.StaticText(self, label='Choose Chart Type')
+        grid.Add(self.lblcmap, pos=(0,0))
+        self.chooseChartType = wx.ListBox(self, size = (95,-1), choices = self.parent.ChartTypes, style = wx.LB_SINGLE)
+        self.chooseChartType.SetStringSelection(self.parent.chartType)
+        grid.Add(self.chooseChartType, pos=(0,1))
+
+        self.Bind(wx.EVT_LISTBOX, self.EvtChooseChartType, self.chooseChartType)
+        self.Bind(wx.EVT_LISTBOX_DCLICK, self.EvtChooseChartType, self.chooseChartType)
+
+
         # the Radiobox Control
         self.prtlList = ['ion', 'electron']
         self.rbPrtl = wx.RadioBox(
                 self, -1,'Particle', wx.DefaultPosition, wx.DefaultSize,
                 self.prtlList,  1, wx.RA_SPECIFY_COLS
                 )
-        self.rbPrtl.SetSelection(self.parent.prtl_type)
+        self.rbPrtl.SetSelection(self.parent.GetPlotParam('prtl_type'))
         self.Bind(wx.EVT_RADIOBOX, self.EvtRadioPrtl, self.rbPrtl)
 
         grid.Add(self.rbPrtl, pos = (1,0))
@@ -120,7 +153,7 @@ class PhaseSettings(wx.Frame):
                 self, -1,'Dimension', wx.DefaultPosition, wx.DefaultSize,
                 self.dimList,  1, wx.RA_SPECIFY_COLS
                 )
-        self.rbDim.SetSelection(self.parent.mom_dim)
+        self.rbDim.SetSelection(self.parent.GetPlotParam('mom_dim'))
         grid.Add(self.rbDim, pos = (1,1))
 
         self.Bind(wx.EVT_RADIOBOX, self.EvtRadioDim, self.rbDim)
@@ -132,15 +165,14 @@ class PhaseSettings(wx.Frame):
         self.rbLinear = wx.RadioButton(self, -1, "Linear", style = wx.RB_GROUP)
         self.rbLog = wx.RadioButton(self, -1, "LogNorm" )
         self.rbPow = wx.RadioButton(self, -1, "PowerNorm" )
-        self.rbPowNum = wx.TextCtrl(self , -1, str(self.parent.pow_num),
+        self.rbPowNum = wx.TextCtrl(self , -1, str(self.parent.GetPlotParam('pow_num')),
         validator = MyValidator('DIGIT_ONLY') )
 
         # Set the rb that should be selected from the parent
-        if self.parent.norm_type == "Linear":
+        if self.parent.GetPlotParam('norm_type') == "Linear":
             self.rbLinear.SetValue(True)
-        elif self.parent.norm_type == "LogNorm":
+        elif self.parent.GetPlotParam('norm_type') == "LogNorm":
             self.rbLog.SetValue(True)
-
         else:
             self.rbPow.SetValue(True)
 
@@ -159,7 +191,7 @@ class PhaseSettings(wx.Frame):
         grid.Add(grid1, pos=(2,0), span=(1,2))
 
         self.cbColorbar = wx.CheckBox(self, -1, "Show Cbar")
-        self.cbColorbar.SetValue(self.parent.show_cbar)
+        self.cbColorbar.SetValue(self.parent.GetPlotParam('show_cbar'))
         self.Bind(wx.EVT_CHECKBOX, self.EvtCheckCbar, self.cbColorbar)
         grid.Add(self.cbColorbar, pos=(3,0))
 
@@ -176,20 +208,24 @@ class PhaseSettings(wx.Frame):
         self.SetSizerAndFit(self.mainsizer)
     # Define functions for the events
 
+    def EvtChooseChartType(self, evt):
+        self.parent.ChangePlotType(evt.GetString())
+        self.Destroy()
+
     def EvtCheckCbar(self, evt):
-        self.parent.show_cbar = evt.IsChecked()
+        self.parent.SetPlotParam('show_cbar', evt.IsChecked())
         self.parent.draw()
 
     def EvtCheckWeight(self, evt):
-        self.parent.weighted = evt.IsChecked()
+        self.parent.SetPlotParam('weighted', evt.IsChecked())
         self.parent.draw()
 
     def EvtRadioDim(self, evt):
-        self.parent.mom_dim = evt.GetInt()
+        self.parent.SetPlotParam('mom_dim', evt.GetInt())
         self.parent.draw()
 
     def EvtRadioNorm(self, evt):
-        self.parent.norm_type = evt.GetEventObject().GetLabel()
+        self.parent.SetPlotParam('norm_type', evt.GetEventObject().GetLabel())
         self.parent.draw()
 
     def EvtNormNumSet(self, evt):
@@ -200,12 +236,14 @@ class PhaseSettings(wx.Frame):
             tmp_num = 1E-2
         else:
             tmp_num = float(tmp_num)
-        self.parent.pow_num = tmp_num
-        self.parent.draw()
+        self.parent.SetPlotParam('pow_num', tmp_num)
+        if self.parent.GetPlotParam('norm_type') == "PowerNorm":
+            self.parent.draw()
 
     def EvtRadioPrtl(self, evt):
-        self.parent.prtl_type = evt.GetInt()
+        self.parent.SetPlotParam('prtl_type', evt.GetInt())
         self.parent.draw()
+
 
     def OnCloseMe(self, event):
         self.Close(True)

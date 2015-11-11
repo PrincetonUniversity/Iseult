@@ -2,6 +2,7 @@
 import wx # allows us to make the GUI
 import re # regular expressions
 import os # Used to make the code portable
+import copy
 import h5py # Allows us the read the data files
 from thread import start_new_thread
 from threading import Thread
@@ -9,6 +10,7 @@ import time,string
 import matplotlib
 import new_cmaps
 from phase_plots import PhasePanel, PhaseSettings
+from test_plots import TestPanel, TestSettings
 from validator import MyValidator
 import numpy as np
 import wx.lib.buttons as buttons
@@ -22,20 +24,48 @@ from matplotlib.backends.backend_wxagg import \
     NavigationToolbar2WxAgg as NavigationToolbar
 
 class FigWrapper:
-    """A simple class  that will eventually hold all of the information
+    """A simple class that will eventually hold all of the information
     about each figure in the plot"""
 
-    def __init__(self, parent, ctype='', graph=''):
+    def __init__(self, parent, ctype=None, graph=None):
         self.parent = parent
         self.chartType = ctype
+        self.PlotTypeDict = {'PhasePlot': PhasePanel, 'TestPlot': TestPanel}
+        self.GenParamDict()
         self.graph = graph
-        self.tmp = []
+
+
     def LoadKey(self, h5key):
         for elm in self.parent.path_list:
             with h5py.File(os.path.join(self.parent.dirname,elm[self.parent.timeStep.value-1]), 'r') as f:
                 if h5key in f.keys():
                     return f[h5key][:]
 
+    def ChangeGraph(self, str_arg):
+        self.chartType = str_arg
+        self.parent.ChangeGraph(self)
+
+    def GenParamDict(self):
+        # Generate a dictionary that will store all of the params at dict['ctype']['param_name']
+        self.PlotParamsDict = {elm: '' for elm in self.PlotTypeDict.keys() }
+        for elm in self.PlotTypeDict.keys():
+            self.PlotParamsDict[elm] = {x : '' for x in self.PlotTypeDict[elm].plot_param_list}
+
+    def SetPlotParam(self, pname, val, ctype = None):
+        if ctype is None:
+            ctype = self.chartType
+        self.PlotParamsDict[ctype][pname] = val
+
+    def GetPlotParam(self, pname, ctype = None):
+        if ctype is None:
+            ctype = self.chartType
+
+        return self.PlotParamsDict[ctype][pname]
+
+    def SetGraph(self, parent, FigWrap, ctype=None):
+        if ctype:
+            self.chartType = ctype
+        self.graph = self.PlotTypeDict[self.chartType](parent, self)
 
 class Knob:
     """
@@ -340,7 +370,7 @@ class MainWindow(wx.Frame):
 
         # Make some sizers:
         mainsizer = wx.BoxSizer(wx.VERTICAL)
-        grid =  wx.GridBagSizer(hgap = 0.5, vgap = 0.5)
+        self.grid =  wx.GridBagSizer(hgap = 0.5, vgap = 0.5)
         # Make the playback controsl that will control the time slice of the
         # simulation
 
@@ -348,41 +378,33 @@ class MainWindow(wx.Frame):
             param=self.timeStep)
 
         # Make the Figures
-        self.Fig1 = FigWrapper(self)
-        self.Fig1.graph = PhasePanel(self, self.Fig1)
 
+        self.Fig1 = FigWrapper(self)
         self.Fig2 = FigWrapper(self)
-        self.Fig2.graph = PhasePanel(self, self.Fig2)
-        self.Fig2.graph.prtl_type = 1
-        self.Fig2.graph.draw()
         self.Fig3 = FigWrapper(self)
-        self.Fig3.graph = PhasePanel(self, self.Fig3)
         self.Fig4 = FigWrapper(self)
-        self.Fig4.graph = PhasePanel(self, self.Fig4)
         self.Fig5 = FigWrapper(self)
-        self.Fig5.graph = PhasePanel(self, self.Fig5)
         self.Fig6 = FigWrapper(self)
-        self.Fig6.graph = PhasePanel(self, self.Fig6)
         self.FigList = [self.Fig1, self.Fig2, self.Fig3, self.Fig4, self.Fig5, self.Fig6]
+        self.PlotList = ['PhasePlot', 'PhasePlot', 'TestPlot', 'TestPlot', 'TestPlot', 'TestPlot']
         col_counter = 0
         for elm in self.FigList:
-
-            grid.Add(elm.graph, pos=(col_counter/2,col_counter%2), flag = wx.EXPAND)
+            elm.SetGraph(self, elm, self.PlotList[col_counter])
+            self.grid.Add(elm.graph, pos=(col_counter/2,col_counter%2), flag = wx.EXPAND)
             col_counter += 1
-        x = self.Fig3.graph
-#        self.Fig3.graph = PhasePanel(self)
 
-#        grid.Replace(x, self.Fig3.graph)#pos=(0,1))
-#        x.Destroy()
-#        grid.Add(self.Fig3.graph, pos=(0,1), flag = wx.EXPAND)
+        self.Fig2.graph.prtl_type = 1
+        self.Fig2.graph.draw()
+
+
         for i in range(2):
-            grid.AddGrowableCol(i)
+            self.grid.AddGrowableCol(i)
         for i in range(3):
-            grid.AddGrowableRow(i)
+            self.grid.AddGrowableRow(i)
 
 
 
-        mainsizer.Add(grid,1, wx.EXPAND)
+        mainsizer.Add(self.grid,1, wx.EXPAND)
         mainsizer.Add(self.timeSliderGroup.sizer,0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
 
         self.SetSizerAndFit(mainsizer)
@@ -402,6 +424,20 @@ class MainWindow(wx.Frame):
 
         self.Show(True)
         self.SetTitle('Iseult: Showing n = %s' % self.timeStep.value)
+
+    def ChangeGraph(self, figwrapper):
+        x = self.Fig1.graph
+        self.Fig1.SetGraph(self, self.Fig1)
+        self.grid.Remove(x)
+        self.Fig1.graph.draw()
+#        x.Destroy()
+#        print x
+#        self.grid.Remove(x)
+#        figwrapper.SetGraph(self, figwrapper)
+
+#        x.Destroy()
+
+
     def refreshAllGraphs(self):
         tlist = []
         for elm in self.FigList:
