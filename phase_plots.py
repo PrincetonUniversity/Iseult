@@ -21,7 +21,7 @@ class PhasePanel(wx.Window):
         self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
         self.chartType = self.FigWrap.chartType
 
-        if not self.GetPlotParam('mom_dim'):
+        if overwrite:
             self.SetPlotParam('mom_dim', 0)
             self.SetPlotParam('prtl_type', 0)
             self.SetPlotParam('norm_type', "PowerNorm")

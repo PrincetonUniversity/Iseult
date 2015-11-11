@@ -65,7 +65,7 @@ class FigWrapper:
     def SetGraph(self, parent, FigWrap, ctype = None, overwrite = True):
         if ctype:
             self.chartType = ctype
-        self.graph = self.PlotTypeDict[self.chartType](parent, self)
+        self.graph = self.PlotTypeDict[self.chartType](parent, self, overwrite)
 
 class Knob:
     """
