@@ -4,7 +4,6 @@ import re # regular expressions
 import os # Used to make the code portable
 import copy
 import h5py # Allows us the read the data files
-from thread import start_new_thread
 from threading import Thread
 import time,string
 import matplotlib
@@ -22,6 +21,37 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
+
+
+# Define notification event for thread completion
+EVT_RESULT_ID = wx.NewId()
+
+class ResultEvent(wx.PyEvent):
+    """Simple event to carry arbitrary result data."""
+    def __init__(self):
+        """Init Result Event. parent must be MainWindow"""
+        wx.PyEvent.__init__(self)
+        self.SetEventType(EVT_RESULT_ID)
+
+
+# Thread class that executes graph drawing
+class WorkerThread(Thread):
+    """Worker Thread Class."""
+    def __init__(self, parent, figwrap):
+        """Init Worker Thread Class."""
+        Thread.__init__(self)
+        # This starts the thread running on creation, but you could
+        # also make the GUI thread responsible for calling this
+        self.parent = parent
+        self.figwrap = figwrap
+        self.start()
+
+    def run(self):
+        """Run Worker Thread."""
+        # This is the code executing the graph refreshing in a new thread.
+        self.figwrap.graph.draw()
+        wx.PostEvent(self.parent, ResultEvent())
+
 
 class FigWrapper:
     """A simple class that will eventually hold all of the information
@@ -229,12 +259,13 @@ class PlaybackGroup(Knob):
         self.param.set(self.param.value + self.skipSize)
 
     def onPlay(self, evt):
-        start_new_thread(self.playLoop, (self,))
+        self.playLoop(evt)
 
     def playLoop(self, evt):
         start = time.time()
         while self.playButton.GetValue() and self.param.value <self.param.maximum:
             time.sleep(0.02)
+            wx.Yield()
             if time.time()-start > self.waitTime:
                 self.param.set(self.param.value + self.skipSize)
                 start = time.time()
@@ -456,20 +487,23 @@ class MainWindow(wx.Frame):
 
 #        self.grid = new_grid
 #        self.refreshAllGraphs()
+        # Set up event handler for any worker thread result
 
 
     def refreshAllGraphs(self):
+        self.working = True
         tlist = []
         for elm in self.FigList:
-            x = Thread(target=elm.graph.draw, args=())
-            x.start()
+            x = WorkerThread(self, elm)
             tlist.append(x)
-        is_Done = False
-        while not is_Done:
+        while self.working:
             time.sleep(0.02)
-            is_Done = True
-            for elm in tlist:
-                is_Done &= not elm.isAlive()
+            threads_active = 0
+            for t in tlist:
+                threads_active += t.isAlive()
+            self.working = threads_active >0
+        tlist =[]
+
 
     def setKnob(self, value):
 #        for elm in self.file_list:

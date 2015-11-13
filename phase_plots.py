@@ -196,10 +196,10 @@ class PhaseSettings(wx.Frame):
         grid.Add(self.cbColorbar, pos=(3,0))
 
         #Adding WEIGHT *TO DO*
-#        self.cbWeight = wx.CheckBox(self, -1, "Weight")
-#        self.cbWeight.SetValue(self.parent.weighted)
-#        self.Bind(wx.EVT_CHECKBOX, self.EvtCheckWeight, self.cbWeight)
-#        grid.Add(self.cbWeight, pos = (3,1))
+        self.cbWeight = wx.CheckBox(self, -1, "Weight")
+        self.cbWeight.SetValue(self.parent.GetPlotParam('weighted'))
+        self.Bind(wx.EVT_CHECKBOX, self.EvtCheckWeight, self.cbWeight)
+        grid.Add(self.cbWeight, pos = (3,1))
 
 
         self.mainsizer.Add(grid,0, border=15)
