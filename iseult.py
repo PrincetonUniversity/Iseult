@@ -30,16 +30,17 @@ class FigWrapper:
     def __init__(self, parent, ctype=None, graph=None):
         self.parent = parent
         self.chartType = ctype
+        # A dictionary that contains all of the plot types.
         self.PlotTypeDict = {'PhasePlot': PhasePanel, 'TestPlot': TestPanel}
+        # A dictionary that will store where everything is in Hdf5 Files
         self.GenParamDict()
         self.graph = graph
 
 
     def LoadKey(self, h5key):
-        for elm in self.parent.path_list:
-            with h5py.File(os.path.join(self.parent.dirname,elm[self.parent.timeStep.value-1]), 'r') as f:
-                if h5key in f.keys():
-                    return f[h5key][:]
+        pkey = self.parent.H5KeyDict[h5key]
+        with h5py.File(os.path.join(self.parent.dirname,self.parent.PathDict[pkey][self.parent.timeStep.value-1]), 'r') as f:
+            return f[h5key][:]
 
     def ChangeGraph(self, str_arg):
         self.chartType = str_arg
@@ -341,18 +342,13 @@ class MainWindow(wx.Frame):
 
         # create a bunch of regular expressions used to search for files
         f_re = re.compile('flds.tot.*')
-        p_re = re.compile('prtl.tot.*')
+        prtl_re = re.compile('prtl.tot.*')
         s_re = re.compile('spect.*')
         param_re = re.compile('param.*')
-        self.re_list = [f_re, p_re, s_re, param_re]
+        self.re_list = [f_re, prtl_re, s_re, param_re]
 
-        flds_paths = []
-        prtl_paths = []
-        param_paths = []
-        spect_paths = []
-
-        self.path_list = [flds_paths, prtl_paths, param_paths, spect_paths]
-
+        self.PathDict = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
+        self.H5KeyDict ={}
         # Set the default color map
 
         self.cmap = 'inferno'
@@ -388,6 +384,7 @@ class MainWindow(wx.Frame):
         self.FigList = [self.Fig1, self.Fig2, self.Fig3, self.Fig4, self.Fig5, self.Fig6]
         self.PlotList = ['PhasePlot', 'PhasePlot', 'TestPlot', 'TestPlot', 'TestPlot', 'TestPlot']
         col_counter = 0
+
         for elm in self.FigList:
             elm.SetGraph(self, elm, self.PlotList[col_counter])
             self.grid.Add(elm.graph, pos=(col_counter/2,col_counter%2), flag = wx.EXPAND)
@@ -500,13 +497,22 @@ class MainWindow(wx.Frame):
         using regular expressions, then generate the lists of files
         to iterate over"""
         is_okay = True
-
-        for i in range(len(self.re_list)):
-            self.path_list[i]= (filter(self.re_list[i].match, os.listdir(self.dirname)))
-            self.path_list[i].sort()
-            is_okay &= len(self.path_list[i]) > 0
-        self.timeStep.setMax(len(self.path_list[0]))
+        i = 0
+        for key in self.PathDict.keys():
+            self.PathDict[key]= (filter(self.re_list[i].match, os.listdir(self.dirname)))
+            self.PathDict[key].sort()
+            is_okay &= len(self.PathDict[key]) > 0
+            i += 1
+        self.timeStep.setMax(len(self.PathDict['Flds']))
+        if len(self.H5KeyDict) == 0:
+            self.GenH5Dict()
         return is_okay
+
+    def GenH5Dict(self):
+        for pkey in self.PathDict.keys():
+            with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][0]), 'r') as f:
+                for h5key in f.keys():
+                    self.H5KeyDict[h5key] = pkey
 
     def OnOpen(self,e):
         """open a file"""
