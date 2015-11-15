@@ -62,9 +62,12 @@ class PhasePanel(wx.Window):
         else:
             self.norm = mcolors.PowerNorm(self.FigWrap.GetPlotParam('pow_num'))
 
+        # Generate the X-axis values
+        self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
+
         # Choose the particle type and px, py, or pz
         if self.GetPlotParam('prtl_type') == 0:
-            self.x_values = self.FigWrap.LoadKey('xi')
+            self.x_values = self.FigWrap.LoadKey('xi')/self.c_omp
             if self.GetPlotParam('mom_dim') == 0:
                 self.y_values = self.FigWrap.LoadKey('ui')
             if self.GetPlotParam('mom_dim') == 1:
@@ -73,7 +76,7 @@ class PhasePanel(wx.Window):
                 self.y_values = self.FigWrap.LoadKey('wi')
 
         if self.GetPlotParam('prtl_type') == 1:
-            self.x_values = self.FigWrap.LoadKey('xe')
+            self.x_values = self.FigWrap.LoadKey('xe')/self.c_omp
             if self.GetPlotParam('mom_dim') == 0:
                 self.y_values = self.FigWrap.LoadKey('ue')
             if self.GetPlotParam('mom_dim') == 1:
@@ -82,17 +85,18 @@ class PhasePanel(wx.Window):
                 self.y_values = self.FigWrap.LoadKey('we')
 
         self.figure.clf()
-        gs = GridSpec(100,100,bottom=0.1,left=0.1,right=0.95, top = 0.95)
+        gs = GridSpec(100,100,bottom=0.2,left=0.1,right=0.95, top = 0.95)
 
         if self.GetPlotParam('show_cbar'):
             self.axes = self.figure.add_subplot(gs[20:,:])
             self.axC = self.figure.add_subplot(gs[:5,:])
             self.cax = self.axes.hist2d(self.x_values,self.y_values, bins = [200,200],cmap = new_cmaps.cmaps[self.Parent.cmap], norm = self.norm)
             self.figure.colorbar(self.cax[3], ax = self.axes, cax = self.axC, orientation = 'horizontal')
+            self.axes.set_xlabel(r'$x/\omega_{\rm pe}$')
         else:
             self.axes = self.figure.add_subplot(gs[5:,:])
             self.cax = self.axes.hist2d(self.x_values,self.y_values, bins = [200,200],cmap = new_cmaps.cmaps[self.Parent.cmap], norm = self.norm)
-
+            self.axes.set_xlabel(r'$x/\omega_{\rm pe}$')
         self.canvas.draw()
 
     def GetPlotParam(self, keyname):
