@@ -526,6 +526,12 @@ class MainWindow(wx.Frame):
     def OnExit(self, e):
         self.Close(True)
 
+    def GenH5Dict(self):
+        for pkey in self.PathDict.keys():
+            with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][0]), 'r') as f:
+                for h5key in f.keys():
+                    self.H5KeyDict[h5key] = pkey
+
     def pathOK(self):
         """ Test to see if the current path contains tristan files
         using regular expressions, then generate the lists of files
@@ -542,11 +548,6 @@ class MainWindow(wx.Frame):
             self.GenH5Dict()
         return is_okay
 
-    def GenH5Dict(self):
-        for pkey in self.PathDict.keys():
-            with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][0]), 'r') as f:
-                for h5key in f.keys():
-                    self.H5KeyDict[h5key] = pkey
 
     def OnOpen(self,e):
         """open a file"""
