@@ -5,10 +5,20 @@ A python GUI for visualizing Tristan-MP plots. A work in progress.
 Written by:
 Patrick Crumley, patrick.crumley@gmail.com
 
+UPDATE:
+-------
+I have decided that I should re-write the program in Tkinter instead of wxpython
+for two reasons. One, I need to significantly change the wxpython code anyway so
+that there is only one figure with 6 subplots (instead of 6 separate figures).
+This means it will be much much easier to change the number of subplots and to
+save the figure. Two, the code as written will not run on orbital, and the
+Tkinter code is guaranteed to run as it is part of the python stack. Wish me
+luck!
+
 Dependencies:
 -------------
 
-Python packages required: matplotlib, wxpython, h5py
+Python packages required: matplotlib 1.4, python 2.7, h5py
 
 This should work on Windows, MacOS & Linux.
 
