@@ -23,6 +23,56 @@ import tkFileDialog
 def destroy(e):
     sys.exit()
 
+colors=[None]*10
+for i in range(len(colors)):
+    colors[i]=np.random.rand(5,5)
+
+
+class SubPlotWrapper:
+    """A simple class that will eventually hold all of the information
+    about each sub_plot in the Figure"""
+
+    def __init__(self, parent, figure=None, sub_plot_spec = None, ctype=None):
+        self.parent = parent
+        self.chartType = ctype
+        # A dictionary that contains all of the plot types.
+        self.PlotTypeDict = {'PhasePlot': PhasePanel, 'TestPlot': TestPanel}
+        # A dictionary that will store where everything is in Hdf5 Files
+        self.GenParamDict()
+        self.graph = graph
+
+
+    def LoadKey(self, h5key):
+        pkey = self.parent.H5KeyDict[h5key]
+        with h5py.File(os.path.join(self.parent.dirname,self.parent.PathDict[pkey][self.parent.timeStep.value-1]), 'r') as f:
+            return f[h5key][:]
+
+    def ChangeGraph(self, str_arg):
+        self.chartType = str_arg
+        self.parent.ChangeGraph()
+
+    def GenParamDict(self):
+        # Generate a dictionary that will store all of the params at dict['ctype']['param_name']
+        self.PlotParamsDict = {elm: '' for elm in self.PlotTypeDict.keys() }
+        for elm in self.PlotTypeDict.keys():
+            self.PlotParamsDict[elm] = {x : '' for x in self.PlotTypeDict[elm].plot_param_list}
+
+    def SetPlotParam(self, pname, val, ctype = None):
+        if ctype is None:
+            ctype = self.chartType
+        self.PlotParamsDict[ctype][pname] = val
+
+    def GetPlotParam(self, pname, ctype = None):
+        if ctype is None:
+            ctype = self.chartType
+
+        return self.PlotParamsDict[ctype][pname]
+
+    def SetGraph(self, parent, FigWrap, ctype = None, overwrite = True):
+        if ctype:
+            self.chartType = ctype
+        self.graph = self.PlotTypeDict[self.chartType](parent, self, overwrite)
+
 class TimeStepper:
     """A Class that will hold the time step info"""
     def __init__(self, initial = 1, minimum = 1, maximum =1):
@@ -33,6 +83,12 @@ class TimeStepper:
 
     def GetTime(self):
         return self.cur_time
+
+    def GetMin(self):
+        return self.min_time
+
+    def GetMax(self):
+        return self.max_time
 
     def SetMax(self, val):
         if self.max_time < self.min_time:
@@ -66,9 +122,15 @@ class TimeStepper:
 class MainApp(Tk.Tk):
     """ We simply derive a new class of Frame as the man frame of our app"""
     def __init__(self, name):
+
         Tk.Tk.__init__(self)
+        self.update_idletasks()
         menubar = Tk.Menu(self)
         self.wm_title(name)
+
+        self.skipSize = 1
+        self.waitTime = .2
+
 
         fileMenu = Tk.Menu(menubar, tearoff=False)
         menubar.add_cascade(label="File", underline=0, menu=fileMenu)
@@ -94,9 +156,6 @@ class MainApp(Tk.Tk):
 
         self.cmap = 'inferno'
 
-
-
-
         # Make the object hold the time info
         self.TimeStep = TimeStepper(initial = 1, minimum=1, maximum=1000)
 
@@ -104,24 +163,10 @@ class MainApp(Tk.Tk):
         # previous objects
         self.dirname = os.curdir
         self.findDir()
-        f = Figure(figsize=(5, 4), dpi=100)
-        a = f.add_subplot(111)
-        t = np.arange(0.0, 3.0, 0.01)
-        s = np.sin(2*np.pi*t)
 
-        a.plot(t, s)
-        a.set_title('Tk embedding')
-        a.set_xlabel('X axis label')
-        a.set_ylabel('Y label')
+        self.DrawCanvas()
+        self.makeToolbar()
 
-
-        # a tk.DrawingArea
-        canvas = FigureCanvasTkAgg(f, master=self)
-
-#        canvas.get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
-
-        canvas._tkcanvas.pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
-        canvas.show()
     def quit(self, event):
         print("quitting...")
         sys.exit(0)
@@ -181,6 +226,67 @@ class MainApp(Tk.Tk):
 #                self.wait_window(p.top)
                 self.FindDir()
 
+    def DrawCanvas(self):
+        # figsize (w,h tuple in inches) dpi (dots per inch)
+        #f = Figure(figsize=(5,4), dpi=100)
+        self.f = Figure()
+        self.a = self.f.add_subplot(111)
+        self.a.pcolor(np.random.rand(5,5))
+        # a tk.DrawingArea
+        self.canvas = FigureCanvasTkAgg(self.f, master=self)
+#        self.canvas._tkcanvas.pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
+        self.canvas.get_tk_widget().grid(row=3,column=0,columnspan=3,sticky= Tk.N+Tk.S+Tk.E+Tk.W)
+        self.canvas.show()
+        self.bClose = ttk.Button(self, text='Close',command=self.destroy)
+        self.bClose.grid()
+        #self.label = Label(self.top, text = 'Text',bg='orange')
+        #self.label.grid()
+        # initialize (time index t)
+
+    def makeToolbar(self):
+        self.toolbar_text = ['Play','Pause','Stop']
+        self.toolbar_length = len(self.toolbar_text)
+        self.toolbar_buttons = [None] * self.toolbar_length
+
+        for toolbar_index in range(self.toolbar_length):
+            text = self.toolbar_text[toolbar_index]
+            button_id = ttk.Button(self ,text=text)
+            button_id.grid(row=4, column=toolbar_index)
+            self.toolbar_buttons[toolbar_index] = button_id
+
+            def toolbar_button_handler(event, self=self, button=toolbar_index):
+                return self.service_toolbar(button)
+
+            button_id.bind("<Button-1>", toolbar_button_handler)
+
+        # call blink() if start and set stop when stop
+    def service_toolbar(self, toolbar_index):
+            if toolbar_index == 0:
+                self.stop = False
+                print self.stop
+                self.blink()
+            elif toolbar_index == 1:
+                self.stop = True
+                print self.stop
+            elif toolbar_index == 2:
+                self.stop = True
+                print self.stop
+                self.TimeStep.SetTime(self.TimeStep.GetMin())
+
+        # while in start, check if stop is clicked, if not, call blink recursivly
+    def blink(self):
+        if not self.stop:
+            print 'looping',self.stop
+            self.a.pcolor(colors[self.TimeStep.GetTime()])
+
+            self.TimeStep.Step(self.skipSize)
+            if self.TimeStep.GetTime() == self.TimeStep.GetMax(): # push stop button
+                self.service_toolbar(2)
+
+            self.canvas.show()
+            self.canvas.get_tk_widget().update_idletasks()
+            #self.label.update_idletasks()
+            self.after(int(self.waitTime*1E3), self.blink)
 
 if __name__ == "__main__":
     app = MainApp('Iseult')
