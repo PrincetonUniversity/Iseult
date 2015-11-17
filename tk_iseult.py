@@ -1,7 +1,7 @@
 #! /usr/bin/env pythonw
 
 import re # regular expressions
-import os # Used to make the code portable
+import os, sys # Used to make the code portable
 import h5py # Allows us the read the data files
 from threading import Thread
 import time,string
@@ -23,12 +23,52 @@ import tkFileDialog
 def destroy(e):
     sys.exit()
 
+class TimeStepper:
+    """A Class that will hold the time step info"""
+    def __init__(self, initial = 1, minimum = 1, maximum =1):
+        self.min_time = min(minimum, maximum)
+        self.max_time = max(minimum, maximum)
+        self.cur_time = 1
+        self.SetTime(initial)
+
+    def GetTime(self):
+        return self.cur_time
+
+    def SetMax(self, val):
+        if self.max_time < self.min_time:
+            self.max_time = self.min_time
+
+        else:
+            self.max_time = val
+
+        self.SetTime(self.cur_time)
+
+    def SetMin(self, val):
+        if self.min_time > self.max_time:
+            self.min_time = self.max_time
+
+        else:
+            self.min_time = val
+
+        self.SetTime(self.cur_time)
+
+    def SetTime(self, val):
+        if val < self.min_time:
+            self.cur_time = self.min_time
+        elif val > self.max_time:
+            self.cur_time = self.max_time
+        else:
+            self.cur_time = val
+
+    def Step(self, val):
+        self.SetTime(self.cur_time+val)
+
 class MainApp(Tk.Tk):
     """ We simply derive a new class of Frame as the man frame of our app"""
     def __init__(self, name):
         Tk.Tk.__init__(self)
         menubar = Tk.Menu(self)
-
+        self.wm_title(name)
 
         fileMenu = Tk.Menu(menubar, tearoff=False)
         menubar.add_cascade(label="File", underline=0, menu=fileMenu)
@@ -54,16 +94,34 @@ class MainApp(Tk.Tk):
 
         self.cmap = 'inferno'
 
-#        # Make the know that will hold the timestep info
-#        self.timeStep = Param(1, minimum=1, maximum=1000)
+
+
+
+        # Make the object hold the time info
+        self.TimeStep = TimeStepper(initial = 1, minimum=1, maximum=1000)
 
         # Look for the tristan output files and load the file paths into
         # previous objects
         self.dirname = os.curdir
-
-
         self.findDir()
+        f = Figure(figsize=(5, 4), dpi=100)
+        a = f.add_subplot(111)
+        t = np.arange(0.0, 3.0, 0.01)
+        s = np.sin(2*np.pi*t)
 
+        a.plot(t, s)
+        a.set_title('Tk embedding')
+        a.set_xlabel('X axis label')
+        a.set_ylabel('Y label')
+
+
+        # a tk.DrawingArea
+        canvas = FigureCanvasTkAgg(f, master=self)
+
+#        canvas.get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
+
+        canvas._tkcanvas.pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
+        canvas.show()
     def quit(self, event):
         print("quitting...")
         sys.exit(0)
@@ -78,6 +136,9 @@ class MainApp(Tk.Tk):
         """ Test to see if the current path contains tristan files
         using regular expressions, then generate the lists of files
         to iterate over"""
+        dirlist = os.listdir(self.dirname)
+        if 'output' in dirlist:
+            self.dirname = os.path.join(self.dirname, 'output')
         is_okay = True
         i = 0
         for key in self.PathDict.keys():
@@ -85,10 +146,9 @@ class MainApp(Tk.Tk):
             self.PathDict[key].sort()
             is_okay &= len(self.PathDict[key]) > 0
             i += 1
-#        self.timeStep.setMax(len(self.PathDict['Flds']))
+        self.TimeStep.SetMax(len(self.PathDict['Flds']))
         if len(self.H5KeyDict) == 0:
             self.GenH5Dict()
-        print self.H5KeyDict
         return is_okay
 
 
@@ -98,8 +158,9 @@ class MainApp(Tk.Tk):
         if tmpdir != '':
             self.dirname = tmpdir
         if not self.pathOK():
-            self.findDir('Directory must contain either the output directory or all of the following: flds.tot.*, ptrl.tot.*, params.*, spect.*')
-
+#            p = MyDialog(self, 'Directory must contain either the output directory or all of the following: \n flds.tot.*, ptrl.tot.*, params.*, spect.*', title = 'Cannot find output files')
+#            self.wait_window(p.top)
+            self.findDir()
 
     def findDir(self, dlgstr = 'Choose the directory of the output files.'):
         """Look for /ouput folder, where the simulation results are
@@ -111,15 +172,14 @@ class MainApp(Tk.Tk):
         self.dir_opt['mustexist'] = True
         self.dir_opt['parent'] = self
 
-        dirlist = os.listdir(self.dirname)
-        if 'output' in dirlist:
-            self.dirname = os.path.join(self.dirname, 'output')
         if not self.pathOK():
             tmpdir = tkFileDialog.askdirectory(title = dlgstr, **self.dir_opt)
             if tmpdir != '':
                 self.dirname = tmpdir
             if not self.pathOK():
-                self.findDir('Directory must contain either the output directory or all of the following: flds.tot.*, ptrl.tot.*, params.*, spect.*')
+#                p = MyDialog(self, 'Directory must contain either the output directory or all of the following: \n flds.tot.*, ptrl.tot.*, params.*, spect.*', title = 'Cannot find output files')
+#                self.wait_window(p.top)
+                self.FindDir()
 
 
 if __name__ == "__main__":
