@@ -119,6 +119,67 @@ class TimeStepper:
     def Step(self, val):
         self.SetTime(self.cur_time+val)
 
+class PlaybackBar(Tk.Frame):
+
+    """A Class that will handle the time-stepping in Iseult, and has the
+    following, a step left button, a play/pause button, a step right button, a
+    playbar, and a settings button."""
+
+    def __init__(self, parent, tstep):
+        Tk.Frame.__init__(self)
+        self.parent = parent
+        self.TimeStep = tstep
+        self.skipSize = 1
+        self.waitTime = .2
+        self.makePlaybackBar()
+
+    def makePlaybackBar(self):
+        self.toolbar_text = ['Play','Pause','Stop']
+        self.toolbar_length = len(self.toolbar_text)
+        self.toolbar_buttons = [None] * self.toolbar_length
+#        self.TimeScale = ttk.Scale(self, from_=0, to=100))
+        for toolbar_index in range(self.toolbar_length):
+            text = self.toolbar_text[toolbar_index]
+            button_id = ttk.Button(self, text=text)
+            button_id.grid(row=0, column=toolbar_index)
+            self.toolbar_buttons[toolbar_index] = button_id
+
+            def toolbar_button_handler(event, self=self, button=toolbar_index):
+                return self.service_toolbar(button)
+
+            button_id.bind("<Button-1>", toolbar_button_handler)
+
+        # call blink() if start and set stop when stop
+    def service_toolbar(self, toolbar_index):
+            if toolbar_index == 0:
+                self.stop = False
+                print self.stop
+                self.blink()
+            elif toolbar_index == 1:
+                self.stop = True
+                print self.stop
+            elif toolbar_index == 2:
+                self.stop = True
+                print self.stop
+                self.TimeStep.SetTime(self.TimeStep.GetMin())
+
+        # while in start, check if stop is clicked, if not, call blink recursivly
+    def blink(self):
+        if not self.stop:
+            print 'looping',self.stop
+            self.parent.a.pcolor(colors[self.TimeStep.GetTime()])
+
+            self.TimeStep.Step(self.skipSize)
+            if self.TimeStep.GetTime() == self.TimeStep.GetMax(): # push stop button
+                self.service_toolbar(2)
+
+            self.parent.canvas.show()
+            self.parent.canvas.get_tk_widget().update_idletasks()
+            #self.label.update_idletasks()
+            self.after(int(self.waitTime*1E3), self.blink)
+
+
+
 class MainApp(Tk.Tk):
     """ We simply derive a new class of Frame as the man frame of our app"""
     def __init__(self, name):
@@ -128,8 +189,7 @@ class MainApp(Tk.Tk):
         menubar = Tk.Menu(self)
         self.wm_title(name)
 
-        self.skipSize = 1
-        self.waitTime = .2
+
 
 
         fileMenu = Tk.Menu(menubar, tearoff=False)
@@ -165,7 +225,9 @@ class MainApp(Tk.Tk):
         self.findDir()
 
         self.DrawCanvas()
-        self.makeToolbar()
+        self.playbackbar = PlaybackBar(self, self.TimeStep)
+        self.playbackbar.pack(side=Tk.TOP, fill=Tk.BOTH, expand=0)
+        self.geometry("1200x700")
 
     def quit(self, event):
         print("quitting...")
@@ -229,64 +291,20 @@ class MainApp(Tk.Tk):
     def DrawCanvas(self):
         # figsize (w,h tuple in inches) dpi (dots per inch)
         #f = Figure(figsize=(5,4), dpi=100)
-        self.f = Figure()
+        self.f = Figure(figsize = (4,4), dpi = 100)
         self.a = self.f.add_subplot(111)
         self.a.pcolor(np.random.rand(5,5))
         # a tk.DrawingArea
         self.canvas = FigureCanvasTkAgg(self.f, master=self)
 #        self.canvas._tkcanvas.pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
-        self.canvas.get_tk_widget().grid(row=3,column=0,columnspan=3,sticky= Tk.N+Tk.S+Tk.E+Tk.W)
+
         self.canvas.show()
-        self.bClose = ttk.Button(self, text='Close',command=self.destroy)
-        self.bClose.grid()
+        self.canvas.get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
+
         #self.label = Label(self.top, text = 'Text',bg='orange')
         #self.label.grid()
         # initialize (time index t)
 
-    def makeToolbar(self):
-        self.toolbar_text = ['Play','Pause','Stop']
-        self.toolbar_length = len(self.toolbar_text)
-        self.toolbar_buttons = [None] * self.toolbar_length
-
-        for toolbar_index in range(self.toolbar_length):
-            text = self.toolbar_text[toolbar_index]
-            button_id = ttk.Button(self ,text=text)
-            button_id.grid(row=4, column=toolbar_index)
-            self.toolbar_buttons[toolbar_index] = button_id
-
-            def toolbar_button_handler(event, self=self, button=toolbar_index):
-                return self.service_toolbar(button)
-
-            button_id.bind("<Button-1>", toolbar_button_handler)
-
-        # call blink() if start and set stop when stop
-    def service_toolbar(self, toolbar_index):
-            if toolbar_index == 0:
-                self.stop = False
-                print self.stop
-                self.blink()
-            elif toolbar_index == 1:
-                self.stop = True
-                print self.stop
-            elif toolbar_index == 2:
-                self.stop = True
-                print self.stop
-                self.TimeStep.SetTime(self.TimeStep.GetMin())
-
-        # while in start, check if stop is clicked, if not, call blink recursivly
-    def blink(self):
-        if not self.stop:
-            print 'looping',self.stop
-            self.a.pcolor(colors[self.TimeStep.GetTime()])
-
-            self.TimeStep.Step(self.skipSize)
-            if self.TimeStep.GetTime() == self.TimeStep.GetMax(): # push stop button
-                self.service_toolbar(2)
-
-            self.canvas.show()
-            self.canvas.get_tk_widget().update_idletasks()
-            #self.label.update_idletasks()
-            self.after(int(self.waitTime*1E3), self.blink)
 
 if __name__ == "__main__":
     app = MainApp('Iseult')
