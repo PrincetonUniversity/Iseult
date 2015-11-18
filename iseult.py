@@ -73,51 +73,61 @@ class SubPlotWrapper:
             self.chartType = ctype
         self.graph = self.PlotTypeDict[self.chartType](parent, self, overwrite)
 
-class TimeStepper:
-    """A Class that will hold the time step info"""
-    def __init__(self, initial = 1, minimum = 1, maximum =1):
-        self.min_time = min(minimum, maximum)
-        self.max_time = max(minimum, maximum)
-        self.cur_time = 1
-        self.SetTime(initial)
+class Knob:
+    """
+    Knob - simple class with a "setKnob" method.
+    A Knob instance is attached to a Param instance, e.g., param.attach(knob)
+    Base class is for documentation purposes.
+    """
+    def setKnob(self, value):
+        pass
 
-    def GetTime(self):
-        return self.cur_time
+class Param:
 
-    def GetMin(self):
-        return self.min_time
+    """
+    The idea of the "Param" class is that some parameter in the GUI may have
+    several knobs that both control it and reflect the parameter's state, e.g.
+    a slider, text, and dragging can all change the value of the frequency in
+    the waveform of this example.
+    The class allows a cleaner way to update/"feedback" to the other knobs when
+    one is being changed.  Also, this class handles min/max constraints for all
+    the knobs.
+    Idea - knob list - in "set" method, knob object is passed as well
+      - the other knobs in the knob list have a "set" method which gets
+        called for the others.
+    """
+    def __init__(self, initialValue=None, minimum=0., maximum=1.):
+        self.minimum = minimum
+        self.maximum = maximum
+        if initialValue != self.constrain(initialValue):
+            raise ValueError('illegal initial value')
+        self.value = initialValue
+        self.knobs = []
 
-    def GetMax(self):
-        return self.max_time
+    def attach(self, knob):
+        self.knobs += [knob]
 
-    def SetMax(self, val):
-        if self.max_time < self.min_time:
-            self.max_time = self.min_time
+    def set(self, value, knob=None):
+        self.value = self.constrain(value)
+        for feedbackKnob in self.knobs:
+            if feedbackKnob != knob:
+                feedbackKnob.setKnob(self.value)
+        return self.value
 
-        else:
-            self.max_time = val
+    def setMax(self, max_arg, knob=None):
+        self.maximum = max_arg
+        self.value = self.constrain(self.value)
+        for feedbackKnob in self.knobs:
+            if feedbackKnob != knob:
+                feedbackKnob.setKnob(self.value)
+        return self.value
+    def constrain(self, value):
+        if value <= self.minimum:
+            value = self.minimum
+        if value >= self.maximum:
+            value = self.maximum
+        return value
 
-        self.SetTime(self.cur_time)
-
-    def SetMin(self, val):
-        if self.min_time > self.max_time:
-            self.min_time = self.max_time
-
-        else:
-            self.min_time = val
-
-        self.SetTime(self.cur_time)
-
-    def SetTime(self, val):
-        if val < self.min_time:
-            self.cur_time = self.min_time
-        elif val > self.max_time:
-            self.cur_time = self.max_time
-        else:
-            self.cur_time = val
-
-    def Step(self, val):
-        self.SetTime(self.cur_time+val)
 
 class PlaybackBar(Tk.Frame):
 
@@ -125,118 +135,105 @@ class PlaybackBar(Tk.Frame):
     following, a step left button, a play/pause button, a step right button, a
     playbar, and a settings button."""
 
-    def __init__(self, parent):
+    def __init__(self, parent, param):
         Tk.Frame.__init__(self)
         self.parent = parent
+#        self.sliderText = wx.TextCtrl(parent, -1, style=wx.TE_PROCESS_ENTER)
+
         self.skipSize = 1
         self.waitTime = .2
-        self.min_time = 1
-        self.max_time = 3
-        self.cur_time = 1
+        self.playPressed = False
 
-        self.makePlaybackBar()
-
-    def makePlaybackBar(self):
         self.toolbar_text = ['Play','Pause','Stop']
         self.toolbar_length = len(self.toolbar_text)
         self.toolbar_buttons = [None] * self.toolbar_length
-        self.TimeScale = ttk.Scale(self, from_=0, to=100, length = 3)
-        self.TimeScale.set(self.cur_time)
-        for toolbar_index in range(self.toolbar_length):
-            text = self.toolbar_text[toolbar_index]
-            button_id = ttk.Button(self, text=text)
-            button_id.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
-            self.toolbar_buttons[toolbar_index] = button_id
 
-            def toolbar_button_handler(event, self=self, button=toolbar_index):
-                return self.service_toolbar(button)
+        # This param should be the time-step of the simulation
+        self.param = param
 
-            button_id.bind("<Button-1>", toolbar_button_handler)
-        self.TimeScale.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
+        # make a button that skips left
+        self.skipLB = ttk.Button(self, text = '<', command = self.SkipLeft)
+        self.skipLB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+
+        # make the play button
+        self.playB = ttk.Button(self, text = 'Play', command = self.PlayHandler)
+        self.playB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+        # a button that skips right
+        self.skipRB = ttk.Button(self, text = '>', command = self.SkipRight)
+        self.skipRB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+
+        # An entry box that will let us choose the time-step
+        ttk.Label(self, text='n= ').pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+
+        # A StringVar for a box to type in a frame num, linked to self.param
+        self.v = Tk.StringVar()
+        # set it to the param value
+        self.v.set(str(self.param.value))
+
+        # the entry box
+        self.txtEnter = ttk.Entry(self, textvariable=self.v, width=6)
+
+        # A slider that will show the progress in the simulation as well as
+        # allow us to select a time
+
+        self.slider = ttk.Scale(self, from_=self.param.minimum, to=self.param.maximum, command = self.ScaleHandler)
+        self.slider.set(self.param.value)
+
+        self.txtEnter.pack(side=Tk.LEFT, fill = Tk.BOTH, expand = 0)
+        self.slider.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
         self.SettingsB= ttk.Button(self, text='Settings')
         self.SettingsB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
 
-
-        # call blink() if start and set stop when stop
-    def service_toolbar(self, toolbar_index):
-            if toolbar_index == 0:
-                self.stop = False
-                print self.stop
-                self.blink()
-            elif toolbar_index == 1:
-                self.stop = True
-                print self.stop
-            elif toolbar_index == 2:
-                self.stop = True
-                print self.stop
-#                self.SetTime(self.min_time)
+        #attach the parameter to the Playbackbar
+        self.param.attach(self)
 
 
 
         # while in start, check if stop is clicked, if not, call blink recursively
 
+    def SkipLeft(self):
+        self.param.set(self.param.value - self.skipSize)
+
+    def SkipRight(self):
+        self.param.set(self.param.value + self.skipSize)
+
+
+    def PlayHandler(self):
+        if not self.playPressed:
+            self.playPressed = True
+            self.playB.config(text='Pause')
+            self.after(int(self.waitTime*1E3), self.blink)
+        else:
+            self.playPressed = False
+            self.playB.config(text='Play')
+
     def blink(self):
-        if not self.stop:
-            print 'looping',self.stop
-            self.parent.a.pcolor(colors[self.cur_time])
+        if self.playPressed:
+            print 'looping',self.param.value
 
-            self.Step(self.skipSize)
-            if self.cur_time == self.max_time: # push stop button
-                self.service_toolbar(2)
+            if self.param.value == self.param.maximum: # push pause button
+                self.PlayHandler()
+            else:
+                self.param.set(self.param.value + self.skipSize)
 
-            self.parent.canvas.show()
-            self.parent.canvas.get_tk_widget().update_idletasks()
-            #self.label.update_idletasks()
             self.after(int(self.waitTime*1E3), self.blink)
 
 
-    def GetTime(self):
-        return self.cur_time
+    def TextCallback(self):
+        try:
+            if int(self.v.get()) != self.param.value:
+                self.param.set(int(self.v.get()))
+        except ValueError:
+            self.v.set(str(self.param.value))
 
-    def GetMin(self):
-        return self.min_time
+    def ScaleHandler(self, e):
+        if self.param.value != int(self.slider.get()):
+            self.param.set(int(self.slider.get()))
 
-    def GetMax(self):
-        return self.max_time
-
-    def SetMax(self, val):
-        if self.max_time < self.min_time:
-            self.max_time = self.min_time
-
-        else:
-            self.max_time = val
-
-        self.SetTime(self.cur_time)
-        self.TimeScale.config(to = self.max_time)
-
-    def SetMin(self, val):
-        if self.min_time > self.max_time:
-            self.min_time = self.max_time
-
-        else:
-            self.min_time = val
-
-        self.SetTime(self.cur_time)
-        self.TimeScale.config(from_ = self.min_time)
-
-    def SetTime(self, val):
-        tmp = None
-        if val < self.min_time:
-            tmp = self.min_time
-        elif val > self.max_time:
-            tmp = self.max_time
-        else:
-            tmp = val
-
-        if tmp != self.cur_time:
-            # The time is new, and we must update everything accordingly
-            self.cur_time = tmp
-
-            # Update the TimeScale
-            self.TimeScale.set(self.cur_time)
-
-    def Step(self, val):
-        self.SetTime(self.cur_time+val)
+    def setKnob(self, value):
+        self.v.set(str(value))
+        self.slider.set(value)
+        self.slider.config(to = self.param.maximum)
 
 
 class MainApp(Tk.Tk):
@@ -279,19 +276,21 @@ class MainApp(Tk.Tk):
 
         # Look for the tristan output files and load the file paths into
         # previous objects
-        self.playbackbar = PlaybackBar(self)
+        self.TimeStep = Param(1, minimum=1, maximum=1000)
 
         self.dirname = os.curdir
         self.findDir()
 
+        self.TimeStep.attach(self)
         self.DrawCanvas()
 
-
+        self.playbackbar = PlaybackBar(self, self.TimeStep)
         self.playbackbar.pack(side=Tk.TOP, fill=Tk.BOTH, expand=0)
         self.update()
         # now root.geometry() returns valid size/placement
         self.minsize(self.winfo_width(), self.winfo_height())
         self.geometry("1200x700")
+        self.bind('<Return>', self.TxtEnter)
 
     def quit(self, event):
         print("quitting...")
@@ -317,7 +316,7 @@ class MainApp(Tk.Tk):
             self.PathDict[key].sort()
             is_okay &= len(self.PathDict[key]) > 0
             i += 1
-        self.playbackbar.SetMax(len(self.PathDict['Flds']))
+        self.TimeStep.setMax(len(self.PathDict['Flds']))
         if len(self.H5KeyDict) == 0:
             self.GenH5Dict()
         return is_okay
@@ -369,6 +368,19 @@ class MainApp(Tk.Tk):
         #self.label.grid()
         # initialize (time index t)
 
+    def setKnob(self, value):
+        self.a.pcolor(colors[self.TimeStep.value-1])
+        self.canvas.show()
+        self.canvas.get_tk_widget().update_idletasks()
+
+    def TxtEnter(self, e):
+        self.playbackbar.TextCallback()
+
+
+#
+
+
+        #   refresh the graph
 
 if __name__ == "__main__":
     app = MainApp('Iseult')
