@@ -138,15 +138,10 @@ class PlaybackBar(Tk.Frame):
     def __init__(self, parent, param):
         Tk.Frame.__init__(self)
         self.parent = parent
-#        self.sliderText = wx.TextCtrl(parent, -1, style=wx.TE_PROCESS_ENTER)
 
         self.skipSize = 1
         self.waitTime = .2
         self.playPressed = False
-
-        self.toolbar_text = ['Play','Pause','Stop']
-        self.toolbar_length = len(self.toolbar_text)
-        self.toolbar_buttons = [None] * self.toolbar_length
 
         # This param should be the time-step of the simulation
         self.param = param
@@ -158,6 +153,7 @@ class PlaybackBar(Tk.Frame):
         # make the play button
         self.playB = ttk.Button(self, text = 'Play', command = self.PlayHandler)
         self.playB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+
         # a button that skips right
         self.skipRB = ttk.Button(self, text = '>', command = self.SkipRight)
         self.skipRB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
@@ -172,24 +168,20 @@ class PlaybackBar(Tk.Frame):
 
         # the entry box
         self.txtEnter = ttk.Entry(self, textvariable=self.v, width=6)
+        self.txtEnter.pack(side=Tk.LEFT, fill = Tk.BOTH, expand = 0)
 
         # A slider that will show the progress in the simulation as well as
         # allow us to select a time
-
         self.slider = ttk.Scale(self, from_=self.param.minimum, to=self.param.maximum, command = self.ScaleHandler)
         self.slider.set(self.param.value)
-
-        self.txtEnter.pack(side=Tk.LEFT, fill = Tk.BOTH, expand = 0)
         self.slider.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
+
+        # a settings button that should lauch some global settings.
         self.SettingsB= ttk.Button(self, text='Settings')
         self.SettingsB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
 
         #attach the parameter to the Playbackbar
         self.param.attach(self)
-
-
-
-        # while in start, check if stop is clicked, if not, call blink recursively
 
     def SkipLeft(self):
         self.param.set(self.param.value - self.skipSize)
@@ -197,44 +189,52 @@ class PlaybackBar(Tk.Frame):
     def SkipRight(self):
         self.param.set(self.param.value + self.skipSize)
 
-
     def PlayHandler(self):
         if not self.playPressed:
+            # Set the value of play pressed to true, change the button name to
+            # pause and start the play loop.
             self.playPressed = True
             self.playB.config(text='Pause')
             self.after(int(self.waitTime*1E3), self.blink)
         else:
+            # pause the play loop and set the button nameback to plau
             self.playPressed = False
             self.playB.config(text='Play')
 
     def blink(self):
         if self.playPressed:
-            print 'looping',self.param.value
-
-            if self.param.value == self.param.maximum: # push pause button
+            # First check to see if the timestep can get larger
+            if self.param.value == self.param.maximum:
+                # push pause button
                 self.PlayHandler()
+
+            # otherwise skip right by size skip size
             else:
                 self.param.set(self.param.value + self.skipSize)
 
+            # start loopin'
             self.after(int(self.waitTime*1E3), self.blink)
 
 
     def TextCallback(self):
         try:
+            #make sure the user types in a int
             if int(self.v.get()) != self.param.value:
                 self.param.set(int(self.v.get()))
         except ValueError:
+            #if they type in random stuff, just set it ot the param value
             self.v.set(str(self.param.value))
 
     def ScaleHandler(self, e):
+        # if changing the scale will change the value of the parameter, do so
         if self.param.value != int(self.slider.get()):
             self.param.set(int(self.slider.get()))
 
     def setKnob(self, value):
+        #set the text entry value
         self.v.set(str(value))
+        #set the slider
         self.slider.set(value)
-        self.slider.config(to = self.param.maximum)
-
 
 class MainApp(Tk.Tk):
     """ We simply derive a new class of Frame as the man frame of our app"""
@@ -373,11 +373,9 @@ class MainApp(Tk.Tk):
         self.canvas.show()
         self.canvas.get_tk_widget().update_idletasks()
 
+    # We need to do it this way so that pressing enter with focus anywhere on the app will cause the
     def TxtEnter(self, e):
         self.playbackbar.TextCallback()
-
-
-#
 
 
         #   refresh the graph
