@@ -125,29 +125,37 @@ class PlaybackBar(Tk.Frame):
     following, a step left button, a play/pause button, a step right button, a
     playbar, and a settings button."""
 
-    def __init__(self, parent, tstep):
+    def __init__(self, parent):
         Tk.Frame.__init__(self)
         self.parent = parent
-        self.TimeStep = tstep
         self.skipSize = 1
         self.waitTime = .2
+        self.min_time = 1
+        self.max_time = 3
+        self.cur_time = 1
+
         self.makePlaybackBar()
 
     def makePlaybackBar(self):
         self.toolbar_text = ['Play','Pause','Stop']
         self.toolbar_length = len(self.toolbar_text)
         self.toolbar_buttons = [None] * self.toolbar_length
-#        self.TimeScale = ttk.Scale(self, from_=0, to=100))
+        self.TimeScale = ttk.Scale(self, from_=0, to=100, length = 3)
+        self.TimeScale.set(self.cur_time)
         for toolbar_index in range(self.toolbar_length):
             text = self.toolbar_text[toolbar_index]
             button_id = ttk.Button(self, text=text)
-            button_id.grid(row=0, column=toolbar_index)
+            button_id.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
             self.toolbar_buttons[toolbar_index] = button_id
 
             def toolbar_button_handler(event, self=self, button=toolbar_index):
                 return self.service_toolbar(button)
 
             button_id.bind("<Button-1>", toolbar_button_handler)
+        self.TimeScale.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
+        self.SettingsB= ttk.Button(self, text='Settings')
+        self.SettingsB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+
 
         # call blink() if start and set stop when stop
     def service_toolbar(self, toolbar_index):
@@ -161,16 +169,19 @@ class PlaybackBar(Tk.Frame):
             elif toolbar_index == 2:
                 self.stop = True
                 print self.stop
-                self.TimeStep.SetTime(self.TimeStep.GetMin())
+#                self.SetTime(self.min_time)
 
-        # while in start, check if stop is clicked, if not, call blink recursivly
+
+
+        # while in start, check if stop is clicked, if not, call blink recursively
+
     def blink(self):
         if not self.stop:
             print 'looping',self.stop
-            self.parent.a.pcolor(colors[self.TimeStep.GetTime()])
+            self.parent.a.pcolor(colors[self.cur_time])
 
-            self.TimeStep.Step(self.skipSize)
-            if self.TimeStep.GetTime() == self.TimeStep.GetMax(): # push stop button
+            self.Step(self.skipSize)
+            if self.cur_time == self.max_time: # push stop button
                 self.service_toolbar(2)
 
             self.parent.canvas.show()
@@ -178,6 +189,54 @@ class PlaybackBar(Tk.Frame):
             #self.label.update_idletasks()
             self.after(int(self.waitTime*1E3), self.blink)
 
+
+    def GetTime(self):
+        return self.cur_time
+
+    def GetMin(self):
+        return self.min_time
+
+    def GetMax(self):
+        return self.max_time
+
+    def SetMax(self, val):
+        if self.max_time < self.min_time:
+            self.max_time = self.min_time
+
+        else:
+            self.max_time = val
+
+        self.SetTime(self.cur_time)
+        self.TimeScale.config(to = self.max_time)
+
+    def SetMin(self, val):
+        if self.min_time > self.max_time:
+            self.min_time = self.max_time
+
+        else:
+            self.min_time = val
+
+        self.SetTime(self.cur_time)
+        self.TimeScale.config(from_ = self.min_time)
+
+    def SetTime(self, val):
+        tmp = None
+        if val < self.min_time:
+            tmp = self.min_time
+        elif val > self.max_time:
+            tmp = self.max_time
+        else:
+            tmp = val
+
+        if tmp != self.cur_time:
+            # The time is new, and we must update everything accordingly
+            self.cur_time = tmp
+
+            # Update the TimeScale
+            self.TimeScale.set(self.cur_time)
+
+    def Step(self, val):
+        self.SetTime(self.cur_time+val)
 
 
 class MainApp(Tk.Tk):
@@ -217,16 +276,21 @@ class MainApp(Tk.Tk):
         self.cmap = 'inferno'
 
         # Make the object hold the time info
-        self.TimeStep = TimeStepper(initial = 1, minimum=1, maximum=1000)
 
         # Look for the tristan output files and load the file paths into
         # previous objects
+        self.playbackbar = PlaybackBar(self)
+
         self.dirname = os.curdir
         self.findDir()
 
         self.DrawCanvas()
-        self.playbackbar = PlaybackBar(self, self.TimeStep)
+
+
         self.playbackbar.pack(side=Tk.TOP, fill=Tk.BOTH, expand=0)
+        self.update()
+        # now root.geometry() returns valid size/placement
+        self.minsize(self.winfo_width(), self.winfo_height())
         self.geometry("1200x700")
 
     def quit(self, event):
@@ -253,7 +317,7 @@ class MainApp(Tk.Tk):
             self.PathDict[key].sort()
             is_okay &= len(self.PathDict[key]) > 0
             i += 1
-        self.TimeStep.SetMax(len(self.PathDict['Flds']))
+        self.playbackbar.SetMax(len(self.PathDict['Flds']))
         if len(self.H5KeyDict) == 0:
             self.GenH5Dict()
         return is_okay
@@ -291,7 +355,7 @@ class MainApp(Tk.Tk):
     def DrawCanvas(self):
         # figsize (w,h tuple in inches) dpi (dots per inch)
         #f = Figure(figsize=(5,4), dpi=100)
-        self.f = Figure(figsize = (4,4), dpi = 100)
+        self.f = Figure(figsize = (2,2), dpi = 100)
         self.a = self.f.add_subplot(111)
         self.a.pcolor(np.random.rand(5,5))
         # a tk.DrawingArea
