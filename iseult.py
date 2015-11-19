@@ -8,7 +8,6 @@ import time,string
 import matplotlib
 import new_cmaps
 import numpy as np
-import  wx.lib.intctrl
 import matplotlib.colors as mcolors
 from matplotlib.gridspec import GridSpec
 
