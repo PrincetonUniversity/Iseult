@@ -177,19 +177,19 @@ class PlaybackBar(Tk.Frame):
         self.slider.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
 
         # a settings button that should lauch some global settings.
-        self.SettingsB= ttk.Button(self, text='Settings')
+        self.SettingsB= ttk.Button(self, text='Settings', command=self.OpenSettings)
         self.SettingsB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
 
         #attach the parameter to the Playbackbar
         self.param.attach(self)
 
-    def SkipLeft(self):
+    def SkipLeft(self, e = None):
         self.param.set(self.param.value - self.skipSize)
 
-    def SkipRight(self):
+    def SkipRight(self, e = None):
         self.param.set(self.param.value + self.skipSize)
 
-    def PlayHandler(self):
+    def PlayHandler(self, e = None):
         if not self.playPressed:
             # Set the value of play pressed to true, change the button name to
             # pause and start the play loop.
@@ -200,6 +200,11 @@ class PlaybackBar(Tk.Frame):
             # pause the play loop and set the button nameback to plau
             self.playPressed = False
             self.playB.config(text='Play')
+
+    def OpenSettings(self):
+        settingsw = Tk.Toplevel(master = self.parent)
+        settingsw.wm_title('Adjust Plot Settings')
+
 
     def blink(self):
         if self.playPressed:
@@ -291,6 +296,9 @@ class MainApp(Tk.Tk):
         self.minsize(self.winfo_width(), self.winfo_height())
         self.geometry("1200x700")
         self.bind('<Return>', self.TxtEnter)
+        self.bind('<Left>', self.playbackbar.SkipLeft)
+        self.bind('<Right>', self.playbackbar.SkipRight)
+        self.bind('<space>', self.playbackbar.PlayHandler)
 
     def quit(self, event):
         print("quitting...")
