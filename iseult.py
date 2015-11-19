@@ -202,8 +202,7 @@ class PlaybackBar(Tk.Frame):
             self.playB.config(text='Play')
 
     def OpenSettings(self):
-        settingsw = Tk.Toplevel(master = self.parent)
-        settingsw.wm_title('Adjust Plot Settings')
+        SettingsFrame(self.parent)
 
 
     def blink(self):
@@ -240,6 +239,77 @@ class PlaybackBar(Tk.Frame):
         self.v.set(str(value))
         #set the slider
         self.slider.set(value)
+
+class SettingsFrame(Tk.Toplevel):
+    def __init__(self, parent):
+
+        Tk.Toplevel.__init__(self)
+        self.parent = parent
+        #Create some sizers
+
+
+        # the listbox of colormaps
+        self.cmapList = ['magma', 'inferno', 'plasma', 'viridis']
+        self.cmapvar = Tk.StringVar(self)
+        self.cmapvar.set(self.parent.cmap) # default value
+        self.cmapvar.trace('w', self.CmapChanged)
+        cmapChooser = apply(ttk.OptionMenu, (self, self.cmapvar) + tuple(self.cmapList))
+        cmapChooser.pack(side=Tk.TOP, fill=Tk.BOTH, expand=0)
+
+#        self.lblcmap = wx.StaticText(self, label='Choose Color Map')
+#        grid.Add(self.lblcmap, pos=(2,0))
+
+        # A button
+        self.ReloadButton = ttk.Button(self, text='Reload Directory', command = self.OnReload)
+        self.ReloadButton.pack(side=Tk.TOP, fill=Tk.BOTH, expand=0)
+
+        # Make a button to change the skip size
+#        self.lblskip = wx.StaticText(self, label = 'Skip Size')
+#        grid.Add(self.lblskip, pos=(0,0))
+#        self.enterSkipSize = wx.lib.intctrl.IntCtrl(self, value = self.parent.timeSliderGroup.skipSize, size=( 50, -1 ) )
+#        grid.Add(self.enterSkipSize, pos=(0,1))
+#        self.Bind(wx.lib.intctrl.EVT_INT, self.EvtSkipSize, self.enterSkipSize)
+
+        # Make a button to change the time
+#        self.lblwait = wx.StaticText(self, label = 'Playback time delay')
+#        grid.Add(self.lblwait, pos=(1,0))
+#        self.enterWait =wx.TextCtrl(self, -1,
+#                                str(self.parent.timeSliderGroup.waitTime),
+#                                validator = MyValidator('DIGIT_ONLY'))
+#        grid.Add(self.enterWait, pos=(1,1))
+#        self.Bind(wx.EVT_TEXT, self.EvtWait, self.enterWait)
+
+#        self.Bind(wx.EVT_LISTBOX, self.EvtChooseCmap, self.choosecmap)
+#        self.Bind(wx.EVT_LISTBOX_DCLICK, self.EvtChooseCmap, self.choosecmap)
+
+#        grid.Add(self.button, (3,0), span= (1,2), flag=wx.CENTER)
+#        self.mainsizer.Add(grid,0, border=15)
+#        self.SetSizerAndFit(self.mainsizer)
+    # Define functions for the events
+
+    def CmapChanged(self, *args):
+    # Note here that Tkinter passes an event object to onselect()
+        self.parent.cmap = self.cmapvar.get()
+        print self.parent.cmap
+
+    def EvtSkipSize(self, evt):
+        self.parent.timeSliderGroup.skipSize = evt.GetValue()
+
+    def EvtWait(self, evt):
+        self.parent.timeSliderGroup.waitTime = float(evt.GetString())
+
+    def EvtChooseCmap(self, event):
+        self.parent.cmap = event.GetString()
+        self.parent.refreshAllGraphs()
+
+    def OnReload(self, event=None):
+        self.parent.findDir()
+
+    def OnCloseMe(self, event):
+        self.Close(True)
+
+    def OnCloseWindow(self, event):
+        self.Destroy()
 
 class MainApp(Tk.Tk):
     """ We simply derive a new class of Frame as the man frame of our app"""
