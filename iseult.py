@@ -244,6 +244,7 @@ class SettingsFrame(Tk.Toplevel):
     def __init__(self, parent):
 
         Tk.Toplevel.__init__(self)
+        self.wm_title('General Settings')
         self.parent = parent
         frm = ttk.Frame(self)
         frm.pack(fill=Tk.BOTH, expand=True)
@@ -256,7 +257,7 @@ class SettingsFrame(Tk.Toplevel):
         self.skipSize.set(self.parent.playbackbar.skipSize) # default value
         self.skipSize.trace('w', self.SkipSizeChanged)
         ttk.Label(frm, text="Skip Size:").grid(row=0)
-        self.skipEnter = ttk.Entry(frm, textvariable=self.skipSize)
+        self.skipEnter = ttk.Entry(frm, textvariable=self.skipSize, width = 6)
         self.skipEnter.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
 
         # Make an button to change the wait time
@@ -264,7 +265,7 @@ class SettingsFrame(Tk.Toplevel):
         self.waitTime.set(self.parent.playbackbar.waitTime) # default value
         self.waitTime.trace('w', self.WaitTimeChanged)
         ttk.Label(frm, text="Playback Wait Time:").grid(row=1)
-        self.waitEnter = ttk.Entry(frm, textvariable=self.waitTime)
+        self.waitEnter = ttk.Entry(frm, textvariable=self.waitTime, width = 6)
         self.waitEnter.grid(row =1, column = 1, sticky = Tk.W + Tk.E)
 
         # Have a list of the color maps
