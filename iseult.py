@@ -245,71 +245,72 @@ class SettingsFrame(Tk.Toplevel):
 
         Tk.Toplevel.__init__(self)
         self.parent = parent
+        frm = ttk.Frame(self)
+        frm.pack(fill=Tk.BOTH, expand=True)
+
         #Create some sizers
 
 
-        # the listbox of colormaps
+        # Make an entry to change the skip size
+        self.skipSize = Tk.StringVar(self)
+        self.skipSize.set(self.parent.playbackbar.skipSize) # default value
+        self.skipSize.trace('w', self.SkipSizeChanged)
+        ttk.Label(frm, text="Skip Size:").grid(row=0)
+        self.skipEnter = ttk.Entry(frm, textvariable=self.skipSize)
+        self.skipEnter.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
+
+        # Make an button to change the wait time
+        self.waitTime = Tk.StringVar(self)
+        self.waitTime.set(self.parent.playbackbar.waitTime) # default value
+        self.waitTime.trace('w', self.WaitTimeChanged)
+        ttk.Label(frm, text="Playback Wait Time:").grid(row=1)
+        self.waitEnter = ttk.Entry(frm, textvariable=self.waitTime)
+        self.waitEnter.grid(row =1, column = 1, sticky = Tk.W + Tk.E)
+
+        # Have a list of the color maps
         self.cmapList = ['magma', 'inferno', 'plasma', 'viridis']
         self.cmapvar = Tk.StringVar(self)
         self.cmapvar.set(self.parent.cmap) # default value
         self.cmapvar.trace('w', self.CmapChanged)
-        cmapChooser = apply(ttk.OptionMenu, (self, self.cmapvar) + tuple(self.cmapList))
-        cmapChooser.pack(side=Tk.TOP, fill=Tk.BOTH, expand=0)
 
-#        self.lblcmap = wx.StaticText(self, label='Choose Color Map')
-#        grid.Add(self.lblcmap, pos=(2,0))
+        ttk.Label(frm, text="Color map:").grid(row=2)
+        cmapChooser = apply(ttk.OptionMenu, (frm, self.cmapvar) + tuple(self.cmapList))
+        cmapChooser.grid(row =2, column = 1, sticky = Tk.W + Tk.E)
 
-        # A button
-        self.ReloadButton = ttk.Button(self, text='Reload Directory', command = self.OnReload)
-        self.ReloadButton.pack(side=Tk.TOP, fill=Tk.BOTH, expand=0)
+        # A button to refresh the directory
+        self.ReloadButton = ttk.Button(frm, text='Reload Directory', command = self.OnReload)
+        self.ReloadButton.grid(row = 3)
 
-        # Make a button to change the skip size
-#        self.lblskip = wx.StaticText(self, label = 'Skip Size')
-#        grid.Add(self.lblskip, pos=(0,0))
-#        self.enterSkipSize = wx.lib.intctrl.IntCtrl(self, value = self.parent.timeSliderGroup.skipSize, size=( 50, -1 ) )
-#        grid.Add(self.enterSkipSize, pos=(0,1))
-#        self.Bind(wx.lib.intctrl.EVT_INT, self.EvtSkipSize, self.enterSkipSize)
-
-        # Make a button to change the time
-#        self.lblwait = wx.StaticText(self, label = 'Playback time delay')
-#        grid.Add(self.lblwait, pos=(1,0))
-#        self.enterWait =wx.TextCtrl(self, -1,
-#                                str(self.parent.timeSliderGroup.waitTime),
-#                                validator = MyValidator('DIGIT_ONLY'))
-#        grid.Add(self.enterWait, pos=(1,1))
-#        self.Bind(wx.EVT_TEXT, self.EvtWait, self.enterWait)
-
-#        self.Bind(wx.EVT_LISTBOX, self.EvtChooseCmap, self.choosecmap)
-#        self.Bind(wx.EVT_LISTBOX_DCLICK, self.EvtChooseCmap, self.choosecmap)
-
-#        grid.Add(self.button, (3,0), span= (1,2), flag=wx.CENTER)
-#        self.mainsizer.Add(grid,0, border=15)
-#        self.SetSizerAndFit(self.mainsizer)
-    # Define functions for the events
 
     def CmapChanged(self, *args):
     # Note here that Tkinter passes an event object to onselect()
         self.parent.cmap = self.cmapvar.get()
-        print self.parent.cmap
 
-    def EvtSkipSize(self, evt):
-        self.parent.timeSliderGroup.skipSize = evt.GetValue()
 
-    def EvtWait(self, evt):
-        self.parent.timeSliderGroup.waitTime = float(evt.GetString())
+    def SkipSizeChanged(self, *args):
+    # Note here that Tkinter passes an event object to onselect()
+        try:
+            if self.skipSize.get() == '':
+                pass
+            else:
+                self.parent.playbackbar.skipSize = int(self.skipSize.get())
+        except ValueError:
+            self.skipSize.set(self.parent.playbackbar.skipSize)
 
-    def EvtChooseCmap(self, event):
-        self.parent.cmap = event.GetString()
-        self.parent.refreshAllGraphs()
+    def WaitTimeChanged(self, *args):
+    # Note here that Tkinter passes an event object to onselect()
+        try:
+            if self.waitTime.get() == '':
+                pass
+            else:
+                self.parent.playbackbar.waitTime = float(self.waitTime.get())
+        except ValueError:
+            self.waitTime.set(self.parent.playbackbar.waitTime)
+
 
     def OnReload(self, event=None):
         self.parent.findDir()
 
-    def OnCloseMe(self, event):
-        self.Close(True)
-
-    def OnCloseWindow(self, event):
-        self.Destroy()
 
 class MainApp(Tk.Tk):
     """ We simply derive a new class of Frame as the man frame of our app"""
