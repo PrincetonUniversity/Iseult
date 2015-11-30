@@ -48,7 +48,7 @@ class WorkerThread(Thread):
 
     def run(self):
         """Run Worker Thread."""
-        # This is the code executing the graph refreshing in a new thread.
+        # This is the code executing the  refreshing in a new thread.
         self.figwrap.graph.draw()
         wx.PostEvent(self.parent, ResultEvent())
 
@@ -64,6 +64,7 @@ class FigWrapper:
         self.PlotTypeDict = {'PhasePlot': PhasePanel, 'TestPlot': TestPanel}
         # A dictionary that will store where everything is in Hdf5 Files
         self.GenParamDict()
+        print graph
         self.graph = graph
 
 
