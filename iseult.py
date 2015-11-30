@@ -26,6 +26,16 @@ colors=[None]*10
 for i in range(len(colors)):
     colors[i]=np.random.rand(5,5)
 
+class Spinbox(ttk.Entry):
+
+    def __init__(self, master=None, **kw):
+        ttk.Entry.__init__(self, master, "ttk::spinbox", **kw)
+
+    def current(self, newindex=None):
+        return self.tk.call(self._w, 'current', index)
+
+    def set(self, value):
+        return self.tk.call(self._w, 'set', value)
 
 class SubPlotWrapper:
     """A simple class that will eventually hold all of the information
@@ -161,12 +171,12 @@ class PlaybackBar(Tk.Frame):
         ttk.Label(self, text='n= ').pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
 
         # A StringVar for a box to type in a frame num, linked to self.param
-        self.v = Tk.StringVar()
+        self.tstep = Tk.StringVar()
         # set it to the param value
-        self.v.set(str(self.param.value))
+        self.tstep.set(str(self.param.value))
 
         # the entry box
-        self.txtEnter = ttk.Entry(self, textvariable=self.v, width=6)
+        self.txtEnter = ttk.Entry(self, textvariable=self.tstep, width=6)
         self.txtEnter.pack(side=Tk.LEFT, fill = Tk.BOTH, expand = 0)
 
         # A slider that will show the progress in the simulation as well as
@@ -222,11 +232,11 @@ class PlaybackBar(Tk.Frame):
     def TextCallback(self):
         try:
             #make sure the user types in a int
-            if int(self.v.get()) != self.param.value:
-                self.param.set(int(self.v.get()))
+            if int(self.tstep.get()) != self.param.value:
+                self.param.set(int(self.tstep.get()))
         except ValueError:
             #if they type in random stuff, just set it ot the param value
-            self.v.set(str(self.param.value))
+            self.tstep.set(str(self.param.value))
 
     def ScaleHandler(self, e):
         # if changing the scale will change the value of the parameter, do so
@@ -235,7 +245,7 @@ class PlaybackBar(Tk.Frame):
 
     def setKnob(self, value):
         #set the text entry value
-        self.v.set(str(value))
+        self.tstep.set(str(value))
         #set the slider
         self.slider.set(value)
 
@@ -277,9 +287,27 @@ class SettingsFrame(Tk.Toplevel):
         cmapChooser = apply(ttk.OptionMenu, (frm, self.cmapvar) + tuple(self.cmapList))
         cmapChooser.grid(row =2, column = 1, sticky = Tk.W + Tk.E)
 
+        self.maxRows = 3
+        self.maxCols = 2
+        # Make an entry to change the number of columns
+        self.columnNum = Tk.StringVar(self)
+        self.columnNum.set(self.parent.numOfColumns) # default value
+        self.columnNum.trace('w', self.ColumnNumChanged)
+        ttk.Label(frm, text="# of columns:").grid(row=3)
+        self.ColumnSpin = Spinbox(frm,  from_=1, to=self.maxCols, textvariable=self.columnNum, width = 6)
+        self.ColumnSpin.grid(row =3, column = 1, sticky = Tk.W + Tk.E)
+
+        # Make an entry to change the number of columns
+        self.rowNum = Tk.StringVar(self)
+        self.rowNum.set(self.parent.numOfRows) # default value
+        self.rowNum.trace('w', self.RowNumChanged)
+        ttk.Label(frm, text="# of row:").grid(row=4)
+        self.RowSpin = Spinbox(frm, from_=1, to=self.maxRows, textvariable=self.rowNum, width = 6)
+        self.RowSpin.grid(row =4, column = 1, sticky = Tk.W + Tk.E)
+
         # A button to refresh the directory
         self.ReloadButton = ttk.Button(frm, text='Reload Directory', command = self.OnReload)
-        self.ReloadButton.grid(row = 3)
+        self.ReloadButton.grid(row = 5)
 
 
     def CmapChanged(self, *args):
@@ -297,6 +325,37 @@ class SettingsFrame(Tk.Toplevel):
         except ValueError:
             self.skipSize.set(self.parent.playbackbar.skipSize)
 
+    def RowNumChanged(self, *args):
+    # Note here that Tkinter passes an event object to onselect()
+        try:
+            if self.rowNum.get() == '':
+                pass
+            elif int(self.rowNum.get())<1:
+                self.rowNum.set(1)
+            elif int(self.rowNum.get())>self.maxRows:
+                self.rowNum.set(self.maxRows)
+            else:
+                self.parent.numOfRows = int(self.rowNum.get())
+        except ValueError:
+            self.rowNum.set(self.parent.numOfRows)
+        print self.parent.numOfRows
+
+    def ColumnNumChanged(self, *args):
+    # Note here that Tkinter passes an event object to onselect()
+        try:
+            if self.columnNum.get() == '':
+                pass
+            elif int(self.columnNum.get())<1:
+                self.columnNum.set(1)
+            elif int(self.columnNum.get())>self.maxCols:
+                self.columnNum.set(self.maxCols)
+
+            else:
+                self.parent.numOfColumns = int(self.columnNum.get())
+        except ValueError:
+            self.columnNum.set(self.parent.numOfColumns)
+        print self.parent.numOfColumns
+        
     def WaitTimeChanged(self, *args):
     # Note here that Tkinter passes an event object to onselect()
         try:
@@ -321,6 +380,8 @@ class MainApp(Tk.Tk):
         menubar = Tk.Menu(self)
         self.wm_title(name)
 
+        self.numOfRows = 3
+        self.numOfColumns = 2
 
 
 
