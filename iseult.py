@@ -9,7 +9,9 @@ import matplotlib
 import new_cmaps
 import numpy as np
 import matplotlib.colors as mcolors
-from matplotlib.gridspec import GridSpec
+import matplotlib.gridspec as gridspec
+from phase_plots import PhasePanel
+from test_plots import TestPanel
 
 matplotlib.use('TkAgg')
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -48,7 +50,8 @@ class SubPlotWrapper:
         self.PlotTypeDict = {'PhasePlot': PhasePanel, 'TestPlot': TestPanel}
         # A dictionary that will store where everything is in Hdf5 Files
         self.GenParamDict()
-        self.graph = graph
+        self.figure = figure
+#        self.graph = graph
 
 
     def LoadKey(self, h5key):
@@ -287,22 +290,20 @@ class SettingsFrame(Tk.Toplevel):
         cmapChooser = apply(ttk.OptionMenu, (frm, self.cmapvar) + tuple(self.cmapList))
         cmapChooser.grid(row =2, column = 1, sticky = Tk.W + Tk.E)
 
-        self.maxRows = 3
-        self.maxCols = 2
         # Make an entry to change the number of columns
         self.columnNum = Tk.StringVar(self)
-        self.columnNum.set(self.parent.numOfColumns) # default value
+        self.columnNum.set(self.parent.numOfColumns.get()) # default value
         self.columnNum.trace('w', self.ColumnNumChanged)
         ttk.Label(frm, text="# of columns:").grid(row=3)
-        self.ColumnSpin = Spinbox(frm,  from_=1, to=self.maxCols, textvariable=self.columnNum, width = 6)
+        self.ColumnSpin = Spinbox(frm,  from_=1, to=self.parent.maxCols, textvariable=self.columnNum, width = 6)
         self.ColumnSpin.grid(row =3, column = 1, sticky = Tk.W + Tk.E)
 
         # Make an entry to change the number of columns
         self.rowNum = Tk.StringVar(self)
-        self.rowNum.set(self.parent.numOfRows) # default value
+        self.rowNum.set(self.parent.numOfRows.get()) # default value
         self.rowNum.trace('w', self.RowNumChanged)
-        ttk.Label(frm, text="# of row:").grid(row=4)
-        self.RowSpin = Spinbox(frm, from_=1, to=self.maxRows, textvariable=self.rowNum, width = 6)
+        ttk.Label(frm, text="# of rows:").grid(row=4)
+        self.RowSpin = Spinbox(frm, from_=1, to=self.parent.maxRows, textvariable=self.rowNum, width = 6)
         self.RowSpin.grid(row =4, column = 1, sticky = Tk.W + Tk.E)
 
         # A button to refresh the directory
@@ -332,13 +333,12 @@ class SettingsFrame(Tk.Toplevel):
                 pass
             elif int(self.rowNum.get())<1:
                 self.rowNum.set(1)
-            elif int(self.rowNum.get())>self.maxRows:
-                self.rowNum.set(self.maxRows)
+            elif int(self.rowNum.get())>self.parent.maxRows:
+                self.rowNum.set(self.parent.maxRows)
             else:
-                self.parent.numOfRows = int(self.rowNum.get())
+                self.parent.numOfRows.set(int(self.rowNum.get()))
         except ValueError:
-            self.rowNum.set(self.parent.numOfRows)
-        print self.parent.numOfRows
+            self.rowNum.set(self.parent.numOfRows.get())
 
     def ColumnNumChanged(self, *args):
     # Note here that Tkinter passes an event object to onselect()
@@ -347,15 +347,14 @@ class SettingsFrame(Tk.Toplevel):
                 pass
             elif int(self.columnNum.get())<1:
                 self.columnNum.set(1)
-            elif int(self.columnNum.get())>self.maxCols:
-                self.columnNum.set(self.maxCols)
+            elif int(self.columnNum.get())>self.parent.maxCols:
+                self.columnNum.set(self.parent.maxCols)
 
             else:
-                self.parent.numOfColumns = int(self.columnNum.get())
+                self.parent.numOfColumns.set(int(self.columnNum.get()))
         except ValueError:
-            self.columnNum.set(self.parent.numOfColumns)
-        print self.parent.numOfColumns
-        
+            self.columnNum.set(self.parent.numOfColumns.get())
+
     def WaitTimeChanged(self, *args):
     # Note here that Tkinter passes an event object to onselect()
         try:
@@ -380,9 +379,17 @@ class MainApp(Tk.Tk):
         menubar = Tk.Menu(self)
         self.wm_title(name)
 
-        self.numOfRows = 3
-        self.numOfColumns = 2
+        # Set the number of rows and columns in the figure
+        # (As well as the max rows)
+        self.maxRows = 4
+        self.maxCols = 3
 
+        self.numOfRows = Tk.IntVar(self)
+        self.numOfRows.set(3)
+        self.numOfRows.trace('w', self.UpdateGridSpec)
+        self.numOfColumns = Tk.IntVar(self)
+        self.numOfColumns.set(2)
+        self.numOfColumns.trace('w', self.UpdateGridSpec)
 
 
         fileMenu = Tk.Menu(menubar, tearoff=False)
@@ -409,14 +416,14 @@ class MainApp(Tk.Tk):
 
         self.cmap = 'inferno'
 
-        # Make the object hold the time info
+        # Make the object hold the timestep info
+        self.TimeStep = Param(1, minimum=1, maximum=1000)
 
         # Look for the tristan output files and load the file paths into
         # previous objects
-        self.TimeStep = Param(1, minimum=1, maximum=1000)
-
         self.dirname = os.curdir
         self.findDir()
+
 
         self.TimeStep.attach(self)
         self.DrawCanvas()
@@ -491,11 +498,26 @@ class MainApp(Tk.Tk):
 #                self.wait_window(p.top)
                 self.FindDir()
 
+
     def DrawCanvas(self):
+        '''Initializes the figure, and then packs it into the main window.
+        Should only be called once.'''
+
         # figsize (w,h tuple in inches) dpi (dots per inch)
         #f = Figure(figsize=(5,4), dpi=100)
         self.f = Figure(figsize = (2,2), dpi = 100)
-        self.a = self.f.add_subplot(111)
+
+        # Generate all of the subplot wrappers. They are stored in a 2D list
+        # where the index [i][j] corresponds to the ith row, jth column
+        self.SubPlotList = []
+        for i in range(self.maxRows):
+            tmpList = [SubPlotWrapper(self, figure = self.f) for j in range(self.maxCols)]
+            self.SubPlotList.append(tmpList)
+
+        # divy up the figure into a bunch of subplots using GridSpec.
+        self.gs0 = gridspec.GridSpec(self.numOfRows.get(),self.numOfColumns.get())
+
+        self.a = self.f.add_subplot(self.gs0[0,0])
         self.a.pcolor(np.random.rand(5,5))
         # a tk.DrawingArea
         self.canvas = FigureCanvasTkAgg(self.f, master=self)
@@ -508,6 +530,21 @@ class MainApp(Tk.Tk):
         #self.label.grid()
         # initialize (time index t)
 
+    def UpdateGridSpec(self, *args):
+        '''A function that handles updates the gridspec that divides up of the
+        plot into X x Y subplots'''
+        self.gs0 = gridspec.GridSpec(self.numOfRows.get(),self.numOfColumns.get())
+        self.RefreshCanvas()
+
+    def RefreshCanvas(self):
+        self.f.clf()
+        self.a = self.f.add_subplot(self.gs0[0,0])
+        self.a.pcolor(colors[self.TimeStep.value-1])
+
+        self.canvas.show()
+        self.canvas.get_tk_widget().update_idletasks()
+
+        self.canvas.show()
     def setKnob(self, value):
         self.a.pcolor(colors[self.TimeStep.value-1])
         self.canvas.show()
