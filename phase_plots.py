@@ -1,43 +1,22 @@
 #!/usr/bin/env pythonw
-import wx # allows us to make the GUI
+import Tkinter as Tk
+import ttk as ttk
 import matplotlib
-from validator import MyValidator
 import numpy as np
 import new_cmaps
 import matplotlib.colors as mcolors
-from matplotlib.gridspec import GridSpec
-matplotlib.use('WXAgg')
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_wxagg import \
-    FigureCanvasWxAgg as FigCanvas, \
-    NavigationToolbar2WxAgg as NavigationToolbar
+import matplotlib.gridspec as gridspec
 
-class PhasePanel(wx.Window):
-    # Put the list of all of the parameters for this plot
-    plot_param_list = ['mom_dim', 'norm_type', 'prtl_type', 'pow_num', 'show_cbar', 'weighted']
-    def __init__(self, parent, figwrapper, overwrite = True):
-        wx.Window.__init__(self, parent)
+class PhasePanel:
+    # A diction of all of the parameters for this plot with the default parameters
+    plot_param_dict = {'mom_dim': 0, 'norm_type': 'PowerNorm', 'prtl_type': 0, 'pow_num': 0.4, 'show_cbar': True, 'weighted': False}
+    def __init__(self, parent, figwrapper):
         self.FigWrap = figwrapper
+        self.parent = parent
         self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
         self.chartType = self.FigWrap.chartType
-
-        if overwrite:
-            self.SetPlotParam('mom_dim', 0)
-            self.SetPlotParam('prtl_type', 0)
-            self.SetPlotParam('norm_type', "PowerNorm")
-            self.SetPlotParam('pow_num', 0.4)
-            self.SetPlotParam('show_cbar', True)
-            self.SetPlotParam('weighted', False)
-
-        self.figure = Figure(figsize=(3, 1), dpi=100)
-        self.canvas = FigCanvas(self, -1, self.figure)
-        self.Bind(wx.EVT_SIZE, self.sizeHandler)
-
-
-        self.draw()
-        self.Bind(wx.EVT_ENTER_WINDOW, self.onEnter)
-        self.Bind(wx.EVT_LEAVE_WINDOW, self.onLeave)
-        self.Bind(wx.EVT_LEFT_UP, self.openGraphPrefs)
+        self.subplotlist = []
+        self.figure = self.FigWrap.figure
 
 
     def sizeHandler(self, *args, **kwargs):
@@ -53,7 +32,7 @@ class PhasePanel(wx.Window):
         self.FigWrap.ChangeGraph(str_arg)
 
 
-    def draw(self, kwargs=''):
+    def draw(self):
         # Choose the normalization
         if self.GetPlotParam('norm_type') =="Linear":
             self.norm = mcolors.Normalize()
@@ -84,20 +63,19 @@ class PhasePanel(wx.Window):
             if self.GetPlotParam('mom_dim') == 2:
                 self.y_values = self.FigWrap.LoadKey('we')
 
-        self.figure.clf()
-        gs = GridSpec(100,100,bottom=0.2,left=0.1,right=0.95, top = 0.95)
+        self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])#, bottom=0.2,left=0.1,right=0.95, top = 0.95)
 
         if self.GetPlotParam('show_cbar'):
-            self.axes = self.figure.add_subplot(gs[20:,:])
-            self.axC = self.figure.add_subplot(gs[:5,:])
-            self.cax = self.axes.hist2d(self.x_values,self.y_values, bins = [200,200],cmap = new_cmaps.cmaps[self.Parent.cmap], norm = self.norm)
+            self.axes = self.figure.add_subplot(self.gs[20:,:])
+            self.axC = self.figure.add_subplot(self.gs[:5,:])
+            self.cax = self.axes.hist2d(self.x_values,self.y_values, bins = [200,200],cmap = new_cmaps.cmaps[self.parent.cmap], norm = self.norm)
             self.figure.colorbar(self.cax[3], ax = self.axes, cax = self.axC, orientation = 'horizontal')
             self.axes.set_xlabel(r'$x/\omega_{\rm pe}$')
         else:
-            self.axes = self.figure.add_subplot(gs[5:,:])
+            self.axes = self.figure.add_subplot(self.gs[5:,:])
             self.cax = self.axes.hist2d(self.x_values,self.y_values, bins = [200,200],cmap = new_cmaps.cmaps[self.Parent.cmap], norm = self.norm)
             self.axes.set_xlabel(r'$x/\omega_{\rm pe}$')
-        self.canvas.draw()
+
 
     def GetPlotParam(self, keyname):
         return self.FigWrap.GetPlotParam(keyname)
@@ -105,24 +83,11 @@ class PhasePanel(wx.Window):
     def SetPlotParam(self, keyname, value):
         self.FigWrap.SetPlotParam(keyname, value)
 
-    def onEnter(self, evt):
-        if not self.HasCapture():
-            self.CaptureMouse()
-    def onLeave(self, evt):
-        if self.HasCapture():
-            self.ReleaseMouse()
-    def openGraphPrefs(self, evt):
-        win = PhaseSettings(self, -1, "Chart Settings",
-                          style = wx.DEFAULT_FRAME_STYLE)
-        win.Show(True)
 
-class PhaseSettings(wx.Frame):
-    def __init__(
-            self, parent, ID, title, pos=wx.DefaultPosition,
-            size=wx.DefaultSize, style=wx.DEFAULT_FRAME_STYLE
-            ):
+class PhaseSettings(Tk.Toplevel):
+    def __init__(self, parent):
 
-        wx.Frame.__init__(self, parent, ID, title, pos, size, style)
+        Tk.Toplevel.__init__(self)
         panel = wx.Panel(self, -1)
         self.parent = parent
 

@@ -3,19 +3,18 @@
 import re # regular expressions
 import os, sys # Used to make the code portable
 import h5py # Allows us the read the data files
-from threading import Thread
 import time,string
 import matplotlib
 import new_cmaps
 import numpy as np
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
-from phase_plots import PhasePanel
-from test_plots import TestPanel
 
 matplotlib.use('TkAgg')
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
+from phase_plots import PhasePanel
+from test_plots import TestPanel
 
 import Tkinter as Tk
 import ttk as ttk
@@ -23,10 +22,6 @@ import tkFileDialog
 
 def destroy(e):
     sys.exit()
-
-colors=[None]*10
-for i in range(len(colors)):
-    colors[i]=np.random.rand(5,5)
 
 class Spinbox(ttk.Entry):
 
@@ -43,20 +38,22 @@ class SubPlotWrapper:
     """A simple class that will eventually hold all of the information
     about each sub_plot in the Figure"""
 
-    def __init__(self, parent, figure=None, sub_plot_spec = None, ctype=None):
+    def __init__(self, parent, figure=None, pos = None, subplot_spec = None, ctype=None, graph = None):
         self.parent = parent
-        self.chartType = ctype
+        self.chartType = 'PhasePlot'
         # A dictionary that contains all of the plot types.
-        self.PlotTypeDict = {'PhasePlot': PhasePanel, 'TestPlot': TestPanel}
+        self.PlotTypeDict = {'PhasePlot': PhasePanel}
         # A dictionary that will store where everything is in Hdf5 Files
         self.GenParamDict()
         self.figure = figure
-#        self.graph = graph
+        self.subplot_spec = subplot_spec
+        self.pos = pos
+        self.graph = graph
 
 
     def LoadKey(self, h5key):
         pkey = self.parent.H5KeyDict[h5key]
-        with h5py.File(os.path.join(self.parent.dirname,self.parent.PathDict[pkey][self.parent.timeStep.value-1]), 'r') as f:
+        with h5py.File(os.path.join(self.parent.dirname,self.parent.PathDict[pkey][self.parent.TimeStep.value-1]), 'r') as f:
             return f[h5key][:]
 
     def ChangeGraph(self, str_arg):
@@ -67,23 +64,25 @@ class SubPlotWrapper:
         # Generate a dictionary that will store all of the params at dict['ctype']['param_name']
         self.PlotParamsDict = {elm: '' for elm in self.PlotTypeDict.keys() }
         for elm in self.PlotTypeDict.keys():
-            self.PlotParamsDict[elm] = {x : '' for x in self.PlotTypeDict[elm].plot_param_list}
+            self.PlotParamsDict[elm] = {key: self.PlotTypeDict[elm].plot_param_dict[key] for key in self.PlotTypeDict[elm].plot_param_dict.keys()}
 
     def SetPlotParam(self, pname, val, ctype = None):
         if ctype is None:
             ctype = self.chartType
         self.PlotParamsDict[ctype][pname] = val
 
+
     def GetPlotParam(self, pname, ctype = None):
         if ctype is None:
             ctype = self.chartType
-
         return self.PlotParamsDict[ctype][pname]
 
-    def SetGraph(self, parent, FigWrap, ctype = None, overwrite = True):
+    def SetGraph(self, ctype = None):
         if ctype:
             self.chartType = ctype
-        self.graph = self.PlotTypeDict[self.chartType](parent, self, overwrite)
+        if self.graph is None:
+            self.graph = self.PlotTypeDict[self.chartType](self.parent, self)
+        self.graph.draw()
 
 class Knob:
     """
@@ -281,7 +280,7 @@ class SettingsFrame(Tk.Toplevel):
         self.waitEnter.grid(row =1, column = 1, sticky = Tk.W + Tk.E)
 
         # Have a list of the color maps
-        self.cmapList = ['magma', 'inferno', 'plasma', 'viridis']
+        self.cmapList = [ 'inferno', 'magma', 'plasma', 'viridis']
         self.cmapvar = Tk.StringVar(self)
         self.cmapvar.set(self.parent.cmap) # default value
         self.cmapvar.trace('w', self.CmapChanged)
@@ -306,14 +305,64 @@ class SettingsFrame(Tk.Toplevel):
         self.RowSpin = Spinbox(frm, from_=1, to=self.parent.maxRows, textvariable=self.rowNum, width = 6)
         self.RowSpin.grid(row =4, column = 1, sticky = Tk.W + Tk.E)
 
+        # Some entries to change plot params
+        self.left = Tk.StringVar(self)
+        self.right = Tk.StringVar(self)
+        self.top = Tk.StringVar(self)
+        self.bottom = Tk.StringVar(self)
+        self.hspace = Tk.StringVar(self)
+        self.wspace = Tk.StringVar(self)
+        self.gsVars = [self.left, self.right, self.top, self.bottom, self.hspace, self.wspace]
+        i = 0
+        self.gsNames =['left', 'right', 'top', 'bottom', 'hspace', 'wspace']
+        for key in self.gsNames:
+            self.gsVars[i].set(self.parent.gsArgs[key]) # default value
+
+
+            ttk.Label(frm, text=key).grid(row=i, column =3)
+            ttk.Entry(frm, textvariable=self.gsVars[i], width = 6).grid(row =i, column = 4, sticky = Tk.W + Tk.E)
+            i += 1
+        self.gsVars[0].trace('w', self.LChanged)
+        self.gsVars[1].trace('w', self.RChanged)
+        self.gsVars[2].trace('w', self.TChanged)
+        self.gsVars[3].trace('w', self.BChanged)
+        self.gsVars[4].trace('w', self.HChanged)
+        self.gsVars[5].trace('w', self.WChanged)
         # A button to refresh the directory
         self.ReloadButton = ttk.Button(frm, text='Reload Directory', command = self.OnReload)
         self.ReloadButton.grid(row = 5)
+
+    def GsChanged(self, ind):
+        try:
+            if self.gsVars[ind].get() == '':
+                pass
+            else:
+                self.parent.gsArgs[self.gsNames[ind]] = float(self.gsVars[ind].get())
+            self.parent.UpdateGridSpec()
+        except ValueError:
+            self.gsVars.set(self.parent.gsArgs[self.gsNames[ind]])
+
+    def LChanged(self, *args):
+        self.GsChanged(0)
+
+    def RChanged(self, *args):
+        self.GsChanged(1)
+
+    def TChanged(self, *args):
+        self.GsChanged(2)
+
+    def BChanged(self, *args):
+        self.GsChanged(3)
+    def HChanged(self, *args):
+        self.GsChanged(4)
+    def WChanged(self, *args):
+        self.GsChanged(5)
 
 
     def CmapChanged(self, *args):
     # Note here that Tkinter passes an event object to onselect()
         self.parent.cmap = self.cmapvar.get()
+        self.parent.RefreshCanvas()
 
 
     def SkipSizeChanged(self, *args):
@@ -390,7 +439,7 @@ class MainApp(Tk.Tk):
         self.numOfColumns = Tk.IntVar(self)
         self.numOfColumns.set(2)
         self.numOfColumns.trace('w', self.UpdateGridSpec)
-
+        self.gsArgs = {'left':0.05, 'right':0.95, 'top':.95, 'bottom':0.05, 'wspace':0.1, 'hspace':0.1}
 
         fileMenu = Tk.Menu(menubar, tearoff=False)
         menubar.add_cascade(label="File", underline=0, menu=fileMenu)
@@ -509,22 +558,38 @@ class MainApp(Tk.Tk):
 
         # Generate all of the subplot wrappers. They are stored in a 2D list
         # where the index [i][j] corresponds to the ith row, jth column
-        self.SubPlotList = []
-        for i in range(self.maxRows):
-            tmpList = [SubPlotWrapper(self, figure = self.f) for j in range(self.maxCols)]
-            self.SubPlotList.append(tmpList)
 
         # divy up the figure into a bunch of subplots using GridSpec.
         self.gs0 = gridspec.GridSpec(self.numOfRows.get(),self.numOfColumns.get())
+        self.gs0.update(**self.gsArgs)
 
-        self.a = self.f.add_subplot(self.gs0[0,0])
-        self.a.pcolor(np.random.rand(5,5))
+        # Create the list of all of subplot wrappers
+        self.SubPlotList = []
+        for i in range(self.maxRows):
+            tmplist = [SubPlotWrapper(self, figure = self.f, pos=(i,j)) for j in range(self.maxCols)]
+            self.SubPlotList.append(tmplist)
+        for i in range(self.numOfRows.get()):
+            for j in range(self.numOfColumns.get()):
+                self.SubPlotList[i][j].SetGraph('PhasePlot')
+
+        self.SubPlotList[0][1].PlotParamsDict['PhasePlot']['prtl_type'] = 1
+
+#        self.SubPlotList[0][0].SetPlotParam('prtl_type',0)
+
+
+#        self.a = self.f.add_subplot(self.gs0[0,0])
+#        self.a.pcolor(np.random.rand(5,5))
         # a tk.DrawingArea
         self.canvas = FigureCanvasTkAgg(self.f, master=self)
-#        self.canvas._tkcanvas.pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
+
 
         self.canvas.show()
         self.canvas.get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
+        self.RefreshCanvas()
+
+        toolbar = NavigationToolbar2TkAgg(self.canvas, self)
+        toolbar.update()
+        self.canvas._tkcanvas.pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
 
         #self.label = Label(self.top, text = 'Text',bg='orange')
         #self.label.grid()
@@ -534,22 +599,21 @@ class MainApp(Tk.Tk):
         '''A function that handles updates the gridspec that divides up of the
         plot into X x Y subplots'''
         self.gs0 = gridspec.GridSpec(self.numOfRows.get(),self.numOfColumns.get())
+        self.gs0.update(**self.gsArgs)
+
         self.RefreshCanvas()
 
     def RefreshCanvas(self):
         self.f.clf()
-        self.a = self.f.add_subplot(self.gs0[0,0])
-        self.a.pcolor(colors[self.TimeStep.value-1])
+        for i in range(self.numOfRows.get()):
+            for j in range(self.numOfColumns.get()):
+                self.SubPlotList[i][j].SetGraph()
 
         self.canvas.show()
         self.canvas.get_tk_widget().update_idletasks()
 
-        self.canvas.show()
     def setKnob(self, value):
-        self.a.pcolor(colors[self.TimeStep.value-1])
-        self.canvas.show()
-        self.canvas.get_tk_widget().update_idletasks()
-
+        self.RefreshCanvas()
     # We need to do it this way so that pressing enter with focus anywhere on the app will cause the
     def TxtEnter(self, e):
         self.playbackbar.TextCallback()
