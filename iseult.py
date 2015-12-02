@@ -84,6 +84,8 @@ class SubPlotWrapper:
             self.graph = self.PlotTypeDict[self.chartType](self.parent, self)
         self.graph.draw()
 
+    def OpenSubplotSettings(self):
+
 class Knob:
     """
     Knob - simple class with a "setKnob" method.
@@ -259,9 +261,6 @@ class SettingsFrame(Tk.Toplevel):
         self.parent = parent
         frm = ttk.Frame(self)
         frm.pack(fill=Tk.BOTH, expand=True)
-
-        #Create some sizers
-
 
         # Make an entry to change the skip size
         self.skipSize = Tk.StringVar(self)
@@ -587,8 +586,11 @@ class MainApp(Tk.Tk):
         self.canvas.get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
         self.RefreshCanvas()
 
-        toolbar = NavigationToolbar2TkAgg(self.canvas, self)
-        toolbar.update()
+
+        self.f.canvas.mpl_connect('button_press_event', self.onclick)
+
+#        toolbar = NavigationToolbar2TkAgg(self.canvas, self)
+#        toolbar.update()
         self.canvas._tkcanvas.pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
 
         #self.label = Label(self.top, text = 'Text',bg='orange')
@@ -611,6 +613,35 @@ class MainApp(Tk.Tk):
 
         self.canvas.show()
         self.canvas.get_tk_widget().update_idletasks()
+    def onclick(self, event):
+        '''After being clicked, we should use the x and y of the cursor to
+        determine what subplot was clicked'''
+
+        # Since the location of the cursor is returned in pixels and gs0 is
+        # given as a relative value, we must first convert the value into a
+        # relative x and y
+        if not event.inaxes:
+             pass
+        else:
+            fig_size = self.f.get_size_inches()*self.f.dpi # Fig size in px
+
+            x_loc = event.x/fig_size[0] # The relative x position of the mouse in the figure
+            y_loc = event.y/fig_size[1] # The relative y position of the mouse in the figure
+
+            sub_plots = self.gs0.get_grid_positions(self.f)
+            row_array = np.sort(np.append(sub_plots[0], sub_plots[1]))
+            col_array = np.sort(np.append(sub_plots[2], sub_plots[3]))
+            i = (len(row_array)-row_array.searchsorted(y_loc))/2
+            j = col_array.searchsorted(x_loc)/2
+
+            self.SubPlotList[i][j].OpenSubplotSettings()
+#        else
+        # find the row value
+#        print 'button=%d, x=%f, y=%f' %(
+#        event.button, event.x/fig_size[0], event.y/fig_size[1])
+#        print self.gs0.get_grid_positions(self.f)
+
+
 
     def setKnob(self, value):
         self.RefreshCanvas()

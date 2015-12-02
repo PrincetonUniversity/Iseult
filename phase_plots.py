@@ -31,15 +31,16 @@ class PhasePanel:
     def ChangePlotType(self, str_arg):
         self.FigWrap.ChangeGraph(str_arg)
 
+    def norm(self, vmin=None,vmax=None):
+        if self.GetPlotParam('norm_type') =="Linear":
+            return mcolors.Normalize(vmin, vmax)
+        elif self.GetPlotParam('norm_type') == "LogNorm":
+            return  mcolors.LogNorm(vmin, vmax)
+        else:
+            return  mcolors.PowerNorm(self.FigWrap.GetPlotParam('pow_num'), vmin, vmax)
 
     def draw(self):
         # Choose the normalization
-        if self.GetPlotParam('norm_type') =="Linear":
-            self.norm = mcolors.Normalize()
-        elif self.GetPlotParam('norm_type') == "LogNorm":
-            self.norm = mcolors.LogNorm()
-        else:
-            self.norm = mcolors.PowerNorm(self.FigWrap.GetPlotParam('pow_num'))
 
         # Generate the X-axis values
         self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
@@ -68,12 +69,12 @@ class PhasePanel:
         if self.GetPlotParam('show_cbar'):
             self.axes = self.figure.add_subplot(self.gs[20:,:])
             self.axC = self.figure.add_subplot(self.gs[:5,:])
-            self.cax = self.axes.hist2d(self.x_values,self.y_values, bins = [200,200],cmap = new_cmaps.cmaps[self.parent.cmap], norm = self.norm)
+            self.cax = self.axes.hist2d(self.x_values,self.y_values, bins = [200,200],cmap = new_cmaps.cmaps[self.parent.cmap], norm = self.norm(1))#, cmin = 4)
             self.figure.colorbar(self.cax[3], ax = self.axes, cax = self.axC, orientation = 'horizontal')
             self.axes.set_xlabel(r'$x/\omega_{\rm pe}$')
         else:
             self.axes = self.figure.add_subplot(self.gs[5:,:])
-            self.cax = self.axes.hist2d(self.x_values,self.y_values, bins = [200,200],cmap = new_cmaps.cmaps[self.Parent.cmap], norm = self.norm)
+            self.cax = self.axes.hist2d(self.x_values,self.y_values, bins = [200,200],cmap = new_cmaps.cmaps[self.Parent.cmap], norm = self.norm(1))
             self.axes.set_xlabel(r'$x/\omega_{\rm pe}$')
 
 
@@ -88,8 +89,10 @@ class PhaseSettings(Tk.Toplevel):
     def __init__(self, parent):
 
         Tk.Toplevel.__init__(self)
-        panel = wx.Panel(self, -1)
+        self.wm_title('PhasePanel %d, %d, Settings' % self.FigWrap.pos)
         self.parent = parent
+        frm = ttk.Frame(self)
+        frm.pack(fill=Tk.BOTH, expand=True)
 
         #Create some sizers
         self.mainsizer = wx.BoxSizer(wx.VERTICAL)
