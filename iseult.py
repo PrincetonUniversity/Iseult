@@ -70,6 +70,7 @@ class SubPlotWrapper:
         if ctype is None:
             ctype = self.chartType
         self.PlotParamsDict[ctype][pname] = val
+        self.parent.RefreshCanvas()
 
 
     def GetPlotParam(self, pname, ctype = None):
@@ -85,7 +86,7 @@ class SubPlotWrapper:
         self.graph.draw()
 
     def OpenSubplotSettings(self):
-
+        self.graph.OpenSettings()
 class Knob:
     """
     Knob - simple class with a "setKnob" method.
@@ -279,13 +280,13 @@ class SettingsFrame(Tk.Toplevel):
         self.waitEnter.grid(row =1, column = 1, sticky = Tk.W + Tk.E)
 
         # Have a list of the color maps
-        self.cmapList = [ 'inferno', 'magma', 'plasma', 'viridis']
+        self.cmapList = [ 'magma', 'inferno', 'plasma', 'viridis']
         self.cmapvar = Tk.StringVar(self)
         self.cmapvar.set(self.parent.cmap) # default value
         self.cmapvar.trace('w', self.CmapChanged)
 
         ttk.Label(frm, text="Color map:").grid(row=2)
-        cmapChooser = apply(ttk.OptionMenu, (frm, self.cmapvar) + tuple(self.cmapList))
+        cmapChooser = apply(ttk.OptionMenu, (frm, self.cmapvar, self.parent.cmap) + tuple(self.cmapList))
         cmapChooser.grid(row =2, column = 1, sticky = Tk.W + Tk.E)
 
         # Make an entry to change the number of columns

@@ -44,10 +44,12 @@ class PhasePanel:
 
         # Generate the X-axis values
         self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
-
+        self.weights = None
         # Choose the particle type and px, py, or pz
         if self.GetPlotParam('prtl_type') == 0:
             self.x_values = self.FigWrap.LoadKey('xi')/self.c_omp
+            if self.GetPlotParam('weighted'):
+                self.weights = self.FigWrap.LoadKey('chi')
             if self.GetPlotParam('mom_dim') == 0:
                 self.y_values = self.FigWrap.LoadKey('ui')
             if self.GetPlotParam('mom_dim') == 1:
@@ -57,6 +59,9 @@ class PhasePanel:
 
         if self.GetPlotParam('prtl_type') == 1:
             self.x_values = self.FigWrap.LoadKey('xe')/self.c_omp
+            if self.GetPlotParam('weighted'):
+                self.weights = self.FigWrap.LoadKey('che')
+
             if self.GetPlotParam('mom_dim') == 0:
                 self.y_values = self.FigWrap.LoadKey('ue')
             if self.GetPlotParam('mom_dim') == 1:
@@ -64,13 +69,28 @@ class PhasePanel:
             if self.GetPlotParam('mom_dim') == 2:
                 self.y_values = self.FigWrap.LoadKey('we')
 
+        self.hist2d = np.histogram2d(self.y_values, self.x_values, bins = [200,200], weights = self.weights)
+        self.zval = (np.max(self.hist2d[0]))**(-1)*self.hist2d[0]
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])#, bottom=0.2,left=0.1,right=0.95, top = 0.95)
 
         if self.GetPlotParam('show_cbar'):
             self.axes = self.figure.add_subplot(self.gs[20:,:])
             self.axC = self.figure.add_subplot(self.gs[:5,:])
-            self.cax = self.axes.hist2d(self.x_values,self.y_values, bins = [200,200],cmap = new_cmaps.cmaps[self.parent.cmap], norm = self.norm(1))#, cmin = 4)
-            self.figure.colorbar(self.cax[3], ax = self.axes, cax = self.axC, orientation = 'horizontal')
+#            self.cax = self.axes.hist2d(self.x_values,self.y_values, bins = [200,200],cmap = new_cmaps.cmaps[self.parent.cmap], norm = self.norm(1))#, cmin = 4)
+            self.cax = self.axes.pcolormesh(self.hist2d[2], self.hist2d[1], self.zval, cmap = new_cmaps.cmaps[self.parent.cmap], norm = self.norm(1E-3))
+            self.axes.set_xlim(self.hist2d[2].min(), self.hist2d[2].max())
+            self.axes.set_ylim(self.hist2d[1].min(), self.hist2d[1].max())
+            self.cbar = self.figure.colorbar(self.cax, ax = self.axes, cax = self.axC, orientation = 'horizontal')
+            if self.GetPlotParam('norm_type')== 'PowerNorm':
+                self.cbar.set_ticks(np.linspace(self.zval.min(),self.zval.max(), 5)**(1./self.FigWrap.GetPlotParam('pow_num')))
+
+            if self.GetPlotParam('norm_type') == 'LogNorm':
+
+                self.cbar.set_ticks(np.logspace(-3, 0, 5))
+                self.cbar.set_ticklabels(np.logspace(-3, 0, 5))
+            if self.GetPlotParam('norm_type')== 'Linear':
+                self.cbar.set_ticks(np.linspace(self.zval.min(),self.zval.max(), 5))
+
             self.axes.set_xlabel(r'$x/\omega_{\rm pe}$')
         else:
             self.axes = self.figure.add_subplot(self.gs[5:,:])
@@ -84,84 +104,75 @@ class PhasePanel:
     def SetPlotParam(self, keyname, value):
         self.FigWrap.SetPlotParam(keyname, value)
 
+    def OpenSettings(self):
+        PhaseSettings(self)
+
 
 class PhaseSettings(Tk.Toplevel):
     def __init__(self, parent):
-
+        self.parent = parent
         Tk.Toplevel.__init__(self)
-        self.wm_title('PhasePanel %d, %d, Settings' % self.FigWrap.pos)
+
+        self.wm_title('Phase Plot (%d,%d) Settings' % self.parent.FigWrap.pos)
         self.parent = parent
         frm = ttk.Frame(self)
         frm.pack(fill=Tk.BOTH, expand=True)
 
         #Create some sizers
-        self.mainsizer = wx.BoxSizer(wx.VERTICAL)
-        grid =  wx.GridBagSizer(hgap = 10, vgap = 10)
 
-        # Create the ComboBox that Chooses the Chart Type:
-        # the combobox Control
-        self.lblcmap = wx.StaticText(self, label='Choose Chart Type')
-        grid.Add(self.lblcmap, pos=(0,0))
-        self.chooseChartType = wx.ListBox(self, size = (95,-1), choices = self.parent.ChartTypes, style = wx.LB_SINGLE)
-        self.chooseChartType.SetStringSelection(self.parent.chartType)
-        grid.Add(self.chooseChartType, pos=(0,1))
+        # Create the OptionMenu to chooses the Chart Type:
+        self.ctypevar = Tk.StringVar(self)
+        self.ctypevar.set(self.parent.chartType) # default value
+        self.ctypevar.trace('w', self.ctypeChanged)
 
-        self.Bind(wx.EVT_LISTBOX, self.EvtChooseChartType, self.chooseChartType)
-        self.Bind(wx.EVT_LISTBOX_DCLICK, self.EvtChooseChartType, self.chooseChartType)
+        ttk.Label(frm, text="Choose Chart Type:").grid(row=0, column = 0)
+        cmapChooser = apply(ttk.OptionMenu, (frm, self.ctypevar, self.parent.chartType) + tuple(self.parent.ChartTypes))
+        cmapChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
 
 
-        # the Radiobox Control
+        # the Radiobox Control to choose the particle
         self.prtlList = ['ion', 'electron']
-        self.rbPrtl = wx.RadioBox(
-                self, -1,'Particle', wx.DefaultPosition, wx.DefaultSize,
-                self.prtlList,  1, wx.RA_SPECIFY_COLS
-                )
-        self.rbPrtl.SetSelection(self.parent.GetPlotParam('prtl_type'))
-        self.Bind(wx.EVT_RADIOBOX, self.EvtRadioPrtl, self.rbPrtl)
+        self.pvar = Tk.IntVar()
+        self.pvar.set(self.parent.GetPlotParam('prtl_type'))
 
-        grid.Add(self.rbPrtl, pos = (1,0))
+        ttk.Label(frm, text='Particle:').grid(row = 1, sticky = Tk.W)
+
+        for i in range(len(self.prtlList)):
+            ttk.Radiobutton(frm,
+                text=self.prtlList[i],
+                variable=self.pvar,
+                command = self.RadioPrtl,
+                value=i).grid(row = 2+i, sticky =Tk.W)
+
+        # the Radiobox Control to choose the momentum dim
         self.dimList = ['x-px', 'x-py', 'x-pz']
-        self.rbDim = wx.RadioBox(
-                self, -1,'Dimension', wx.DefaultPosition, wx.DefaultSize,
-                self.dimList,  1, wx.RA_SPECIFY_COLS
-                )
-        self.rbDim.SetSelection(self.parent.GetPlotParam('mom_dim'))
-        grid.Add(self.rbDim, pos = (1,1))
+        self.dimvar = Tk.IntVar()
+        self.dimvar.set(self.parent.GetPlotParam('mom_dim'))
 
-        self.Bind(wx.EVT_RADIOBOX, self.EvtRadioDim, self.rbDim)
+        ttk.Label(frm, text='Dimenison:').grid(row = 1, column = 1, sticky = Tk.W)
 
-        grid1 = wx.GridBagSizer()
+        for i in range(len(self.dimList)):
+            ttk.Radiobutton(frm,
+                text=self.dimList[i],
+                variable=self.dimvar,
+                command = self.RadioDim,
+                value=i).grid(row = 2+i, column = 1, sticky = Tk.W)
 
-        # Group of controls for the cmap normalization:
-        self.rbGroupLabel = wx.StaticText(self, label = 'Choose Cmap Norm:') # Title
-        self.rbLinear = wx.RadioButton(self, -1, "Linear", style = wx.RB_GROUP)
-        self.rbLog = wx.RadioButton(self, -1, "LogNorm" )
-        self.rbPow = wx.RadioButton(self, -1, "PowerNorm" )
-        self.rbPowNum = wx.TextCtrl(self , -1, str(self.parent.GetPlotParam('pow_num')),
-        validator = MyValidator('DIGIT_ONLY') )
 
-        # Set the rb that should be selected from the parent
-        if self.parent.GetPlotParam('norm_type') == "Linear":
-            self.rbLinear.SetValue(True)
-        elif self.parent.GetPlotParam('norm_type') == "LogNorm":
-            self.rbLog.SetValue(True)
-        else:
-            self.rbPow.SetValue(True)
+        self.cnormList = ['Linear', 'LogNorm', 'PowerNorm']
+        self.normvar = Tk.IntVar()
+        self.normvar.set(self.cnormList.index(self.parent.GetPlotParam('norm_type')))
 
-        # Add to Grid
-        grid1.Add(self.rbGroupLabel, pos = (0,0), span = (1,2))
-        grid1.Add( self.rbLinear, pos = (1,0), flag = wx.ALIGN_LEFT|wx.LEFT|wx.RIGHT|wx.TOP, border = 5)
-        grid1.Add( self.rbLog, pos = (2,0), flag = wx.ALIGN_LEFT|wx.LEFT|wx.RIGHT|wx.TOP, border = 5)
-        grid1.Add( self.rbPow, pos = (3,0), flag = wx.ALIGN_LEFT|wx.LEFT|wx.RIGHT|wx.TOP, border = 5)
-        grid1.Add( self.rbPowNum, pos = (3,1), flag = wx.ALIGN_LEFT|wx.LEFT|wx.RIGHT|wx.TOP, border = 5)
+        ttk.Label(frm, text = 'Cmap Norm:').grid(row = 6, sticky = Tk.W)
 
-        self.Bind(wx.EVT_RADIOBUTTON, self.EvtRadioNorm, self.rbLinear)
-        self.Bind(wx.EVT_RADIOBUTTON, self.EvtRadioNorm, self.rbLog)
-        self.Bind(wx.EVT_RADIOBUTTON, self.EvtRadioNorm, self.rbPow)
-        self.Bind(wx.EVT_TEXT, self.EvtNormNumSet, self.rbPowNum)
+        for i in range(3):
+            ttk.Radiobutton(frm,
+                            text = self.cnormList[i],
+                            variable = self.normvar,
+                            command = self.RadioNorm,
+                            value = i).grid(row = 7+i, sticky = Tk.W)
 
-        grid.Add(grid1, pos=(2,0), span=(1,2))
-
+        '''
         self.cbColorbar = wx.CheckBox(self, -1, "Show Cbar")
         self.cbColorbar.SetValue(self.parent.GetPlotParam('show_cbar'))
         self.Bind(wx.EVT_CHECKBOX, self.EvtCheckCbar, self.cbColorbar)
@@ -172,17 +183,36 @@ class PhaseSettings(Tk.Toplevel):
         self.cbWeight.SetValue(self.parent.GetPlotParam('weighted'))
         self.Bind(wx.EVT_CHECKBOX, self.EvtCheckWeight, self.cbWeight)
         grid.Add(self.cbWeight, pos = (3,1))
+        '''
 
-
-        self.mainsizer.Add(grid,0, border=15)
-#        self.mainsizer.Add(grid1, 0, border = 15)
-
-        self.SetSizerAndFit(self.mainsizer)
     # Define functions for the events
 
-    def EvtChooseChartType(self, evt):
-        self.parent.ChangePlotType(evt.GetString())
-        self.Destroy()
+    def ctypeChanged(self, *args):
+        if self.ctypevar.get() ==self.parent.chartType:
+            pass
+        else:
+            self.parent.ChangePlotType(self.ctypevar.get())
+            self.Destroy()
+
+
+    def RadioPrtl(self):
+        if self.pvar.get() == self.parent.GetPlotParam('prtl_type'):
+            pass
+        else:
+            self.parent.SetPlotParam('prtl_type', self.pvar.get())
+
+    def RadioDim(self):
+        if self.dimvar.get() == self.parent.GetPlotParam('mom_dim'):
+            pass
+        else:
+            self.parent.SetPlotParam('mom_dim', self.dimvar.get())
+
+    def RadioNorm(self):
+        if self.cnormList[self.normvar.get()] == self.parent.GetPlotParam('norm_type'):
+            pass
+        else:
+            self.parent.SetPlotParam('norm_type', self.cnormList[self.normvar.get()])
+
 
     def EvtCheckCbar(self, evt):
         self.parent.SetPlotParam('show_cbar', evt.IsChecked())
@@ -211,10 +241,6 @@ class PhaseSettings(Tk.Toplevel):
         self.parent.SetPlotParam('pow_num', tmp_num)
         if self.parent.GetPlotParam('norm_type') == "PowerNorm":
             self.parent.draw()
-
-    def EvtRadioPrtl(self, evt):
-        self.parent.SetPlotParam('prtl_type', evt.GetInt())
-        self.parent.draw()
 
 
     def OnCloseMe(self, event):
