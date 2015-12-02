@@ -24,9 +24,8 @@ This should work on Windows, MacOS & Linux.
 
 To get this working on orbital type the following:
 ```bash
-$ module load python/2.7
-$ module load hdf5/gcc/1.8.12
-$ module load h5py27/2.2.1/hdf5-1.8.12
+$ module load anaconda/2.4.0
+$ source activate root
 ```
 
 To run:

@@ -1,76 +1,60 @@
-#!/usr/bin/env pythonw
-import wx # allows us to make the GUI
+#! /usr/bin/env pythonw
+
 import re # regular expressions
-import os # Used to make the code portable
-import copy
+import os, sys # Used to make the code portable
 import h5py # Allows us the read the data files
-from threading import Thread
 import time,string
 import matplotlib
 import new_cmaps
-from phase_plots import PhasePanel, PhaseSettings
-from test_plots import TestPanel, TestSettings
-from validator import MyValidator
 import numpy as np
-import wx.lib.buttons as buttons
-import  wx.lib.intctrl
 import matplotlib.colors as mcolors
-from matplotlib.gridspec import GridSpec
-matplotlib.use('WXAgg')
+import matplotlib.gridspec as gridspec
+
+matplotlib.use('TkAgg')
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_wxagg import \
-    FigureCanvasWxAgg as FigCanvas, \
-    NavigationToolbar2WxAgg as NavigationToolbar
+from phase_plots import PhasePanel
+from test_plots import TestPanel
+
+import Tkinter as Tk
+import ttk as ttk
+import tkFileDialog
+
+def destroy(e):
+    sys.exit()
+
+class Spinbox(ttk.Entry):
 
 
-# Define notification event for thread completion
-EVT_RESULT_ID = wx.NewId()
+    def __init__(self, master=None, **kw):
+        ttk.Entry.__init__(self, master, "ttk::spinbox", **kw)
 
-class ResultEvent(wx.PyEvent):
-    """Simple event to carry arbitrary result data."""
-    def __init__(self):
-        """Init Result Event. parent must be MainWindow"""
-        wx.PyEvent.__init__(self)
-        self.SetEventType(EVT_RESULT_ID)
+    def current(self, newindex=None):
+        return self.tk.call(self._w, 'current', index)
 
+    def set(self, value):
+        return self.tk.call(self._w, 'set', value)
 
-# Thread class that executes graph drawing
-class WorkerThread(Thread):
-    """Worker Thread Class."""
-    def __init__(self, parent, figwrap):
-        """Init Worker Thread Class."""
-        Thread.__init__(self)
-        # This starts the thread running on creation, but you could
-        # also make the GUI thread responsible for calling this
-        self.parent = parent
-        self.figwrap = figwrap
-        self.start()
-
-    def run(self):
-        """Run Worker Thread."""
-        # This is the code executing the  refreshing in a new thread.
-        self.figwrap.graph.draw()
-        wx.PostEvent(self.parent, ResultEvent())
-
-
-class FigWrapper:
+class SubPlotWrapper:
     """A simple class that will eventually hold all of the information
-    about each figure in the plot"""
+    about each sub_plot in the Figure"""
 
-    def __init__(self, parent, ctype=None, graph=None):
+    def __init__(self, parent, figure=None, pos = None, subplot_spec = None, ctype=None, graph = None):
         self.parent = parent
-        self.chartType = ctype
+        self.chartType = 'PhasePlot'
         # A dictionary that contains all of the plot types.
-        self.PlotTypeDict = {'PhasePlot': PhasePanel, 'TestPlot': TestPanel}
+        self.PlotTypeDict = {'PhasePlot': PhasePanel}
         # A dictionary that will store where everything is in Hdf5 Files
         self.GenParamDict()
-        print graph
+        self.figure = figure
+        self.subplot_spec = subplot_spec
+        self.pos = pos
         self.graph = graph
 
 
     def LoadKey(self, h5key):
         pkey = self.parent.H5KeyDict[h5key]
-        with h5py.File(os.path.join(self.parent.dirname,self.parent.PathDict[pkey][self.parent.timeStep.value-1]), 'r') as f:
+        with h5py.File(os.path.join(self.parent.dirname,self.parent.PathDict[pkey][self.parent.TimeStep.value-1]), 'r') as f:
             return f[h5key][:]
 
     def ChangeGraph(self, str_arg):
@@ -81,24 +65,29 @@ class FigWrapper:
         # Generate a dictionary that will store all of the params at dict['ctype']['param_name']
         self.PlotParamsDict = {elm: '' for elm in self.PlotTypeDict.keys() }
         for elm in self.PlotTypeDict.keys():
-            self.PlotParamsDict[elm] = {x : '' for x in self.PlotTypeDict[elm].plot_param_list}
+            self.PlotParamsDict[elm] = {key: self.PlotTypeDict[elm].plot_param_dict[key] for key in self.PlotTypeDict[elm].plot_param_dict.keys()}
 
     def SetPlotParam(self, pname, val, ctype = None):
         if ctype is None:
             ctype = self.chartType
         self.PlotParamsDict[ctype][pname] = val
+        self.parent.RefreshCanvas()
+
 
     def GetPlotParam(self, pname, ctype = None):
         if ctype is None:
             ctype = self.chartType
-
         return self.PlotParamsDict[ctype][pname]
 
-    def SetGraph(self, parent, FigWrap, ctype = None, overwrite = True):
+    def SetGraph(self, ctype = None):
         if ctype:
             self.chartType = ctype
-        self.graph = self.PlotTypeDict[self.chartType](parent, self, overwrite)
+        if self.graph is None:
+            self.graph = self.PlotTypeDict[self.chartType](self.parent, self)
+        self.graph.draw()
 
+    def OpenSubplotSettings(self):
+        self.graph.OpenSettings()
 class Knob:
     """
     Knob - simple class with a "setKnob" method.
@@ -118,7 +107,6 @@ class Param:
     The class allows a cleaner way to update/"feedback" to the other knobs when
     one is being changed.  Also, this class handles min/max constraints for all
     the knobs.
-
     Idea - knob list - in "set" method, knob object is passed as well
       - the other knobs in the knob list have a "set" method which gets
         called for the others.
@@ -156,221 +144,314 @@ class Param:
         return value
 
 
-class FloatSliderGroup(Knob):
-    def __init__(self, parent, label, param):
-        self.sliderLabel = wx.StaticText(parent, label=label)
-        self.sliderText = wx.TextCtrl(parent, -1, style=wx.TE_PROCESS_ENTER)
-        self.slider = wx.Slider(parent, -1)
-        self.slider.SetMax(param.maximum*1000)
-        self.slider.SetMax(param.minimum*1000)
-        self.setKnob(param.value)
+class PlaybackBar(Tk.Frame):
 
-        sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(self.sliderLabel, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
-        sizer.Add(self.sliderText, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
-        sizer.Add(self.slider, 1, wx.EXPAND)
-        self.sizer = sizer
+    """A Class that will handle the time-stepping in Iseult, and has the
+    following, a step left button, a play/pause button, a step right button, a
+    playbar, and a settings button."""
 
-        self.slider.Bind(wx.EVT_SLIDER, self.sliderHandler)
-        self.sliderText.Bind(wx.EVT_TEXT_ENTER, self.sliderTextHandler)
+    def __init__(self, parent, param):
+        Tk.Frame.__init__(self)
+        self.parent = parent
 
-        self.param = param
-        self.param.attach(self)
-
-    def sliderHandler(self, evt):
-        value = evt.GetInt() / 1000.
-        self.param.set(value)
-
-    def sliderTextHandler(self, evt):
-        value = float(self.sliderText.GetValue())
-        self.param.set(value)
-
-    def setKnob(self, value):
-
-        self.sliderText.SetValue('%g'%value)
-        self.slider.SetValue(value*1000)
-
-def scale_bitmap(bitmap, width, height, flip=False):
-    image = wx.ImageFromBitmap(bitmap)
-    image = image.Scale(width, height, wx.IMAGE_QUALITY_HIGH)
-    if flip:
-        image = image.Mirror()
-    result = wx.BitmapFromImage(image)
-    return result
-
-class PlaybackGroup(Knob):
-    def __init__(self, parent, label, param):
-        self.Parent = parent
-        self.sliderLabel = wx.StaticText(parent, label=label)
-        self.sliderText = wx.TextCtrl(parent, -1, style=wx.TE_PROCESS_ENTER)
-        self.slider = wx.Slider(parent, -1)
-        self.slider.SetMax(param.maximum)
-        self.slider.SetMin(param.minimum)
         self.skipSize = 1
-        self.waitTime = .2 # 24 fps (may be much slower because of the plotting time)
+        self.waitTime = .2
+        self.playPressed = False
+
+        # This param should be the time-step of the simulation
         self.param = param
 
-        self.setKnob(self.param.value)
+        # make a button that skips left
+        self.skipLB = ttk.Button(self, text = '<', command = self.SkipLeft)
+        self.skipLB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
 
-        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        # make the play button
+        self.playB = ttk.Button(self, text = 'Play', command = self.PlayHandler)
+        self.playB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
 
-        self.playIcon = scale_bitmap(wx.Bitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),'icons', 'play.png')), 35,35)
-        self.pauseIcon = scale_bitmap(wx.Bitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),'icons', 'pause.png')), 35,35)
-        self.skip_r_Icon = scale_bitmap(wx.Bitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),'icons', 'skip.png')), 35,35)
-        self.skip_l_Icon = scale_bitmap(wx.Bitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),'icons', 'skip.png')), 35,35, True)
-        self.prefIcon = scale_bitmap(wx.Bitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),'icons', 'params.png')), 35,35)
+        # a button that skips right
+        self.skipRB = ttk.Button(self, text = '>', command = self.SkipRight)
+        self.skipRB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
 
-        self.skiplButton = wx.BitmapButton(parent, -1, self.skip_l_Icon, size = (35,35), style  = wx.NO_BORDER)
-        self.playButton = buttons.GenBitmapToggleButton(parent, -1, self.playIcon, size = (35,35),
-                            style = wx.NO_BORDER)
-        self.playButton.SetBitmapSelected(self.pauseIcon)
-        self.skiprButton = wx.BitmapButton(parent, -1, self.skip_r_Icon, size = (35,35), style  = wx.NO_BORDER)
-        self.prefButton = wx.BitmapButton(parent, -1, self.prefIcon, size = (35,35), style  = wx.NO_BORDER)
+        # An entry box that will let us choose the time-step
+        ttk.Label(self, text='n= ').pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
 
-        sizer.Add(self.skiplButton, 0, wx.EXPAND)
-        sizer.Add(self.playButton, 0, wx.EXPAND)
-        sizer.Add(self.skiprButton, 0, wx.EXPAND)
-        sizer.Add(self.sliderLabel, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
-        sizer.Add(self.sliderText, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
-        sizer.Add(self.slider, 1, wx.EXPAND)
-        sizer.Add(self.prefButton, 0, wx.EXPAND)
+        # A StringVar for a box to type in a frame num, linked to self.param
+        self.tstep = Tk.StringVar()
+        # set it to the param value
+        self.tstep.set(str(self.param.value))
 
-        self.sizer = sizer
+        # the entry box
+        self.txtEnter = ttk.Entry(self, textvariable=self.tstep, width=6)
+        self.txtEnter.pack(side=Tk.LEFT, fill = Tk.BOTH, expand = 0)
 
-        self.slider.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.sliderHandler)
-        self.sliderText.Bind(wx.EVT_TEXT_ENTER, self.sliderTextHandler)
+        # A slider that will show the progress in the simulation as well as
+        # allow us to select a time
+        self.slider = ttk.Scale(self, from_=self.param.minimum, to=self.param.maximum, command = self.ScaleHandler)
+        self.slider.set(self.param.value)
+        self.slider.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
 
-        self.skiplButton.Bind(wx.EVT_BUTTON, self.skipLeft)
-        self.skiprButton.Bind(wx.EVT_BUTTON, self.skipRight)
-        self.playButton.Bind(wx.EVT_BUTTON, self.onPlay)
-        self.prefButton.Bind(wx.EVT_BUTTON, self.openPrefs)
+        # a settings button that should lauch some global settings.
+        self.SettingsB= ttk.Button(self, text='Settings', command=self.OpenSettings)
+        self.SettingsB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
 
+        #attach the parameter to the Playbackbar
         self.param.attach(self)
 
-
-    def openPrefs(self, evt):
-        win = SettingsFrame(self.Parent, -1, "Playback Settings", size=(350, 200),
-                  style = wx.DEFAULT_FRAME_STYLE)
-        win.Show(True)
-
-    def skipLeft(self, evt):
+    def SkipLeft(self, e = None):
         self.param.set(self.param.value - self.skipSize)
 
-    def skipRight(self, evt):
+    def SkipRight(self, e = None):
         self.param.set(self.param.value + self.skipSize)
 
-    def onPlay(self, evt):
-        self.playLoop(evt)
+    def PlayHandler(self, e = None):
+        if not self.playPressed:
+            # Set the value of play pressed to true, change the button name to
+            # pause and start the play loop.
+            self.playPressed = True
+            self.playB.config(text='Pause')
+            self.after(int(self.waitTime*1E3), self.blink)
+        else:
+            # pause the play loop and set the button nameback to plau
+            self.playPressed = False
+            self.playB.config(text='Play')
 
-    def playLoop(self, evt):
-        start = time.time()
-        while self.playButton.GetValue() and self.param.value <self.param.maximum:
-            time.sleep(0.02)
-            wx.Yield()
-            if time.time()-start > self.waitTime:
+    def OpenSettings(self):
+        SettingsFrame(self.parent)
+
+
+    def blink(self):
+        if self.playPressed:
+            # First check to see if the timestep can get larger
+            if self.param.value == self.param.maximum:
+                # push pause button
+                self.PlayHandler()
+
+            # otherwise skip right by size skip size
+            else:
                 self.param.set(self.param.value + self.skipSize)
-                start = time.time()
-        self.playButton.SetValue(0)
 
-    def sliderHandler(self, evt):
-        value = evt.GetInt()
-        self.param.set(value)
+            # start loopin'
+            self.after(int(self.waitTime*1E3), self.blink)
 
-    def sliderTextHandler(self, evt):
-        value = float(self.sliderText.GetValue())
-        self.param.set(value)
+
+    def TextCallback(self):
+        try:
+            #make sure the user types in a int
+            if int(self.tstep.get()) != self.param.value:
+                self.param.set(int(self.tstep.get()))
+        except ValueError:
+            #if they type in random stuff, just set it ot the param value
+            self.tstep.set(str(self.param.value))
+
+    def ScaleHandler(self, e):
+        # if changing the scale will change the value of the parameter, do so
+        if self.param.value != int(self.slider.get()):
+            self.param.set(int(self.slider.get()))
 
     def setKnob(self, value):
-        self.sliderText.SetValue('%g'%value)
-        self.slider.SetValue(value)
-        self.slider.SetMax(self.param.maximum)
+        #set the text entry value
+        self.tstep.set(str(value))
+        #set the slider
+        self.slider.set(value)
 
-class SettingsFrame(wx.Frame):
-    def __init__(
-            self, parent, ID, title, pos=wx.DefaultPosition,
-            size=wx.DefaultSize, style=wx.DEFAULT_FRAME_STYLE
-            ):
+class SettingsFrame(Tk.Toplevel):
+    def __init__(self, parent):
 
-        wx.Frame.__init__(self, parent, ID, title, pos, size, style)
-        panel = wx.Panel(self, -1)
+        Tk.Toplevel.__init__(self)
+        self.wm_title('General Settings')
         self.parent = parent
-        #Create some sizers
-        self.mainsizer = wx.BoxSizer(wx.VERTICAL)
-        grid =  wx.GridBagSizer(hgap = 10, vgap = 10)
+        frm = ttk.Frame(self)
+        frm.pack(fill=Tk.BOTH, expand=True)
 
-        # A button
-        self.button = wx.Button(self, label='Reload Directory')
-        self.Bind(wx.EVT_BUTTON, self.OnReload, self.button)
+        # Make an entry to change the skip size
+        self.skipSize = Tk.StringVar(self)
+        self.skipSize.set(self.parent.playbackbar.skipSize) # default value
+        self.skipSize.trace('w', self.SkipSizeChanged)
+        ttk.Label(frm, text="Skip Size:").grid(row=0)
+        self.skipEnter = ttk.Entry(frm, textvariable=self.skipSize, width = 6)
+        self.skipEnter.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
 
-        # Make a button to change the skip size
-        self.lblskip = wx.StaticText(self, label = 'Skip Size')
-        grid.Add(self.lblskip, pos=(0,0))
-        self.enterSkipSize = wx.lib.intctrl.IntCtrl(self, value = self.parent.timeSliderGroup.skipSize, size=( 50, -1 ) )
-        grid.Add(self.enterSkipSize, pos=(0,1))
-        self.Bind(wx.lib.intctrl.EVT_INT, self.EvtSkipSize, self.enterSkipSize)
+        # Make an button to change the wait time
+        self.waitTime = Tk.StringVar(self)
+        self.waitTime.set(self.parent.playbackbar.waitTime) # default value
+        self.waitTime.trace('w', self.WaitTimeChanged)
+        ttk.Label(frm, text="Playback Wait Time:").grid(row=1)
+        self.waitEnter = ttk.Entry(frm, textvariable=self.waitTime, width = 6)
+        self.waitEnter.grid(row =1, column = 1, sticky = Tk.W + Tk.E)
 
-        # Make a button to change the time
-        self.lblwait = wx.StaticText(self, label = 'Playback time delay')
-        grid.Add(self.lblwait, pos=(1,0))
-        self.enterWait =wx.TextCtrl(self, -1,
-                                str(self.parent.timeSliderGroup.waitTime),
-                                validator = MyValidator('DIGIT_ONLY'))
-        grid.Add(self.enterWait, pos=(1,1))
-        self.Bind(wx.EVT_TEXT, self.EvtWait, self.enterWait)
+        # Have a list of the color maps
+        self.cmapList = [ 'magma', 'inferno', 'plasma', 'viridis']
+        self.cmapvar = Tk.StringVar(self)
+        self.cmapvar.set(self.parent.cmap) # default value
+        self.cmapvar.trace('w', self.CmapChanged)
 
-        # the combobox Control
-        self.cmapList = ['magma', 'inferno', 'plasma', 'viridis']
-        self.lblcmap = wx.StaticText(self, label='Choose Color Map')
-        grid.Add(self.lblcmap, pos=(2,0))
-        self.choosecmap = wx.ListBox(self, size = (95,-1), choices = self.cmapList, style = wx.LB_SINGLE)
-        self.choosecmap.SetStringSelection(self.parent.cmap)
-        grid.Add(self.choosecmap, pos=(2,1))
+        ttk.Label(frm, text="Color map:").grid(row=2)
+        cmapChooser = apply(ttk.OptionMenu, (frm, self.cmapvar, self.parent.cmap) + tuple(self.cmapList))
+        cmapChooser.grid(row =2, column = 1, sticky = Tk.W + Tk.E)
 
-        self.Bind(wx.EVT_LISTBOX, self.EvtChooseCmap, self.choosecmap)
-        self.Bind(wx.EVT_LISTBOX_DCLICK, self.EvtChooseCmap, self.choosecmap)
+        # Make an entry to change the number of columns
+        self.columnNum = Tk.StringVar(self)
+        self.columnNum.set(self.parent.numOfColumns.get()) # default value
+        self.columnNum.trace('w', self.ColumnNumChanged)
+        ttk.Label(frm, text="# of columns:").grid(row=3)
+        self.ColumnSpin = Spinbox(frm,  from_=1, to=self.parent.maxCols, textvariable=self.columnNum, width = 6)
+        self.ColumnSpin.grid(row =3, column = 1, sticky = Tk.W + Tk.E)
 
-        grid.Add(self.button, (3,0), span= (1,2), flag=wx.CENTER)
-        self.mainsizer.Add(grid,0, border=15)
-        self.SetSizerAndFit(self.mainsizer)
-    # Define functions for the events
-    def EvtSkipSize(self, evt):
-        self.parent.timeSliderGroup.skipSize = evt.GetValue()
+        # Make an entry to change the number of columns
+        self.rowNum = Tk.StringVar(self)
+        self.rowNum.set(self.parent.numOfRows.get()) # default value
+        self.rowNum.trace('w', self.RowNumChanged)
+        ttk.Label(frm, text="# of rows:").grid(row=4)
+        self.RowSpin = Spinbox(frm, from_=1, to=self.parent.maxRows, textvariable=self.rowNum, width = 6)
+        self.RowSpin.grid(row =4, column = 1, sticky = Tk.W + Tk.E)
 
-    def EvtWait(self, evt):
-        self.parent.timeSliderGroup.waitTime = float(evt.GetString())
+        # Some entries to change plot params
+        self.left = Tk.StringVar(self)
+        self.right = Tk.StringVar(self)
+        self.top = Tk.StringVar(self)
+        self.bottom = Tk.StringVar(self)
+        self.hspace = Tk.StringVar(self)
+        self.wspace = Tk.StringVar(self)
+        self.gsVars = [self.left, self.right, self.top, self.bottom, self.hspace, self.wspace]
+        i = 0
+        self.gsNames =['left', 'right', 'top', 'bottom', 'hspace', 'wspace']
+        for key in self.gsNames:
+            self.gsVars[i].set(self.parent.gsArgs[key]) # default value
 
-    def EvtChooseCmap(self, event):
-        self.parent.cmap = event.GetString()
-        self.parent.refreshAllGraphs()
 
-    def OnReload(self, event):
+            ttk.Label(frm, text=key).grid(row=i, column =3)
+            ttk.Entry(frm, textvariable=self.gsVars[i], width = 6).grid(row =i, column = 4, sticky = Tk.W + Tk.E)
+            i += 1
+        self.gsVars[0].trace('w', self.LChanged)
+        self.gsVars[1].trace('w', self.RChanged)
+        self.gsVars[2].trace('w', self.TChanged)
+        self.gsVars[3].trace('w', self.BChanged)
+        self.gsVars[4].trace('w', self.HChanged)
+        self.gsVars[5].trace('w', self.WChanged)
+        # A button to refresh the directory
+        self.ReloadButton = ttk.Button(frm, text='Reload Directory', command = self.OnReload)
+        self.ReloadButton.grid(row = 5)
+
+    def GsChanged(self, ind):
+        try:
+            if self.gsVars[ind].get() == '':
+                pass
+            else:
+                self.parent.gsArgs[self.gsNames[ind]] = float(self.gsVars[ind].get())
+            self.parent.UpdateGridSpec()
+        except ValueError:
+            self.gsVars.set(self.parent.gsArgs[self.gsNames[ind]])
+
+    def LChanged(self, *args):
+        self.GsChanged(0)
+
+    def RChanged(self, *args):
+        self.GsChanged(1)
+
+    def TChanged(self, *args):
+        self.GsChanged(2)
+
+    def BChanged(self, *args):
+        self.GsChanged(3)
+    def HChanged(self, *args):
+        self.GsChanged(4)
+    def WChanged(self, *args):
+        self.GsChanged(5)
+
+
+    def CmapChanged(self, *args):
+    # Note here that Tkinter passes an event object to onselect()
+        self.parent.cmap = self.cmapvar.get()
+        self.parent.RefreshCanvas()
+
+
+    def SkipSizeChanged(self, *args):
+    # Note here that Tkinter passes an event object to onselect()
+        try:
+            if self.skipSize.get() == '':
+                pass
+            else:
+                self.parent.playbackbar.skipSize = int(self.skipSize.get())
+        except ValueError:
+            self.skipSize.set(self.parent.playbackbar.skipSize)
+
+    def RowNumChanged(self, *args):
+    # Note here that Tkinter passes an event object to onselect()
+        try:
+            if self.rowNum.get() == '':
+                pass
+            elif int(self.rowNum.get())<1:
+                self.rowNum.set(1)
+            elif int(self.rowNum.get())>self.parent.maxRows:
+                self.rowNum.set(self.parent.maxRows)
+            else:
+                self.parent.numOfRows.set(int(self.rowNum.get()))
+        except ValueError:
+            self.rowNum.set(self.parent.numOfRows.get())
+
+    def ColumnNumChanged(self, *args):
+    # Note here that Tkinter passes an event object to onselect()
+        try:
+            if self.columnNum.get() == '':
+                pass
+            elif int(self.columnNum.get())<1:
+                self.columnNum.set(1)
+            elif int(self.columnNum.get())>self.parent.maxCols:
+                self.columnNum.set(self.parent.maxCols)
+
+            else:
+                self.parent.numOfColumns.set(int(self.columnNum.get()))
+        except ValueError:
+            self.columnNum.set(self.parent.numOfColumns.get())
+
+    def WaitTimeChanged(self, *args):
+    # Note here that Tkinter passes an event object to onselect()
+        try:
+            if self.waitTime.get() == '':
+                pass
+            else:
+                self.parent.playbackbar.waitTime = float(self.waitTime.get())
+        except ValueError:
+            self.waitTime.set(self.parent.playbackbar.waitTime)
+
+
+    def OnReload(self, event=None):
         self.parent.findDir()
 
-    def OnCloseMe(self, event):
-        self.Close(True)
 
-    def OnCloseWindow(self, event):
-        self.Destroy()
+class MainApp(Tk.Tk):
+    """ We simply derive a new class of Frame as the man frame of our app"""
+    def __init__(self, name):
 
-class MainWindow(wx.Frame):
-    """ We simply derive a new class of Frame """
-    def __init__(self, parent, title):
-        wx.Frame.__init__(self, parent, title =title, pos = (-1,-1))
+        Tk.Tk.__init__(self)
+        self.update_idletasks()
+        menubar = Tk.Menu(self)
+        self.wm_title(name)
 
-        self.CreateStatusBar() # A statusbar in the bottom of the window
-        # intialize the working directory
-        # Setting up the menu.
-        filemenu = wx.Menu()
+        # Set the number of rows and columns in the figure
+        # (As well as the max rows)
+        self.maxRows = 4
+        self.maxCols = 3
 
-        # wx.ID_ABOUT and wx.ID_EXIT are standard IDs provided by wxWidgets.
-        menuAbout = filemenu.Append(wx.ID_ABOUT, '&About', ' Information about this program')
-        menuExit = filemenu.Append(wx.ID_EXIT,'E&xit', 'Terminate the program')
-        menuOpen = filemenu.Append(wx.ID_OPEN, '&Open Directory\tCtrl+o', ' Open the Directory')
+        self.numOfRows = Tk.IntVar(self)
+        self.numOfRows.set(3)
+        self.numOfRows.trace('w', self.UpdateGridSpec)
+        self.numOfColumns = Tk.IntVar(self)
+        self.numOfColumns.set(2)
+        self.numOfColumns.trace('w', self.UpdateGridSpec)
+        self.gsArgs = {'left':0.05, 'right':0.95, 'top':.95, 'bottom':0.05, 'wspace':0.1, 'hspace':0.1}
 
-        # create the menubar
-        menuBar = wx.MenuBar()
-        menuBar.Append(filemenu, '&File') # Adding the 'filemenu; to the MenuBar
-        self.SetMenuBar(menuBar) # Add the menubar to the frame
+        fileMenu = Tk.Menu(menubar, tearoff=False)
+        menubar.add_cascade(label="File", underline=0, menu=fileMenu)
+        fileMenu.add_command(label= 'Open Directory', command = self.OnOpen, accelerator='Command+o')
+        fileMenu.add_command(label="Exit", underline=1,
+                             command=quit, accelerator="Ctrl+Q")
+        self.config(menu=menubar)
+
+        self.bind_all("<Control-q>", self.quit)
+        self.bind_all("<Command-o>", self.OnOpen)
+
 
         # create a bunch of regular expressions used to search for files
         f_re = re.compile('flds.tot.*')
@@ -385,8 +466,8 @@ class MainWindow(wx.Frame):
 
         self.cmap = 'inferno'
 
-        # Make the know that will hold the timestep info
-        self.timeStep = Param(1, minimum=1, maximum=1000)
+        # Make the object hold the timestep info
+        self.TimeStep = Param(1, minimum=1, maximum=1000)
 
         # Look for the tristan output files and load the file paths into
         # previous objects
@@ -394,138 +475,23 @@ class MainWindow(wx.Frame):
         self.findDir()
 
 
-        self.timeStep.attach(self)
+        self.TimeStep.attach(self)
+        self.DrawCanvas()
 
-        # Make some sizers:
-        self.mainsizer = wx.BoxSizer(wx.VERTICAL)
-        self.grid =  wx.GridBagSizer(hgap = 0.5, vgap = 0.5)
-        # Make the playback controsl that will control the time slice of the
-        # simulation
+        self.playbackbar = PlaybackBar(self, self.TimeStep)
+        self.playbackbar.pack(side=Tk.TOP, fill=Tk.BOTH, expand=0)
+        self.update()
+        # now root.geometry() returns valid size/placement
+        self.minsize(self.winfo_width(), self.winfo_height())
+        self.geometry("1200x700")
+        self.bind('<Return>', self.TxtEnter)
+        self.bind('<Left>', self.playbackbar.SkipLeft)
+        self.bind('<Right>', self.playbackbar.SkipRight)
+        self.bind('<space>', self.playbackbar.PlayHandler)
 
-        self.timeSliderGroup = PlaybackGroup(self, label=' n:', \
-            param=self.timeStep)
-
-        # Make the Figures
-
-        self.Fig1 = FigWrapper(self)
-        self.Fig2 = FigWrapper(self)
-        self.Fig3 = FigWrapper(self)
-        self.Fig4 = FigWrapper(self)
-        self.Fig5 = FigWrapper(self)
-        self.Fig6 = FigWrapper(self)
-        self.FigList = [self.Fig1, self.Fig2, self.Fig3, self.Fig4, self.Fig5, self.Fig6]
-        self.PlotList = ['PhasePlot', 'PhasePlot', 'TestPlot', 'TestPlot', 'TestPlot', 'TestPlot']
-        col_counter = 0
-
-        for elm in self.FigList:
-            elm.SetGraph(self, elm, self.PlotList[col_counter])
-            self.grid.Add(elm.graph, pos=(col_counter/2,col_counter%2), flag = wx.EXPAND)
-            col_counter += 1
-
-        self.Fig2.graph.prtl_type = 1
-        self.Fig2.graph.draw()
-
-
-        for i in range(2):
-            self.grid.AddGrowableCol(i)
-        for i in range(3):
-            self.grid.AddGrowableRow(i)
-
-
-
-        self.mainsizer.Add(self.grid,1, wx.EXPAND)
-        self.mainsizer.Add(self.timeSliderGroup.sizer,0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
-
-        self.SetSizerAndFit(self.mainsizer)
-#        self.Center()
-        APPWIDTH = 1400
-        APPHEIGHT = 800
-        self.SetSizeWH(APPWIDTH, APPHEIGHT)
-        self.Center=()
-
-        # Set the Title
-
-
-        # Set events.
-        self.Bind(wx.EVT_MENU, self.OnAbout, menuAbout)
-        self.Bind(wx.EVT_MENU, self.OnExit, menuExit)
-        self.Bind(wx.EVT_MENU, self.OnOpen, menuOpen)
-
-        self.Show(True)
-        self.SetTitle('Iseult: Showing n = %s' % self.timeStep.value)
-
-    def ChangeGraph(self):
-        self.mainsizer.Hide(self.grid)
-        self.mainsizer.Remove(self.grid)
-        self.mainsizer.Detach(self.timeSliderGroup.sizer)
-
-        self.grid =  wx.GridBagSizer(hgap = 0.5, vgap = 0.5)
-        cur_size = self.GetSizeTuple()
-        col_counter = 0
-
-        for elm in self.FigList:
-#            elm.graph.Destroy()
-            elm.SetGraph(self, elm, overwrite = False )
-            self.grid.Add(elm.graph, pos=(col_counter/2,col_counter%2), flag = wx.EXPAND)
-            col_counter += 1
-        for i in range(2):
-            self.grid.AddGrowableCol(i)
-        for i in range(3):
-            self.grid.AddGrowableRow(i)
-
-
-#        self.grid = new_grid
-        self.mainsizer.Add(self.grid,1, wx.EXPAND)
-        self.mainsizer.Add(self.timeSliderGroup.sizer,0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
-
-        self.SetSizerAndFit(self.mainsizer)
-        self.SetSizeWH(cur_size[0], cur_size[1])
-#        self.Center=()
-#        self.mainsizer.Add(self.timeSliderGroup.sizer,0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
-
-
-
-
-#        self.grid = new_grid
-#        self.refreshAllGraphs()
-        # Set up event handler for any worker thread result
-
-
-    def refreshAllGraphs(self):
-        self.working = True
-        tlist = []
-        for elm in self.FigList:
-            x = WorkerThread(self, elm)
-            tlist.append(x)
-        while self.working:
-            time.sleep(0.02)
-            threads_active = 0
-            for t in tlist:
-                threads_active += t.isAlive()
-            self.working = threads_active >0
-        tlist =[]
-
-
-    def setKnob(self, value):
-#        for elm in self.file_list:
-            # Pass the new t_arg
-#            elm.Update(value)
-        # Set the title
-
-        frame.SetTitle('Iseult: Showing n = %s' % value)
-
-        # refresh the graphs
-        self.refreshAllGraphs()
-
-    # Define the Main Window functions
-    def OnAbout(self,e):
-        # A message dialog box with an OK buttion. wx.OK is a standardID in wxWidgets.
-        dlg = wx.MessageDialog(self, 'A plotting program for Tristan-MP output files', 'About Iseult', wx.OK)
-        dlg.ShowModal() # show it
-        dlg.Destroy() # destroy it when finished
-
-    def OnExit(self, e):
-        self.Close(True)
+    def quit(self, event):
+        print("quitting...")
+        sys.exit(0)
 
     def GenH5Dict(self):
         for pkey in self.PathDict.keys():
@@ -537,6 +503,9 @@ class MainWindow(wx.Frame):
         """ Test to see if the current path contains tristan files
         using regular expressions, then generate the lists of files
         to iterate over"""
+        dirlist = os.listdir(self.dirname)
+        if 'output' in dirlist:
+            self.dirname = os.path.join(self.dirname, 'output')
         is_okay = True
         i = 0
         for key in self.PathDict.keys():
@@ -544,40 +513,147 @@ class MainWindow(wx.Frame):
             self.PathDict[key].sort()
             is_okay &= len(self.PathDict[key]) > 0
             i += 1
-        self.timeStep.setMax(len(self.PathDict['Flds']))
+        self.TimeStep.setMax(len(self.PathDict['Flds']))
         if len(self.H5KeyDict) == 0:
             self.GenH5Dict()
         return is_okay
 
 
-    def OnOpen(self,e):
+    def OnOpen(self, e = None):
         """open a file"""
-        dlg = wx.DirDialog(self, 'Choose the directory of the output files.', style = wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
-        if dlg.ShowModal() == wx.ID_OK:
-            self.dirname = dlg.GetPath()
-        dlg.Destroy()
+        tmpdir = tkFileDialog.askdirectory(title = 'Choose the directory of the output files', **self.dir_opt)
+        if tmpdir != '':
+            self.dirname = tmpdir
         if not self.pathOK():
-            self.findDir('Directory must contain either the output directory or all of the following: flds.tot.*, ptrl.tot.*, params.*, spect.*')
-
+#            p = MyDialog(self, 'Directory must contain either the output directory or all of the following: \n flds.tot.*, ptrl.tot.*, params.*, spect.*', title = 'Cannot find output files')
+#            self.wait_window(p.top)
+            self.findDir()
 
     def findDir(self, dlgstr = 'Choose the directory of the output files.'):
         """Look for /ouput folder, where the simulation results are
         stored. If output files are already in the path, they are
         automatically loaded"""
-        dirlist = os.listdir(self.dirname)
-        if 'output' in dirlist:
-            self.dirname = os.path.join(self.dirname, 'output')
-        if not self.pathOK():
-            dlg = wx.DirDialog(self,
-                               dlgstr,
-                               style = wx.DD_DEFAULT_STYLE
-                               | wx.DD_DIR_MUST_EXIST)
-            if dlg.ShowModal() == wx.ID_OK:
-                self.dirname = dlg.GetPath()
-            dlg.Destroy()
-            if not self.pathOK() :
-                self.findDir('Directory must contain either the output directory or all of the following: flds.tot.*, ptrl.tot.*, params.*, spect.*')
+        # defining options for opening a directory
+        self.dir_opt = {}
+        self.dir_opt['initialdir'] = os.curdir
+        self.dir_opt['mustexist'] = True
+        self.dir_opt['parent'] = self
 
-app = wx.App(False)
-frame = MainWindow(None, 'Iseult')
-app.MainLoop()
+        if not self.pathOK():
+            tmpdir = tkFileDialog.askdirectory(title = dlgstr, **self.dir_opt)
+            if tmpdir != '':
+                self.dirname = tmpdir
+            if not self.pathOK():
+#                p = MyDialog(self, 'Directory must contain either the output directory or all of the following: \n flds.tot.*, ptrl.tot.*, params.*, spect.*', title = 'Cannot find output files')
+#                self.wait_window(p.top)
+                self.FindDir()
+
+
+    def DrawCanvas(self):
+        '''Initializes the figure, and then packs it into the main window.
+        Should only be called once.'''
+
+        # figsize (w,h tuple in inches) dpi (dots per inch)
+        #f = Figure(figsize=(5,4), dpi=100)
+        self.f = Figure(figsize = (2,2), dpi = 100)
+
+        # Generate all of the subplot wrappers. They are stored in a 2D list
+        # where the index [i][j] corresponds to the ith row, jth column
+
+        # divy up the figure into a bunch of subplots using GridSpec.
+        self.gs0 = gridspec.GridSpec(self.numOfRows.get(),self.numOfColumns.get())
+        self.gs0.update(**self.gsArgs)
+
+        # Create the list of all of subplot wrappers
+        self.SubPlotList = []
+        for i in range(self.maxRows):
+            tmplist = [SubPlotWrapper(self, figure = self.f, pos=(i,j)) for j in range(self.maxCols)]
+            self.SubPlotList.append(tmplist)
+        for i in range(self.numOfRows.get()):
+            for j in range(self.numOfColumns.get()):
+                self.SubPlotList[i][j].SetGraph('PhasePlot')
+
+        self.SubPlotList[0][1].PlotParamsDict['PhasePlot']['prtl_type'] = 1
+
+#        self.SubPlotList[0][0].SetPlotParam('prtl_type',0)
+
+
+#        self.a = self.f.add_subplot(self.gs0[0,0])
+#        self.a.pcolor(np.random.rand(5,5))
+        # a tk.DrawingArea
+        self.canvas = FigureCanvasTkAgg(self.f, master=self)
+
+
+        self.canvas.show()
+        self.canvas.get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
+        self.RefreshCanvas()
+
+
+        self.f.canvas.mpl_connect('button_press_event', self.onclick)
+
+#        toolbar = NavigationToolbar2TkAgg(self.canvas, self)
+#        toolbar.update()
+        self.canvas._tkcanvas.pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
+
+        #self.label = Label(self.top, text = 'Text',bg='orange')
+        #self.label.grid()
+        # initialize (time index t)
+
+    def UpdateGridSpec(self, *args):
+        '''A function that handles updates the gridspec that divides up of the
+        plot into X x Y subplots'''
+        self.gs0 = gridspec.GridSpec(self.numOfRows.get(),self.numOfColumns.get())
+        self.gs0.update(**self.gsArgs)
+
+        self.RefreshCanvas()
+
+    def RefreshCanvas(self):
+        self.f.clf()
+        for i in range(self.numOfRows.get()):
+            for j in range(self.numOfColumns.get()):
+                self.SubPlotList[i][j].SetGraph()
+
+        self.canvas.show()
+        self.canvas.get_tk_widget().update_idletasks()
+    def onclick(self, event):
+        '''After being clicked, we should use the x and y of the cursor to
+        determine what subplot was clicked'''
+
+        # Since the location of the cursor is returned in pixels and gs0 is
+        # given as a relative value, we must first convert the value into a
+        # relative x and y
+        if not event.inaxes:
+             pass
+        else:
+            fig_size = self.f.get_size_inches()*self.f.dpi # Fig size in px
+
+            x_loc = event.x/fig_size[0] # The relative x position of the mouse in the figure
+            y_loc = event.y/fig_size[1] # The relative y position of the mouse in the figure
+
+            sub_plots = self.gs0.get_grid_positions(self.f)
+            row_array = np.sort(np.append(sub_plots[0], sub_plots[1]))
+            col_array = np.sort(np.append(sub_plots[2], sub_plots[3]))
+            i = (len(row_array)-row_array.searchsorted(y_loc))/2
+            j = col_array.searchsorted(x_loc)/2
+
+            self.SubPlotList[i][j].OpenSubplotSettings()
+#        else
+        # find the row value
+#        print 'button=%d, x=%f, y=%f' %(
+#        event.button, event.x/fig_size[0], event.y/fig_size[1])
+#        print self.gs0.get_grid_positions(self.f)
+
+
+
+    def setKnob(self, value):
+        self.RefreshCanvas()
+    # We need to do it this way so that pressing enter with focus anywhere on the app will cause the
+    def TxtEnter(self, e):
+        self.playbackbar.TextCallback()
+
+
+        #   refresh the graph
+
+if __name__ == "__main__":
+    app = MainApp('Iseult')
+    app.mainloop()
