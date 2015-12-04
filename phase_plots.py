@@ -3,13 +3,14 @@ import Tkinter as Tk
 import ttk as ttk
 import matplotlib
 import numpy as np
+import numpy.ma as ma
 import new_cmaps
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 
 class PhasePanel:
     # A diction of all of the parameters for this plot with the default parameters
-    plot_param_dict = {'mom_dim': 0, 'norm_type': 'PowerNorm', 'prtl_type': 0, 'pow_num': 0.4, 'show_cbar': True, 'weighted': False}
+    plot_param_dict = {'mom_dim': 0, 'masked': 0, 'norm_type': 'LogNorm', 'prtl_type': 0, 'pow_num': 0.4, 'show_cbar': True, 'weighted': False}
     def __init__(self, parent, figwrapper):
         self.FigWrap = figwrapper
         self.parent = parent
@@ -38,6 +39,34 @@ class PhasePanel:
             return  mcolors.LogNorm(vmin, vmax)
         else:
             return  mcolors.PowerNorm(self.FigWrap.GetPlotParam('pow_num'), vmin, vmax)
+
+    def set_plot_keys(self):
+        '''A helper function that will insure that each hdf5 file will only be
+        opened once per time step'''
+        self.arrs_needed = ['c_omp']
+        if self.GetPlotParam('prtl_type') == 0:
+            self.arrs_needed.append('xi')
+            if self.GetPlotParam('weighted'):
+                self.arrs_needed.append('chi')
+            if self.GetPlotParam('mom_dim') == 0:
+                self.arrs_needed.append('ui')
+            elif self.GetPlotParam('mom_dim') == 1:
+                self.arrs_needed.append('vi')
+            elif self.GetPlotParam('mom_dim') == 2:
+                self.arrs_needed.append('wi')
+
+        if self.GetPlotParam('prtl_type') == 1:
+            self.arrs_needed.append('xe')
+            if self.GetPlotParam('weighted'):
+                self.arrs_needed.append('che')
+
+            elif self.GetPlotParam('mom_dim') == 0:
+                self.arrs_needed.append('ue')
+            elif self.GetPlotParam('mom_dim') == 1:
+                self.arrs_needed.append('ve')
+            elif self.GetPlotParam('mom_dim') == 2:
+                self.arrs_needed.append('we')
+        return self.arrs_needed
 
     def draw(self):
         # Choose the normalization
@@ -70,15 +99,22 @@ class PhasePanel:
                 self.y_values = self.FigWrap.LoadKey('we')
 
         self.hist2d = np.histogram2d(self.y_values, self.x_values, bins = [200,200], weights = self.weights)
-        self.zval = (np.max(self.hist2d[0]))**(-1)*self.hist2d[0]
+        self.zval = ma.masked_array(self.hist2d[0])
+
+        if self.GetPlotParam('masked'):
+            self.zval[self.zval == 0] += ma.masked
+        else:
+            self.zval[self.zval==0] = 0.5
+        self.zval *= self.zval.max()**(-1)
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])#, bottom=0.2,left=0.1,right=0.95, top = 0.95)
 
         if self.GetPlotParam('show_cbar'):
             self.axes = self.figure.add_subplot(self.gs[20:,:])
             self.axC = self.figure.add_subplot(self.gs[:5,:])
-#            self.cax = self.axes.hist2d(self.x_values,self.y_values, bins = [200,200],cmap = new_cmaps.cmaps[self.parent.cmap], norm = self.norm(1))#, cmin = 4)
-            self.cax = self.axes.pcolormesh(self.hist2d[2], self.hist2d[1], self.zval, cmap = new_cmaps.cmaps[self.parent.cmap], norm = self.norm(1E-3))
+            self.cax = self.axes.pcolormesh(self.hist2d[2], self.hist2d[1], self.zval, cmap = new_cmaps.cmaps[self.parent.cmap], norm = self.norm())
             self.axes.set_xlim(self.hist2d[2].min(), self.hist2d[2].max())
+            self.axes.set_axis_bgcolor('lightgrey')
+
             self.axes.set_ylim(self.hist2d[1].min(), self.hist2d[1].max())
             self.cbar = self.figure.colorbar(self.cax, ax = self.axes, cax = self.axC, orientation = 'horizontal')
             if self.GetPlotParam('norm_type')== 'PowerNorm':
@@ -86,8 +122,10 @@ class PhasePanel:
 
             if self.GetPlotParam('norm_type') == 'LogNorm':
 
-                self.cbar.set_ticks(np.logspace(-3, 0, 5))
-                self.cbar.set_ticklabels(np.logspace(-3, 0, 5))
+                self.cbar.set_ticks(np.logspace(np.log10(self.zval.min()), 0, 5))
+#                print tuple(np.logspace(np.log10(self.zval.min()), 0, 5))
+
+#                self.cbar.set_ticklabels(str.split('%f, %f, %f, %f, %f', ',') % tuple(np.logspace(np.log10(self.zval.min()), 0, 5)))
             if self.GetPlotParam('norm_type')== 'Linear':
                 self.cbar.set_ticks(np.linspace(self.zval.min(),self.zval.max(), 5))
 

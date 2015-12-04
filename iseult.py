@@ -52,14 +52,15 @@ class SubPlotWrapper:
         self.graph = graph
 
 
+    def GetKeys(self):
+        return self.graph.set_plot_keys()
     def LoadKey(self, h5key):
-        pkey = self.parent.H5KeyDict[h5key]
-        with h5py.File(os.path.join(self.parent.dirname,self.parent.PathDict[pkey][self.parent.TimeStep.value-1]), 'r') as f:
-            return f[h5key][:]
+        return self.parent.DataDict[h5key]
 
     def ChangeGraph(self, str_arg):
+        # Change the graph type
         self.chartType = str_arg
-        self.parent.ChangeGraph()
+        self.parent.RefreshCanvas()
 
     def GenParamDict(self):
         # Generate a dictionary that will store all of the params at dict['ctype']['param_name']
@@ -84,6 +85,8 @@ class SubPlotWrapper:
             self.chartType = ctype
         if self.graph is None:
             self.graph = self.PlotTypeDict[self.chartType](self.parent, self)
+
+    def DrawGraph(self):
         self.graph.draw()
 
     def OpenSubplotSettings(self):
@@ -461,7 +464,11 @@ class MainApp(Tk.Tk):
         self.re_list = [f_re, prtl_re, s_re, param_re]
 
         self.PathDict = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
+
+        # A dictionary that allows use to see in what HDF5 file each key is stored.
+        # i.e. {'ui': 'Prtl', 'ue': 'Flds', etc...}, initialied with self.GenH5Dict()
         self.H5KeyDict ={}
+
         # Set the default color map
 
         self.cmap = 'inferno'
@@ -498,6 +505,7 @@ class MainApp(Tk.Tk):
             with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][0]), 'r') as f:
                 for h5key in f.keys():
                     self.H5KeyDict[h5key] = pkey
+
 
     def pathOK(self):
         """ Test to see if the current path contains tristan files
@@ -569,8 +577,8 @@ class MainApp(Tk.Tk):
         for i in range(self.maxRows):
             tmplist = [SubPlotWrapper(self, figure = self.f, pos=(i,j)) for j in range(self.maxCols)]
             self.SubPlotList.append(tmplist)
-        for i in range(self.numOfRows.get()):
-            for j in range(self.numOfColumns.get()):
+        for i in range(self.maxRows):
+            for j in range(self.maxCols):
                 self.SubPlotList[i][j].SetGraph('PhasePlot')
 
         self.SubPlotList[0][1].PlotParamsDict['PhasePlot']['prtl_type'] = 1
@@ -607,11 +615,41 @@ class MainApp(Tk.Tk):
 
         self.RefreshCanvas()
 
-    def RefreshCanvas(self):
-        self.f.clf()
+    def LoadAllKeys(self):
+        ''' A function that will find out will arrays need to be loaded for
+        to draw the graphs. '''
+        # Make a dictionary that stores all of the keys we will need to load
+        # to draw the graphs.
+        self.ToLoad = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
         for i in range(self.numOfRows.get()):
             for j in range(self.numOfColumns.get()):
-                self.SubPlotList[i][j].SetGraph()
+                # for each subplot, see what keys are needed
+                tmpList = self.SubPlotList[i][j].GetKeys()
+                for elm in tmpList:
+                    # find out what type of file the key is stored in
+                    ftype = self.H5KeyDict[elm]
+                    # add the key to the list of that file type
+                    self.ToLoad[ftype].append(elm)
+
+        # Now iterate over each path key and create a datadictionary
+        self.DataDict = {}
+        for pkey in self.ToLoad.keys():
+            tmplist = list(set(self.ToLoad[pkey])) # get rid of duplicate keys
+            # Load the file
+            with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
+                for elm in tmplist:
+                    # Load all the keys
+                    self.DataDict[elm] = f[elm][:]
+
+
+
+
+    def RefreshCanvas(self):
+        self.f.clf()
+        self.LoadAllKeys()
+        for i in range(self.numOfRows.get()):
+            for j in range(self.numOfColumns.get()):
+                self.SubPlotList[i][j].DrawGraph()
 
         self.canvas.show()
         self.canvas.get_tk_widget().update_idletasks()
