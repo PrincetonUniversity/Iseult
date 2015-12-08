@@ -50,6 +50,9 @@ class SubPlotWrapper:
         self.subplot_spec = subplot_spec
         self.pos = pos
         self.graph = graph
+        #
+
+
 
 
     def GetKeys(self):
@@ -284,7 +287,7 @@ class SettingsFrame(Tk.Toplevel):
         self.waitEnter.grid(row =1, column = 1, sticky = Tk.W + Tk.E)
 
         # Have a list of the color maps
-        self.cmapList = [ 'magma', 'inferno', 'plasma', 'viridis']
+        self.cmapList = new_cmaps.cmaps.keys()
         self.cmapvar = Tk.StringVar(self)
         self.cmapvar.set(self.parent.cmap) # default value
         self.cmapvar.trace('w', self.CmapChanged)
@@ -443,7 +446,7 @@ class MainApp(Tk.Tk):
         self.numOfColumns = Tk.IntVar(self)
         self.numOfColumns.set(2)
         self.numOfColumns.trace('w', self.UpdateGridSpec)
-        self.gsArgs = {'left':0.05, 'right':0.95, 'top':.95, 'bottom':0.05, 'wspace':0.1, 'hspace':0.1}
+        self.gsArgs = {'left':0.05, 'right':0.95, 'top':.95, 'bottom':0.05, 'wspace':0.15, 'hspace':0.15}
 
         fileMenu = Tk.Menu(menubar, tearoff=False)
         menubar.add_cascade(label="File", underline=0, menu=fileMenu)

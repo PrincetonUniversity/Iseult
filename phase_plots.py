@@ -10,14 +10,28 @@ import matplotlib.gridspec as gridspec
 
 class PhasePanel:
     # A diction of all of the parameters for this plot with the default parameters
-    plot_param_dict = {'mom_dim': 0, 'masked': 0, 'norm_type': 'LogNorm', 'prtl_type': 0, 'pow_num': 0.4, 'show_cbar': True, 'weighted': False}
+    plot_param_dict = {'mom_dim': 0,
+                       'masked': 0,
+                       'norm_type': 'LogNorm',
+                       'prtl_type': 0,
+                       'pow_num': 0.4,
+                       'show_cbar': True,
+                       'weighted': False,
+                       'show_shock': True,
+                       'show_int_region': True,
+                       'set_color_limits': False,
+                       'v_min': None,
+                       'interpolation': 'hermite',
+                       'v_max': None}
     def __init__(self, parent, figwrapper):
         self.FigWrap = figwrapper
         self.parent = parent
         self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
         self.chartType = self.FigWrap.chartType
-        self.subplotlist = []
         self.figure = self.FigWrap.figure
+        self.InterpolationMethods = ['nearest', 'bilinear', 'bicubic', 'spline16',
+            'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
+            'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
 
 
     def sizeHandler(self, *args, **kwargs):
@@ -81,11 +95,13 @@ class PhasePanel:
                 self.weights = self.FigWrap.LoadKey('chi')
             if self.GetPlotParam('mom_dim') == 0:
                 self.y_values = self.FigWrap.LoadKey('ui')
+                self.y_label  = r'$P_{px}\ [c]$'
             if self.GetPlotParam('mom_dim') == 1:
                 self.y_values = self.FigWrap.LoadKey('vi')
+                self.y_label  = r'$P_{py}\ [c]$'
             if self.GetPlotParam('mom_dim') == 2:
                 self.y_values = self.FigWrap.LoadKey('wi')
-
+                self.y_label  = r'$P_{pz}\ [c]$'
         if self.GetPlotParam('prtl_type') == 1:
             self.x_values = self.FigWrap.LoadKey('xe')/self.c_omp
             if self.GetPlotParam('weighted'):
@@ -93,47 +109,66 @@ class PhasePanel:
 
             if self.GetPlotParam('mom_dim') == 0:
                 self.y_values = self.FigWrap.LoadKey('ue')
+                self.y_label  = r'$P_{ex}\ [c]$'
             if self.GetPlotParam('mom_dim') == 1:
                 self.y_values = self.FigWrap.LoadKey('ve')
+                self.y_label  = r'$P_{ey}\ [c]$'
             if self.GetPlotParam('mom_dim') == 2:
                 self.y_values = self.FigWrap.LoadKey('we')
+                self.y_label  = r'$P_{ez}\ [c]$'
 
         self.hist2d = np.histogram2d(self.y_values, self.x_values, bins = [200,200], weights = self.weights)
+        self.xmin = 0
+        self.xmax = self.hist2d[2][-1]
         self.zval = ma.masked_array(self.hist2d[0])
 
         if self.GetPlotParam('masked'):
-            self.zval[self.zval == 0] += ma.masked
+            self.zval[self.zval == 0] = ma.masked
         else:
             self.zval[self.zval==0] = 0.5
         self.zval *= self.zval.max()**(-1)
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])#, bottom=0.2,left=0.1,right=0.95, top = 0.95)
 
         if self.GetPlotParam('show_cbar'):
-            self.axes = self.figure.add_subplot(self.gs[20:,:])
-            self.axC = self.figure.add_subplot(self.gs[:5,:])
-            self.cax = self.axes.pcolormesh(self.hist2d[2], self.hist2d[1], self.zval, cmap = new_cmaps.cmaps[self.parent.cmap], norm = self.norm())
-            self.axes.set_xlim(self.hist2d[2].min(), self.hist2d[2].max())
+            self.axes = self.figure.add_subplot(self.gs[18:92,:])
+            self.axC = self.figure.add_subplot(self.gs[:4,:])
+#            self.cax = self.axes.pcolormesh(self.hist2d[2], self.hist2d[1], self.zval, cmap = new_cmaps.cmaps[self.parent.cmap], norm = self.norm())
+            self.cax = self.axes.imshow(self.zval, cmap = new_cmaps.cmaps[self.parent.cmap], norm = self.norm(), origin = 'lower', aspect = 'auto', extent=[self.xmin,self.xmax,self.hist2d[1][-1],self.hist2d[1][0]], interpolation=self.GetPlotParam('interpolation'))
+
+#            self.axes.set_xlim(self.hist2d[2].min(), self.hist2d[2].max())
             self.axes.set_axis_bgcolor('lightgrey')
 
-            self.axes.set_ylim(self.hist2d[1].min(), self.hist2d[1].max())
+#            self.axes.set_ylim(self.hist2d[1].min(), self.hist2d[1].max())
             self.cbar = self.figure.colorbar(self.cax, ax = self.axes, cax = self.axC, orientation = 'horizontal')
             if self.GetPlotParam('norm_type')== 'PowerNorm':
                 self.cbar.set_ticks(np.linspace(self.zval.min(),self.zval.max(), 5)**(1./self.FigWrap.GetPlotParam('pow_num')))
 
             if self.GetPlotParam('norm_type') == 'LogNorm':
 
-                self.cbar.set_ticks(np.logspace(np.log10(self.zval.min()), 0, 5))
-#                print tuple(np.logspace(np.log10(self.zval.min()), 0, 5))
+                ctick_range = np.logspace(np.log10(self.zval.min()),np.log10(self.zval.max()), 5)
+                self.cbar.set_ticks(ctick_range)
+                ctick_labels = []
+                for elm in ctick_range:
+                    if np.abs(np.log10(elm))<1E-2:
+                        tmp_s = '0'
+                    else:
+                        tmp_s = '%.2f' % np.log10(elm)
+                    ctick_labels.append(tmp_s)
 
-#                self.cbar.set_ticklabels(str.split('%f, %f, %f, %f, %f', ',') % tuple(np.logspace(np.log10(self.zval.min()), 0, 5)))
+                self.cbar.set_ticklabels(ctick_labels)
+                self.cbar.ax.tick_params(labelsize=10)
             if self.GetPlotParam('norm_type')== 'Linear':
                 self.cbar.set_ticks(np.linspace(self.zval.min(),self.zval.max(), 5))
 
-            self.axes.set_xlabel(r'$x/\omega_{\rm pe}$')
         else:
             self.axes = self.figure.add_subplot(self.gs[5:,:])
-            self.cax = self.axes.hist2d(self.x_values,self.y_values, bins = [200,200],cmap = new_cmaps.cmaps[self.Parent.cmap], norm = self.norm(1))
-            self.axes.set_xlabel(r'$x/\omega_{\rm pe}$')
+            self.cax = self.axes.pcolormesh(self.hist2d[2], self.hist2d[1], self.zval, cmap = new_cmaps.cmaps[self.parent.cmap], norm = self.norm())
+
+        self.axes.set_axis_bgcolor('lightgrey')
+        self.axes.tick_params(labelsize = 10, color='white')
+        self.axes.set_xlim(self.xmin,self.xmax)
+        self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = -2, color = 'black')
+        self.axes.set_ylabel(self.y_label, labelpad = -2, color = 'black')
 
 
     def GetPlotParam(self, keyname):
@@ -157,6 +192,15 @@ class PhaseSettings(Tk.Toplevel):
         frm.pack(fill=Tk.BOTH, expand=True)
 
         #Create some sizers
+
+        # Create the OptionMenu to chooses the Chart Type:
+        self.InterpolVar = Tk.StringVar(self)
+        self.InterpolVar.set(self.parent.GetPlotParam('interpolation')) # default value
+        self.InterpolVar.trace('w', self.InterpolChanged)
+
+        ttk.Label(frm, text="Interpolation Method:").grid(row=0, column = 2)
+        InterplChooser = apply(ttk.OptionMenu, (frm, self.InterpolVar, self.parent.GetPlotParam('interpolation')) + tuple(self.parent.InterpolationMethods))
+        InterplChooser.grid(row =0, column = 3, sticky = Tk.W + Tk.E)
 
         # Create the OptionMenu to chooses the Chart Type:
         self.ctypevar = Tk.StringVar(self)
@@ -196,7 +240,8 @@ class PhaseSettings(Tk.Toplevel):
                 command = self.RadioDim,
                 value=i).grid(row = 2+i, column = 1, sticky = Tk.W)
 
-
+        ''' Commenting out some lines that allows you to change the color norm,
+        No longer needed
         self.cnormList = ['Linear', 'LogNorm', 'PowerNorm']
         self.normvar = Tk.IntVar()
         self.normvar.set(self.cnormList.index(self.parent.GetPlotParam('norm_type')))
@@ -211,26 +256,69 @@ class PhaseSettings(Tk.Toplevel):
                             value = i).grid(row = 7+i, sticky = Tk.W)
 
         '''
-        self.cbColorbar = wx.CheckBox(self, -1, "Show Cbar")
-        self.cbColorbar.SetValue(self.parent.GetPlotParam('show_cbar'))
-        self.Bind(wx.EVT_CHECKBOX, self.EvtCheckCbar, self.cbColorbar)
-        grid.Add(self.cbColorbar, pos=(3,0))
+        # Control whether or not Cbar is shown
+        self.CbarVar = Tk.IntVar()
+        self.CbarVar.set(self.parent.GetPlotParam('show_cbar'))
+        cb = ttk.Checkbutton(frm, text = "Show Color bar",
+                        variable = self.CbarVar,
+                        command = lambda:
+                        self.parent.SetPlotParam('show_cbar', self.CbarVar.get()))
+        cb.grid(row = 6, sticky = Tk.W)
 
-        #Adding WEIGHT *TO DO*
-        self.cbWeight = wx.CheckBox(self, -1, "Weight")
-        self.cbWeight.SetValue(self.parent.GetPlotParam('weighted'))
-        self.Bind(wx.EVT_CHECKBOX, self.EvtCheckWeight, self.cbWeight)
-        grid.Add(self.cbWeight, pos = (3,1))
-        '''
+        # show shock
+        self.ShockVar = Tk.IntVar()
+        self.ShockVar.set(self.parent.GetPlotParam('show_shock'))
+        cb = ttk.Checkbutton(frm, text = "Show Shock",
+                        variable = self.ShockVar,
+                        command = lambda:
+                        self.parent.SetPlotParam('show_shock', self.ShockVar.get()))
+        cb.grid(row = 6, column = 1, sticky = Tk.W)
 
+
+        # Control if the plot is weightedd
+        self.WeightVar = Tk.IntVar()
+        self.WeightVar.set(self.parent.GetPlotParam('weighted'))
+        cb = ttk.Checkbutton(frm, text = "Weight by charge",
+                        variable = self.WeightVar,
+                        command = lambda:
+                        self.parent.SetPlotParam('weighted', self.WeightVar.get()))
+        cb.grid(row = 7, sticky = Tk.W)
+
+        # Show energy integration region
+        self.IntRegVar = Tk.IntVar()
+        self.IntRegVar.set(self.parent.GetPlotParam('show_int_region'))
+        cb = ttk.Checkbutton(frm, text = "Show Energy Region",
+                        variable = self.IntRegVar,
+                        command = lambda:
+                        self.parent.SetPlotParam('show_int_region', self.IntRegVar.get()))
+        cb.grid(row = 7, column = 1, sticky = Tk.W)
+
+        # control mask
+        self.MaskVar = Tk.IntVar()
+        self.MaskVar.set(self.parent.GetPlotParam('masked'))
+        cb = ttk.Checkbutton(frm, text = "Mask Zeros",
+                        variable = self.MaskVar,
+                        command = lambda:
+                        self.parent.SetPlotParam('masked', self.MaskVar.get()))
+        cb.grid(row = 8, sticky = Tk.W)
+
+
+#        ttk.Label(frm, text = 'If the zero values are not masked they are set to z_min/2').grid(row =9, columnspan =2)
     # Define functions for the events
 
+
     def ctypeChanged(self, *args):
-        if self.ctypevar.get() ==self.parent.chartType:
+        if self.ctypevar.get() == self.parent.chartType:
             pass
         else:
             self.parent.ChangePlotType(self.ctypevar.get())
-            self.Destroy()
+            self.destroy()
+
+    def InterpolChanged(self, *args):
+        if self.InterpolVar.get() == self.parent.GetPlotParam('interpolation'):
+            pass
+        else:
+            self.parent.SetPlotParam('interpolation', self.InterpolVar.get())
 
 
     def RadioPrtl(self):
@@ -250,39 +338,3 @@ class PhaseSettings(Tk.Toplevel):
             pass
         else:
             self.parent.SetPlotParam('norm_type', self.cnormList[self.normvar.get()])
-
-
-    def EvtCheckCbar(self, evt):
-        self.parent.SetPlotParam('show_cbar', evt.IsChecked())
-        self.parent.draw()
-
-    def EvtCheckWeight(self, evt):
-        self.parent.SetPlotParam('weighted', evt.IsChecked())
-        self.parent.draw()
-
-    def EvtRadioDim(self, evt):
-        self.parent.SetPlotParam('mom_dim', evt.GetInt())
-        self.parent.draw()
-
-    def EvtRadioNorm(self, evt):
-        self.parent.SetPlotParam('norm_type', evt.GetEventObject().GetLabel())
-        self.parent.draw()
-
-    def EvtNormNumSet(self, evt):
-        tmp_num = evt.GetString()
-        if not tmp_num:
-            tmp_num = 1E-2
-        elif float(tmp_num)<=1E-2:
-            tmp_num = 1E-2
-        else:
-            tmp_num = float(tmp_num)
-        self.parent.SetPlotParam('pow_num', tmp_num)
-        if self.parent.GetPlotParam('norm_type') == "PowerNorm":
-            self.parent.draw()
-
-
-    def OnCloseMe(self, event):
-        self.Close(True)
-
-    def OnCloseWindow(self, event):
-        self.Destroy()

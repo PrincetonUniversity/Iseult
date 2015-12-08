@@ -1052,7 +1052,7 @@ for (name, data) in (('magma', _magma_data),
 
     cmaps[name] = ListedColormap(data, name=name)
 
-magma = cmaps['magma']
-inferno = cmaps['inferno']
-plasma = cmaps['plasma']
-viridis = cmaps['viridis']
+#cmaps['jet'] = 'jet'
+cmaps['gnuplot'] = 'gnuplot'
+cmaps['gnuplot2'] = 'gnuplot2'
+#cmaps['nipy_spectral'] = 'nipy_spectral'
