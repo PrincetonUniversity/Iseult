@@ -1,4 +1,4 @@
-#! /usr/bin/env pythonw
+#! /usr/bin/env python
 
 import re # regular expressions
 import os, sys # Used to make the code portable
@@ -478,6 +478,8 @@ class MainApp(Tk.Tk):
 
         # Make the object hold the timestep info
         self.TimeStep = Param(1, minimum=1, maximum=1000)
+        self.playbackbar = PlaybackBar(self, self.TimeStep)
+
 
         # Look for the tristan output files and load the file paths into
         # previous objects
@@ -488,7 +490,7 @@ class MainApp(Tk.Tk):
         self.TimeStep.attach(self)
         self.DrawCanvas()
 
-        self.playbackbar = PlaybackBar(self, self.TimeStep)
+
         self.playbackbar.pack(side=Tk.TOP, fill=Tk.BOTH, expand=0)
         self.update()
         # now root.geometry() returns valid size/placement
@@ -525,6 +527,7 @@ class MainApp(Tk.Tk):
             is_okay &= len(self.PathDict[key]) > 0
             i += 1
         self.TimeStep.setMax(len(self.PathDict['Flds']))
+        self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
         if len(self.H5KeyDict) == 0:
             self.GenH5Dict()
         return is_okay
