@@ -8,21 +8,16 @@ import new_cmaps
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 
-class PhasePanel:
+class FieldsPanel:
     # A diction of all of the parameters for this plot with the default parameters
 
-    plot_param_dict = {'mom_dim': 0,
-                       'masked': 1,
-                       'norm_type': 'LogNorm',
-                       'prtl_type': 0,
-                       'pow_num': 0.4,
+    plot_param_dict = {'TwoD': 0,
+                       'FieldType': 0, #0 = B-Field, 1 = E-field
+                       'show_x' : 1,
+                       'show_y' : 1,
+                       'show_z' : 1,
                        'show_cbar': True,
-                       'weighted': False,
-                       'show_shock': True,
-                       'show_int_region': True,
                        'set_color_limits': False,
-                       'xbins' : 200,
-                       'pbins' : 200,
                        'v_min': None,
                        'interpolation': 'hermite',
                        'v_max': None}
@@ -39,131 +34,73 @@ class PhasePanel:
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
 
 
-    def UpdatePowNum(self, value):
-        self.SetPlotParam('pow_num', value)
-        if self.GetPlotParam('norm_type') == "PowerNorm":
-            self.draw()
-
     def ChangePlotType(self, str_arg):
         self.FigWrap.ChangeGraph(str_arg)
-
-    def norm(self, vmin=None,vmax=None):
-        if self.GetPlotParam('norm_type') =="Linear":
-            return mcolors.Normalize(vmin, vmax)
-        elif self.GetPlotParam('norm_type') == "LogNorm":
-            return  mcolors.LogNorm(vmin, vmax)
-        else:
-            return  mcolors.PowerNorm(self.FigWrap.GetPlotParam('pow_num'), vmin, vmax)
 
     def set_plot_keys(self):
         '''A helper function that will insure that each hdf5 file will only be
         opened once per time step'''
-        self.arrs_needed = ['c_omp']
-        if self.GetPlotParam('prtl_type') == 0:
-            self.arrs_needed.append('xi')
-            if self.GetPlotParam('weighted'):
-                self.arrs_needed.append('chi')
-            if self.GetPlotParam('mom_dim') == 0:
-                self.arrs_needed.append('ui')
-            elif self.GetPlotParam('mom_dim') == 1:
-                self.arrs_needed.append('vi')
-            elif self.GetPlotParam('mom_dim') == 2:
-                self.arrs_needed.append('wi')
+        # First see if we are plotting E-field or B-Field
+        self.arrs_needed = []
+        if self.GetPlotParam('FieldType') == 0: # Load the B-Field
+            if self.GetPlotParam('TwoD'):
+                if self.GetPlotParam('show_x'):
+                    self.ars_needed.append('bx')
+                elif self.GetPlotParam('show_y'):
+                    self.ars_needed.append('by')
+                elif self.GetPlotParam('show_z'):
+                    self.ars_needed.append('bz')
+            else:
+                if self.GetPlotParam('show_x'):
+                    self.ars_needed.append('bx')
+                if self.GetPlotParam('show_y'):
+                    self.ars_needed.append('by')
+                if self.GetPlotParam('show_z'):
+                    self.ars_needed.append('bz')
 
-        if self.GetPlotParam('prtl_type') == 1:
-            self.arrs_needed.append('xe')
-            if self.GetPlotParam('weighted'):
-                self.arrs_needed.append('che')
+            if self.GetPlotParam('FieldType') == 0: # Load the E-Field
+                if self.GetPlotParam('TwoD'):
+                    if self.GetPlotParam('show_x'):
+                        self.ars_needed.append('ex')
+                    elif self.GetPlotParam('show_y'):
+                        self.ars_needed.append('ey')
+                    elif self.GetPlotParam('show_z'):
+                        self.ars_needed.append('ez')
+                else:
+                    if self.GetPlotParam('show_x'):
+                        self.ars_needed.append('ex')
+                    if self.GetPlotParam('show_y'):
+                        self.ars_needed.append('ey')
+                    if self.GetPlotParam('show_z'):
+                        self.ars_needed.append('ez')
 
-            elif self.GetPlotParam('mom_dim') == 0:
-                self.arrs_needed.append('ue')
-            elif self.GetPlotParam('mom_dim') == 1:
-                self.arrs_needed.append('ve')
-            elif self.GetPlotParam('mom_dim') == 2:
-                self.arrs_needed.append('we')
+#        self.arrs_needed.append('bx')
         return self.arrs_needed
 
     def draw(self):
         # Choose the normalization
-
-        # Generate the X-axis values
-        self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
-        self.weights = None
-        # Choose the particle type and px, py, or pz
-        if self.GetPlotParam('prtl_type') == 0:
-            self.x_values = self.FigWrap.LoadKey('xi')/self.c_omp
-            if self.GetPlotParam('weighted'):
-                self.weights = self.FigWrap.LoadKey('chi')
-            if self.GetPlotParam('mom_dim') == 0:
-                self.y_values = self.FigWrap.LoadKey('ui')
-                self.y_label  = r'$P_{px}\ [c]$'
-            if self.GetPlotParam('mom_dim') == 1:
-                self.y_values = self.FigWrap.LoadKey('vi')
-                self.y_label  = r'$P_{py}\ [c]$'
-            if self.GetPlotParam('mom_dim') == 2:
-                self.y_values = self.FigWrap.LoadKey('wi')
-                self.y_label  = r'$P_{pz}\ [c]$'
-        if self.GetPlotParam('prtl_type') == 1:
-            self.x_values = self.FigWrap.LoadKey('xe')/self.c_omp
-            if self.GetPlotParam('weighted'):
-                self.weights = self.FigWrap.LoadKey('che')
-
-            if self.GetPlotParam('mom_dim') == 0:
-                self.y_values = self.FigWrap.LoadKey('ue')
-                self.y_label  = r'$P_{ex}\ [c]$'
-            if self.GetPlotParam('mom_dim') == 1:
-                self.y_values = self.FigWrap.LoadKey('ve')
-                self.y_label  = r'$P_{ey}\ [c]$'
-            if self.GetPlotParam('mom_dim') == 2:
-                self.y_values = self.FigWrap.LoadKey('we')
-                self.y_label  = r'$P_{ez}\ [c]$'
-
-        self.hist2d = np.histogram2d(self.y_values, self.x_values, bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')], weights = self.weights)
-        self.xmin = 0
-        self.xmax = self.hist2d[2][-1]
-        self.zval = ma.masked_array(self.hist2d[0])
         tick_color = 'white'
-        if self.GetPlotParam('masked'):
-            self.zval[self.zval == 0] = ma.masked
-            tick_color = 'k'
-        else:
-            self.zval[self.zval==0] = 1
-        self.zval *= self.zval.max()**(-1)
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])#, bottom=0.2,left=0.1,right=0.95, top = 0.95)
+        if self.GetPlotParam('TwoD'):
+            self.zval = self.FigWrap.LoadKey('bx')[0,:,:]
 
-        self.axes = self.figure.add_subplot(self.gs[18:92,:])
-
-        self.cax = self.axes.imshow(self.zval, cmap = new_cmaps.cmaps[self.parent.cmap], norm = self.norm(), origin = 'lower', aspect = 'auto', extent=[self.xmin,self.xmax,self.hist2d[1][-1],self.hist2d[1][0]], interpolation=self.GetPlotParam('interpolation'))
-
-        if self.GetPlotParam('show_cbar'):
+            self.axes = self.figure.add_subplot(self.gs[18:92,:])
             self.axC = self.figure.add_subplot(self.gs[:4,:])
-            self.cbar = self.figure.colorbar(self.cax, ax = self.axes, cax = self.axC, orientation = 'horizontal')
-            if self.GetPlotParam('norm_type')== 'PowerNorm':
-                self.cbar.set_ticks(np.linspace(self.zval.min(),self.zval.max(), 5)**(1./self.FigWrap.GetPlotParam('pow_num')))
+            self.cax = self.axes.imshow(self.zval, cmap = new_cmaps.cmaps[self.parent.cmap],  origin = 'lower', aspect = 'auto', interpolation=self.GetPlotParam('interpolation'))
 
-            if self.GetPlotParam('norm_type') == 'LogNorm':
+            self.axes.set_axis_bgcolor('lightgrey')
 
-                ctick_range = np.logspace(np.log10(self.zval.min()),np.log10(self.zval.max()), 5)
-                self.cbar.set_ticks(ctick_range)
-                ctick_labels = []
-                for elm in ctick_range:
-                    if np.abs(np.log10(elm))<1E-2:
-                        tmp_s = '0'
-                    else:
-                        tmp_s = '%.2f' % np.log10(elm)
-                    ctick_labels.append(tmp_s)
+            if self.GetPlotParam('show_cbar'):
 
-                self.cbar.set_ticklabels(ctick_labels)
-                self.cbar.ax.tick_params(labelsize=10)
-            if self.GetPlotParam('norm_type')== 'Linear':
+                self.cbar = self.figure.colorbar(self.cax, ax = self.axes, cax = self.axC, orientation = 'horizontal')
+
                 self.cbar.set_ticks(np.linspace(self.zval.min(),self.zval.max(), 5))
 
-
-        self.axes.set_axis_bgcolor('lightgrey')
-        self.axes.tick_params(labelsize = 10, color=tick_color)
-        self.axes.set_xlim(self.xmin,self.xmax)
-        self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = -2, color = 'black')
-        self.axes.set_ylabel(self.y_label, labelpad = -2, color = 'black')
+            self.axes.set_axis_bgcolor('lightgrey')
+            self.axes.tick_params(labelsize = 10, color=tick_color)
+#        self.axes.set_xlim(self.xmin,self.xmax)
+            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = -2, color = 'black')
+#        self.axes.set_ylabel(self.y_label, labelpad = -2, color = 'black')
 
 
     def GetPlotParam(self, keyname):

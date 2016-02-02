@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env pythonw
 
 import re # regular expressions
 import os, sys # Used to make the code portable
@@ -14,7 +14,7 @@ matplotlib.use('TkAgg')
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
 from phase_plots import PhasePanel
-from test_plots import TestPanel
+from fields_plots import FieldsPanel
 
 import Tkinter as Tk
 import ttk as ttk
@@ -43,7 +43,8 @@ class SubPlotWrapper:
         self.parent = parent
         self.chartType = 'PhasePlot'
         # A dictionary that contains all of the plot types.
-        self.PlotTypeDict = {'PhasePlot': PhasePanel}
+        self.PlotTypeDict = {'PhasePlot': PhasePanel,
+                             'FieldsPlot': FieldsPanel}
         # A dictionary that will store where everything is in Hdf5 Files
         self.GenParamDict()
         self.figure = figure
@@ -57,17 +58,19 @@ class SubPlotWrapper:
 
     def GetKeys(self):
         return self.graph.set_plot_keys()
+
     def LoadKey(self, h5key):
         return self.parent.DataDict[h5key]
 
     def ChangeGraph(self, str_arg):
         # Change the graph type
         self.chartType = str_arg
+        self.graph = self.PlotTypeDict[self.chartType](self.parent, self)
         self.parent.RefreshCanvas()
 
     def GenParamDict(self):
         # Generate a dictionary that will store all of the params at dict['ctype']['param_name']
-        self.PlotParamsDict = {elm: '' for elm in self.PlotTypeDict.keys() }
+        self.PlotParamsDict = {plot_type: '' for plot_type in self.PlotTypeDict.keys()}
         for elm in self.PlotTypeDict.keys():
             self.PlotParamsDict[elm] = {key: self.PlotTypeDict[elm].plot_param_dict[key] for key in self.PlotTypeDict[elm].plot_param_dict.keys()}
 
@@ -223,8 +226,11 @@ class PlaybackBar(Tk.Frame):
             self.playB.config(text='Play')
 
     def OpenSettings(self):
-        SettingsFrame(self.parent)
-
+        if self.parent.settings_window is None:
+            self.parent.settings_window = SettingsFrame(self.parent)
+        else:
+            self.parent.settings_window.destroy()
+            self.parent.settings_window = SettingsFrame(self.parent)
 
     def blink(self):
         if self.playPressed:
@@ -266,6 +272,9 @@ class SettingsFrame(Tk.Toplevel):
 
         Tk.Toplevel.__init__(self)
         self.wm_title('General Settings')
+        self.protocol('WM_DELETE_WINDOW', self.OnClosing)
+
+
         self.parent = parent
         frm = ttk.Frame(self)
         frm.pack(fill=Tk.BOTH, expand=True)
@@ -365,7 +374,6 @@ class SettingsFrame(Tk.Toplevel):
     def WChanged(self, *args):
         self.GsChanged(5)
 
-
     def CmapChanged(self, *args):
     # Note here that Tkinter passes an event object to onselect()
         self.parent.cmap = self.cmapvar.get()
@@ -425,6 +433,10 @@ class SettingsFrame(Tk.Toplevel):
     def OnReload(self, event=None):
         self.parent.findDir()
 
+    def OnClosing(self):
+        self.parent.settings_window = None
+        self.destroy()
+
 
 class MainApp(Tk.Tk):
     """ We simply derive a new class of Frame as the man frame of our app"""
@@ -434,6 +446,7 @@ class MainApp(Tk.Tk):
         self.update_idletasks()
         menubar = Tk.Menu(self)
         self.wm_title(name)
+        self.settings_window = None
 
         # Set the number of rows and columns in the figure
         # (As well as the max rows)
@@ -510,7 +523,6 @@ class MainApp(Tk.Tk):
             with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][0]), 'r') as f:
                 for h5key in f.keys():
                     self.H5KeyDict[h5key] = pkey
-
 
     def pathOK(self):
         """ Test to see if the current path contains tristan files
