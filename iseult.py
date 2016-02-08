@@ -24,8 +24,6 @@ def destroy(e):
     sys.exit()
 
 class Spinbox(ttk.Entry):
-
-
     def __init__(self, master=None, **kw):
         ttk.Entry.__init__(self, master, "ttk::spinbox", **kw)
 
@@ -601,13 +599,15 @@ class MainApp(Tk.Tk):
 
         self.SubPlotList[0][1].PlotParamsDict['PhasePlot']['prtl_type'] = 1
 
-#        self.SubPlotList[0][0].SetPlotParam('prtl_type',0)
 
 
 #        self.a = self.f.add_subplot(self.gs0[0,0])
 #        self.a.pcolor(np.random.rand(5,5))
         # a tk.DrawingArea
         self.canvas = FigureCanvasTkAgg(self.f, master=self)
+        self.SubPlotList[1][1].ChangeGraph('FieldsPlot')
+        self.SubPlotList[2][1].ChangeGraph('FieldsPlot')
+        self.SubPlotList[2][1].SetPlotParam('field_type', 1)
 
 
         self.canvas.show()
@@ -665,6 +665,7 @@ class MainApp(Tk.Tk):
     def RefreshCanvas(self):
         self.f.clf()
         self.LoadAllKeys()
+
         for i in range(self.numOfRows.get()):
             for j in range(self.numOfColumns.get()):
                 self.SubPlotList[i][j].DrawGraph()

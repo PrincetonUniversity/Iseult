@@ -7,20 +7,22 @@ import numpy.ma as ma
 import new_cmaps
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
+import matplotlib.patheffects as PathEffects
 
 class FieldsPanel:
     # A diction of all of the parameters for this plot with the default parameters
 
-    plot_param_dict = {'TwoD': 0,
-                       'FieldType': 0, #0 = B-Field, 1 = E-field
+    plot_param_dict = {'twoD': 0,
+                       'field_type': 0, #0 = B-Field, 1 = E-field
                        'show_x' : 1,
                        'show_y' : 1,
                        'show_z' : 1,
                        'show_cbar': True,
                        'set_color_limits': False,
-                       'v_min': None,
-                       'interpolation': 'hermite',
-                       'v_max': None}
+                       'z_min': None,
+                       'z_max' : None,
+                       'OutlineText': True,
+                       'interpolation': 'hermite'}
 
     def __init__(self, parent, figwrapper):
         self.settings_window = None
@@ -40,10 +42,14 @@ class FieldsPanel:
     def set_plot_keys(self):
         '''A helper function that will insure that each hdf5 file will only be
         opened once per time step'''
-        # First see if we are plotting E-field or B-Field
-        self.arrs_needed = []
-        if self.GetPlotParam('FieldType') == 0: # Load the B-Field
-            if self.GetPlotParam('TwoD'):
+        # First make sure that omega_plasma & xi is loaded so we can fix the
+        # x & y distances.
+
+        self.arrs_needed = ['c_omp']
+        # Then see if we are plotting E-field or B-Field
+        if self.GetPlotParam('field_type') == 0: # Load the B-Field
+            if self.GetPlotParam('twoD'):
+                #If it is 2-D we can only show one dim of the field.
                 if self.GetPlotParam('show_x'):
                     self.arrs_needed.append('bx')
                 elif self.GetPlotParam('show_y'):
@@ -58,30 +64,33 @@ class FieldsPanel:
                 if self.GetPlotParam('show_z'):
                     self.arrs_needed.append('bz')
 
-            if self.GetPlotParam('FieldType') == 1: # Load the E-Field
-                if self.GetPlotParam('TwoD'):
-                    if self.GetPlotParam('show_x'):
-                        self.arrs_needed.append('ex')
-                    elif self.GetPlotParam('show_y'):
-                        self.arrs_needed.append('ey')
-                    elif self.GetPlotParam('show_z'):
-                        self.arrs_needed.append('ez')
-                else:
-                    if self.GetPlotParam('show_x'):
-                        self.arrs_needed.append('ex')
-                    if self.GetPlotParam('show_y'):
-                        self.arrs_needed.append('ey')
-                    if self.GetPlotParam('show_z'):
-                        self.arrs_needed.append('ez')
+        if self.GetPlotParam('field_type') == 1: # Load the E-Field
+            if self.GetPlotParam('twoD'):
+                if self.GetPlotParam('show_x'):
+                    self.arrs_needed.append('ex')
+                elif self.GetPlotParam('show_y'):
+                    self.arrs_needed.append('ey')
+                elif self.GetPlotParam('show_z'):
+                    self.arrs_needed.append('ez')
 
-#        self.arrs_needed.append('bx')
+            else:
+                if self.GetPlotParam('show_x'):
+                    self.arrs_needed.append('ex')
+                if self.GetPlotParam('show_y'):
+                    self.arrs_needed.append('ey')
+                if self.GetPlotParam('show_z'):
+                    self.arrs_needed.append('ez')
+
         return self.arrs_needed
 
     def draw(self):
         # Get the x, y, and z colors from the colormap
-        self.xcolor = new_cmaps.cmaps[self.parent.cmap](0.15)
+        self.xcolor = new_cmaps.cmaps[self.parent.cmap](0.2)
         self.ycolor = new_cmaps.cmaps[self.parent.cmap](0.5)
-        self.zcolor = new_cmaps.cmaps[self.parent.cmap](0.85)
+        self.zcolor = new_cmaps.cmaps[self.parent.cmap](0.8)
+
+
+        self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
 
         # Set the tick color
         tick_color = 'white'
@@ -89,8 +98,8 @@ class FieldsPanel:
         # Create a gridspec to handle spacing better
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])#, bottom=0.2,left=0.1,right=0.95, top = 0.95)
 
-        if self.GetPlotParam('FieldType') == 0: # Load the B-Field
-            if self.GetPlotParam('TwoD'):
+        if self.GetPlotParam('field_type') == 0: # Load the B-Field
+            if self.GetPlotParam('twoD'):
                 if self.GetPlotParam('show_x'):
                     self.zval = self.FigWrap.LoadKey('bx')[0,:,:]
                 elif self.GetPlotParam('show_y'):
@@ -106,8 +115,8 @@ class FieldsPanel:
                 if self.GetPlotParam('show_z'):
                     self.fz = self.FigWrap.LoadKey('bz')[0,:,:]
 
-        if self.GetPlotParam('FieldType') == 1: # Load the e-Field
-            if self.GetPlotParam('TwoD'):
+        if self.GetPlotParam('field_type') == 1: # Load the e-Field
+            if self.GetPlotParam('twoD'):
                 if self.GetPlotParam('show_x'):
                     self.zval = self.FigWrap.LoadKey('ex')[0,:,:]
                 elif self.GetPlotParam('show_y'):
@@ -123,9 +132,8 @@ class FieldsPanel:
                 if self.GetPlotParam('show_z'):
                     self.fz = self.FigWrap.LoadKey('ez')[0,:,:]
 
-
         self.axes = self.figure.add_subplot(self.gs[18:92,:])
-        if self.GetPlotParam('TwoD'):
+        if self.GetPlotParam('twoD'):
             self.cax = self.axes.imshow(self.zval, cmap = new_cmaps.cmaps[self.parent.cmap],  origin = 'lower', aspect = 'auto', interpolation=self.GetPlotParam('interpolation'))
             self.axes.set_axis_bgcolor('lightgrey')
 
@@ -141,12 +149,54 @@ class FieldsPanel:
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = -2, color = 'black')
 #        self.axes.set_ylabel(self.y_label, labelpad = -2, color = 'black')
         else:
+            self.annotate_pos = [0.8,0.9]
+            if self.GetPlotParam('OutlineText'):
+                self.annotate_kwargs = {'horizontalalignment': 'right',
+                'verticalalignment': 'top',
+                'size' : 18,
+                'path_effects' : [PathEffects.withStroke(linewidth=1.5,foreground="k")]
+                }
+            else:
+                self.annotate_kwargs = {'horizontalalignment' : 'right',
+                'verticalalignment' : 'top',
+                'size' : 18}
             if self.GetPlotParam('show_x'):
                 self.axes.plot(self.fx[self.fx.shape[0]/2,:], color = self.xcolor)
+                if self.GetPlotParam('field_type') == 0:
+                    tmp_str = r'$B_x$'
+                else:
+                    tmp_str = r'$E_x$'
+                self.axes.annotate(tmp_str, xy = self.annotate_pos,
+                                xycoords = 'axes fraction',
+                                color = self.xcolor,
+                                **self.annotate_kwargs)
+                self.annotate_pos[0] += .08
             if self.GetPlotParam('show_y'):
                 self.axes.plot(self.fy[self.fy.shape[0]/2,:], color = self.ycolor)
+                if self.GetPlotParam('field_type') == 0:
+                    tmp_str = r'$B_y$'
+                else:
+                    tmp_str = r'$E_y$'
+                self.axes.annotate(tmp_str, xy = self.annotate_pos,
+                                xycoords= 'axes fraction',
+                                color = self.ycolor,
+                                **self.annotate_kwargs)
+
+                self.annotate_pos[0] += .08
+
             if self.GetPlotParam('show_z'):
                 self.axes.plot(self.fz[self.fz.shape[0]/2,:], color = self.zcolor)
+                if self.GetPlotParam('field_type') == 0:
+                    tmp_str = r'$B_z$'
+                else:
+                    tmp_str = r'$E_z$'
+                self.axes.annotate(tmp_str, xy = self.annotate_pos,
+                                xycoords= 'axes fraction',
+                                color = self.zcolor,
+                                **self.annotate_kwargs
+                                )
+
+
             self.axes.set_axis_bgcolor('lightgrey')
 
 
@@ -158,13 +208,13 @@ class FieldsPanel:
 
     def OpenSettings(self):
         if self.settings_window is None:
-            self.settings_window = PhaseSettings(self)
+            self.settings_window = FieldSettings(self)
         else:
             self.settings_window.destroy()
-            self.settings_window = PhaseSettings(self)
+            self.settings_window = FieldSettings(self)
 
 
-class PhaseSettings(Tk.Toplevel):
+class FieldSettings(Tk.Toplevel):
     def __init__(self, parent):
         self.parent = parent
         Tk.Toplevel.__init__(self)
@@ -176,6 +226,18 @@ class PhaseSettings(Tk.Toplevel):
         self.protocol('WM_DELETE_WINDOW', self.OnClosing)
         #Create some sizers
 
+        self.TwoDVar = Tk.IntVar(self) # Create a var to track whether or not to plot in 2-D
+        self.TwoDVar.set(self.parent.GetPlotParam('twoD'))
+#                   'field_type': 0, #0 = B-Field, 1 = E-field
+#                   'show_x' : 1,
+#                   'show_y' : 1,
+#                   'show_z' : 1,
+#                   'show_cbar': True,
+#                   'set_color_limits': False,
+#                   'v_min': None,
+#                   'OutlineText': True,
+#                   'interpolation': 'hermite',
+#                   'v_max': None
         # Create the OptionMenu to chooses the Chart Type:
         self.InterpolVar = Tk.StringVar(self)
         self.InterpolVar.set(self.parent.GetPlotParam('interpolation')) # default value
@@ -195,22 +257,22 @@ class PhaseSettings(Tk.Toplevel):
         cmapChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
 
 
-        # the Radiobox Control to choose the particle
-        self.prtlList = ['ion', 'electron']
-        self.pvar = Tk.IntVar()
-        self.pvar.set(self.parent.GetPlotParam('prtl_type'))
+        # the Radiobox Control to choose the Field Type
+        self.FieldList = ['B Field', 'E field']
+        self.FieldTypeVar  = Tk.IntVar()
+        self.FieldTypeVar.set(self.parent.GetPlotParam('field_type'))
 
-        ttk.Label(frm, text='Particle:').grid(row = 1, sticky = Tk.W)
+        ttk.Label(frm, text='Choose Field:').grid(row = 1, sticky = Tk.W)
 
-        for i in range(len(self.prtlList)):
+        for i in range(len(self.FieldList)):
             ttk.Radiobutton(frm,
-                text=self.prtlList[i],
-                variable=self.pvar,
-                command = self.RadioPrtl,
+                text=self.FieldList[i],
+                variable=self.FieldTypeVar,
+                command = self.RadioField,
                 value=i).grid(row = 2+i, sticky =Tk.W)
 
         # the Radiobox Control to choose the momentum dim
-        self.dimList = ['x-px', 'x-py', 'x-pz']
+        self.dimList = ['x', 'y', 'z']
         self.dimvar = Tk.IntVar()
         self.dimvar.set(self.parent.GetPlotParam('mom_dim'))
 
@@ -223,22 +285,7 @@ class PhaseSettings(Tk.Toplevel):
                 command = self.RadioDim,
                 value=i).grid(row = 2+i, column = 1, sticky = Tk.W)
 
-        ''' Commenting out some lines that allows you to change the color norm,
-        No longer needed
-        self.cnormList = ['Linear', 'LogNorm', 'PowerNorm']
-        self.normvar = Tk.IntVar()
-        self.normvar.set(self.cnormList.index(self.parent.GetPlotParam('norm_type')))
 
-        ttk.Label(frm, text = 'Cmap Norm:').grid(row = 6, sticky = Tk.W)
-
-        for i in range(3):
-            ttk.Radiobutton(frm,
-                            text = self.cnormList[i],
-                            variable = self.normvar,
-                            command = self.RadioNorm,
-                            value = i).grid(row = 7+i, sticky = Tk.W)
-
-        '''
         # Control whether or not Cbar is shown
         self.CbarVar = Tk.IntVar()
         self.CbarVar.set(self.parent.GetPlotParam('show_cbar'))
@@ -302,6 +349,12 @@ class PhaseSettings(Tk.Toplevel):
             pass
         else:
             self.parent.SetPlotParam('interpolation', self.InterpolVar.get())
+
+    def RadioField(self):
+        if self.FieldTypeVar.get() == self.parent.GetPlotParam('field_type'):
+            pass
+        else:
+            self.parent.SetPlotParam('field_type', self.FieldTypeVar.get())
 
 
     def RadioPrtl(self):

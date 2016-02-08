@@ -1056,4 +1056,4 @@ for (name, data) in (('magma', _magma_data),
 #cmaps['jet'] = 'jet'
 cmaps['gnuplot'] = get_cmap('gnuplot')
 cmaps['gnuplot2'] = get_cmap('gnuplot2')
-#cmaps['nipy_spectral'] = 'nipy_spectral'
+cmaps['nipy_spectral'] = get_cmap('nipy_spectral')
