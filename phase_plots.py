@@ -58,7 +58,7 @@ class PhasePanel:
     def set_plot_keys(self):
         '''A helper function that will insure that each hdf5 file will only be
         opened once per time step'''
-        self.arrs_needed = ['c_omp']
+        self.arrs_needed = ['c_omp', 'bx', 'istep']
         if self.GetPlotParam('prtl_type') == 0:
             self.arrs_needed.append('xi')
             if self.GetPlotParam('weighted'):
@@ -118,9 +118,12 @@ class PhasePanel:
                 self.y_values = self.FigWrap.LoadKey('we')
                 self.y_label  = r'$P_{ez}\ [c]$'
 
-        self.hist2d = np.histogram2d(self.y_values, self.x_values, bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')], weights = self.weights)
+        self.pmin = min(self.y_values)
+        self.pmax = max(self.y_values)
         self.xmin = 0
-        self.xmax = self.hist2d[2][-1]
+        self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.FigWrap.LoadKey('istep')[0]
+        self.hist2d = np.histogram2d(self.y_values, self.x_values, bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')], range = [[self.pmin,self.pmax],[0,192.2]], weights = self.weights)
+
         self.zval = ma.masked_array(self.hist2d[0])
         tick_color = 'white'
         if self.GetPlotParam('masked'):

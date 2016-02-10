@@ -72,11 +72,13 @@ class SubPlotWrapper:
         for elm in self.PlotTypeDict.keys():
             self.PlotParamsDict[elm] = {key: self.PlotTypeDict[elm].plot_param_dict[key] for key in self.PlotTypeDict[elm].plot_param_dict.keys()}
 
-    def SetPlotParam(self, pname, val, ctype = None):
+    def SetPlotParam(self, pname, val, ctype = None, update_plot = True):
         if ctype is None:
             ctype = self.chartType
+
         self.PlotParamsDict[ctype][pname] = val
-        self.parent.RefreshCanvas()
+        if update_plot:
+            self.parent.RefreshCanvas()
 
 
     def GetPlotParam(self, pname, ctype = None):
