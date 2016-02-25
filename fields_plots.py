@@ -17,7 +17,7 @@ class FieldsPanel:
                        'show_x' : 1,
                        'show_y' : 1,
                        'show_z' : 1,
-                       'show_cbar': False,
+                       'show_cbar': True,
                        'set_color_limits': False,
                        'z_min': None,
                        'z_max' : None,
@@ -92,6 +92,10 @@ class FieldsPanel:
         # Create a gridspec to handle spacing better
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])#, bottom=0.2,left=0.1,right=0.95, top = 0.95)
 
+        self.fx = None
+        self.fy = None
+        self.fz = None
+
         if self.GetPlotParam('field_type') == 0: # Load the B-Field
             if self.GetPlotParam('show_x'):
                 self.fx = self.FigWrap.LoadKey('bx')[0,:,:]
@@ -124,6 +128,7 @@ class FieldsPanel:
 
         self.axes = self.figure.add_subplot(self.gs[18:92,:])
 
+        self.zval = None
         # Now that the data is loaded, start making the plots
         if self.GetPlotParam('twoD'):
             # First choose the 'zval' to plot, we can only do one because it is 2-d.
@@ -179,6 +184,7 @@ class FieldsPanel:
                 self.cbar = self.figure.colorbar(self.cax, ax = self.axes, cax = self.axC, orientation = 'horizontal')
 
                 self.cbar.set_ticks(np.linspace(self.zval.min(),self.zval.max(), 5))
+                self.cbar.ax.tick_params(labelsize=10)
 
             self.axes.set_axis_bgcolor('lightgrey')
             self.axes.tick_params(labelsize = 10, color=tick_color)

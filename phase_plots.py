@@ -7,6 +7,8 @@ import numpy.ma as ma
 import new_cmaps
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
+import matplotlib.patheffects as PathEffects
+
 
 class PhasePanel:
     # A diction of all of the parameters for this plot with the default parameters
@@ -89,6 +91,9 @@ class PhasePanel:
         # Generate the X-axis values
         self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
         self.weights = None
+        self.x_values = None
+        self.y_values = None
+
         # Choose the particle type and px, py, or pz
         if self.GetPlotParam('prtl_type') == 0:
             self.x_values = self.FigWrap.LoadKey('xi')/self.c_omp
@@ -121,7 +126,9 @@ class PhasePanel:
         self.pmin = min(self.y_values)
         self.pmax = max(self.y_values)
         self.xmin = 0
-        self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.FigWrap.LoadKey('istep')[0]
+
+        self.istep = self.FigWrap.LoadKey('istep')[0]
+        self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.istep
         self.hist2d = np.histogram2d(self.y_values, self.x_values, bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')], range = [[self.pmin,self.pmax],[0,192.2]], weights = self.weights)
 
         self.zval = ma.masked_array(self.hist2d[0])
@@ -136,7 +143,15 @@ class PhasePanel:
 
         self.axes = self.figure.add_subplot(self.gs[18:92,:])
 
-        self.cax = self.axes.imshow(self.zval, cmap = new_cmaps.cmaps[self.parent.cmap], norm = self.norm(), origin = 'lower', aspect = 'auto', extent=[self.xmin,self.xmax,self.hist2d[1][-1],self.hist2d[1][0]], interpolation=self.GetPlotParam('interpolation'))
+        self.cax = self.axes.imshow(self.zval, cmap = new_cmaps.cmaps[self.parent.cmap], norm = self.norm(), origin = 'lower', aspect = 'auto', extent=[self.xmin,self.xmax,self.hist2d[1][0],self.hist2d[1][-1]], interpolation=self.GetPlotParam('interpolation'))
+        if self.GetPlotParam('show_shock'):
+            # Set shock color, if the colormap is viridis choose a red, if inferno, plasma or magma, choose a green
+            if self.parent.cmap == 'viridis' or self.parent.cmap == 'nipy_spectral':
+                shock_color = new_cmaps.cmaps['plasma'](0.66)
+            else:
+                shock_color = new_cmaps.cmaps['viridis'](0.66)
+            self.axes.axvline(self.parent.shock_loc/self.c_omp*self.istep, linewidth = 2.5, linestyle = '--', color = shock_color, path_effects=[PathEffects.Stroke(linewidth=3, foreground='black'),
+                       PathEffects.Normal()])
 
         if self.GetPlotParam('show_cbar'):
             self.axC = self.figure.add_subplot(self.gs[:4,:])
@@ -160,7 +175,6 @@ class PhasePanel:
                 self.cbar.ax.tick_params(labelsize=10)
             if self.GetPlotParam('norm_type')== 'Linear':
                 self.cbar.set_ticks(np.linspace(self.zval.min(),self.zval.max(), 5))
-
 
         self.axes.set_axis_bgcolor('lightgrey')
         self.axes.tick_params(labelsize = 10, color=tick_color)

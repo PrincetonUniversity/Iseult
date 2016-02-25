@@ -487,7 +487,7 @@ class MainApp(Tk.Tk):
 
         # Set the default color map
 
-        self.cmap = 'inferno'
+        self.cmap = 'viridis'
 
         # Make the object hold the timestep info
         self.TimeStep = Param(1, minimum=1, maximum=1000)
@@ -498,6 +498,7 @@ class MainApp(Tk.Tk):
         # previous objects
         self.dirname = os.curdir
         self.findDir()
+        self.shock_finder()
 
 
         self.TimeStep.attach(self)
@@ -522,6 +523,8 @@ class MainApp(Tk.Tk):
         for pkey in self.PathDict.keys():
             with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][0]), 'r') as f:
                 for h5key in f.keys():
+                    if h5key in self.H5KeyDict.keys():
+                        print 'uh-oh', h5key
                     self.H5KeyDict[h5key] = pkey
 
     def pathOK(self):
@@ -532,12 +535,30 @@ class MainApp(Tk.Tk):
         if 'output' in dirlist:
             self.dirname = os.path.join(self.dirname, 'output')
         is_okay = True
-        i = 0
+
+        # Create a dictionary of all the paths to the files
+        self.PathDict = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
+
+        # create a bunch of regular expressions used to search for files
+        f_re = re.compile('flds.tot.*')
+        prtl_re = re.compile('prtl.tot.*')
+        s_re = re.compile('spect.*')
+        param_re = re.compile('param.*')
+        self.PathDict['Flds']= filter(f_re.match, os.listdir(self.dirname))
+        self.PathDict['Flds'].sort()
+
+        self.PathDict['Prtl']= filter(prtl_re.match, os.listdir(self.dirname))
+        self.PathDict['Prtl'].sort()
+
+        self.PathDict['Spect']= filter(s_re.match, os.listdir(self.dirname))
+        self.PathDict['Spect'].sort()
+
+        self.PathDict['Param']= filter(param_re.match, os.listdir(self.dirname))
+        self.PathDict['Param'].sort()
+
         for key in self.PathDict.keys():
-            self.PathDict[key]= (filter(self.re_list[i].match, os.listdir(self.dirname)))
-            self.PathDict[key].sort()
             is_okay &= len(self.PathDict[key]) > 0
-            i += 1
+
         self.TimeStep.setMax(len(self.PathDict['Flds']))
         self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
         if len(self.H5KeyDict) == 0:
@@ -645,6 +666,7 @@ class MainApp(Tk.Tk):
             for j in range(self.numOfColumns.get()):
                 # for each subplot, see what keys are needed
                 tmpList = self.SubPlotList[i][j].GetKeys()
+                self.ToLoad[self.H5KeyDict['time']].append('time')
                 for elm in tmpList:
                     # find out what type of file the key is stored in
                     ftype = self.H5KeyDict[elm]
@@ -663,10 +685,12 @@ class MainApp(Tk.Tk):
 
 
 
-
     def RefreshCanvas(self):
         self.f.clf()
         self.LoadAllKeys()
+
+        # Calculate the new shock location
+        self.shock_loc = self.DataDict['time'][0]*self.shock_speed
 
         for i in range(self.numOfRows.get()):
             for j in range(self.numOfColumns.get()):
@@ -674,6 +698,7 @@ class MainApp(Tk.Tk):
 
         self.canvas.show()
         self.canvas.get_tk_widget().update_idletasks()
+
     def onclick(self, event):
         '''After being clicked, we should use the x and y of the cursor to
         determine what subplot was clicked'''
@@ -696,17 +721,57 @@ class MainApp(Tk.Tk):
             j = col_array.searchsorted(x_loc)/2
 
             self.SubPlotList[i][j].OpenSubplotSettings()
-#        else
-        # find the row value
-#        print 'button=%d, x=%f, y=%f' %(
-#        event.button, event.x/fig_size[0], event.y/fig_size[1])
-#        print self.gs0.get_grid_positions(self.f)
 
+    def shock_finder(self):
+        '''The main idea of the shock finder, is we go to the last timestep
+        in the simulation and find where the density is half it's max value.
+        We then calculate the speed of the of the shock assuming it is
+        traveling at constant velocity. The function returns an array that contains
+        the shock position at every time step.'''
+
+        # First load the first field file to find the initial size of the
+        # box in the x direction
+
+#        print os.path.join(self.dirname,self.PathDict['Flds'][0])
+        with h5py.File(os.path.join(self.dirname,self.PathDict['Flds'][0]), 'r') as f:
+            nxf0 = f['by'][:].shape[1]
+
+        # Load the final time step to find the shock's location at the end.
+        with h5py.File(os.path.join(self.dirname,self.PathDict['Flds'][-1]), 'r') as f:
+            dens_arr =np.copy(f['dens'][0,:,:])
+
+        with h5py.File(os.path.join(self.dirname,self.PathDict['Param'][-1]), 'r') as f:
+            # I use this file to get the final time, the istep, interval, and c_omp
+            final_time = f['time'][0]
+            istep = f['istep'][0]
+            interval = f['interval'][0]
+            c_omp = f['c_omp'][0]
+
+        # Find out where the shock is at the last time step.
+        jstart = min(10*c_omp/istep, nxf0)
+        # build the final x_axis of the plot
+
+        xaxis_final = np.arange(dens_arr.shape[1])/c_omp*istep
+        # Find the shock by seeing where the density is 1/2 of it's
+        # max value. First average the density in the y_direction
+        print dens_arr.shape
+        dens_avg_arr = np.empty(dens_arr.shape[1])
+        for i in range(dens_arr.shape[0]):
+
+            dens_avg_arr += dens_arr[i,:]
+        dens_avg_arr *= 1/dens_arr.shape[0]
+        dens_half_max = max(dens_avg_arr[jstart:])*.5
+        # Find the farthest location where the average density is greater
+        # than half max
+        ishock_final = np.where(dens_avg_arr>=dens_half_max)[0][-1]
+        xshock_final = xaxis_final[ishock_final]
+        self.shock_speed = xshock_final/final_time
 
 
     def setKnob(self, value):
+        # If the time parameter changes update the plots
         self.RefreshCanvas()
-    # We need to do it this way so that pressing enter with focus anywhere on the app will cause the
+
     def TxtEnter(self, e):
         self.playbackbar.TextCallback()
 
