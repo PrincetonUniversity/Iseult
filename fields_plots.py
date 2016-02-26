@@ -12,7 +12,7 @@ import matplotlib.patheffects as PathEffects
 class FieldsPanel:
     # A diction of all of the parameters for this plot with the default parameters
 
-    plot_param_dict = {'twoD': 1,
+    plot_param_dict = {'twoD': 0,
                        'field_type': 0, #0 = B-Field, 1 = E-field
                        'show_x' : 1,
                        'show_y' : 1,

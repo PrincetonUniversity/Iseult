@@ -50,10 +50,6 @@ class SubPlotWrapper:
         self.pos = pos
         self.graph = graph
         #
-
-
-
-
     def GetKeys(self):
         return self.graph.set_plot_keys()
 
@@ -200,6 +196,11 @@ class PlaybackBar(Tk.Frame):
         self.slider.set(self.param.value)
         self.slider.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
 
+        # a measurement button that should lauch some global settings.
+        self.SettingsB= ttk.Button(self, text='Measure', command=self.OpenMeasures)
+        self.SettingsB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+
+
         # a settings button that should lauch some global settings.
         self.SettingsB= ttk.Button(self, text='Settings', command=self.OpenSettings)
         self.SettingsB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
@@ -231,6 +232,14 @@ class PlaybackBar(Tk.Frame):
         else:
             self.parent.settings_window.destroy()
             self.parent.settings_window = SettingsFrame(self.parent)
+
+    def OpenMeasures(self):
+        if self.parent.measure_window is None:
+            self.parent.measure_window = SettingsFrame(self.parent)
+        else:
+            self.parent.measure_window.destroy()
+            self.parent.measure_window = SettingsFrame(self.parent)
+
 
     def blink(self):
         if self.playPressed:
@@ -376,8 +385,19 @@ class SettingsFrame(Tk.Toplevel):
 
     def CmapChanged(self, *args):
     # Note here that Tkinter passes an event object to onselect()
-        self.parent.cmap = self.cmapvar.get()
-        self.parent.RefreshCanvas()
+        if self.cmapvar.get() == self.parent.cmap:
+            pass
+        else:
+            self.parent.cmap = self.cmapvar.get()
+            if self.parent.cmap == 'viridis' or self.parent.cmap == 'nipy_spectral':
+                self.parent.proton_color =  new_cmaps.cmaps['plasma'](0.55)
+                self.parent.electron_color = new_cmaps.cmaps['plasma'](0.8)
+
+            else:
+                self.parent.proton_color = new_cmaps.cmaps['viridis'](0.45)
+                self.parent.electron_color = new_cmaps.cmaps['viridis'](0.75)
+
+            self.parent.RefreshCanvas()
 
 
     def SkipSizeChanged(self, *args):
@@ -447,6 +467,7 @@ class MainApp(Tk.Tk):
         menubar = Tk.Menu(self)
         self.wm_title(name)
         self.settings_window = None
+        self.measure_window = None
 
         # Set the number of rows and columns in the figure
         # (As well as the max rows)
@@ -499,6 +520,19 @@ class MainApp(Tk.Tk):
         self.dirname = os.curdir
         self.findDir()
         self.shock_finder()
+
+        # Choose the integration region for the particles
+        self.ion_e_region = (-1E4,0) # relative to the shock
+        self.e_e_region = (-1E4,0)
+        # Set the particle colors
+        if self.cmap == 'viridis' or self.cmap == 'nipy_spectral':
+            self.proton_color =  new_cmaps.cmaps['plasma'](0.55)
+            self.electron_color = new_cmaps.cmaps['plasma'](0.8)
+
+        else:
+            self.proton_color = new_cmaps.cmaps['viridis'](0.45)
+            self.electron_color = new_cmaps.cmaps['viridis'](0.75)
+
 
 
         self.TimeStep.attach(self)
@@ -559,9 +593,9 @@ class MainApp(Tk.Tk):
         for key in self.PathDict.keys():
             is_okay &= len(self.PathDict[key]) > 0
 
-        self.TimeStep.setMax(len(self.PathDict['Flds']))
+        self.TimeStep.setMax(max(len(self.PathDict['Flds']),1))
         self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
-        if len(self.H5KeyDict) == 0:
+        if len(self.H5KeyDict) == 0 and is_okay is True:
             self.GenH5Dict()
         return is_okay
 

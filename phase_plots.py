@@ -20,7 +20,7 @@ class PhasePanel:
                        'pow_num': 0.4,
                        'show_cbar': True,
                        'weighted': False,
-                       'show_shock': True,
+                       'show_shock': False,
                        'show_int_region': True,
                        'set_color_limits': False,
                        'xbins' : 200,
@@ -144,14 +144,40 @@ class PhasePanel:
         self.axes = self.figure.add_subplot(self.gs[18:92,:])
 
         self.cax = self.axes.imshow(self.zval, cmap = new_cmaps.cmaps[self.parent.cmap], norm = self.norm(), origin = 'lower', aspect = 'auto', extent=[self.xmin,self.xmax,self.hist2d[1][0],self.hist2d[1][-1]], interpolation=self.GetPlotParam('interpolation'))
+
+        # Set colors for the shock line and the particles.
+        if self.parent.cmap == 'viridis' or self.parent.cmap == 'nipy_spectral':
+            shock_color = 'w'
+            energy_color = new_cmaps.cmaps['plasma'](0.55)
+
+            if self.GetPlotParam('prtl_type') == 1:
+                energy_color = new_cmaps.cmaps['plasma'](0.8)
+
+        else:
+            shock_color = 'w'
+            energy_color = new_cmaps.cmaps['viridis'](0.45)
+            if self.GetPlotParam('prtl_type') == 1:
+                energy_color = new_cmaps.cmaps['viridis'](0.75)
+
+
         if self.GetPlotParam('show_shock'):
-            # Set shock color, if the colormap is viridis choose a red, if inferno, plasma or magma, choose a green
-            if self.parent.cmap == 'viridis' or self.parent.cmap == 'nipy_spectral':
-                shock_color = new_cmaps.cmaps['plasma'](0.66)
-            else:
-                shock_color = new_cmaps.cmaps['viridis'](0.66)
-            self.axes.axvline(self.parent.shock_loc/self.c_omp*self.istep, linewidth = 2.5, linestyle = '--', color = shock_color, path_effects=[PathEffects.Stroke(linewidth=3, foreground='black'),
+
+            self.axes.axvline(self.parent.shock_loc/self.c_omp*self.istep, linewidth = 1.5, linestyle = '--', color = shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
                        PathEffects.Normal()])
+#        if self.GetPlotParam('show_int_region'):
+        if True:
+            # find the location
+            left_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.ion_e_region[0]
+            right_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.ion_e_region[1]
+            if self.GetPlotParam('prtl_type') == 1:
+                left_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.e_e_region[0]
+                right_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.e_e_region[1]
+            left_loc = max(left_loc, self.xmin+1)
+            right_loc = min(right_loc, self.xmax-1)
+            print left_loc, right_loc
+            self.axes.axvline(left_loc, linewidth = 1.5, linestyle = '-', color = energy_color)
+            self.axes.axvline(right_loc, linewidth = 1.5, linestyle = '-', color = energy_color)
+
 
         if self.GetPlotParam('show_cbar'):
             self.axC = self.figure.add_subplot(self.gs[:4,:])
