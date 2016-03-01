@@ -15,6 +15,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from matplotlib.figure import Figure
 from phase_plots import PhasePanel
 from fields_plots import FieldsPanel
+from density_plots import DensPanel
 
 import Tkinter as Tk
 import ttk as ttk
@@ -42,7 +43,8 @@ class SubPlotWrapper:
         self.chartType = 'PhasePlot'
         # A dictionary that contains all of the plot types.
         self.PlotTypeDict = {'PhasePlot': PhasePanel,
-                             'FieldsPlot': FieldsPanel}
+                             'FieldsPlot': FieldsPanel,
+                             'DensityPlot': DensPanel}
         # A dictionary that will store where everything is in Hdf5 Files
         self.GenParamDict()
         self.figure = figure
@@ -85,8 +87,7 @@ class SubPlotWrapper:
     def SetGraph(self, ctype = None):
         if ctype:
             self.chartType = ctype
-        if self.graph is None:
-            self.graph = self.PlotTypeDict[self.chartType](self.parent, self)
+        self.graph = self.PlotTypeDict[self.chartType](self.parent, self)
 
     def DrawGraph(self):
         self.graph.draw()
@@ -390,11 +391,11 @@ class SettingsFrame(Tk.Toplevel):
         else:
             self.parent.cmap = self.cmapvar.get()
             if self.parent.cmap == 'viridis' or self.parent.cmap == 'nipy_spectral':
-                self.parent.proton_color =  new_cmaps.cmaps['plasma'](0.55)
+                self.parent.ion_color =  new_cmaps.cmaps['plasma'](0.55)
                 self.parent.electron_color = new_cmaps.cmaps['plasma'](0.8)
 
             else:
-                self.parent.proton_color = new_cmaps.cmaps['viridis'](0.45)
+                self.parent.ion_color = new_cmaps.cmaps['viridis'](0.45)
                 self.parent.electron_color = new_cmaps.cmaps['viridis'](0.75)
 
             self.parent.RefreshCanvas()
@@ -526,11 +527,13 @@ class MainApp(Tk.Tk):
         self.e_e_region = (-1E4,0)
         # Set the particle colors
         if self.cmap == 'viridis' or self.cmap == 'nipy_spectral':
-            self.proton_color =  new_cmaps.cmaps['plasma'](0.55)
+            self.shock_color = 'w'
+            self.ion_color =  new_cmaps.cmaps['plasma'](0.55)
             self.electron_color = new_cmaps.cmaps['plasma'](0.8)
 
         else:
-            self.proton_color = new_cmaps.cmaps['viridis'](0.45)
+            self.shock_color = 'w'
+            self.ion_color = new_cmaps.cmaps['viridis'](0.45)
             self.electron_color = new_cmaps.cmaps['viridis'](0.75)
 
 
@@ -558,7 +561,7 @@ class MainApp(Tk.Tk):
             with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][0]), 'r') as f:
                 # Because dens is in both spect* files and flds* files,
                 for h5key in f.keys():
-                    if h5key == 'dens' and pkey == Spect:
+                    if h5key == 'dens' and pkey == 'Spect':
                         self.H5KeyDict['spect_dens'] = pkey
                     else:
                         self.H5KeyDict[h5key] = pkey
@@ -658,16 +661,16 @@ class MainApp(Tk.Tk):
 
         self.SubPlotList[0][1].PlotParamsDict['PhasePlot']['prtl_type'] = 1
 
+        self.SubPlotList[1][1].SetGraph('FieldsPlot')
+        self.SubPlotList[2][1].SetGraph('FieldsPlot')
+        self.SubPlotList[2][1].PlotParamsDict['FieldsPlot']['field_type'] = 1
 
+        self.SubPlotList[1][0].SetGraph('DensityPlot')
 
 #        self.a = self.f.add_subplot(self.gs0[0,0])
 #        self.a.pcolor(np.random.rand(5,5))
         # a tk.DrawingArea
         self.canvas = FigureCanvasTkAgg(self.f, master=self)
-        self.SubPlotList[1][1].ChangeGraph('FieldsPlot')
-        self.SubPlotList[2][1].ChangeGraph('FieldsPlot')
-        self.SubPlotList[2][1].SetPlotParam('field_type', 1)
-
 
         self.canvas.show()
         self.canvas.get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
@@ -814,9 +817,6 @@ class MainApp(Tk.Tk):
 
     def TxtEnter(self, e):
         self.playbackbar.TextCallback()
-
-
-        #   refresh the graph
 
 if __name__ == "__main__":
     app = MainApp('Iseult')

@@ -350,46 +350,6 @@ class FieldSettings(Tk.Toplevel):
                         self.parent.SetPlotParam('show_cbar', self.CbarVar.get()))
         cb.grid(row = 6, sticky = Tk.W)
 
-        # show shock
-        self.ShockVar = Tk.IntVar()
-        self.ShockVar.set(self.parent.GetPlotParam('show_shock'))
-        cb = ttk.Checkbutton(frm, text = "Show Shock",
-                        variable = self.ShockVar,
-                        command = lambda:
-                        self.parent.SetPlotParam('show_shock', self.ShockVar.get()))
-        cb.grid(row = 6, column = 1, sticky = Tk.W)
-
-
-        # Control if the plot is weightedd
-        self.WeightVar = Tk.IntVar()
-        self.WeightVar.set(self.parent.GetPlotParam('weighted'))
-        cb = ttk.Checkbutton(frm, text = "Weight by charge",
-                        variable = self.WeightVar,
-                        command = lambda:
-                        self.parent.SetPlotParam('weighted', self.WeightVar.get()))
-        cb.grid(row = 7, sticky = Tk.W)
-
-        # Show energy integration region
-        self.IntRegVar = Tk.IntVar()
-        self.IntRegVar.set(self.parent.GetPlotParam('show_int_region'))
-        cb = ttk.Checkbutton(frm, text = "Show Energy Region",
-                        variable = self.IntRegVar,
-                        command = lambda:
-                        self.parent.SetPlotParam('show_int_region', self.IntRegVar.get()))
-        cb.grid(row = 7, column = 1, sticky = Tk.W)
-
-        # control mask
-        self.MaskVar = Tk.IntVar()
-        self.MaskVar.set(self.parent.GetPlotParam('masked'))
-        cb = ttk.Checkbutton(frm, text = "Mask Zeros",
-                        variable = self.MaskVar,
-                        command = lambda:
-                        self.parent.SetPlotParam('masked', self.MaskVar.get()))
-        cb.grid(row = 8, sticky = Tk.W)
-
-
-#        ttk.Label(frm, text = 'If the zero values are not masked they are set to z_min/2').grid(row =9, columnspan =2)
-    # Define functions for the events
 
     def Change2d(self):
 
@@ -397,7 +357,7 @@ class FieldSettings(Tk.Toplevel):
             pass
         else:
             if self.TwoDVar.get():
-                # Make sure only one
+                # Make sure only one dimension checked
                 if self.parent.GetPlotParam('show_x'):
                     self.ShowYVar.set(0)
                     self.ShowZVar.set(0)
