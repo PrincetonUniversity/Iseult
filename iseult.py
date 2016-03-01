@@ -1,4 +1,4 @@
-#! /usr/bin/env pythonw
+#! /usr/bin/env python
 
 import re # regular expressions
 import os, sys # Used to make the code portable

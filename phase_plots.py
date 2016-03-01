@@ -129,7 +129,7 @@ class PhasePanel:
 
         self.istep = self.FigWrap.LoadKey('istep')[0]
         self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.istep
-        self.hist2d = np.histogram2d(self.y_values, self.x_values, bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')], range = [[self.pmin,self.pmax],[0,192.2]], weights = self.weights)
+        self.hist2d = np.histogram2d(self.y_values, self.x_values, bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')], range = [[self.pmin,self.pmax],[0,self.xmax]], weights = self.weights)
 
         self.zval = ma.masked_array(self.hist2d[0])
         tick_color = 'white'
