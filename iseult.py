@@ -799,14 +799,8 @@ class MainApp(Tk.Tk):
 
         xaxis_final = np.arange(dens_arr.shape[1])/c_omp*istep
         # Find the shock by seeing where the density is 1/2 of it's
-        # max value. First average the density in the y_direction
-        print dens_arr.shape
-        dens_avg_arr = np.empty(dens_arr.shape[1])
-        for i in range(dens_arr.shape[0]):
-
-            dens_avg_arr += dens_arr[i,:]
-        dens_avg_arr *= 1/dens_arr.shape[0]
-        dens_half_max = max(dens_avg_arr[jstart:])*.5
+        # max value.
+        dens_half_max = max(dens_avg_arr[dens_arr.shape[0]/2][jstart:])*.5
         # Find the farthest location where the average density is greater
         # than half max
         ishock_final = np.where(dens_avg_arr>=dens_half_max)[0][-1]
