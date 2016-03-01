@@ -82,14 +82,14 @@ class SpectralPanel:
             self.dgamma[i]=self.gamma[i]*(10**delta-1.)
 
          # Select the x-range from which to take the spectra
-        e_left_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.e_e_region[0]
-        e_right_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.e_e_region[1]
+        e_left_loc = self.parent.shock_loc+self.parent.e_e_region[0]
+        e_right_loc = self.parent.shock_loc+self.parent.e_e_region[1]
 
         eL = self.xsl.searchsorted(e_left_loc)
         eR = self.xsl.searchsorted(e_right_loc, side='right')
 
-        i_left_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.ion_e_region[0]
-        i_right_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.ion_e_region[1]
+        i_left_loc = self.parent.shock_loc+self.parent.ion_e_region[0]
+        i_right_loc = self.parent.shock_loc+self.parent.ion_e_region[1]
 
         iL = self.xsl.searchsorted(i_left_loc)
         iR = self.xsl.searchsorted(i_right_loc, side='right')
