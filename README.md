@@ -7,10 +7,10 @@ Patrick Crumley, patrick.crumley@gmail.com
 
 UPDATES:
 -------
-The code as stands is also ready enough to send out to others.
+The code as stands is almost ready enough to send out to others.
 What's left before I feel comfortable sharing:
-1) Spectral plots + settings
-2) Density plots + settings (Easy to do)
+1) Spectral plots (DONE!) + settings (not yet!)
+2) Density plots + settings (DONE!)   
 3) Ability to set the minimum and maximum x and y values
 4) Ability to take some measurements, Maxwellian fits and eps_e/b
 
@@ -56,7 +56,6 @@ Enjoy!
 
 | Left to Implement:|
 | ------------------ |
-| Density plot type |
 | Spectrum plot type |
 | Ability to take measurements |
 | gifs |

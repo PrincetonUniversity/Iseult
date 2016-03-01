@@ -16,6 +16,7 @@ from matplotlib.figure import Figure
 from phase_plots import PhasePanel
 from fields_plots import FieldsPanel
 from density_plots import DensPanel
+from spectra import SpectralPanel
 
 import Tkinter as Tk
 import ttk as ttk
@@ -44,7 +45,8 @@ class SubPlotWrapper:
         # A dictionary that contains all of the plot types.
         self.PlotTypeDict = {'PhasePlot': PhasePanel,
                              'FieldsPlot': FieldsPanel,
-                             'DensityPlot': DensPanel}
+                             'DensityPlot': DensPanel,
+                             'SpectraPlot': SpectralPanel}
         # A dictionary that will store where everything is in Hdf5 Files
         self.GenParamDict()
         self.figure = figure
@@ -481,7 +483,7 @@ class MainApp(Tk.Tk):
         self.numOfColumns = Tk.IntVar(self)
         self.numOfColumns.set(2)
         self.numOfColumns.trace('w', self.UpdateGridSpec)
-        self.gsArgs = {'left':0.05, 'right':0.95, 'top':.95, 'bottom':0.05, 'wspace':0.15, 'hspace':0.15}
+        self.gsArgs = {'left':0.06, 'right':0.95, 'top':.95, 'bottom':0.05, 'wspace':0.15, 'hspace':0.15}
 
         fileMenu = Tk.Menu(menubar, tearoff=False)
         menubar.add_cascade(label="File", underline=0, menu=fileMenu)
@@ -666,6 +668,7 @@ class MainApp(Tk.Tk):
         self.SubPlotList[2][1].PlotParamsDict['FieldsPlot']['field_type'] = 1
 
         self.SubPlotList[1][0].SetGraph('DensityPlot')
+        self.SubPlotList[2][0].SetGraph('SpectraPlot')
 
 #        self.a = self.f.add_subplot(self.gs0[0,0])
 #        self.a.pcolor(np.random.rand(5,5))

@@ -159,6 +159,7 @@ class PhasePanel:
             # find the location
             left_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.ion_e_region[0]
             right_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.ion_e_region[1]
+
             if self.GetPlotParam('prtl_type') == 1:
                 left_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.e_e_region[0]
                 right_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.e_e_region[1]
