@@ -556,10 +556,12 @@ class MainApp(Tk.Tk):
     def GenH5Dict(self):
         for pkey in self.PathDict.keys():
             with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][0]), 'r') as f:
+                # Because dens is in both spect* files and flds* files,
                 for h5key in f.keys():
-                    if h5key in self.H5KeyDict.keys():
-                        print 'uh-oh', h5key
-                    self.H5KeyDict[h5key] = pkey
+                    if h5key == 'dens' and pkey == Spect:
+                        self.H5KeyDict['spect_dens'] = pkey
+                    else:
+                        self.H5KeyDict[h5key] = pkey
 
     def pathOK(self):
         """ Test to see if the current path contains tristan files
@@ -700,6 +702,7 @@ class MainApp(Tk.Tk):
             for j in range(self.numOfColumns.get()):
                 # for each subplot, see what keys are needed
                 tmpList = self.SubPlotList[i][j].GetKeys()
+                # we always load time because it is needed to calculate the shock location
                 self.ToLoad[self.H5KeyDict['time']].append('time')
                 for elm in tmpList:
                     # find out what type of file the key is stored in
@@ -715,7 +718,10 @@ class MainApp(Tk.Tk):
             with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
                 for elm in tmplist:
                     # Load all the keys
-                    self.DataDict[elm] = f[elm][:]
+                    if elm == 'spect_dens':
+                        self.DataDict[elm] = f['dens'][:]
+                    else:
+                        self.DataDict[elm] = f[elm][:]
 
 
 
