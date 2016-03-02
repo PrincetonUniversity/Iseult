@@ -157,12 +157,12 @@ class PhasePanel:
 
         if self.GetPlotParam('show_int_region'):
             # find the location
-            left_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.ion_e_region[0]
-            right_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.ion_e_region[1]
+            left_loc = self.parent.shock_loc+self.parent.ion_e_region[0]
+            right_loc = self.parent.shock_loc+self.parent.ion_e_region[1]
 
             if self.GetPlotParam('prtl_type') == 1:
-                left_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.e_e_region[0]
-                right_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.e_e_region[1]
+                left_loc = self.parent.shock_loc+self.parent.e_e_region[0]
+                right_loc = self.parent.shock_loc+self.parent.e_e_region[1]
             left_loc = max(left_loc, self.xmin+1)
             right_loc = min(right_loc, self.xmax-1)
             self.axes.axvline(left_loc, linewidth = 1.5, linestyle = '-', color = energy_color)
