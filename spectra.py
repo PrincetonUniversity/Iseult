@@ -60,11 +60,11 @@ class SpectralPanel:
         self.gamma = self.FigWrap.LoadKey('gamma')
 
         if self.GetPlotParam('rest_frame'):
-            self.spece = self.FigWrap.LoadKey('specerest')
-            self.specp = self.FigWrap.LoadKey('specprest')
+            self.spece = np.copy(self.FigWrap.LoadKey('specerest'))
+            self.specp = np.copy(self.FigWrap.LoadKey('specprest'))
         else:
-            self.spece = self.FigWrap.LoadKey('spece')
-            self.specp = self.FigWrap.LoadKey('specp')
+            self.spece = np.copy(self.FigWrap.LoadKey('spece'))
+            self.specp = np.copy(self.FigWrap.LoadKey('specp'))
 
 
         # In output.F90, spece (specp) is defined by the number of electons (ions)
@@ -88,11 +88,15 @@ class SpectralPanel:
         eL = self.xsl.searchsorted(e_left_loc)
         eR = self.xsl.searchsorted(e_right_loc, side='right')
 
-        i_left_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.ion_e_region[0]
-        i_right_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.ion_e_region[1]
+        i_left_loc = self.parent.shock_loc+self.parent.ion_e_region[0]
+        i_right_loc = self.parent.shock_loc+self.parent.ion_e_region[1]
 
         iL = self.xsl.searchsorted(i_left_loc)
         iR = self.xsl.searchsorted(i_right_loc, side='right')
+        if iL == iR:
+            iR += 1
+        if eL == eR:
+            eR += 1
         # total particles in each linear x bin
         norme = np.copy(self.xsl)
         normp = np.copy(self.xsl)

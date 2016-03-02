@@ -109,7 +109,7 @@ class DensPanel:
 
 
             if self.GetPlotParam('show_shock'):
-                self.axes.axvline(self.parent.shock_loc/self.c_omp*self.istep, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
+                self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
                                     PathEffects.Normal()])
 
             if self.FigWrap.GetPlotParam('show_labels'):
@@ -142,7 +142,7 @@ class DensPanel:
 
 
             if self.GetPlotParam('show_shock'):
-                self.axes.axvline(self.parent.shock_loc/self.c_omp*self.istep, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
+                self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
                         PathEffects.Normal()])
 
 

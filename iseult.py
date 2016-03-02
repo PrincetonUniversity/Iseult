@@ -802,10 +802,11 @@ class MainApp(Tk.Tk):
         # Find the shock by seeing where the density is 1/2 of it's
         # max value.
 
-        dens_half_max = max(dens_arr[jstart:][dens_arr.shape[1]/2])*.5
+        dens_half_max = max(dens_arr[dens_arr.shape[0]/2,jstart:])*.5
+
         # Find the farthest location where the average density is greater
         # than half max
-        ishock_final = np.where(dens_arr[:][dens_arr.shape[1]/2]>=dens_half_max)[0][-1]
+        ishock_final = np.where(dens_arr[dens_arr.shape[0]/2,jstart:]>=dens_half_max)[0][-1]
         xshock_final = xaxis_final[ishock_final]
         self.shock_speed = xshock_final/final_time
 
