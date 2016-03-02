@@ -195,8 +195,8 @@ class PhasePanel:
         self.axes.set_axis_bgcolor('lightgrey')
         self.axes.tick_params(labelsize = 10, color=tick_color)
         self.axes.set_xlim(self.xmin,self.xmax)
-        self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = -2, color = 'black')
-        self.axes.set_ylabel(self.y_label, labelpad = -2, color = 'black')
+        self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
+        self.axes.set_ylabel(self.y_label, labelpad = self.parent.ylabel_pad, color = 'black')
 
 
     def GetPlotParam(self, keyname):

@@ -12,7 +12,7 @@ import matplotlib.patheffects as PathEffects
 class SpectralPanel:
     # A diction of all of the parameters for this plot with the default parameters
 
-    plot_param_dict = {'spectral_type': 1, #0 dn/dp, 1 = dn/dE
+    plot_param_dict = {'spectral_type': 0, #0 dn/dp, 1 = dn/dE
                        'show_ions': 1,
                        'show_electrons': 1,
                        'rest_frame': False
@@ -139,8 +139,8 @@ class SpectralPanel:
             self.axes.set_ylim(1E-6,1)
             self.axes.tick_params(labelsize = 10, color=tick_color)
 
-            self.axes.set_xlabel(r'$p(mc)$', labelpad = -2, color = 'black')
-            self.axes.set_ylabel(r'$p^4f(p)$', labelpad = 0, color = 'black')
+            self.axes.set_xlabel(r'$p(mc)$', labelpad = self.parent.xlabel_pad, color = 'black')
+            self.axes.set_ylabel(r'$p^4f(p)$', labelpad = self.parent.ylabel_pad, color = 'black')
 
         if self.GetPlotParam('spectral_type') == 1: #Show the energy dist
             self.axes.plot(self.gamma, self.edist, color = self.parent.electron_color)

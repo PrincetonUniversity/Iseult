@@ -189,8 +189,8 @@ class FieldsPanel:
             self.axes.set_axis_bgcolor('lightgrey')
             self.axes.tick_params(labelsize = 10, color=tick_color)
 #        self.axes.set_xlim(self.xmin,self.xmax)
-            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = -2, color = 'black')
-            self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = 0, color = 'black')
+            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
+            self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.ylabel_pad, color = 'black')
 
         else:
             self.annotate_pos = [0.8,0.9]
@@ -234,7 +234,7 @@ class FieldsPanel:
             self.axes.set_axis_bgcolor('lightgrey')
             self.axes.tick_params(labelsize = 10, color=tick_color)
             self.axes.set_xlim(self.x_values[0],self.x_values[-1])
-            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = -2, color = 'black')
+            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
 
 
     def GetPlotParam(self, keyname):
