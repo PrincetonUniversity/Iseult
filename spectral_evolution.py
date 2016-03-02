@@ -7,6 +7,38 @@ import matplotlib.gridspec as gridspec
 import h5py
 import os, sys
 import re
+import Tkinter, tkFileDialog
+
+def pathOK(dirname):
+    """ Test to see if the current path contains tristan files
+    using regular expressions, then generate the lists of files
+    to iterate over"""
+
+    f_re = re.compile('flds.tot.*')
+    is_okay = len(filter(f_re.match, os.listdir(dirname)))>0
+
+    return is_okay
+
+def findDir(parent, dlgstr = 'Choose the directory of the output files.'):
+    """Look for /ouput folder, where the simulation results are
+    stored. If output files are already in the path, they are
+    automatically loaded"""
+    # defining options for opening a directory
+
+
+    dir_opt = {}
+    dir_opt['initialdir'] = os.curdir
+    dir_opt['mustexist'] = True
+
+
+
+    tmpdir = tkFileDialog.askdirectory(parent = parent, title = dlgstr, **dir_opt)
+    dirlist = os.listdir(tmpdir)
+    if 'output' in dirlist:
+        tmpdir = os.path.join(tmpdir, 'output')
+    print tmpdir
+    return tmpdir
+
 
 # Be sure to call this with the output directory in the path
 # create a bunch of regular expressions used to search for files
@@ -15,7 +47,10 @@ prtl_re = re.compile('prtl.tot.*')
 s_re = re.compile('spect.*')
 param_re = re.compile('param.*')
 re_list = [f_re, prtl_re, s_re, param_re]
-dirname = os.path.join(os.curdir, 'output')
+#root = Tkinter.Tk()
+dirname = os.curdir
+#root.destroy()
+
 PathDict = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
 
 #fill all the paths
@@ -155,18 +190,19 @@ for i in range(len(PathDict['Spect'])):
         dgamma[j]=gamma[j]*(10**delta-1.)
 
      # Select the x-range from which to take the spectra
-    e_left_loc = shock_loc/c_omp*istep + e_e_region[0]
-    e_right_loc = shock_loc/c_omp*istep + e_e_region[1]
+    e_left_loc = shock_loc + e_e_region[0]
+    e_right_loc = shock_loc + e_e_region[1]
 
     eL = xsl.searchsorted(e_left_loc)
     eR = xsl.searchsorted(e_right_loc, side='right')
     if eL == eR:
         eR += 1
-    i_left_loc = shock_loc/c_omp*istep + ion_e_region[0]
-    i_right_loc = shock_loc/c_omp*istep + ion_e_region[1]
+    i_left_loc = shock_loc + ion_e_region[0]
+    i_right_loc = shock_loc + ion_e_region[1]
 
     iL = xsl.searchsorted(i_left_loc)
     iR = xsl.searchsorted(i_right_loc, side='right')
+    print iL, eL, iR, eR
     if iL == iR:
         iR += 1
 
@@ -200,10 +236,10 @@ for i in range(len(PathDict['Spect'])):
 
     # Create a gridspec to handle spacing better
 
-    e_axes.plot(momentum, momedist, color = t_step_color)
+    e_axes.plot(momentum, momedist, color = t_step_color, linewidth = 0.5)
 
 
-    ion_axes.plot(momentum, mompdist, color = t_step_color)
+    ion_axes.plot(momentum, mompdist, color = t_step_color, linewidth = 0.5)
 
 
 # Make the colorbar up top:

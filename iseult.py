@@ -576,6 +576,7 @@ class MainApp(Tk.Tk):
         dirlist = os.listdir(self.dirname)
         if 'output' in dirlist:
             self.dirname = os.path.join(self.dirname, 'output')
+
         is_okay = True
 
         # Create a dictionary of all the paths to the files
@@ -611,10 +612,13 @@ class MainApp(Tk.Tk):
     def OnOpen(self, e = None):
         """open a file"""
         tmpdir = tkFileDialog.askdirectory(title = 'Choose the directory of the output files', **self.dir_opt)
-        if tmpdir != '':
+        if tmpdir == '':
+            self.findDir()
+
+        else:
             self.dirname = tmpdir
         if not self.pathOK():
-#            p = MyDialog(self, 'Directory must contain either the output directory or all of the following: \n flds.tot.*, ptrl.tot.*, params.*, spect.*', title = 'Cannot find output files')
+#            p = MyDalog(self, 'Directory must contain either the output directory or all of the following: \n flds.tot.*, ptrl.tot.*, params.*, spect.*', title = 'Cannot find output files')
 #            self.wait_window(p.top)
             self.findDir()
 
