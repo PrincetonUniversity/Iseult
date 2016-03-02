@@ -48,7 +48,7 @@ s_re = re.compile('spect.*')
 param_re = re.compile('param.*')
 re_list = [f_re, prtl_re, s_re, param_re]
 #root = Tkinter.Tk()
-dirname = os.curdir
+dirname = os.path.join(os.curdir,'output')
 #root.destroy()
 
 PathDict = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
@@ -110,16 +110,11 @@ xaxis_final = np.arange(dens_arr.shape[1])/c_omp*istep
 # Find the shock by seeing where the density is 1/2 of it's
 # max value. First average the density in the y_direction
 
-dens_avg_arr = np.empty(dens_arr.shape[1])
 
-for i in range(dens_arr.shape[0]):
-    dens_avg_arr += dens_arr[i,:]
-
-dens_half_max = max(dens_avg_arr[jstart:])*.5
-# Find the farthest location where the average density is greater
-# than half max
-ishock_final = np.where(dens_avg_arr>=dens_half_max)[0][-1]
+dens_half_max = max(dens_arr[dens_arr.shape[0]/2,jstart:])*.5
+ishock_final = np.where(dens_arr[dens_arr.shape[0]/2,jstart:]>=dens_half_max)[0][-1]
 xshock_final = xaxis_final[ishock_final]
+
 print xshock_final
 shock_speed = xshock_final/final_time
 
