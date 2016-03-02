@@ -483,7 +483,7 @@ class MainApp(Tk.Tk):
         self.numOfColumns = Tk.IntVar(self)
         self.numOfColumns.set(2)
         self.numOfColumns.trace('w', self.UpdateGridSpec)
-        self.gsArgs = {'left':0.06, 'right':0.95, 'top':.95, 'bottom':0.05, 'wspace':0.15, 'hspace':0.15}
+        self.gsArgs = {'left':0.06, 'right':0.95, 'top':.95, 'bottom':0.06, 'wspace':0.15, 'hspace':0.15}
         self.xlabel_pad = 0
         self.ylabel_pad = 0
         fileMenu = Tk.Menu(menubar, tearoff=False)
