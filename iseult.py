@@ -471,6 +471,7 @@ class MainApp(Tk.Tk):
         self.wm_title(name)
         self.settings_window = None
         self.measure_window = None
+        self.prev_time = None
 
         # Set the number of rows and columns in the figure
         # (As well as the max rows)
@@ -705,7 +706,7 @@ class MainApp(Tk.Tk):
 
     def LoadAllKeys(self):
         ''' A function that will find out will arrays need to be loaded for
-        to draw the graphs. '''
+        to draw the graphs. If the time hasn't changed, it will only load new keys.'''
         # Make a dictionary that stores all of the keys we will need to load
         # to draw the graphs.
         self.ToLoad = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
@@ -722,18 +723,38 @@ class MainApp(Tk.Tk):
                     self.ToLoad[ftype].append(elm)
 
         # Now iterate over each path key and create a datadictionary
-        self.DataDict = {}
-        for pkey in self.ToLoad.keys():
-            tmplist = list(set(self.ToLoad[pkey])) # get rid of duplicate keys
-            # Load the file
-            with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
+        if self.prev_time != self.TimeStep.value:
+            # The time has changed so we have to reload everything
+            self.DataDict = {}
+            for pkey in self.ToLoad.keys():
+                tmplist = list(set(self.ToLoad[pkey])) # get rid of duplicate keys
+                # Load the file
+                if len(tmplist) > 0: #check we actually have something to load
+                    with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
+                        for elm in tmplist:
+                        # Load all the keys
+                            if elm == 'spect_dens':
+                                self.DataDict[elm] = f['dens'][:]
+                            else:
+                                self.DataDict[elm] = f[elm][:]
+        else:
+            # The time has not changed, so we only load keys that haven't been
+            # loaded already.
+            for pkey self.ToLoad.keys():
+                tmplist = list(set(self.ToLoad[pkey])) # get rid of duplicate keys
+                # get rid of keys that are already loaded
                 for elm in tmplist:
-                    # Load all the keys
-                    if elm == 'spect_dens':
-                        self.DataDict[elm] = f['dens'][:]
-                    else:
-                        self.DataDict[elm] = f[elm][:]
-
+                    if elm in self.DataDict.keys():
+                        tmplist.remove(elm)
+                if len(tmplist)> 0:
+                    with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
+                        for elm in tmplist:
+                            # Load all the keys
+                            if elm == 'spect_dens':
+                                self.DataDict[elm] = f['dens'][:]
+                            else:
+                                self.DataDict[elm] = f[elm][:]
+        self.prev_time = self.TimeStep.value
 
 
     def RefreshCanvas(self):
