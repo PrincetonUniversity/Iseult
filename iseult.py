@@ -742,10 +742,11 @@ class MainApp(Tk.Tk):
             # loaded already.
             for pkey in self.ToLoad.keys():
                 tmplist = list(set(self.ToLoad[pkey])) # get rid of duplicate keys
+
                 # get rid of keys that are already loaded
-                for elm in tmplist:
-                    if elm in self.DataDict.keys():
-                        tmplist.remove(elm)
+                for i in range(len(tmplist)):
+                    if tmplist[i] in self.DataDict.keys():
+                        tmplist.remove(tmplist[i])
                 if len(tmplist)> 0:
                     with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
                         for elm in tmplist:
