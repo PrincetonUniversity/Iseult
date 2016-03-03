@@ -740,7 +740,7 @@ class MainApp(Tk.Tk):
         else:
             # The time has not changed, so we only load keys that haven't been
             # loaded already.
-            for pkey self.ToLoad.keys():
+            for pkey in self.ToLoad.keys():
                 tmplist = list(set(self.ToLoad[pkey])) # get rid of duplicate keys
                 # get rid of keys that are already loaded
                 for elm in tmplist:
