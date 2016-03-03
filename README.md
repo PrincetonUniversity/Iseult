@@ -56,12 +56,11 @@ Enjoy!
 
 | Left to Implement:|
 | ------------------ |
-| Spectrum plot type |
 | Ability to take measurements |
 | gifs |
 | figure saving |
 | ability to save iseult settings as a json object|
-| Longer term goals |
+| Longer term goals (???)|
 
 Resources:
 ----------

@@ -88,7 +88,7 @@ for pkey in PathDict.keys():
 
 with h5py.File(os.path.join(dirname,PathDict['Flds'][0]), 'r') as f:
     nxf0 = f['by'][:].shape[1]
-with h5py.File(os.path.join(dirname,PathDict['Param'][-1]), 'r') as f:
+with h5py.File(os.path.join(dirname,PathDict['Param'][0]), 'r') as f:
     initial_time = f['time'][0]
 
 # Load the final time step to find the shock's location at the end.
