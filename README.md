@@ -3,7 +3,9 @@
 A TKinter python 2.7 GUI for visualizing Tristan-MP plots. A work in progress.
 
 Written by:
-Patrick Crumley, patrick.crumley@gmail.com
+
+Patrick Crumley, patrick.crumley@gmail.com, based on jaehong's Tristan analysis
+IDL script.
 
 UPDATES:
 -------
@@ -13,7 +15,7 @@ What's left before I feel comfortable sharing:
 2) Density plots + settings (DONE!)   
 3) Ability to set the minimum and maximum x and y values
 4) Ability to take some measurements, Maxwellian fits and eps_e/b
-5) Save plots.
+5) Save plots (Done!).
 
 
 Dependencies:
@@ -49,13 +51,13 @@ Enjoy!
 | ability to modularly change plots. |
 | plot control panel to edit things about indv. plots (not finished for all plots)|
 | shock-finding |
+| figure saving |
 
 
 | Left to Implement:|
 | ------------------ |
 | Ability to take measurements |
 | gifs |
-| figure saving |
 | ability to save iseult settings as a json object|
 | Longer term goals (???)|
 
