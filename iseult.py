@@ -9,7 +9,6 @@ import new_cmaps
 import numpy as np
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
-
 matplotlib.use('TkAgg')
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
@@ -24,6 +23,15 @@ import tkFileDialog
 
 def destroy(e):
     sys.exit()
+class MyCustomToolbar(NavigationToolbar2TkAgg):
+    def __init__(self, plotCanvas, parent):
+        # create the default toolbar
+#
+        # Only display the buttons we need.
+
+        self.toolitems = [t for t in NavigationToolbar2TkAgg.toolitems if
+                 t[0] in ('Subplots','Save')]
+        NavigationToolbar2TkAgg.__init__(self, plotCanvas, parent)
 
 class Spinbox(ttk.Entry):
     def __init__(self, master=None, **kw):
@@ -131,10 +139,11 @@ class Param:
         self.knobs += [knob]
 
     def set(self, value, knob=None):
-        self.value = self.constrain(value)
-        for feedbackKnob in self.knobs:
-            if feedbackKnob != knob:
-                feedbackKnob.setKnob(self.value)
+        if self.value != self.constrain(value):
+            self.value = self.constrain(value)
+            for feedbackKnob in self.knobs:
+                if feedbackKnob != knob:
+                    feedbackKnob.setKnob(self.value)
         return self.value
 
     def setMax(self, max_arg, knob=None):
@@ -158,7 +167,7 @@ class PlaybackBar(Tk.Frame):
     following, a step left button, a play/pause button, a step right button, a
     playbar, and a settings button."""
 
-    def __init__(self, parent, param):
+    def __init__(self, parent, param, canvas = None):
         Tk.Frame.__init__(self)
         self.parent = parent
 
@@ -199,7 +208,8 @@ class PlaybackBar(Tk.Frame):
         self.slider.set(self.param.value)
         self.slider.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
 
-        # a measurement button that should lauch some global settings.
+
+        # a measurement button that should lauch a window to take measurements.
         self.SettingsB= ttk.Button(self, text='Measure', command=self.OpenMeasures)
         self.SettingsB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
 
@@ -207,6 +217,10 @@ class PlaybackBar(Tk.Frame):
         # a settings button that should lauch some global settings.
         self.SettingsB= ttk.Button(self, text='Settings', command=self.OpenSettings)
         self.SettingsB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+
+        toolbar =  MyCustomToolbar(canvas, self)
+        toolbar.update()
+        canvas._tkcanvas.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
 
         #attach the parameter to the Playbackbar
         self.param.attach(self)
@@ -335,59 +349,6 @@ class SettingsFrame(Tk.Toplevel):
         self.RowSpin = Spinbox(frm, from_=1, to=self.parent.maxRows, textvariable=self.rowNum, width = 6)
         self.RowSpin.grid(row =4, column = 1, sticky = Tk.W + Tk.E)
 
-        # Some entries to change plot params
-        self.left = Tk.StringVar(self)
-        self.right = Tk.StringVar(self)
-        self.top = Tk.StringVar(self)
-        self.bottom = Tk.StringVar(self)
-        self.hspace = Tk.StringVar(self)
-        self.wspace = Tk.StringVar(self)
-        self.gsVars = [self.left, self.right, self.top, self.bottom, self.hspace, self.wspace]
-        i = 0
-        self.gsNames =['left', 'right', 'top', 'bottom', 'hspace', 'wspace']
-        for key in self.gsNames:
-            self.gsVars[i].set(self.parent.gsArgs[key]) # default value
-
-
-            ttk.Label(frm, text=key).grid(row=i, column =3)
-            ttk.Entry(frm, textvariable=self.gsVars[i], width = 6).grid(row =i, column = 4, sticky = Tk.W + Tk.E)
-            i += 1
-        self.gsVars[0].trace('w', self.LChanged)
-        self.gsVars[1].trace('w', self.RChanged)
-        self.gsVars[2].trace('w', self.TChanged)
-        self.gsVars[3].trace('w', self.BChanged)
-        self.gsVars[4].trace('w', self.HChanged)
-        self.gsVars[5].trace('w', self.WChanged)
-        # A button to refresh the directory
-        self.ReloadButton = ttk.Button(frm, text='Reload Directory', command = self.OnReload)
-        self.ReloadButton.grid(row = 5)
-
-    def GsChanged(self, ind):
-        try:
-            if self.gsVars[ind].get() == '':
-                pass
-            else:
-                self.parent.gsArgs[self.gsNames[ind]] = float(self.gsVars[ind].get())
-            self.parent.UpdateGridSpec()
-        except ValueError:
-            self.gsVars.set(self.parent.gsArgs[self.gsNames[ind]])
-
-    def LChanged(self, *args):
-        self.GsChanged(0)
-
-    def RChanged(self, *args):
-        self.GsChanged(1)
-
-    def TChanged(self, *args):
-        self.GsChanged(2)
-
-    def BChanged(self, *args):
-        self.GsChanged(3)
-    def HChanged(self, *args):
-        self.GsChanged(4)
-    def WChanged(self, *args):
-        self.GsChanged(5)
-
     def CmapChanged(self, *args):
     # Note here that Tkinter passes an event object to onselect()
         if self.cmapvar.get() == self.parent.cmap:
@@ -488,7 +449,10 @@ class MainApp(Tk.Tk):
         self.numOfColumns = Tk.IntVar(self)
         self.numOfColumns.set(2)
         self.numOfColumns.trace('w', self.UpdateGridSpec)
-        self.gsArgs = {'left':0.06, 'right':0.95, 'top':.95, 'bottom':0.06, 'wspace':0.15, 'hspace':0.15}
+        self.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.95, 'bottom':0.06, 'wspace':0.15, 'hspace':0.15}
+        matplotlib.rc('figure.subplot', **self.SubPlotParams)
+
+
         self.xlabel_pad = 0
         self.ylabel_pad = 0
         fileMenu = Tk.Menu(menubar, tearoff=False)
@@ -519,9 +483,16 @@ class MainApp(Tk.Tk):
 
         self.cmap = 'viridis'
 
+        # Create the figure
+        self.f = Figure(figsize = (2,2), dpi = 100)
+
+        # a tk.DrawingArea
+        self.canvas = FigureCanvasTkAgg(self.f, master=self)
+
+
         # Make the object hold the timestep info
         self.TimeStep = Param(1, minimum=1, maximum=1000)
-        self.playbackbar = PlaybackBar(self, self.TimeStep)
+        self.playbackbar = PlaybackBar(self, self.TimeStep, canvas = self.canvas)
 
 
         # Look for the tristan output files and load the file paths into
@@ -653,14 +624,12 @@ class MainApp(Tk.Tk):
 
         # figsize (w,h tuple in inches) dpi (dots per inch)
         #f = Figure(figsize=(5,4), dpi=100)
-        self.f = Figure(figsize = (2,2), dpi = 100)
 
         # Generate all of the subplot wrappers. They are stored in a 2D list
         # where the index [i][j] corresponds to the ith row, jth column
 
         # divy up the figure into a bunch of subplots using GridSpec.
         self.gs0 = gridspec.GridSpec(self.numOfRows.get(),self.numOfColumns.get())
-        self.gs0.update(**self.gsArgs)
 
         # Create the list of all of subplot wrappers
         self.SubPlotList = []
@@ -680,10 +649,6 @@ class MainApp(Tk.Tk):
         self.SubPlotList[1][0].SetGraph('DensityPlot')
         self.SubPlotList[2][0].SetGraph('SpectraPlot')
 
-#        self.a = self.f.add_subplot(self.gs0[0,0])
-#        self.a.pcolor(np.random.rand(5,5))
-        # a tk.DrawingArea
-        self.canvas = FigureCanvasTkAgg(self.f, master=self)
 
         self.canvas.show()
         self.canvas.get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
@@ -691,10 +656,7 @@ class MainApp(Tk.Tk):
 
 
         self.f.canvas.mpl_connect('button_press_event', self.onclick)
-
-#        toolbar = NavigationToolbar2TkAgg(self.canvas, self)
-#        toolbar.update()
-        self.canvas._tkcanvas.pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
+#        self.canvas._tkcanvas.pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
 
         #self.label = Label(self.top, text = 'Text',bg='orange')
         #self.label.grid()
@@ -704,8 +666,6 @@ class MainApp(Tk.Tk):
         '''A function that handles updates the gridspec that divides up of the
         plot into X x Y subplots'''
         self.gs0 = gridspec.GridSpec(self.numOfRows.get(),self.numOfColumns.get())
-        self.gs0.update(**self.gsArgs)
-
         self.RefreshCanvas()
 
     def LoadAllKeys(self):
