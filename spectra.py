@@ -25,9 +25,7 @@ class SpectralPanel:
         self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
         self.chartType = self.FigWrap.chartType
         self.figure = self.FigWrap.figure
-        self.InterpolationMethods = ['nearest', 'bilinear', 'bicubic', 'spline16',
-            'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
-            'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
+
 
 
     def ChangePlotType(self, str_arg):
@@ -134,8 +132,11 @@ class SpectralPanel:
         self.axes = self.figure.add_subplot(self.gs[18:92,:])
 
         if self.GetPlotParam('spectral_type') == 0: #Show the momentum dist
-            self.axes.plot(self.momentum, self.momedist, color = self.parent.electron_color)
-            self.axes.plot(self.momentum, self.mompdist, color = self.parent.ion_color)
+            if self.GetPlotParam('show_ions'):
+                self.axes.plot(self.momentum, self.mompdist, color = self.parent.ion_color)
+            if self.GetPlotParam('show_electrons'):
+                self.axes.plot(self.momentum, self.momedist, color = self.parent.electron_color)
+
             self.axes.set_xscale("log")
             self.axes.set_yscale("log")
             self.axes.set_axis_bgcolor('lightgrey')
@@ -147,8 +148,10 @@ class SpectralPanel:
             self.axes.set_ylabel(r'$p^4f(p)$', labelpad = self.parent.ylabel_pad, color = 'black')
 
         if self.GetPlotParam('spectral_type') == 1: #Show the energy dist
-            self.axes.plot(self.gamma, self.edist, color = self.parent.electron_color)
-            self.axes.plot(self.gamma, self.pdist, color = self.parent.ion_color)
+            if self.GetPlotParam('show_electrons'):
+                self.axes.plot(self.gamma, self.edist, color = self.parent.electron_color)
+            if self.GetPlotParam('show_ions'):
+                self.axes.plot(self.gamma, self.pdist, color = self.parent.ion_color)
             self.axes.set_xscale("log")
             self.axes.set_yscale("log")
             self.axes.set_axis_bgcolor('lightgrey')
@@ -185,13 +188,6 @@ class SpectraSettings(Tk.Toplevel):
         self.protocol('WM_DELETE_WINDOW', self.OnClosing)
         #Create some sizers
 
-        self.InterpolVar = Tk.StringVar(self)
-        self.InterpolVar.set(self.parent.GetPlotParam('interpolation')) # default value
-        self.InterpolVar.trace('w', self.InterpolChanged)
-
-        ttk.Label(frm, text="Interpolation Method:").grid(row=0, column = 2)
-        InterplChooser = apply(ttk.OptionMenu, (frm, self.InterpolVar, self.parent.GetPlotParam('interpolation')) + tuple(self.parent.InterpolationMethods))
-        InterplChooser.grid(row =0, column = 3, sticky = Tk.W + Tk.E)
 
         # Create the OptionMenu to chooses the Chart Type:
         self.ctypevar = Tk.StringVar(self)
@@ -203,56 +199,46 @@ class SpectraSettings(Tk.Toplevel):
         cmapChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
 
 
-        self.TwoDVar = Tk.IntVar(self) # Create a var to track whether or not to plot in 2-D
-        self.TwoDVar.set(self.parent.GetPlotParam('twoD'))
-        cb = ttk.Checkbutton(frm, text = "Show in 2-D",
-                variable = self.TwoDVar,
-                command = self.Change2d)
-        cb.grid(row = 1, sticky = Tk.W)
-
         # the Radiobox Control to choose the Field Type
-        self.DensList = ['dens_e', 'rho']
-        self.DensTypeVar  = Tk.IntVar()
-        self.DensTypeVar.set(self.parent.GetPlotParam('dens_type'))
+        self.SpectList = ['Momentum', 'Energy']
+        self.SpectTypeVar  = Tk.IntVar()
+        self.SpectTypeVar.set(self.parent.GetPlotParam('spectral_type'))
 
-        ttk.Label(frm, text='Choose Density:').grid(row = 2, sticky = Tk.W)
+        ttk.Label(frm, text='Choose Spectrum Type:').grid(row = 2, sticky = Tk.W)
 
-        for i in range(len(self.DensList)):
+        for i in range(len(self.SpectList)):
             ttk.Radiobutton(frm,
-                text=self.DensList[i],
-                variable=self.DensTypeVar,
-                command = self.RadioField,
+                text=self.SpectList[i],
+                variable=self.SpectTypeVar,
+                command = self.RadioSpect,
                 value=i).grid(row = 3+i, sticky =Tk.W)
 
 
-        # Control whether or not Cbar is shown
-        self.CbarVar = Tk.IntVar()
-        self.CbarVar.set(self.parent.GetPlotParam('show_cbar'))
-        cb = ttk.Checkbutton(frm, text = "Show Color bar",
-                        variable = self.CbarVar,
+        # show ions
+        self.IonVar = Tk.IntVar()
+        self.IonVar.set(self.parent.GetPlotParam('show_ions'))
+        cb = ttk.Checkbutton(frm, text = "Show ions",
+                        variable = self.IonVar,
                         command = lambda:
-                        self.parent.SetPlotParam('show_cbar', self.CbarVar.get()))
-        cb.grid(row = 6, sticky = Tk.W)
+                        self.parent.SetPlotParam('show_ions', self.IonVar.get()))
+        cb.grid(row = 6, column = 0, sticky = Tk.W)
 
-        # show shock
-        self.ShockVar = Tk.IntVar()
-        self.ShockVar.set(self.parent.GetPlotParam('show_shock'))
-        cb = ttk.Checkbutton(frm, text = "Show Shock",
-                        variable = self.ShockVar,
+        # show electrons
+        self.eVar = Tk.IntVar()
+        self.eVar.set(self.parent.GetPlotParam('show_electrons'))
+        cb = ttk.Checkbutton(frm, text = "Show electrons",
+                        variable = self.eVar,
                         command = lambda:
-                        self.parent.SetPlotParam('show_shock', self.ShockVar.get()))
+                        self.parent.SetPlotParam('show_electrons', self.eVar.get()))
         cb.grid(row = 6, column = 1, sticky = Tk.W)
-
-
-
-
-    def Change2d(self):
-        if self.TwoDVar.get() == self.parent.GetPlotParam('twoD'):
-            pass
-        else:
-            self.parent.SetPlotParam('twoD', self.TwoDVar.get())
-
-
+        # show in rest frame
+        self.RestVar = Tk.IntVar()
+        self.RestVar.set(self.parent.GetPlotParam('rest_frame'))
+        cb = ttk.Checkbutton(frm, text = "Show in rest frame",
+                        variable = self.RestVar,
+                        command = lambda:
+                        self.parent.SetPlotParam('rest_frame', self.RestVar.get()))
+        cb.grid(row = 7, column = 0, sticky = Tk.W)
 
     def ctypeChanged(self, *args):
         if self.ctypevar.get() == self.parent.chartType:
@@ -261,17 +247,11 @@ class SpectraSettings(Tk.Toplevel):
             self.parent.ChangePlotType(self.ctypevar.get())
             self.destroy()
 
-    def InterpolChanged(self, *args):
-        if self.InterpolVar.get() == self.parent.GetPlotParam('interpolation'):
+    def RadioSpect(self):
+        if self.SpectTypeVar.get() == self.parent.GetPlotParam('spectral_type'):
             pass
         else:
-            self.parent.SetPlotParam('interpolation', self.InterpolVar.get())
-
-    def RadioField(self):
-        if self.DensTypeVar.get() == self.parent.GetPlotParam('dens_type'):
-            pass
-        else:
-            self.parent.SetPlotParam('dens_type', self.DensTypeVar.get())
+            self.parent.SetPlotParam('spectral_type', self.SpectTypeVar.get())
 
 
     def OnClosing(self):
