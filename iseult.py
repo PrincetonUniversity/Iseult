@@ -349,6 +349,22 @@ class SettingsFrame(Tk.Toplevel):
         self.RowSpin = Spinbox(frm, from_=1, to=self.parent.maxRows, textvariable=self.rowNum, width = 6)
         self.RowSpin.grid(row =4, column = 1, sticky = Tk.W + Tk.E)
 
+        # Control whether or not Title is shown
+        self.TitleVar = Tk.IntVar()
+        self.TitleVar.set(self.parent.show_title)
+        self.TitleVar.trace('w', self.TitleChanged)
+
+        cb = ttk.Checkbutton(frm, text = "Show Title",
+                        variable = self.TitleVar)
+        cb.grid(row = 6, sticky = Tk.N)
+        
+    def TitleChanged(self, *args):
+        if self.TitleVar.get()==self.parent.show_title:
+            pass
+        else:
+            self.parent.show_title = self.TitleVar.get()
+            self.parent.RefreshCanvas()
+
     def CmapChanged(self, *args):
     # Note here that Tkinter passes an event object to onselect()
         if self.cmapvar.get() == self.parent.cmap:
@@ -440,7 +456,7 @@ class MainApp(Tk.Tk):
 
         # Set the number of rows and columns in the figure
         # (As well as the max rows)
-        self.maxRows = 4
+        self.maxRows = 5
         self.maxCols = 3
 
         self.numOfRows = Tk.IntVar(self)
@@ -449,10 +465,10 @@ class MainApp(Tk.Tk):
         self.numOfColumns = Tk.IntVar(self)
         self.numOfColumns.set(2)
         self.numOfColumns.trace('w', self.UpdateGridSpec)
-        self.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.95, 'bottom':0.06, 'wspace':0.15, 'hspace':0.15}
+        self.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.93, 'bottom':0.06, 'wspace':0.15, 'hspace':0.15}
         matplotlib.rc('figure.subplot', **self.SubPlotParams)
 
-
+        self.show_title = True
         self.xlabel_pad = 0
         self.ylabel_pad = 0
         fileMenu = Tk.Menu(menubar, tearoff=False)
@@ -736,7 +752,8 @@ class MainApp(Tk.Tk):
         for i in range(self.numOfRows.get()):
             for j in range(self.numOfColumns.get()):
                 self.SubPlotList[i][j].DrawGraph()
-
+        if self.show_title:
+            self.f.suptitle(os.path.abspath(self.dirname)+ ' at time t = %d $\omega_p$'  % round(self.DataDict['time'][0]))
         self.canvas.show()
         self.canvas.get_tk_widget().update_idletasks()
 
