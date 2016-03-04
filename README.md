@@ -13,7 +13,7 @@ What's left before I feel comfortable sharing:
 2) Density plots + settings (DONE!)   
 3) Ability to set the minimum and maximum x and y values
 4) Ability to take some measurements, Maxwellian fits and eps_e/b
-
+5) Save plots.
 
 
 Dependencies:
@@ -23,31 +23,28 @@ Python packages required: matplotlib 1.4, python 2.7, h5py
 
 This should work on Windows, MacOS & Linux.
 
-To get this working on orbital type the following:
+To run iseult on orbital type the following:
 ```bash
 $ module load anaconda/2.4.0
 $ source activate root
-```
-
-To run:
-
-```bash
 $ cd /path/to/Iseult/
 $ chmod +x ./iseult.py
-$ export PATH="$PATH:/path/to/Iseult"
 $ iseult.py
 ```
 
-If you are in the path to your tristan output files or the parent directory of
-the output directory, Iseult automatically loads your Tristan-MP data.
-Otherwise you can open it through the file menu or by pressing crtl + O.
+When iseult is started, it prompts you to select the directory of where you
+Tristan-MP is saved. To edit/change any of the plots, just click on the subplot
+directly. You can also change the number of columns, the colormap, and spacing
+of the plots by clicking the settings button. The measure button allows you to
+take measurements like T_i, T_e, etc.
 
 Enjoy!
+
 
 | Implemented: |
 | ------------ |
 | Time stepping |
-| Movies |
+| Movie (without recording) |
 | Basic plotting |
 | ability to modularly change plots. |
 | plot control panel to edit things about indv. plots (not finished for all plots)|
