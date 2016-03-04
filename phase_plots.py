@@ -31,6 +31,8 @@ class PhasePanel:
 
     def __init__(self, parent, figwrapper):
         self.settings_window = None
+        self.prev_time = None
+        self.reload = True
         self.FigWrap = figwrapper
         self.parent = parent
         self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
@@ -86,70 +88,70 @@ class PhasePanel:
         return self.arrs_needed
 
     def draw(self):
-        # Choose the normalization
+        # In order to speed up the plotting, we only recalculate everything
+        # if necessary.
+        if self.prev_time != self.parent.TimeStep.value or self.reload:
+            # Generate the X-axis values
+            self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
+            self.weights = None
+            self.x_values = None
+            self.y_values = None
 
-        # Generate the X-axis values
-        self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
-        self.weights = None
-        self.x_values = None
-        self.y_values = None
+            # Choose the particle type and px, py, or pz
+            if self.GetPlotParam('prtl_type') == 0: #protons
+                self.energy_color = self.parent.ion_color
+                self.x_values = self.FigWrap.LoadKey('xi')/self.c_omp
+                if self.GetPlotParam('weighted'):
+                    self.weights = self.FigWrap.LoadKey('chi')
+                if self.GetPlotParam('mom_dim') == 0:
+                    self.y_values = self.FigWrap.LoadKey('ui')
+                    self.y_label  = r'$P_{px}\ [c]$'
+                if self.GetPlotParam('mom_dim') == 1:
+                    self.y_values = self.FigWrap.LoadKey('vi')
+                    self.y_label  = r'$P_{py}\ [c]$'
+                if self.GetPlotParam('mom_dim') == 2:
+                    self.y_values = self.FigWrap.LoadKey('wi')
+                    self.y_label  = r'$P_{pz}\ [c]$'
 
-        # Choose the particle type and px, py, or pz
-        if self.GetPlotParam('prtl_type') == 0:
-            self.x_values = self.FigWrap.LoadKey('xi')/self.c_omp
-            if self.GetPlotParam('weighted'):
-                self.weights = self.FigWrap.LoadKey('chi')
-            if self.GetPlotParam('mom_dim') == 0:
-                self.y_values = self.FigWrap.LoadKey('ui')
-                self.y_label  = r'$P_{px}\ [c]$'
-            if self.GetPlotParam('mom_dim') == 1:
-                self.y_values = self.FigWrap.LoadKey('vi')
-                self.y_label  = r'$P_{py}\ [c]$'
-            if self.GetPlotParam('mom_dim') == 2:
-                self.y_values = self.FigWrap.LoadKey('wi')
-                self.y_label  = r'$P_{pz}\ [c]$'
-        if self.GetPlotParam('prtl_type') == 1:
-            self.x_values = self.FigWrap.LoadKey('xe')/self.c_omp
-            if self.GetPlotParam('weighted'):
-                self.weights = self.FigWrap.LoadKey('che')
+            if self.GetPlotParam('prtl_type') == 1: #electons
+                self.energy_color = self.parent.electron_color
+                self.x_values = self.FigWrap.LoadKey('xe')/self.c_omp
+                if self.GetPlotParam('weighted'):
+                    self.weights = self.FigWrap.LoadKey('che')
+                if self.GetPlotParam('mom_dim') == 0:
+                    self.y_values = self.FigWrap.LoadKey('ue')
+                    self.y_label  = r'$P_{ex}\ [c]$'
+                if self.GetPlotParam('mom_dim') == 1:
+                    self.y_values = self.FigWrap.LoadKey('ve')
+                    self.y_label  = r'$P_{ey}\ [c]$'
+                if self.GetPlotParam('mom_dim') == 2:
+                    self.y_values = self.FigWrap.LoadKey('we')
+                    self.y_label  = r'$P_{ez}\ [c]$'
 
-            if self.GetPlotParam('mom_dim') == 0:
-                self.y_values = self.FigWrap.LoadKey('ue')
-                self.y_label  = r'$P_{ex}\ [c]$'
-            if self.GetPlotParam('mom_dim') == 1:
-                self.y_values = self.FigWrap.LoadKey('ve')
-                self.y_label  = r'$P_{ey}\ [c]$'
-            if self.GetPlotParam('mom_dim') == 2:
-                self.y_values = self.FigWrap.LoadKey('we')
-                self.y_label  = r'$P_{ez}\ [c]$'
+            self.pmin = min(self.y_values)
+            self.pmax = max(self.y_values)
+            self.xmin = 0
 
-        self.pmin = min(self.y_values)
-        self.pmax = max(self.y_values)
-        self.xmin = 0
+            self.istep = self.FigWrap.LoadKey('istep')[0]
+            self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.istep
+            self.hist2d = np.histogram2d(self.y_values, self.x_values, bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')], range = [[self.pmin,self.pmax],[0,self.xmax]], weights = self.weights)
 
-        self.istep = self.FigWrap.LoadKey('istep')[0]
-        self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.istep
-        self.hist2d = np.histogram2d(self.y_values, self.x_values, bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')], range = [[self.pmin,self.pmax],[0,self.xmax]], weights = self.weights)
+            self.zval = ma.masked_array(self.hist2d[0])
 
-        self.zval = ma.masked_array(self.hist2d[0])
-        tick_color = 'white'
-        if self.GetPlotParam('masked'):
-            self.zval[self.zval == 0] = ma.masked
-            tick_color = 'k'
-        else:
-            self.zval[self.zval==0] = 1
-        self.zval *= self.zval.max()**(-1)
+
+            if self.GetPlotParam('masked'):
+                self.zval[self.zval == 0] = ma.masked
+                self.tick_color = 'k'
+            else:
+                self.tick_color = 'white'
+                self.zval[self.zval==0] = 1
+            self.zval *= self.zval.max()**(-1)
+
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])#, bottom=0.2,left=0.1,right=0.95, top = 0.95)
 
         self.axes = self.figure.add_subplot(self.gs[18:92,:])
 
         self.cax = self.axes.imshow(self.zval, cmap = new_cmaps.cmaps[self.parent.cmap], norm = self.norm(), origin = 'lower', aspect = 'auto', extent=[self.xmin,self.xmax,self.hist2d[1][0],self.hist2d[1][-1]], interpolation=self.GetPlotParam('interpolation'))
-
-        if self.GetPlotParam('prtl_type') == 0:
-            energy_color = self.parent.ion_color
-
-        if self.GetPlotParam('prtl_type') == 1:
-            energy_color = self.parent.electron_color
 
         if self.GetPlotParam('show_shock'):
             self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
@@ -163,10 +165,11 @@ class PhasePanel:
             if self.GetPlotParam('prtl_type') == 1:
                 left_loc = self.parent.shock_loc+self.parent.e_e_region[0]
                 right_loc = self.parent.shock_loc+self.parent.e_e_region[1]
+
             left_loc = max(left_loc, self.xmin+1)
             right_loc = min(right_loc, self.xmax-1)
-            self.axes.axvline(left_loc, linewidth = 1.5, linestyle = '-', color = energy_color)
-            self.axes.axvline(right_loc, linewidth = 1.5, linestyle = '-', color = energy_color)
+            self.axes.axvline(left_loc, linewidth = 1.5, linestyle = '-', color = self.energy_color)
+            self.axes.axvline(right_loc, linewidth = 1.5, linestyle = '-', color = self.energy_color)
 
 
         if self.GetPlotParam('show_cbar'):
@@ -193,16 +196,18 @@ class PhasePanel:
                 self.cbar.set_ticks(np.linspace(self.zval.min(),self.zval.max(), 5))
 
         self.axes.set_axis_bgcolor('lightgrey')
-        self.axes.tick_params(labelsize = 10, color=tick_color)
+        self.axes.tick_params(labelsize = 10, color=self.tick_color)
         self.axes.set_xlim(self.xmin,self.xmax)
         self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
         self.axes.set_ylabel(self.y_label, labelpad = self.parent.ylabel_pad, color = 'black')
-
+        self.prev_time = self.parent.TimeStep.value
+        self.reload = False
 
     def GetPlotParam(self, keyname):
         return self.FigWrap.GetPlotParam(keyname)
 
-    def SetPlotParam(self, keyname, value):
+    def SetPlotParam(self, keyname, value, reload = False):
+        self.reload = reload
         self.FigWrap.SetPlotParam(keyname, value)
 
     def OpenSettings(self):
@@ -313,7 +318,7 @@ class PhaseSettings(Tk.Toplevel):
         cb = ttk.Checkbutton(frm, text = "Weight by charge",
                         variable = self.WeightVar,
                         command = lambda:
-                        self.parent.SetPlotParam('weighted', self.WeightVar.get()))
+                        self.parent.SetPlotParam('weighted', self.WeightVar.get(), reload = True))
         cb.grid(row = 7, sticky = Tk.W)
 
         # Show energy integration region
@@ -331,7 +336,7 @@ class PhaseSettings(Tk.Toplevel):
         cb = ttk.Checkbutton(frm, text = "Mask Zeros",
                         variable = self.MaskVar,
                         command = lambda:
-                        self.parent.SetPlotParam('masked', self.MaskVar.get()))
+                        self.parent.SetPlotParam('masked', self.MaskVar.get(), reload = True))
         cb.grid(row = 8, sticky = Tk.W)
 
 
@@ -357,13 +362,13 @@ class PhaseSettings(Tk.Toplevel):
         if self.pvar.get() == self.parent.GetPlotParam('prtl_type'):
             pass
         else:
-            self.parent.SetPlotParam('prtl_type', self.pvar.get())
+            self.parent.SetPlotParam('prtl_type', self.pvar.get(), reload = True)
 
     def RadioDim(self):
         if self.dimvar.get() == self.parent.GetPlotParam('mom_dim'):
             pass
         else:
-            self.parent.SetPlotParam('mom_dim', self.dimvar.get())
+            self.parent.SetPlotParam('mom_dim', self.dimvar.get(), reload =True)
 
     def RadioNorm(self):
         if self.cnormList[self.normvar.get()] == self.parent.GetPlotParam('norm_type'):
