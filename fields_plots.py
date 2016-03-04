@@ -45,6 +45,9 @@ class FieldsPanel:
         # First make sure that omega_plasma & xi is loaded so we can fix the
         # x & y distances.
 
+        ### Commenting out this because loading the HDF5 file is more expensive
+        ### than just storing it in RAM. Therefore I should just load everything
+        '''
         self.arrs_needed = ['c_omp', 'istep', 'sizex']
         # Then see if we are plotting E-field or B-Field
         if self.GetPlotParam('field_type') == 0: # Load the B-Field
@@ -62,7 +65,8 @@ class FieldsPanel:
                 self.arrs_needed.append('ey')
             if self.GetPlotParam('show_z'):
                 self.arrs_needed.append('ez')
-
+        '''
+        self.arrs_needed = ['c_omp', 'istep', 'sizex', 'bx', 'by', 'bz', 'ex', 'ey', 'ez']
         return self.arrs_needed
 
     def draw(self):
