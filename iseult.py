@@ -220,13 +220,15 @@ class PlaybackBar(Tk.Frame):
     def PlayHandler(self, e = None):
         if not self.playPressed:
             # Set the value of play pressed to true, change the button name to
-            # pause and start the play loop.
+            # pause, turn off clear_fig, and start the play loop.
             self.playPressed = True
+            self.parent.clear_fig = False
             self.playB.config(text='Pause')
             self.after(int(self.waitTime*1E3), self.blink)
         else:
-            # pause the play loop and set the button nameback to plau
+            # pause the play loop, turn clear fig back on, and set the button name back to play
             self.playPressed = False
+            self.parent.clear_fig = True
             self.playB.config(text='Play')
 
     def OpenSettings(self):
@@ -472,6 +474,8 @@ class MainApp(Tk.Tk):
         self.settings_window = None
         self.measure_window = None
         self.prev_time = None
+
+        self.clear_fig = True # A parameter that causes the graph to disappear as soon as something is pressed. Ea
 
         # Set the number of rows and columns in the figure
         # (As well as the max rows)
@@ -761,6 +765,9 @@ class MainApp(Tk.Tk):
 
     def RefreshCanvas(self):
         self.f.clf()
+        #
+        if self.clear_fig:
+            self.canvas.show()
         self.LoadAllKeys()
 
         # Calculate the new shock location
