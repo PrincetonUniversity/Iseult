@@ -159,12 +159,20 @@ class PhasePanel:
 
         if self.GetPlotParam('show_int_region'):
             # find the location
-            left_loc = self.parent.shock_loc+self.parent.ion_e_region[0]
-            right_loc = self.parent.shock_loc+self.parent.ion_e_region[1]
+            left_loc = self.parent.i_L.get()
+            right_loc = self.parent.i_R.get()
+
+            if self.parent.e_relative:
+                left_loc = self.parent.shock_loc+self.parent.i_L.get()
+                right_loc = self.parent.shock_loc+self.parent.i_R.get()
 
             if self.GetPlotParam('prtl_type') == 1:
-                left_loc = self.parent.shock_loc+self.parent.e_e_region[0]
-                right_loc = self.parent.shock_loc+self.parent.e_e_region[1]
+                left_loc = self.parent.e_L.get()
+                right_loc = self.parent.e_R.get()
+
+                if self.parent.e_relative:
+                    left_loc = self.parent.shock_loc+self.parent.e_L.get()
+                    right_loc = self.parent.shock_loc+self.parent.e_R.get()
 
             left_loc = max(left_loc, self.xmin+1)
             right_loc = min(right_loc, self.xmax-1)

@@ -23,6 +23,7 @@ import tkFileDialog
 
 def destroy(e):
     sys.exit()
+
 class MyCustomToolbar(NavigationToolbar2TkAgg):
     def __init__(self, plotCanvas, parent):
         # create the default toolbar
@@ -254,10 +255,10 @@ class PlaybackBar(Tk.Frame):
 
     def OpenMeasures(self):
         if self.parent.measure_window is None:
-            self.parent.measure_window = SettingsFrame(self.parent)
+            self.parent.measure_window = MeasureFrame(self.parent)
         else:
             self.parent.measure_window.destroy()
-            self.parent.measure_window = SettingsFrame(self.parent)
+            self.parent.measure_window = MeasureFrame(self.parent)
 
 
     def blink(self):
@@ -357,7 +358,7 @@ class SettingsFrame(Tk.Toplevel):
         cb = ttk.Checkbutton(frm, text = "Show Title",
                         variable = self.TitleVar)
         cb.grid(row = 6, sticky = Tk.N)
-        
+
     def TitleChanged(self, *args):
         if self.TitleVar.get()==self.parent.show_title:
             pass
@@ -435,6 +436,117 @@ class SettingsFrame(Tk.Toplevel):
     def OnReload(self, event=None):
         self.parent.findDir()
 
+    def OnClosing(self):
+        self.parent.settings_window = None
+        self.destroy()
+
+class MeasureFrame(Tk.Toplevel):
+    def __init__(self, parent):
+
+        Tk.Toplevel.__init__(self)
+        self.wm_title('Take Measurements')
+        self.protocol('WM_DELETE_WINDOW', self.OnClosing)
+
+
+        self.parent = parent
+
+        self.bind('<Return>', self.TxtEnter)
+        frm = ttk.Frame(self)
+        frm.pack(fill=Tk.BOTH, expand=True)
+
+        # Make an entry to change the integration region
+        # A StringVar for a box to type in a value for the left ion region
+        self.ileft = Tk.StringVar()
+        # set it to the left value
+        self.ileft.set(str(self.parent.i_L.get()))
+
+        # A StringVar for a box to type in a value for the right ion region
+        self.iright = Tk.StringVar()
+        # set it to the right value
+        self.iright.set(str(self.parent.i_R.get()))
+
+        # Now the electrons
+        self.eleft = Tk.StringVar()
+        self.eleft.set(str(self.parent.e_L.get()))
+        self.eright = Tk.StringVar()
+        self.eright.set(str(self.parent.e_R.get()))
+
+        ttk.Label(frm, text='Energy region:').grid(row = 0, sticky = Tk.W)
+        ttk.Label(frm, text='left').grid(row = 0, column = 1, sticky = Tk.N)
+        ttk.Label(frm, text='right').grid(row = 0, column = 2, sticky = Tk.N)
+
+        # the ion row
+        ttk.Label(frm, text='ions').grid(row= 1, sticky = Tk.W)
+        # Make an button to change the wait time
+
+        self.iLEnter = ttk.Entry(frm, textvariable=self.ileft, width=7)
+        self.iLEnter.grid(row =1, column = 1, sticky = Tk.W + Tk.E)
+
+        self.iREnter = ttk.Entry(frm, textvariable=self.iright, width=7)
+        self.iREnter.grid(row = 1, column =2)
+
+        ttk.Label(frm, text='electrons').grid(row= 2, sticky = Tk.W)
+        self.eLEnter = ttk.Entry(frm, textvariable=self.eleft, width=7)
+        self.eLEnter.grid(row = 2, column =1)
+        self.eREnter = ttk.Entry(frm, textvariable=self.eright, width=7)
+        self.eREnter.grid(row = 2, column =2)
+
+        self.RelVar = Tk.IntVar()
+        self.RelVar.set(self.parent.e_relative)
+        self.RelVar.trace('w', self.RelChanged)
+
+        cb = ttk.Checkbutton(frm, text = "Relative to shock?",
+                        variable = self.RelVar)
+        cb.grid(row = 3, sticky = Tk.W)
+
+
+    def CheckIfFloatChanged(self, tkVar, value):
+        to_reload = False
+        try:
+            #make sure the user types in a int
+            if np.abs(float(tkVar.get()) - value) >1E-8:
+                value = float(tkVar.get())
+                to_reload = True
+            return to_reload
+        except ValueError:
+            #if they type in random stuff, just set it ot the param value
+            tkVar.set(str(value))
+            return to_reload
+
+    def CheckIfIntChanged(self, tkVar, valVar):
+        to_reload = False
+        try:
+            #make sure the user types in a int
+            if int(tkVar.get()) != valVar.get():
+                valVar.set(int(tkVar.get()))
+                to_reload = True
+            return to_reload
+        except ValueError:
+            #if they type in random stuff, just set it ot the param value
+            tkVar.set(str(valVar.get()))
+            return to_reload
+
+
+    def TxtEnter(self, e):
+        self.MeasuresCallback()
+
+    def RelChanged(self, *args):
+        if self.RelVar.get()==self.parent.e_relative:
+            pass
+        else:
+            self.parent.e_relative = self.RelVar.get()
+            self.parent.RefreshCanvas()
+
+    def MeasuresCallback(self):
+        tkvarIntList = [self.ileft, self.iright, self.eleft, self.eright]
+        IntValList = [self.parent.i_L, self.parent.i_R, self.parent.e_L, self.parent.e_R]
+        to_reload = False
+
+        for j in range(len(tkvarIntList)):
+            to_reload += self.CheckIfIntChanged(tkvarIntList[j], IntValList[j])
+
+        if to_reload:
+            self.parent.RefreshCanvas()
     def OnClosing(self):
         self.parent.settings_window = None
         self.destroy()
@@ -518,8 +630,15 @@ class MainApp(Tk.Tk):
         self.shock_finder()
 
         # Choose the integration region for the particles
-        self.ion_e_region = (-1E4,0) # relative to the shock
-        self.e_e_region = (-1E4,0)
+        self.e_relative = True
+        self.i_L = Tk.IntVar()
+        self.i_L.set(-1E4)
+        self.i_R = Tk.IntVar()
+        self.i_R.set(0)
+        self.e_L = Tk.IntVar()
+        self.e_L.set(-1E4)
+        self.e_R = Tk.IntVar()
+        self.e_R.set(0)
         # Set the particle colors
         if self.cmap == 'viridis' or self.cmap == 'nipy_spectral':
             self.shock_color = 'w'
