@@ -193,6 +193,9 @@ class FieldsPanel:
             self.axes.set_axis_bgcolor('lightgrey')
             self.axes.tick_params(labelsize = 10, color=tick_color)
 #        self.axes.set_xlim(self.xmin,self.xmax)
+            if self.parent.xlim[0]:
+                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
             self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.ylabel_pad, color = 'black')
 
@@ -237,7 +240,11 @@ class FieldsPanel:
 
             self.axes.set_axis_bgcolor('lightgrey')
             self.axes.tick_params(labelsize = 10, color=tick_color)
-            self.axes.set_xlim(self.x_values[0],self.x_values[-1])
+
+            if self.parent.xlim[0]:
+                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+            else:
+                self.axes.set_xlim(self.x_values[0],self.x_values[-1])
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
 
 

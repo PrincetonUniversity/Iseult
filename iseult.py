@@ -471,47 +471,78 @@ class MeasureFrame(Tk.Toplevel):
         self.eright = Tk.StringVar()
         self.eright.set(str(self.parent.e_R.get()))
 
-        ttk.Label(frm, text='Energy region:').grid(row = 0, sticky = Tk.W)
+        ttk.Label(frm, text='Energy Int region:').grid(row = 0, sticky = Tk.W)
         ttk.Label(frm, text='left').grid(row = 0, column = 1, sticky = Tk.N)
         ttk.Label(frm, text='right').grid(row = 0, column = 2, sticky = Tk.N)
 
         # the ion row
-        ttk.Label(frm, text='ions').grid(row= 1, sticky = Tk.W)
+        ttk.Label(frm, text='ions').grid(row= 1, sticky = Tk.N)
         # Make an button to change the wait time
 
         self.iLEnter = ttk.Entry(frm, textvariable=self.ileft, width=7)
         self.iLEnter.grid(row =1, column = 1, sticky = Tk.W + Tk.E)
 
         self.iREnter = ttk.Entry(frm, textvariable=self.iright, width=7)
-        self.iREnter.grid(row = 1, column =2)
+        self.iREnter.grid(row = 1, column =2, sticky = Tk.W + Tk.E)
 
-        ttk.Label(frm, text='electrons').grid(row= 2, sticky = Tk.W)
+        ttk.Label(frm, text='electrons').grid(row= 2, sticky = Tk.N)
         self.eLEnter = ttk.Entry(frm, textvariable=self.eleft, width=7)
-        self.eLEnter.grid(row = 2, column =1)
+        self.eLEnter.grid(row = 2, column =1, sticky = Tk.W + Tk.E)
         self.eREnter = ttk.Entry(frm, textvariable=self.eright, width=7)
-        self.eREnter.grid(row = 2, column =2)
+        self.eREnter.grid(row = 2, column =2, sticky = Tk.W + Tk.E)
 
         self.RelVar = Tk.IntVar()
         self.RelVar.set(self.parent.e_relative)
         self.RelVar.trace('w', self.RelChanged)
-
-        cb = ttk.Checkbutton(frm, text = "Relative to shock?",
+        cb = ttk.Checkbutton(frm, text = "Energy Region relative to shock?",
                         variable = self.RelVar)
-        cb.grid(row = 3, sticky = Tk.W)
+        cb.grid(row = 3, columnspan = 3, sticky = Tk.W)
 
 
-    def CheckIfFloatChanged(self, tkVar, value):
+        # Now the xlimits
+#        ttk.Label(frm, text='Set xlim:').grid(row= 3, sticky = Tk.W)
+#        ttk.Label(frm, text='left').grid(row= 3, column = 1, sticky = Tk.N)
+#        ttk.Label(frm, text='right').grid(row= 3, column = 2, sticky = Tk.N)
+
+        self.LimVar = Tk.IntVar()
+        self.LimVar.set(self.parent.xlim[0])
+        self.LimVar.trace('w', self.LimChanged)
+
+
+
+        self.xleft = Tk.StringVar()
+        self.xleft.set(str(self.parent.xlim[1]))
+        self.xright = Tk.StringVar()
+        self.xright.set(str(self.parent.xlim[2]))
+
+
+        cb = ttk.Checkbutton(frm, text ='Set xlim',
+                        variable = self.LimVar)
+        cb.grid(row = 4, sticky = Tk.W)
+        self.eLEnter = ttk.Entry(frm, textvariable=self.xleft, width=7)
+        self.eLEnter.grid(row = 4, column =1)
+        self.eREnter = ttk.Entry(frm, textvariable=self.xright, width=7)
+        self.eREnter.grid(row = 4, column =2)
+
+
+
+
+
+    def CheckIfXLimChanged(self):
         to_reload = False
-        try:
+        tmplist = [self.xleft, self.xright]
+        for j in range(2):
+
+            try:
             #make sure the user types in a int
-            if np.abs(float(tkVar.get()) - value) >1E-8:
-                value = float(tkVar.get())
-                to_reload = True
-            return to_reload
-        except ValueError:
-            #if they type in random stuff, just set it ot the param value
-            tkVar.set(str(value))
-            return to_reload
+                if np.abs(float(tmplist[j].get()) - self.parent.xlim[j+1]) > 1E-4:
+                    self.parent.xlim[j+1] = float(tmplist[j].get())
+                    to_reload += True
+
+            except ValueError:
+                #if they type in random stuff, just set it ot the param value
+                tkVar.set(str(value))
+        return to_reload*self.parent.xlim[0]
 
     def CheckIfIntChanged(self, tkVar, valVar):
         to_reload = False
@@ -537,6 +568,14 @@ class MeasureFrame(Tk.Toplevel):
             self.parent.e_relative = self.RelVar.get()
             self.parent.RefreshCanvas()
 
+    def LimChanged(self, *args):
+        if self.LimVar.get()==self.parent.xlim[0]:
+            pass
+        else:
+            self.parent.xlim[0] = self.LimVar.get()
+            self.parent.RefreshCanvas()
+
+
     def MeasuresCallback(self):
         tkvarIntList = [self.ileft, self.iright, self.eleft, self.eright]
         IntValList = [self.parent.i_L, self.parent.i_R, self.parent.e_L, self.parent.e_R]
@@ -545,8 +584,11 @@ class MeasureFrame(Tk.Toplevel):
         for j in range(len(tkvarIntList)):
             to_reload += self.CheckIfIntChanged(tkvarIntList[j], IntValList[j])
 
+        to_reload += self.CheckIfXLimChanged()
+
         if to_reload:
             self.parent.RefreshCanvas()
+
     def OnClosing(self):
         self.parent.settings_window = None
         self.destroy()
@@ -639,6 +681,9 @@ class MainApp(Tk.Tk):
         self.e_L.set(-1E4)
         self.e_R = Tk.IntVar()
         self.e_R.set(0)
+
+        # Whether or not to set a xlim
+        self.xlim = [False, 0, 100]
         # Set the particle colors
         if self.cmap == 'viridis' or self.cmap == 'nipy_spectral':
             self.shock_color = 'w'
