@@ -18,12 +18,12 @@ class FieldsPanel:
                        'show_y' : 1,
                        'show_z' : 1,
                        'show_cbar': True,
-                       'set_z_limits': False,
                        'z_min': 0,
                        'z_max' : 10,
-                       'set_y_limits': False,
-                       'y_min': 0,
-                       'y_max' : 0,
+                       'set_z_min': False,
+                       'set_z_max': False,
+                       'y_min': 0.0,
+                       'y_max' : 0.0,
                        'OutlineText': True,
                        'interpolation': 'hermite'}
 
@@ -173,10 +173,19 @@ class FieldsPanel:
             self.xmin = 0
             self.xmax =  self.zval.shape[1]/self.c_omp*self.istep
 
+            self.vmin = None
+            if self.GetPlotParam('set_z_min'):
+                self.vmin = self.GetPlotParam('z_min')
+            self.vmax = None
+            if self.GetPlotParam('set_z_max'):
+                self.vmax = self.GetPlotParam('z_max')
+
             self.cax = self.axes.imshow(self.zval,
                 cmap = new_cmaps.cmaps[self.parent.cmap],
                 origin = 'lower', aspect = 'auto',
                 extent = (self.xmin,self.xmax, self.ymin, self.ymax),
+                vmin = self.vmin,
+                vmax = self.vmax,
                 interpolation=self.GetPlotParam('interpolation'))
 
             self.axes.annotate(self.two_d_labels[self.GetPlotParam('field_type')],
@@ -249,6 +258,12 @@ class FieldsPanel:
                 self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
             else:
                 self.axes.set_xlim(self.x_values[0],self.x_values[-1])
+            if self.GetPlotParam('set_z_min'):
+                print self.GetPlotParam('z_min')
+                self.axes.set_ylim(ymin = self.GetPlotParam('z_min'))
+            if self.GetPlotParam('set_z_max'):
+                self.axes.set_ylim(ymax = self.GetPlotParam('z_max'))
+
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
 
 
@@ -276,21 +291,8 @@ class FieldSettings(Tk.Toplevel):
         frm = ttk.Frame(self)
         frm.pack(fill=Tk.BOTH, expand=True)
         self.protocol('WM_DELETE_WINDOW', self.OnClosing)
-        #Create some sizers
+        self.bind('<Return>', self.TxtEnter)
 
-
-
-
-#                   'field_type': 0, #0 = B-Field, 1 = E-field
-#                   'show_x' : 1,
-#                   'show_y' : 1,
-#                   'show_z' : 1,
-#                   'show_cbar': True,
-#                   'set_color_limits': False,
-#                   'v_min': None,
-#                   'OutlineText': True,
-#                   'interpolation': 'hermite',
-#                   'v_max': None
         # Create the OptionMenu to chooses the Chart Type:
         self.InterpolVar = Tk.StringVar(self)
         self.InterpolVar.set(self.parent.GetPlotParam('interpolation')) # default value
@@ -365,31 +367,36 @@ class FieldSettings(Tk.Toplevel):
                         self.parent.SetPlotParam('show_cbar', self.CbarVar.get()))
         cb.grid(row = 6, sticky = Tk.W)
 
-        # Now the ylimits & blim
-#        ttk.Label(frm, text='Set xlim:').grid(row= 3, sticky = Tk.W)
-#        ttk.Label(frm, text='left').grid(row= 3, column = 1, sticky = Tk.N)
-#        ttk.Label(frm, text='right').grid(row= 3, column = 2, sticky = Tk.N)
-        ttk.Label(frm, text="min").grid(row=2, column = 3, sticky = Tk.N)
-        ttk.Label(frm, text="max").grid(row=2, column = 4, sticky = Tk.N)
-        self.ZLimVar = Tk.IntVar()
-        self.ZLimVar.set(self.parent.GetPlotParam('set_z_limits'))
-        self.ZLimVar.trace('w', self.ZLimChanged)
+        # Now the field lim
+        self.setZminVar = Tk.IntVar()
+        self.setZminVar.set(self.parent.GetPlotParam('set_z_min'))
+        self.setZminVar.trace('w', self.setZminChanged)
+
+        self.setZmaxVar = Tk.IntVar()
+        self.setZmaxVar.set(self.parent.GetPlotParam('set_z_max'))
+        self.setZmaxVar.trace('w', self.setZmaxChanged)
 
 
 
         self.Zmin = Tk.StringVar()
         self.Zmin.set(str(self.parent.GetPlotParam('z_min')))
+
         self.Zmax = Tk.StringVar()
         self.Zmax.set(str(self.parent.GetPlotParam('z_max')))
 
 
-        cb = ttk.Checkbutton(frm, text ='Set B/E limits',
-                        variable = self.ZLimVar)
+        cb = ttk.Checkbutton(frm, text ='Set B/E min',
+                        variable = self.setZminVar)
         cb.grid(row = 3, column = 2, sticky = Tk.W)
         self.eLEnter = ttk.Entry(frm, textvariable=self.Zmin, width=7)
         self.eLEnter.grid(row = 3, column = 3)
+
+        cb = ttk.Checkbutton(frm, text ='Set B/E max',
+                        variable = self.setZmaxVar)
+        cb.grid(row = 4, column = 2, sticky = Tk.W)
+
         self.eREnter = ttk.Entry(frm, textvariable=self.Zmax, width=7)
-        self.eREnter.grid(row = 3, column = 4)
+        self.eREnter.grid(row = 4, column = 3)
 
 
     def Change2d(self):
@@ -426,11 +433,18 @@ class FieldSettings(Tk.Toplevel):
         else:
             self.parent.SetPlotParam('interpolation', self.InterpolVar.get())
 
-    def ZLimChanged(self, *args):
-        if self.ZLimVar.get() == self.parent.GetPlotParam('set_z_limits'):
+    def setZminChanged(self, *args):
+        if self.setZminVar.get() == self.parent.GetPlotParam('set_z_min'):
             pass
         else:
-            self.parent.SetPlotParam('set_z_limits', self.ZLimVar.get())
+            self.parent.SetPlotParam('set_z_min', self.setZminVar.get())
+
+    def setZmaxChanged(self, *args):
+        if self.setZmaxVar.get() == self.parent.GetPlotParam('set_z_max'):
+            pass
+        else:
+            self.parent.SetPlotParam('set_z_max', self.setZmaxVar.get())
+
 
     def YLimChanged(self, *args):
         if self.InterpolVar.get() == self.parent.GetPlotParam('interpolation'):
@@ -502,6 +516,26 @@ class FieldSettings(Tk.Toplevel):
 
             elif self.parent.GetPlotParam('show_z') != self.ShowZVar.get():
                 self.parent.SetPlotParam('show_z', self.ShowZVar.get())
+
+    def TxtEnter(self, e):
+        self.FieldsCallback()
+
+    def FieldsCallback(self):
+        tkvarLimList = [self.Zmin, self.Zmax]
+        plot_param_List = ['z_min', 'z_max']
+        to_reload = False
+        for j in range(2):
+            try:
+            #make sure the user types in a int
+                if np.abs(float(tkvarLimList[j].get()) - self.parent.GetPlotParam(plot_param_List[j])) > 1E-4:
+                    self.parent.SetPlotParam(plot_param_List[j], float(tkvarLimList[j].get()), update_plot = False)
+                    to_reload = True
+
+            except ValueError:
+                #if they type in random stuff, just set it ot the param value
+                tkvarLimList[j].set(str(self.parent.GetPlotParam(plot_param_List[j])))
+        if (self.setZminVar.get() or self.setZmaxVar.get())*to_reload:
+            self.parent.SetPlotParam('z_min', self.parent.GetPlotParam('z_min'))
 
 
     def OnClosing(self):

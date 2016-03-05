@@ -578,7 +578,6 @@ class MeasureFrame(Tk.Toplevel):
             except ValueError:
                 #if they type in random stuff, just set it ot the param value
                 tmplist[j].set(str(value))
-        print self.parent.ylim
         return to_reload*self.parent.ylim[0]
 
 
