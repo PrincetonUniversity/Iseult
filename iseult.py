@@ -525,6 +525,26 @@ class MeasureFrame(Tk.Toplevel):
         self.eREnter.grid(row = 4, column =2)
 
 
+        self.yLimVar = Tk.IntVar()
+        self.yLimVar.set(self.parent.ylim[0])
+        self.yLimVar.trace('w', self.yLimChanged)
+
+
+
+        self.yleft = Tk.StringVar()
+        self.yleft.set(str(self.parent.ylim[1]))
+        self.yright = Tk.StringVar()
+        self.yright.set(str(self.parent.ylim[2]))
+
+
+        cb = ttk.Checkbutton(frm, text ='Set ylim',
+                        variable = self.yLimVar)
+        cb.grid(row = 5, sticky = Tk.W)
+        self.eLEnter = ttk.Entry(frm, textvariable=self.yleft, width=7)
+        self.eLEnter.grid(row = 5, column =1)
+        self.eREnter = ttk.Entry(frm, textvariable=self.yright, width=7)
+        self.eREnter.grid(row = 5, column =2)
+
 
 
 
@@ -541,8 +561,26 @@ class MeasureFrame(Tk.Toplevel):
 
             except ValueError:
                 #if they type in random stuff, just set it ot the param value
-                tkVar.set(str(value))
+                tmplist[j].set(str(value))
         return to_reload*self.parent.xlim[0]
+
+    def CheckIfYLimChanged(self):
+        to_reload = False
+        tmplist = [self.yleft, self.yright]
+        for j in range(2):
+
+            try:
+            #make sure the user types in a int
+                if np.abs(float(tmplist[j].get()) - self.parent.ylim[j+1]) > 1E-4:
+                    self.parent.ylim[j+1] = float(tmplist[j].get())
+                    to_reload += True
+
+            except ValueError:
+                #if they type in random stuff, just set it ot the param value
+                tmplist[j].set(str(value))
+        print self.parent.ylim
+        return to_reload*self.parent.ylim[0]
+
 
     def CheckIfIntChanged(self, tkVar, valVar):
         to_reload = False
@@ -575,6 +613,13 @@ class MeasureFrame(Tk.Toplevel):
             self.parent.xlim[0] = self.LimVar.get()
             self.parent.RefreshCanvas()
 
+    def yLimChanged(self, *args):
+        if self.yLimVar.get()==self.parent.ylim[0]:
+            pass
+        else:
+            self.parent.ylim[0] = self.yLimVar.get()
+            self.parent.RefreshCanvas()
+
 
     def MeasuresCallback(self):
         tkvarIntList = [self.ileft, self.iright, self.eleft, self.eright]
@@ -585,6 +630,7 @@ class MeasureFrame(Tk.Toplevel):
             to_reload += self.CheckIfIntChanged(tkvarIntList[j], IntValList[j])
 
         to_reload += self.CheckIfXLimChanged()
+        to_reload += self.CheckIfYLimChanged()
 
         if to_reload:
             self.parent.RefreshCanvas()
@@ -682,8 +728,9 @@ class MainApp(Tk.Tk):
         self.e_R = Tk.IntVar()
         self.e_R.set(0)
 
-        # Whether or not to set a xlim
+        # Whether or not to set a xlim or ylim
         self.xlim = [False, 0, 100]
+        self.ylim = [False, 0, 100]
         # Set the particle colors
         if self.cmap == 'viridis' or self.cmap == 'nipy_spectral':
             self.shock_color = 'w'

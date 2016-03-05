@@ -18,9 +18,12 @@ class FieldsPanel:
                        'show_y' : 1,
                        'show_z' : 1,
                        'show_cbar': True,
-                       'set_color_limits': False,
-                       'z_min': None,
-                       'z_max' : None,
+                       'set_z_limits': False,
+                       'z_min': 0,
+                       'z_max' : 10,
+                       'set_y_limits': False,
+                       'y_min': 0,
+                       'y_max' : 0,
                        'OutlineText': True,
                        'interpolation': 'hermite'}
 
@@ -195,7 +198,8 @@ class FieldsPanel:
 #        self.axes.set_xlim(self.xmin,self.xmax)
             if self.parent.xlim[0]:
                 self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
-
+            if self.parent.ylim[0]:
+                self.axes.set_ylim(self.parent.ylim[1],self.parent.ylim[2])
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
             self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.ylabel_pad, color = 'black')
 
@@ -361,6 +365,32 @@ class FieldSettings(Tk.Toplevel):
                         self.parent.SetPlotParam('show_cbar', self.CbarVar.get()))
         cb.grid(row = 6, sticky = Tk.W)
 
+        # Now the ylimits & blim
+#        ttk.Label(frm, text='Set xlim:').grid(row= 3, sticky = Tk.W)
+#        ttk.Label(frm, text='left').grid(row= 3, column = 1, sticky = Tk.N)
+#        ttk.Label(frm, text='right').grid(row= 3, column = 2, sticky = Tk.N)
+        ttk.Label(frm, text="min").grid(row=2, column = 3, sticky = Tk.N)
+        ttk.Label(frm, text="max").grid(row=2, column = 4, sticky = Tk.N)
+        self.ZLimVar = Tk.IntVar()
+        self.ZLimVar.set(self.parent.GetPlotParam('set_z_limits'))
+        self.ZLimVar.trace('w', self.ZLimChanged)
+
+
+
+        self.Zmin = Tk.StringVar()
+        self.Zmin.set(str(self.parent.GetPlotParam('z_min')))
+        self.Zmax = Tk.StringVar()
+        self.Zmax.set(str(self.parent.GetPlotParam('z_max')))
+
+
+        cb = ttk.Checkbutton(frm, text ='Set B/E limits',
+                        variable = self.ZLimVar)
+        cb.grid(row = 3, column = 2, sticky = Tk.W)
+        self.eLEnter = ttk.Entry(frm, textvariable=self.Zmin, width=7)
+        self.eLEnter.grid(row = 3, column = 3)
+        self.eREnter = ttk.Entry(frm, textvariable=self.Zmax, width=7)
+        self.eREnter.grid(row = 3, column = 4)
+
 
     def Change2d(self):
 
@@ -395,6 +425,19 @@ class FieldSettings(Tk.Toplevel):
             pass
         else:
             self.parent.SetPlotParam('interpolation', self.InterpolVar.get())
+
+    def ZLimChanged(self, *args):
+        if self.ZLimVar.get() == self.parent.GetPlotParam('set_z_limits'):
+            pass
+        else:
+            self.parent.SetPlotParam('set_z_limits', self.ZLimVar.get())
+
+    def YLimChanged(self, *args):
+        if self.InterpolVar.get() == self.parent.GetPlotParam('interpolation'):
+            pass
+        else:
+            self.parent.SetPlotParam('interpolation', self.InterpolVar.get())
+
 
     def RadioField(self):
         if self.FieldTypeVar.get() == self.parent.GetPlotParam('field_type'):

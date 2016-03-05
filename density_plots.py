@@ -135,6 +135,8 @@ class DensPanel:
             else:
                 self.axes.set_xlim(self.xmin,self.xmax)
 
+            if self.parent.ylim[0]:
+                self.axes.set_ylim(self.parent.ylim[1], self.parent.ylim[2])
 
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
             self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.ylabel_pad, color = 'black')
