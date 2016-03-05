@@ -16,8 +16,10 @@ class DensPanel:
                        'dens_type': 0, #0 = n, 1 = rho
                        'show_cbar': True,
                        'set_color_limits': False,
-                       'z_min': None,
-                       'z_max' : None,
+                       'z_min': 0,
+                       'z_max' : 10,
+                       'set_z_min': False,
+                       'set_z_max': False,
                        'show_labels' : True,
                        'show_shock' : False,
                        'OutlineText': True,
@@ -101,10 +103,18 @@ class DensPanel:
             self.xmin = 0
             self.xmax =  self.zval.shape[1]/self.c_omp*self.istep
 
+            self.vmin = None
+            if self.GetPlotParam('set_z_min'):
+                self.vmin = self.GetPlotParam('z_min')
+            self.vmax = None
+            if self.GetPlotParam('set_z_max'):
+                self.vmax = self.GetPlotParam('z_max')
+
             self.cax = self.axes.imshow(self.zval,
                 cmap = new_cmaps.cmaps[self.parent.cmap],
                 origin = 'lower', aspect = 'auto',
                 extent = (self.xmin,self.xmax, self.ymin, self.ymax),
+                vmin = self.vmin, vmax = self.vmax,
                 interpolation=self.GetPlotParam('interpolation'))
 
 
@@ -123,8 +133,14 @@ class DensPanel:
             if self.GetPlotParam('show_cbar'):
                 self.axC = self.figure.add_subplot(self.gs[:4,:])
                 self.cbar = self.figure.colorbar(self.cax, ax = self.axes, cax = self.axC, orientation = 'horizontal')
+                cmin = self.zval.min()
+                if self.vmin:
+                    cmin = self.vmin
+                cmax = self.zval.max()
+                if self.vmax:
+                    cmax = self.vmax
 
-                self.cbar.set_ticks(np.linspace(self.zval.min(),self.zval.max(), 5))
+                self.cbar.set_ticks(np.linspace(cmin, cmax, 5))
                 self.cbar.ax.tick_params(labelsize=10)
 
             self.axes.set_axis_bgcolor('lightgrey')
@@ -160,6 +176,10 @@ class DensPanel:
                 self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
             else:
                 self.axes.set_xlim(self.x_values[0],self.x_values[-1])
+            if self.GetPlotParam('set_z_min'):
+                self.axes.set_ylim(ymin = self.GetPlotParam('z_min'))
+            if self.GetPlotParam('set_z_max'):
+                self.axes.set_ylim(ymax = self.GetPlotParam('z_max'))
 
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
             self.axes.set_ylabel(tmp_str, labelpad = self.parent.ylabel_pad, color = 'black')
@@ -188,6 +208,8 @@ class DensSettings(Tk.Toplevel):
         frm = ttk.Frame(self)
         frm.pack(fill=Tk.BOTH, expand=True)
         self.protocol('WM_DELETE_WINDOW', self.OnClosing)
+        self.bind('<Return>', self.TxtEnter)
+
 
         # Create the OptionMenu to chooses the Chart Type:
         self.InterpolVar = Tk.StringVar(self)
@@ -248,6 +270,36 @@ class DensSettings(Tk.Toplevel):
                         self.parent.SetPlotParam('show_shock', self.ShockVar.get()))
         cb.grid(row = 6, column = 1, sticky = Tk.W)
 
+        # Now the field lim
+        self.setZminVar = Tk.IntVar()
+        self.setZminVar.set(self.parent.GetPlotParam('set_z_min'))
+        self.setZminVar.trace('w', self.setZminChanged)
+
+        self.setZmaxVar = Tk.IntVar()
+        self.setZmaxVar.set(self.parent.GetPlotParam('set_z_max'))
+        self.setZmaxVar.trace('w', self.setZmaxChanged)
+
+
+
+        self.Zmin = Tk.StringVar()
+        self.Zmin.set(str(self.parent.GetPlotParam('z_min')))
+
+        self.Zmax = Tk.StringVar()
+        self.Zmax.set(str(self.parent.GetPlotParam('z_max')))
+
+
+        cb = ttk.Checkbutton(frm, text ='Set dens min',
+                        variable = self.setZminVar)
+        cb.grid(row = 3, column = 2, sticky = Tk.W)
+        self.ZminEnter = ttk.Entry(frm, textvariable=self.Zmin, width=7)
+        self.ZminEnter.grid(row = 3, column = 3)
+
+        cb = ttk.Checkbutton(frm, text ='Set dens max',
+                        variable = self.setZmaxVar)
+        cb.grid(row = 4, column = 2, sticky = Tk.W)
+
+        self.ZmaxEnter = ttk.Entry(frm, textvariable=self.Zmax, width=7)
+        self.ZmaxEnter.grid(row = 4, column = 3)
 
 
 
@@ -271,6 +323,39 @@ class DensSettings(Tk.Toplevel):
             pass
         else:
             self.parent.SetPlotParam('interpolation', self.InterpolVar.get())
+
+    def setZminChanged(self, *args):
+        if self.setZminVar.get() == self.parent.GetPlotParam('set_z_min'):
+            pass
+        else:
+            self.parent.SetPlotParam('set_z_min', self.setZminVar.get())
+
+    def setZmaxChanged(self, *args):
+        if self.setZmaxVar.get() == self.parent.GetPlotParam('set_z_max'):
+            pass
+        else:
+            self.parent.SetPlotParam('set_z_max', self.setZmaxVar.get())
+
+    def TxtEnter(self, e):
+        self.FieldsCallback()
+
+    def FieldsCallback(self):
+        tkvarLimList = [self.Zmin, self.Zmax]
+        plot_param_List = ['z_min', 'z_max']
+        to_reload = False
+        for j in range(2):
+            try:
+            #make sure the user types in a int
+                if np.abs(float(tkvarLimList[j].get()) - self.parent.GetPlotParam(plot_param_List[j])) > 1E-4:
+                    self.parent.SetPlotParam(plot_param_List[j], float(tkvarLimList[j].get()), update_plot = False)
+                    to_reload = True
+
+            except ValueError:
+                #if they type in random stuff, just set it ot the param value
+                tkvarLimList[j].set(str(self.parent.GetPlotParam(plot_param_List[j])))
+        if (self.setZminVar.get() or self.setZmaxVar.get())*to_reload:
+            self.parent.SetPlotParam('z_min', self.parent.GetPlotParam('z_min'))
+
 
     def RadioField(self):
         if self.DensTypeVar.get() == self.parent.GetPlotParam('dens_type'):

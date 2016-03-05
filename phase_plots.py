@@ -25,14 +25,16 @@ class PhasePanel:
                        'set_color_limits': False,
                        'xbins' : 200,
                        'pbins' : 200,
-                       'v_min': None,
-                       'interpolation': 'hermite',
-                       'v_max': None}
+                       'v_min': -2.0,
+                       'v_max' : 0,
+                       'set_v_min': False,
+                       'set_v_max': False,
+                       'interpolation': 'hermite'}
 
     def __init__(self, parent, figwrapper):
         self.settings_window = None
         self.prev_time = None
-        self.reload = True
+        self.reload_data = True
         self.FigWrap = figwrapper
         self.parent = parent
         self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
@@ -90,7 +92,7 @@ class PhasePanel:
     def draw(self):
         # In order to speed up the plotting, we only recalculate everything
         # if necessary.
-        if self.prev_time != self.parent.TimeStep.value or self.reload:
+        if self.prev_time != self.parent.TimeStep.value or self.reload_data:
             # Generate the X-axis values
             self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
             self.weights = None
@@ -147,11 +149,25 @@ class PhasePanel:
                 self.zval[self.zval==0] = 1
             self.zval *= self.zval.max()**(-1)
 
+        self.vmin = None
+        if self.GetPlotParam('set_v_min'):
+            self.vmin = 10**self.GetPlotParam('v_min')
+        self.vmax = None
+        if self.GetPlotParam('set_v_max'):
+            self.vmax = 10**self.GetPlotParam('v_max')
+
+
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])#, bottom=0.2,left=0.1,right=0.95, top = 0.95)
 
         self.axes = self.figure.add_subplot(self.gs[18:92,:])
 
-        self.cax = self.axes.imshow(self.zval, cmap = new_cmaps.cmaps[self.parent.cmap], norm = self.norm(), origin = 'lower', aspect = 'auto', extent=[self.xmin,self.xmax,self.hist2d[1][0],self.hist2d[1][-1]], interpolation=self.GetPlotParam('interpolation'))
+        self.cax = self.axes.imshow(self.zval,
+                                    cmap = new_cmaps.cmaps[self.parent.cmap],
+                                    norm = self.norm(), origin = 'lower',
+                                    aspect = 'auto',
+                                    extent=[self.xmin,self.xmax,self.hist2d[1][0],self.hist2d[1][-1]],
+                                    vmin = self.vmin, vmax = self.vmax,
+                                    interpolation=self.GetPlotParam('interpolation'))
 
         if self.GetPlotParam('show_shock'):
             self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
@@ -184,11 +200,18 @@ class PhasePanel:
             self.axC = self.figure.add_subplot(self.gs[:4,:])
             self.cbar = self.figure.colorbar(self.cax, ax = self.axes, cax = self.axC, orientation = 'horizontal')
             if self.GetPlotParam('norm_type')== 'PowerNorm':
-                self.cbar.set_ticks(np.linspace(self.zval.min(),self.zval.max(), 5)**(1./self.FigWrap.GetPlotParam('pow_num')))
+                self.cbar.set_ticks(np.linspace(self.zmin(),self.zval.max(), 5)**(1./self.FigWrap.GetPlotParam('pow_num')))
 
             if self.GetPlotParam('norm_type') == 'LogNorm':
+                cmin = self.zval.min()
+                if self.vmin:
+                    cmin = self.vmin
+                cmax = self.zval.max()
+                if self.vmax:
+                    cmax = self.vmax
 
-                ctick_range = np.logspace(np.log10(self.zval.min()),np.log10(self.zval.max()), 5)
+
+                ctick_range = np.logspace(np.log10(cmin),np.log10(cmax), 5)
                 self.cbar.set_ticks(ctick_range)
                 ctick_labels = []
                 for elm in ctick_range:
@@ -212,14 +235,14 @@ class PhasePanel:
         self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
         self.axes.set_ylabel(self.y_label, labelpad = self.parent.ylabel_pad, color = 'black')
         self.prev_time = self.parent.TimeStep.value
-        self.reload = False
+        self.reload_data = False
 
     def GetPlotParam(self, keyname):
         return self.FigWrap.GetPlotParam(keyname)
 
-    def SetPlotParam(self, keyname, value, reload = False):
-        self.reload = reload
-        self.FigWrap.SetPlotParam(keyname, value)
+    def SetPlotParam(self, keyname, value,  update_plot = True, reload_data = False):
+        self.reload_data = reload_data
+        self.FigWrap.SetPlotParam(keyname, value,  update_plot = update_plot)
 
     def OpenSettings(self):
         if self.settings_window is None:
@@ -239,7 +262,7 @@ class PhaseSettings(Tk.Toplevel):
         frm = ttk.Frame(self)
         frm.pack(fill=Tk.BOTH, expand=True)
         self.protocol('WM_DELETE_WINDOW', self.OnClosing)
-        #Create some sizers
+        self.bind('<Return>', self.TxtEnter)
 
         # Create the OptionMenu to chooses the Chart Type:
         self.InterpolVar = Tk.StringVar(self)
@@ -329,7 +352,7 @@ class PhaseSettings(Tk.Toplevel):
         cb = ttk.Checkbutton(frm, text = "Weight by charge",
                         variable = self.WeightVar,
                         command = lambda:
-                        self.parent.SetPlotParam('weighted', self.WeightVar.get(), reload = True))
+                        self.parent.SetPlotParam('weighted', self.WeightVar.get(), reload_data = True))
         cb.grid(row = 7, sticky = Tk.W)
 
         # Show energy integration region
@@ -347,12 +370,43 @@ class PhaseSettings(Tk.Toplevel):
         cb = ttk.Checkbutton(frm, text = "Mask Zeros",
                         variable = self.MaskVar,
                         command = lambda:
-                        self.parent.SetPlotParam('masked', self.MaskVar.get(), reload = True))
+                        self.parent.SetPlotParam('masked', self.MaskVar.get(), reload_data = True))
         cb.grid(row = 8, sticky = Tk.W)
 
 
 #        ttk.Label(frm, text = 'If the zero values are not masked they are set to z_min/2').grid(row =9, columnspan =2)
     # Define functions for the events
+        # Now the field lim
+        self.setVminVar = Tk.IntVar()
+        self.setVminVar.set(self.parent.GetPlotParam('set_v_min'))
+        self.setVminVar.trace('w', self.setVminChanged)
+
+        self.setVmaxVar = Tk.IntVar()
+        self.setVmaxVar.set(self.parent.GetPlotParam('set_v_max'))
+        self.setVmaxVar.trace('w', self.setVmaxChanged)
+
+
+
+        self.Vmin = Tk.StringVar()
+        self.Vmin.set(str(self.parent.GetPlotParam('v_min')))
+
+        self.Vmax = Tk.StringVar()
+        self.Vmax.set(str(self.parent.GetPlotParam('v_max')))
+
+
+        cb = ttk.Checkbutton(frm, text ='Set log(f) min',
+                        variable = self.setVminVar)
+        cb.grid(row = 3, column = 2, sticky = Tk.W)
+        self.VminEnter = ttk.Entry(frm, textvariable=self.Vmin, width=7)
+        self.VminEnter.grid(row = 3, column = 3)
+
+        cb = ttk.Checkbutton(frm, text ='Set log(f) max',
+                        variable = self.setVmaxVar)
+        cb.grid(row = 4, column = 2, sticky = Tk.W)
+
+        self.VmaxEnter = ttk.Entry(frm, textvariable=self.Vmax, width=7)
+        self.VmaxEnter.grid(row = 4, column = 3)
+
 
 
     def ctypeChanged(self, *args):
@@ -373,19 +427,51 @@ class PhaseSettings(Tk.Toplevel):
         if self.pvar.get() == self.parent.GetPlotParam('prtl_type'):
             pass
         else:
-            self.parent.SetPlotParam('prtl_type', self.pvar.get(), reload = True)
+            self.parent.SetPlotParam('prtl_type', self.pvar.get(), reload_data = True)
 
     def RadioDim(self):
         if self.dimvar.get() == self.parent.GetPlotParam('mom_dim'):
             pass
         else:
-            self.parent.SetPlotParam('mom_dim', self.dimvar.get(), reload =True)
+            self.parent.SetPlotParam('mom_dim', self.dimvar.get(), reload_data =True)
 
     def RadioNorm(self):
         if self.cnormList[self.normvar.get()] == self.parent.GetPlotParam('norm_type'):
             pass
         else:
             self.parent.SetPlotParam('norm_type', self.cnormList[self.normvar.get()])
+
+    def setVminChanged(self, *args):
+        if self.setVminVar.get() == self.parent.GetPlotParam('set_v_min'):
+            pass
+        else:
+            self.parent.SetPlotParam('set_v_min', self.setVminVar.get())
+
+    def setVmaxChanged(self, *args):
+        if self.setVmaxVar.get() == self.parent.GetPlotParam('set_v_max'):
+            pass
+        else:
+            self.parent.SetPlotParam('set_v_max', self.setVmaxVar.get())
+
+    def TxtEnter(self, e):
+        self.FieldsCallback()
+
+    def FieldsCallback(self):
+        tkvarLimList = [self.Vmin, self.Vmax]
+        plot_param_List = ['v_min', 'v_max']
+        to_reload = False
+        for j in range(2):
+            try:
+            #make sure the user types in a int
+                if np.abs(float(tkvarLimList[j].get()) - self.parent.GetPlotParam(plot_param_List[j])) > 1E-4:
+                    self.parent.SetPlotParam(plot_param_List[j], float(tkvarLimList[j].get()), update_plot = False)
+                    to_reload = True
+
+            except ValueError:
+                #if they type in random stuff, just set it ot the param value
+                tkvarLimList[j].set(str(self.parent.GetPlotParam(plot_param_List[j])))
+        if (self.setVminVar.get() or self.setVmaxVar.get())*to_reload:
+            self.parent.SetPlotParam('v_min', self.parent.GetPlotParam('v_min'))
 
     def OnClosing(self):
         self.parent.settings_window = None

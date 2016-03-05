@@ -22,8 +22,7 @@ class FieldsPanel:
                        'z_max' : 10,
                        'set_z_min': False,
                        'set_z_max': False,
-                       'y_min': 0.0,
-                       'y_max' : 0.0,
+                      'show_shock' : False,
                        'OutlineText': True,
                        'interpolation': 'hermite'}
 
@@ -199,8 +198,19 @@ class FieldsPanel:
                 self.axC = self.figure.add_subplot(self.gs[:4,:])
                 self.cbar = self.figure.colorbar(self.cax, ax = self.axes, cax = self.axC, orientation = 'horizontal')
 
-                self.cbar.set_ticks(np.linspace(self.zval.min(),self.zval.max(), 5))
+                cmin = self.zval.min()
+                if self.vmin:
+                    cmin = self.vmin
+                cmax = self.zval.max()
+                if self.vmax:
+                    cmax = self.vmax
+
+                self.cbar.set_ticks(np.linspace(cmin, cmax, 5))
                 self.cbar.ax.tick_params(labelsize=10)
+
+            if self.GetPlotParam('show_shock'):
+                self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
+                                    PathEffects.Normal()])
 
             self.axes.set_axis_bgcolor('lightgrey')
             self.axes.tick_params(labelsize = 10, color=tick_color)
@@ -250,6 +260,9 @@ class FieldsPanel:
                                 **self.annotate_kwargs
                                 )
 
+            if self.GetPlotParam('show_shock'):
+                self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
+                        PathEffects.Normal()])
 
             self.axes.set_axis_bgcolor('lightgrey')
             self.axes.tick_params(labelsize = 10, color=tick_color)
@@ -388,15 +401,23 @@ class FieldSettings(Tk.Toplevel):
         cb = ttk.Checkbutton(frm, text ='Set B/E min',
                         variable = self.setZminVar)
         cb.grid(row = 3, column = 2, sticky = Tk.W)
-        self.eLEnter = ttk.Entry(frm, textvariable=self.Zmin, width=7)
-        self.eLEnter.grid(row = 3, column = 3)
+        self.ZminEnter = ttk.Entry(frm, textvariable=self.Zmin, width=7)
+        self.ZminEnter.grid(row = 3, column = 3)
 
         cb = ttk.Checkbutton(frm, text ='Set B/E max',
                         variable = self.setZmaxVar)
         cb.grid(row = 4, column = 2, sticky = Tk.W)
 
-        self.eREnter = ttk.Entry(frm, textvariable=self.Zmax, width=7)
-        self.eREnter.grid(row = 4, column = 3)
+        self.ZmaxEnter = ttk.Entry(frm, textvariable=self.Zmax, width=7)
+        self.ZmaxEnter.grid(row = 4, column = 3)
+
+        self.ShockVar = Tk.IntVar()
+        self.ShockVar.set(self.parent.GetPlotParam('show_shock'))
+        cb = ttk.Checkbutton(frm, text = "Show Shock",
+                        variable = self.ShockVar,
+                        command = lambda:
+                        self.parent.SetPlotParam('show_shock', self.ShockVar.get()))
+        cb.grid(row = 6, column = 1, sticky = Tk.W)
 
 
     def Change2d(self):
@@ -444,14 +465,6 @@ class FieldSettings(Tk.Toplevel):
             pass
         else:
             self.parent.SetPlotParam('set_z_max', self.setZmaxVar.get())
-
-
-    def YLimChanged(self, *args):
-        if self.InterpolVar.get() == self.parent.GetPlotParam('interpolation'):
-            pass
-        else:
-            self.parent.SetPlotParam('interpolation', self.InterpolVar.get())
-
 
     def RadioField(self):
         if self.FieldTypeVar.get() == self.parent.GetPlotParam('field_type'):
