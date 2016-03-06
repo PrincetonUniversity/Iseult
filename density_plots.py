@@ -342,18 +342,19 @@ class DensSettings(Tk.Toplevel):
     def FieldsCallback(self):
         tkvarLimList = [self.Zmin, self.Zmax]
         plot_param_List = ['z_min', 'z_max']
+        tkvarSetList = [self.setZminVar, self.setZmaxVar]
         to_reload = False
-        for j in range(2):
+        for j in range(len(tkvarLimList)):
             try:
             #make sure the user types in a int
                 if np.abs(float(tkvarLimList[j].get()) - self.parent.GetPlotParam(plot_param_List[j])) > 1E-4:
                     self.parent.SetPlotParam(plot_param_List[j], float(tkvarLimList[j].get()), update_plot = False)
-                    to_reload = True
+                    to_reload += True*tkvarSetList[j].get()
 
             except ValueError:
                 #if they type in random stuff, just set it ot the param value
                 tkvarLimList[j].set(str(self.parent.GetPlotParam(plot_param_List[j])))
-        if (self.setZminVar.get() or self.setZmaxVar.get())*to_reload:
+        if to_reload:
             self.parent.SetPlotParam('z_min', self.parent.GetPlotParam('z_min'))
 
 

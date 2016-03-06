@@ -29,6 +29,10 @@ class PhasePanel:
                        'v_max' : 0,
                        'set_v_min': False,
                        'set_v_max': False,
+                       'p_min': -2.0,
+                       'p_max' : 2,
+                       'set_p_min': False,
+                       'set_p_max': False,
                        'interpolation': 'hermite'}
 
     def __init__(self, parent, figwrapper):
@@ -232,6 +236,11 @@ class PhasePanel:
             self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
         else:
             self.axes.set_xlim(self.xmin,self.xmax)
+        if self.GetPlotParam('set_p_min'):
+            self.axes.set_ylim(ymin = self.GetPlotParam('p_min'))
+        if self.GetPlotParam('set_p_max'):
+            self.axes.set_ylim(ymax = self.GetPlotParam('p_max'))
+
         self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
         self.axes.set_ylabel(self.y_label, labelpad = self.parent.ylabel_pad, color = 'black')
         self.prev_time = self.parent.TimeStep.value
@@ -407,6 +416,37 @@ class PhaseSettings(Tk.Toplevel):
         self.VmaxEnter = ttk.Entry(frm, textvariable=self.Vmax, width=7)
         self.VmaxEnter.grid(row = 4, column = 3)
 
+        # Now the field lim
+        self.setPminVar = Tk.IntVar()
+        self.setPminVar.set(self.parent.GetPlotParam('set_p_min'))
+        self.setPminVar.trace('w', self.setPminChanged)
+
+        self.setPmaxVar = Tk.IntVar()
+        self.setPmaxVar.set(self.parent.GetPlotParam('set_p_max'))
+        self.setPmaxVar.trace('w', self.setPmaxChanged)
+
+
+
+        self.Pmin = Tk.StringVar()
+        self.Pmin.set(str(self.parent.GetPlotParam('p_min')))
+
+        self.Pmax = Tk.StringVar()
+        self.Pmax.set(str(self.parent.GetPlotParam('p_max')))
+
+
+        cb = ttk.Checkbutton(frm, text ='Set p min',
+                        variable = self.setPminVar)
+        cb.grid(row = 5, column = 2, sticky = Tk.W)
+        self.PminEnter = ttk.Entry(frm, textvariable=self.Pmin, width=7)
+        self.PminEnter.grid(row = 5, column = 3)
+
+        cb = ttk.Checkbutton(frm, text ='Set p max',
+                        variable = self.setPmaxVar)
+        cb.grid(row = 6, column = 2, sticky = Tk.W)
+
+        self.PmaxEnter = ttk.Entry(frm, textvariable=self.Pmax, width=7)
+        self.PmaxEnter.grid(row = 6, column = 3)
+
 
 
     def ctypeChanged(self, *args):
@@ -453,24 +493,38 @@ class PhaseSettings(Tk.Toplevel):
         else:
             self.parent.SetPlotParam('set_v_max', self.setVmaxVar.get())
 
+    def setPminChanged(self, *args):
+        if self.setPminVar.get() == self.parent.GetPlotParam('set_p_min'):
+            pass
+        else:
+            self.parent.SetPlotParam('set_p_min', self.setPminVar.get())
+
+    def setPmaxChanged(self, *args):
+        if self.setPmaxVar.get() == self.parent.GetPlotParam('set_p_max'):
+            pass
+        else:
+            self.parent.SetPlotParam('set_p_max', self.setPmaxVar.get())
+
+
     def TxtEnter(self, e):
         self.FieldsCallback()
 
     def FieldsCallback(self):
-        tkvarLimList = [self.Vmin, self.Vmax]
-        plot_param_List = ['v_min', 'v_max']
+        tkvarLimList = [self.Vmin, self.Vmax, self.Pmin, self.Pmax]
+        plot_param_List = ['v_min', 'v_max', 'p_min', 'p_max']
+        tkvarSetList = [self.setVminVar, self.setVmaxVar, self.setPminVar, self.setPmaxVar]
         to_reload = False
-        for j in range(2):
+        for j in range(len(tkvarLimList)):
             try:
             #make sure the user types in a int
                 if np.abs(float(tkvarLimList[j].get()) - self.parent.GetPlotParam(plot_param_List[j])) > 1E-4:
                     self.parent.SetPlotParam(plot_param_List[j], float(tkvarLimList[j].get()), update_plot = False)
-                    to_reload = True
+                    to_reload += True*tkvarSetList[j].get()
 
             except ValueError:
                 #if they type in random stuff, just set it ot the param value
                 tkvarLimList[j].set(str(self.parent.GetPlotParam(plot_param_List[j])))
-        if (self.setVminVar.get() or self.setVmaxVar.get())*to_reload:
+        if to_reload:
             self.parent.SetPlotParam('v_min', self.parent.GetPlotParam('v_min'))
 
     def OnClosing(self):
