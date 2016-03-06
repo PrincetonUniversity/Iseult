@@ -499,11 +499,6 @@ class MeasureFrame(Tk.Toplevel):
         cb.grid(row = 3, columnspan = 3, sticky = Tk.W)
 
 
-        # Now the xlimits
-#        ttk.Label(frm, text='Set xlim:').grid(row= 3, sticky = Tk.W)
-#        ttk.Label(frm, text='left').grid(row= 3, column = 1, sticky = Tk.N)
-#        ttk.Label(frm, text='right').grid(row= 3, column = 2, sticky = Tk.N)
-
         self.LimVar = Tk.IntVar()
         self.LimVar.set(self.parent.xlim[0])
         self.LimVar.trace('w', self.LimChanged)

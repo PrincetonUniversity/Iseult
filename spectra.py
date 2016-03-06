@@ -15,8 +15,13 @@ class SpectralPanel:
     plot_param_dict = {'spectral_type': 0, #0 dn/dp, 1 = dn/dE
                        'show_ions': 1,
                        'show_electrons': 1,
-                       'rest_frame': False
-    }
+                       'rest_frame': False,
+                       'set_ylim': True,
+                       'set_xlim': True,
+                       'x_min': None,
+                       'x_max': None,
+                       'y_min': -6,
+                       'y_max': 0}
 
     def __init__(self, parent, figwrapper):
         self.settings_window = None
@@ -25,7 +30,12 @@ class SpectralPanel:
         self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
         self.chartType = self.FigWrap.chartType
         self.figure = self.FigWrap.figure
-
+        if self.GetPlotParam('spectral_type') == 0:
+            self.SetPlotParam('x_min', 0.05, update_plot = False)
+            self.SetPlotParam('x_max', 500, update_plot = False)
+        if self.GetPlotParam('spectral_type') == 1:
+            self.SetPlotParam('x_min', 0.005, update_plot = False)
+            self.SetPlotParam('x_max', 500, update_plot = False)
 
 
     def ChangePlotType(self, str_arg):
@@ -151,8 +161,12 @@ class SpectralPanel:
             self.axes.set_xscale("log")
             self.axes.set_yscale("log")
             self.axes.set_axis_bgcolor('lightgrey')
-            self.axes.set_xlim(-0.05,500)
-            self.axes.set_ylim(1E-6,1)
+            if self.GetPlotParam('set_xlim'):
+                self.axes.set_xlim(self.GetPlotParam('x_min'), self.GetPlotParam('x_max'))
+            if self.GetPlotParam('set_ylim'):
+                self.axes.set_ylim(10**self.GetPlotParam('y_min'), 10**self.GetPlotParam('y_max'))
+
+
             self.axes.tick_params(labelsize = 10, color=tick_color)
 
             self.axes.set_xlabel(r'$p(mc)$', labelpad = self.parent.xlabel_pad, color = 'black')
@@ -166,7 +180,7 @@ class SpectralPanel:
             self.axes.set_xscale("log")
             self.axes.set_yscale("log")
             self.axes.set_axis_bgcolor('lightgrey')
-            self.axes.set_xlim(1e-5,1E3)
+            self.axes.set_xlim(0.005,500)
             self.axes.set_ylim(1E-6,1)
             self.axes.tick_params(labelsize = 10, color=tick_color)
 
@@ -199,6 +213,7 @@ class SpectraSettings(Tk.Toplevel):
         self.protocol('WM_DELETE_WINDOW', self.OnClosing)
         #Create some sizers
 
+        self.bind('<Return>', self.TxtEnter)
 
         # Create the OptionMenu to chooses the Chart Type:
         self.ctypevar = Tk.StringVar(self)
@@ -251,6 +266,47 @@ class SpectraSettings(Tk.Toplevel):
                         self.parent.SetPlotParam('rest_frame', self.RestVar.get()))
         cb.grid(row = 7, column = 0, sticky = Tk.W)
 
+        self.xLimVar = Tk.IntVar()
+        self.xLimVar.set(self.parent.GetPlotParam('set_xlim'))
+        self.xLimVar.trace('w', self.xLimChanged)
+
+
+
+        self.xmin = Tk.StringVar()
+        self.xmin.set(str(self.parent.GetPlotParam('x_min')))
+        self.xmax = Tk.StringVar()
+        self.xmax.set(str(self.parent.GetPlotParam('x_max')))
+
+
+        cb = ttk.Checkbutton(frm, text ='Set xlim',
+                        variable = self.xLimVar)
+        cb.grid(row = 4, column =3,sticky = Tk.W)
+        self.eLEnter = ttk.Entry(frm, textvariable=self.xmin, width=7)
+        self.eLEnter.grid(row = 4, column =4)
+        self.eREnter = ttk.Entry(frm, textvariable=self.xmax, width=7)
+        self.eREnter.grid(row = 4, column =5)
+
+
+        self.yLimVar = Tk.IntVar()
+        self.yLimVar.set(self.parent.GetPlotParam('set_ylim'))
+        self.yLimVar.trace('w', self.yLimChanged)
+
+
+
+        self.ymin = Tk.StringVar()
+        self.ymin.set(str(self.parent.GetPlotParam('y_min')))
+        self.ymax = Tk.StringVar()
+        self.ymax.set(str(self.parent.GetPlotParam('y_max')))
+
+
+        cb = ttk.Checkbutton(frm, text ='Set log(y) lim',
+                        variable = self.yLimVar)
+        cb.grid(row = 5,  column =3, sticky = Tk.W)
+        self.eLEnter = ttk.Entry(frm, textvariable=self.ymin, width=7)
+        self.eLEnter.grid(row = 5, column =4)
+        self.eREnter = ttk.Entry(frm, textvariable=self.ymax, width=7)
+        self.eREnter.grid(row = 5, column =5)
+
     def ctypeChanged(self, *args):
         if self.ctypevar.get() == self.parent.chartType:
             pass
@@ -264,6 +320,37 @@ class SpectraSettings(Tk.Toplevel):
         else:
             self.parent.SetPlotParam('spectral_type', self.SpectTypeVar.get())
 
+    def TxtEnter(self, e):
+        self.FieldsCallback()
+
+    def FieldsCallback(self):
+        tkvarLimList = [self.xmin, self.xmax, self.ymin, self.ymax]
+        plot_param_List = ['x_min', 'x_max', 'y_min', 'y_max']
+        tkvarSetList = [self.xLimVar, self.xLimVar, self.yLimVar, self.yLimVar]
+        to_reload = False
+        for j in range(len(tkvarLimList)):
+            try:
+            #make sure the user types in a int
+                if np.abs(float(tkvarLimList[j].get()) - self.parent.GetPlotParam(plot_param_List[j])) > 1E-4:
+                    self.parent.SetPlotParam(plot_param_List[j], float(tkvarLimList[j].get()), update_plot = False)
+                    to_reload += True*tkvarSetList[j].get()
+
+            except ValueError:
+                #if they type in random stuff, just set it ot the param value
+                tkvarLimList[j].set(str(self.parent.GetPlotParam(plot_param_List[j])))
+        if to_reload:
+            self.parent.SetPlotParam('x_min', self.parent.GetPlotParam('x_min'))
+    def xLimChanged(self, *args):
+        if self.xLimVar.get() == self.parent.GetPlotParam('set_xlim'):
+            pass
+        else:
+            self.parent.SetPlotParam('set_xlim', self.xLimVar.get())
+
+    def yLimChanged(self, *args):
+        if self.yLimVar.get() == self.parent.GetPlotParam('set_ylim'):
+            pass
+        else:
+            self.parent.SetPlotParam('set_ylim', self.yLimVar.get())
 
     def OnClosing(self):
         self.parent.settings_window = None
