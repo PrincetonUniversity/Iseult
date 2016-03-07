@@ -543,7 +543,7 @@ class FieldSettings(Tk.Toplevel):
             #make sure the user types in a int
                 if np.abs(float(tkvarLimList[j].get()) - self.parent.GetPlotParam(plot_param_List[j])) > 1E-4:
                     self.parent.SetPlotParam(plot_param_List[j], float(tkvarLimList[j].get()), update_plot = False)
-                    to_reload += True*self.tkvarSetList[j].get()
+                    to_reload += True*tkvarSetList[j].get()
 
             except ValueError:
                 #if they type in random stuff, just set it ot the param value
