@@ -30,8 +30,8 @@ class MyCustomToolbar(NavigationToolbar2TkAgg):
 #
         # Only display the buttons we need.
 
-        self.toolitems = [t for t in NavigationToolbar2TkAgg.toolitems if
-                 t[0] in ('Subplots','Save')]
+#        self.toolitems = [t for t in NavigationToolbar2TkAgg.toolitems if
+#                 t[0] in ('Subplots','Save')]
         NavigationToolbar2TkAgg.__init__(self, plotCanvas, parent)
 
 class Spinbox(ttk.Entry):
@@ -219,9 +219,6 @@ class PlaybackBar(Tk.Frame):
         self.SettingsB= ttk.Button(self, text='Settings', command=self.OpenSettings)
         self.SettingsB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
 
-        toolbar =  MyCustomToolbar(canvas, self)
-        toolbar.update()
-        canvas._tkcanvas.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
 
         #attach the parameter to the Playbackbar
         self.param.attach(self)
@@ -794,6 +791,10 @@ class MainApp(Tk.Tk):
         self.TimeStep = Param(1, minimum=1, maximum=1000)
         self.playbackbar = PlaybackBar(self, self.TimeStep, canvas = self.canvas)
 
+        # Add the toolbar
+        toolbar =  MyCustomToolbar(self.canvas, self)
+        toolbar.update()
+        self.canvas._tkcanvas.pack(side=Tk.RIGHT, fill=Tk.BOTH, expand=1)
 
         # Look for the tristan output files and load the file paths into
         # previous objects
@@ -1060,7 +1061,9 @@ class MainApp(Tk.Tk):
         # given as a relative value, we must first convert the value into a
         # relative x and y
         if not event.inaxes:
-             pass
+            pass
+        if event.button == 1:
+            pass
         else:
             fig_size = self.f.get_size_inches()*self.f.dpi # Fig size in px
 
