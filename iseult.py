@@ -646,8 +646,10 @@ class MainApp(Tk.Tk):
         self.measure_window = None
         self.prev_time = None
 
-        self.clear_fig = True # A parameter that causes the graph to disappear as soon as something is pressed. Ea
+        self.clear_fig = True # A parameter that causes the graph to disappear as soon as something is pressed. Here is the dictionary of the keys:
 
+
+        #
         # Set the number of rows and columns in the figure
         # (As well as the max rows)
         self.maxRows = 5
@@ -686,9 +688,97 @@ class MainApp(Tk.Tk):
         self.PathDict = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
 
         # A dictionary that allows use to see in what HDF5 file each key is stored.
-        # i.e. {'ui': 'Prtl', 'ue': 'Flds', etc...}, initialied with self.GenH5Dict()
-        self.H5KeyDict ={}
+        # i.e. {'ui': 'Prtl', 'ue': 'Flds', etc...},  Originally I generated the
+        # key dictionary automatically, but I don't think that is safe anymore.
 
+        self.H5KeyDict = {u'mx0': 'Param',
+                          u'teststarti': 'Param',
+                          u'teststartl': 'Param',
+                          u'sizex': 'Param',
+                          u'sizey': 'Param',
+                          u'c_omp': 'Param',
+                          u'yi': 'Prtl',
+                          u'umean': 'Spect',
+                          u'proci': 'Prtl',
+                          u'proce': 'Prtl',
+                          u'v3xi': 'Flds',
+                          u'qi': 'Param',
+                          u'xsl': 'Spect',
+                          u'ye': 'Prtl',
+                          u'zi': 'Prtl',
+                          u'ze': 'Prtl',
+                          u'spece': 'Spect',
+                          u'istep1': 'Param',
+                          u'ey': 'Flds',
+                          u'ex': 'Flds',
+                          u'ez': 'Flds',
+                          u'specp': 'Spect',
+                          u'densi': 'Flds',
+                          u'my0': 'Param',
+                          u'specprest': 'Spect',
+                          u'dlapion': 'Param',
+                          u'we': 'Prtl',
+                          u'jx': 'Flds',
+                          u'jy': 'Flds',
+                          u'jz': 'Flds',
+                          u'gmax': 'Spect',
+                          u'gmin': 'Spect',
+                          'spect_dens': 'Spect',
+                          u'wi': 'Prtl',
+                          u'testendion': 'Param',
+                          u'bx': 'Flds',
+                          u'by': 'Flds',
+                          u'bz': 'Flds',
+                          u'caseinit': 'Param',
+                          u'pltstart': 'Param',
+                          u'stride': 'Param',
+                          u'ntimes': 'Param',
+                          u'dgam': 'Spect',
+                          u'gamma': 'Spect',
+                          u'xi': 'Prtl',
+                          u'xe': 'Prtl',
+                          u'che': 'Prtl',
+                          u'chi': 'Prtl',
+                          u'cooling': 'Param',
+                          u'btheta': 'Param',
+                          u'c': 'Param',
+                          u'acool': 'Param',
+                          u'istep': 'Param',
+                          u'delgam': 'Param',
+                          u'me': 'Param',
+                          u'dlaplec': 'Param',
+                          u'mi': 'Param',
+                          u'ui': 'Prtl',
+                          u'ue': 'Prtl',
+                          u'torqint': 'Param',
+                          u'mx': 'Param',
+                          u'mz0': 'Param',
+                          u've': 'Prtl',
+                          u'gamma0': 'Param',
+                          u'vi': 'Prtl',
+                          u'my': 'Param',
+                          u'specerest': 'Spect',
+                          u'v3yi': 'Flds',
+                          u'walloc': 'Param',
+                          u'testendlec': 'Param',
+                          u'v3x': 'Flds',
+                          u'v3y': 'Flds',
+                          u'v3z': 'Flds',
+                          u'xinject2': 'Param',
+                          u'gammae': 'Prtl',
+                          u'bphi': 'Param',
+                          u'gammai': 'Prtl',
+                          u'dummy': 'Param',
+                          u'dens': 'Flds',
+                          u'sigma': 'Param',
+                          u'interval': 'Param',
+                          u'inde': 'Prtl',
+                          u'v3zi': 'Flds',
+                          u'time': 'Param',
+                          u'splitratio': 'Param',
+                          u'indi': 'Prtl',
+                          u'ppc0': 'Param'}
+~
         # Set the default color map
 
         self.cmap = 'viridis'
@@ -766,6 +856,8 @@ class MainApp(Tk.Tk):
                     else:
                         self.H5KeyDict[h5key] = pkey
 
+        print self.H5KeyDict
+
     def pathOK(self):
         """ Test to see if the current path contains tristan files
         using regular expressions, then generate the lists of files
@@ -801,8 +893,6 @@ class MainApp(Tk.Tk):
 
         self.TimeStep.setMax(max(len(self.PathDict['Flds']),1))
         self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
-        if len(self.H5KeyDict) == 0 and is_okay is True:
-            self.GenH5Dict()
         return is_okay
 
 
