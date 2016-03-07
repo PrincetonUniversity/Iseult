@@ -778,7 +778,7 @@ class MainApp(Tk.Tk):
                           u'splitratio': 'Param',
                           u'indi': 'Prtl',
                           u'ppc0': 'Param'}
-~
+
         # Set the default color map
 
         self.cmap = 'viridis'
