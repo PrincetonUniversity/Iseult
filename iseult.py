@@ -172,8 +172,8 @@ class PlaybackBar(Tk.Frame):
         Tk.Frame.__init__(self)
         self.parent = parent
 
-        self.skipSize = 1
-        self.waitTime = .2
+        self.skipSize = 5
+        self.waitTime = .01
         self.playPressed = False
 
         # This param should be the time-step of the simulation
