@@ -22,8 +22,10 @@ class FieldsPanel:
                        'z_max' : 10,
                        'set_z_min': False,
                        'set_z_max': False,
-                      'show_shock' : False,
+                       'show_shock' : False,
                        'OutlineText': True,
+                       'spatial_x': True,
+                       'spatial_y': None,
                        'interpolation': 'hermite'}
 
     def __init__(self, parent, figwrapper):
@@ -33,6 +35,7 @@ class FieldsPanel:
         self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
         self.chartType = self.FigWrap.chartType
         self.figure = self.FigWrap.figure
+        self.SetPlotParam('spatial_y', self.GetPlotParam('twoD'), update_plot = False)
         self.InterpolationMethods = ['nearest', 'bilinear', 'bicubic', 'spline16',
             'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
@@ -132,11 +135,27 @@ class FieldsPanel:
             self.y_values =  np.arange(self.fz.shape[0])/self.c_omp*self.istep
             self.x_values =  np.arange(self.fz.shape[1])/self.c_omp*self.istep
 
-        self.axes = self.figure.add_subplot(self.gs[18:92,:])
 
         self.zval = None
         # Now that the data is loaded, start making the plots
         if self.GetPlotParam('twoD'):
+            if self.parent.LinkSpatial != 0:
+                if self.FigWrap.pos == self.parent.first_x and self.FigWrap.pos == self.parent.first_y:
+                    self.axes = self.figure.add_subplot(self.gs[18:92,:])
+                elif self.FigWrap.pos == self.parent.first_x:
+                    self.axes = self.figure.add_subplot(self.gs[18:92,:],
+                    sharey = self.parent.SubPlotList[self.parent.first_y[0]][self.parent.first_y[1]].graph.axes)
+                elif self.FigWrap.pos == self.parent.first_y:
+                    self.axes = self.figure.add_subplot(self.gs[18:92,:],
+                    sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
+                else:
+                    self.axes = self.figure.add_subplot(self.gs[18:92,:],
+                    sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes,
+                    sharey = self.parent.SubPlotList[self.parent.first_y[0]][self.parent.first_y[1]].graph.axes)
+
+            else:
+                self.axes = self.figure.add_subplot(self.gs[18:92,:])
+
             # First choose the 'zval' to plot, we can only do one because it is 2-d.
             if self.GetPlotParam('show_x'):
                 self.zval = self.fx
@@ -223,6 +242,15 @@ class FieldsPanel:
             self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.ylabel_pad, color = 'black')
 
         else:
+            if self.parent.LinkSpatial != 0 and self.parent.LinkSpatial != 3:
+                if self.FigWrap.pos == self.parent.first_x:
+                    self.axes = self.figure.add_subplot(self.gs[18:92,:])
+                else:
+                    self.axes = self.figure.add_subplot(self.gs[18:92,:],
+                    sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
+            else:
+                self.axes = self.figure.add_subplot(self.gs[18:92,:])
+
             self.annotate_pos = [0.8,0.9]
             if self.GetPlotParam('show_x'):
                 self.axes.plot(self.x_values, self.fx[self.fx.shape[0]/2,:], color = self.xcolor)
@@ -265,7 +293,7 @@ class FieldsPanel:
                         PathEffects.Normal()])
 
             self.axes.set_axis_bgcolor('lightgrey')
-            self.axes.tick_params(labelsize = 10, color=tick_color)
+            self.axes.tick_params(labelsize = 10, color=tick_color)#, tick1On= False, tick2On= False)
 
             if self.parent.xlim[0]:
                 self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
@@ -437,6 +465,7 @@ class FieldSettings(Tk.Toplevel):
                 elif ~self.parent.GetPlotParam('show_z'):
                     self.ShowXVar.set(1)
 
+            self.parent.SetPlotParam('spatial_y', self.TwoDVar.get(), update_plot=False)
             self.parent.SetPlotParam('twoD', self.TwoDVar.get())
 
 

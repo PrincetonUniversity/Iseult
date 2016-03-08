@@ -23,6 +23,8 @@ class DensPanel:
                        'show_labels' : True,
                        'show_shock' : False,
                        'OutlineText': True,
+                       'spatial_x': True,
+                       'spatial_y': None,
                        'interpolation': 'hermite'}
 
     def __init__(self, parent, figwrapper):
@@ -32,6 +34,7 @@ class DensPanel:
         self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
         self.chartType = self.FigWrap.chartType
         self.figure = self.FigWrap.figure
+        self.SetPlotParam('spatial_y', self.GetPlotParam('twoD'), update_plot = False)
         self.InterpolationMethods = ['nearest', 'bilinear', 'bicubic', 'spline16',
             'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
@@ -46,7 +49,7 @@ class DensPanel:
         # First make sure that omega_plasma & xi is loaded so we can fix the
         # x & y distances.
 
-        self.arrs_needed = ['c_omp', 'istep', 'sizex', 'dens']
+        self.arrs_needed = ['c_omp', 'istep', 'dens']
         # To plot rho we need both dens and densi
         if self.GetPlotParam('dens_type') == 1: # Load the ion density
             self.arrs_needed.append('densi')
@@ -79,8 +82,8 @@ class DensPanel:
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])#, bottom=0.2,left=0.1,right=0.95, top = 0.95)
 
         # load the density values
-        self.zval= self.FigWrap.LoadKey('dens')[0,:,:]
-
+        if self.GetPlotParam('dens_type') == 0:
+            self.zval= self.FigWrap.LoadKey('dens')[0,:,:]
 
         if self.GetPlotParam('dens_type') == 1: # Load calculate rho
             self.zval = 2*self.FigWrap.LoadKey('densi')[0,:,:]-self.zval
@@ -89,10 +92,29 @@ class DensPanel:
         self.y_values =  np.arange(self.zval.shape[0])/self.c_omp*self.istep
         self.x_values =  np.arange(self.zval.shape[1])/self.c_omp*self.istep
 
-        self.axes = self.figure.add_subplot(self.gs[18:92,:])
 
         # Now that the data is loaded, start making the plots
         if self.GetPlotParam('twoD'):
+
+            # Link up the spatial axes if desired
+            if self.parent.LinkSpatial != 0:
+                if self.FigWrap.pos == self.parent.first_x and self.FigWrap.pos == self.parent.first_y:
+                    self.axes = self.figure.add_subplot(self.gs[18:92,:])
+                elif self.FigWrap.pos == self.parent.first_x:
+                    self.axes = self.figure.add_subplot(self.gs[18:92,:],
+                    sharey = self.parent.SubPlotList[self.parent.first_y[0]][self.parent.first_y[1]].graph.axes)
+                elif self.FigWrap.pos == self.parent.first_y:
+                    self.axes = self.figure.add_subplot(self.gs[18:92,:],
+                    sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
+                else:
+                    self.axes = self.figure.add_subplot(self.gs[18:92,:],
+                    sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes,
+                    sharey = self.parent.SubPlotList[self.parent.first_y[0]][self.parent.first_y[1]].graph.axes)
+
+
+            else:
+                self.axes = self.figure.add_subplot(self.gs[18:92,:])
+
             # First choose the 'zval' to plot, we can only do one because it is 2-d.
             self.two_d_label = r'$n_e$'
             if self.FigWrap.GetPlotParam('dens_type') == 1:
@@ -146,7 +168,7 @@ class DensPanel:
             self.axes.set_axis_bgcolor('lightgrey')
             self.axes.tick_params(labelsize = 10, color=tick_color)
 
-            if self.parent.xlim[0]:
+            if self.parent.xlim[0] and self.parent.LinkSpatial != 0:
                 self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
             else:
                 self.axes.set_xlim(self.xmin,self.xmax)
@@ -158,6 +180,15 @@ class DensPanel:
             self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.ylabel_pad, color = 'black')
 
         else:
+            if self.parent.LinkSpatial != 0 and self.parent.LinkSpatial != 3:
+                if self.FigWrap.pos == self.parent.first_x:
+                    self.axes = self.figure.add_subplot(self.gs[18:92,:])
+                else:
+                    self.axes = self.figure.add_subplot(self.gs[18:92,:],
+                    sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
+            else:
+                self.axes = self.figure.add_subplot(self.gs[18:92,:])
+
             # Make the 1-D plots
             self.axes.plot(self.x_values, self.zval[self.zval.shape[0]/2,:], color = self.dens_color)
             tmp_str = r'$\rm density$'
@@ -307,6 +338,7 @@ class DensSettings(Tk.Toplevel):
         if self.TwoDVar.get() == self.parent.GetPlotParam('twoD'):
             pass
         else:
+            self.parent.SetPlotParam('spatial_y', self.TwoDVar.get(), update_plot = False)
             self.parent.SetPlotParam('twoD', self.TwoDVar.get())
 
 

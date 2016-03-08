@@ -33,6 +33,8 @@ class PhasePanel:
                        'p_max' : 2,
                        'set_p_min': False,
                        'set_p_max': False,
+                       'spatial_x': True,
+                       'spatial_y': False,
                        'interpolation': 'hermite'}
 
     def __init__(self, parent, figwrapper):
@@ -163,8 +165,13 @@ class PhasePanel:
 
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])#, bottom=0.2,left=0.1,right=0.95, top = 0.95)
 
-        self.axes = self.figure.add_subplot(self.gs[18:92,:])
-
+        if self.parent.LinkSpatial == 1:
+            if self.FigWrap.pos == self.parent.first_x:
+                self.axes = self.figure.add_subplot(self.gs[18:92,:])
+            else:
+                self.axes = self.figure.add_subplot(self.gs[18:92,:], sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
+        else:
+            self.axes = self.figure.add_subplot(self.gs[18:92,:])
         self.cax = self.axes.imshow(self.zval,
                                     cmap = new_cmaps.cmaps[self.parent.cmap],
                                     norm = self.norm(), origin = 'lower',
@@ -232,7 +239,7 @@ class PhasePanel:
 
         self.axes.set_axis_bgcolor('lightgrey')
         self.axes.tick_params(labelsize = 10, color=self.tick_color)
-        if self.parent.xlim[0]:
+        if self.parent.xlim[0] and self.parent.LinkSpatial == 1:
             self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
         else:
             self.axes.set_xlim(self.xmin,self.xmax)

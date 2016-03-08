@@ -20,6 +20,8 @@ class SpectralPanel:
                        'set_xlim': True,
                        'x_min': None,
                        'x_max': None,
+                       'spatial_x': False,
+                       'spatial_y': False,
                        'y_min': -6,
                        'y_max': 0}
 

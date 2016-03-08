@@ -356,12 +356,35 @@ class SettingsFrame(Tk.Toplevel):
                         variable = self.TitleVar)
         cb.grid(row = 6, sticky = Tk.N)
 
+        # Control whether or not axes are shared with a radio box:
+        self.toLinkList = ['None', 'All spatial', 'All non p-x', 'All 2-D spatial']
+        self.LinkedVar = Tk.IntVar()
+        self.LinkedVar.set(self.parent.LinkSpatial)
+
+        ttk.Label(frm, text='Share spatial axes:').grid(row = 0, column = 2, sticky = Tk.W)
+
+        for i in range(len(self.toLinkList)):
+            ttk.Radiobutton(frm,
+                    text=self.toLinkList[i],
+                    variable=self.LinkedVar,
+                    command = self.RadioLinked,
+                    value=i).grid(row = 1+i, column = 2, sticky =Tk.N)
+
+
     def TitleChanged(self, *args):
         if self.TitleVar.get()==self.parent.show_title:
             pass
         else:
             self.parent.show_title = self.TitleVar.get()
             self.parent.RefreshCanvas()
+
+    def RadioLinked(self, *args):
+        if self.LinkedVar.get() == self.parent.LinkSpatial:
+            pass
+        else:
+            self.parent.LinkSpatial = self.LinkedVar.get()
+            self.parent.RefreshCanvas()
+
 
     def CmapChanged(self, *args):
     # Note here that Tkinter passes an event object to onselect()
@@ -642,8 +665,10 @@ class MainApp(Tk.Tk):
         self.settings_window = None
         self.measure_window = None
         self.prev_time = None
-
         self.clear_fig = True # A parameter that causes the graph to disappear as soon as something is pressed. Here is the dictionary of the keys:
+
+        self.first_x = None
+        self.first_y = None
 
 
         #
@@ -651,6 +676,17 @@ class MainApp(Tk.Tk):
         # (As well as the max rows)
         self.maxRows = 5
         self.maxCols = 3
+
+
+
+        # A param to define whether to share axes
+        # 0 : No axes are shared
+        # 1 : All axes are shared
+        # 2 : All non p-x plots are shared
+        # 3 : All 2-D, non p-x plots are shared
+        self.LinkSpatial = 2
+
+
 
         self.numOfRows = Tk.IntVar(self)
         self.numOfRows.set(3)
@@ -694,48 +730,15 @@ class MainApp(Tk.Tk):
                           u'sizex': 'Param',
                           u'sizey': 'Param',
                           u'c_omp': 'Param',
-                          u'yi': 'Prtl',
-                          u'umean': 'Spect',
-                          u'proci': 'Prtl',
-                          u'proce': 'Prtl',
-                          u'v3xi': 'Flds',
                           u'qi': 'Param',
-                          u'xsl': 'Spect',
-                          u'ye': 'Prtl',
-                          u'zi': 'Prtl',
-                          u'ze': 'Prtl',
-                          u'spece': 'Spect',
                           u'istep1': 'Param',
-                          u'ey': 'Flds',
-                          u'ex': 'Flds',
-                          u'ez': 'Flds',
-                          u'specp': 'Spect',
-                          u'densi': 'Flds',
                           u'my0': 'Param',
-                          u'specprest': 'Spect',
                           u'dlapion': 'Param',
-                          u'we': 'Prtl',
-                          u'jx': 'Flds',
-                          u'jy': 'Flds',
-                          u'jz': 'Flds',
-                          u'gmax': 'Spect',
-                          u'gmin': 'Spect',
-                          'spect_dens': 'Spect',
-                          u'wi': 'Prtl',
                           u'testendion': 'Param',
-                          u'bx': 'Flds',
-                          u'by': 'Flds',
-                          u'bz': 'Flds',
                           u'caseinit': 'Param',
                           u'pltstart': 'Param',
                           u'stride': 'Param',
                           u'ntimes': 'Param',
-                          u'dgam': 'Spect',
-                          u'gamma': 'Spect',
-                          u'xi': 'Prtl',
-                          u'xe': 'Prtl',
-                          u'che': 'Prtl',
-                          u'chi': 'Prtl',
                           u'cooling': 'Param',
                           u'btheta': 'Param',
                           u'c': 'Param',
@@ -745,11 +748,44 @@ class MainApp(Tk.Tk):
                           u'me': 'Param',
                           u'dlaplec': 'Param',
                           u'mi': 'Param',
-                          u'ui': 'Prtl',
-                          u'ue': 'Prtl',
                           u'torqint': 'Param',
                           u'mx': 'Param',
                           u'mz0': 'Param',
+                          u'yi': 'Prtl',
+                          u'proci': 'Prtl',
+                          u'proce': 'Prtl',
+                          u'ye': 'Prtl',
+                          u'zi': 'Prtl',
+                          u'ze': 'Prtl',
+                          u'xsl': 'Spect',
+                          u'umean': 'Spect',
+                          u'spece': 'Spect',
+                          u'v3xi': 'Flds',
+                          u'ey': 'Flds',
+                          u'ex': 'Flds',
+                          u'ez': 'Flds',
+                          u'specp': 'Spect',
+                          u'densi': 'Flds',
+                          u'specprest': 'Spect',
+                          u'we': 'Prtl',
+                          u'jx': 'Flds',
+                          u'jy': 'Flds',
+                          u'jz': 'Flds',
+                          u'gmax': 'Spect',
+                          u'gmin': 'Spect',
+                          'spect_dens': 'Spect',
+                          u'wi': 'Prtl',
+                          u'bx': 'Flds',
+                          u'by': 'Flds',
+                          u'bz': 'Flds',
+                          u'dgam': 'Spect',
+                          u'gamma': 'Spect',
+                          u'xi': 'Prtl',
+                          u'xe': 'Prtl',
+                          u'che': 'Prtl',
+                          u'chi': 'Prtl',
+                          u'ui': 'Prtl',
+                          u'ue': 'Prtl',
                           u've': 'Prtl',
                           u'gamma0': 'Param',
                           u'vi': 'Prtl',
@@ -992,6 +1028,11 @@ class MainApp(Tk.Tk):
                 tmpList = self.SubPlotList[i][j].GetKeys()
                 # we always load time because it is needed to calculate the shock location
                 self.ToLoad[self.H5KeyDict['time']].append('time')
+                # We always load enough to calculate xmin, xmax, ymin, ymax:
+                self.ToLoad[self.H5KeyDict['c_omp']].append('c_omp')
+                self.ToLoad[self.H5KeyDict['istep']].append('istep')
+                self.ToLoad[self.H5KeyDict['dens']].append('dens')
+
                 for elm in tmpList:
                     # find out what type of file the key is stored in
                     ftype = self.H5KeyDict[elm]
@@ -1040,13 +1081,63 @@ class MainApp(Tk.Tk):
         #
         if self.clear_fig:
             self.canvas.show()
+        # The time step has changed, we need to see if the plots are zoomed in,
+        # then save that value:
+        if self.first_x is not None:
+            # See where the first shared axis has for its xmin and max
+            cur_xlim = self.SubPlotList[self.first_x[0]][self.first_x[1]].graph.axes.get_xlim()
+
+            # Calculate the true xmin and xmax
+            fshape = self.DataDict['dens'][0,:,:].shape
+            xmin = 0
+            xmax = fshape[1]/self.DataDict['c_omp'][0]*self.DataDict['istep'][0]
+            if xmin != cur_xlim[0] or xmax != cur_xlim[1]:
+                self.xlim = [True, cur_xlim[0], cur_xlim[1]]
+
+        if self.first_y is not None:
+            # See where the first shared axis has for its xmin and max
+            cur_ylim = self.SubPlotList[self.first_y[0]][self.first_y[1]].graph.axes.get_ylim()
+
+            # Calculate the true xmin and xmax
+            fshape = self.DataDict['dens'][0,:,:].shape
+            ymin = 0
+            ymax = fshape[0]/self.DataDict['c_omp'][0]*self.DataDict['istep'][0]
+            if ymin != cur_ylim[0] or xmax != cur_ylim[1]:
+                self.ylim = [True, cur_ylim[0], cur_ylim[1]]
+
         self.LoadAllKeys()
 
         # Calculate the new shock location
         self.shock_loc = self.DataDict['time'][0]*self.shock_speed
 
+        # Calculate the new xmin, and xmax
+
+        # Find the first position with a physical x and y direction:
+        self.first_x = None
+        self.first_y = None
         for i in range(self.numOfRows.get()):
             for j in range(self.numOfColumns.get()):
+                if self.SubPlotList[i][j].chartType == 'SpectraPlot':
+                    # The plot type is a spectral plot, which has no spatial dim
+                    pass
+                elif self.LinkSpatial != 1 and self.SubPlotList[i][j].chartType == 'PhasePlot':
+                    # If this is the case we don't care about the phase plots
+                    # as we don't want to share the axes
+                    pass
+                elif self.LinkSpatial == 3 and self.SubPlotList[i][j].GetPlotParam('twoD'):
+                    # If the plot is twoD share the axes
+                    if self.first_x is None and self.SubPlotList[i][j].GetPlotParam('spatial_x'):
+                        self.first_x = (i,j)
+                    if self.first_y is None and self.SubPlotList[i][j].GetPlotParam('spatial_y'):
+                        self.first_y = (i,j)
+
+                else:
+                    # Just find the first spatial x and y direction.
+                    if self.first_x is None and self.SubPlotList[i][j].GetPlotParam('spatial_x'):
+                        self.first_x = (i,j)
+                    if self.first_y is None and self.SubPlotList[i][j].GetPlotParam('spatial_y'):
+                        self.first_y = (i,j)
+
                 self.SubPlotList[i][j].DrawGraph()
         if self.show_title:
             self.f.suptitle(os.path.abspath(self.dirname)+ ' at time t = %d $\omega_p$'  % round(self.DataDict['time'][0]))
