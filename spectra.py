@@ -13,6 +13,7 @@ class SpectralPanel:
     # A diction of all of the parameters for this plot with the default parameters
 
     plot_param_dict = {'spectral_type': 0, #0 dn/dp, 1 = dn/dE
+                        'twoD': 0,
                        'show_ions': 1,
                        'show_electrons': 1,
                        'rest_frame': False,

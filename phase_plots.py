@@ -13,7 +13,8 @@ import matplotlib.patheffects as PathEffects
 class PhasePanel:
     # A diction of all of the parameters for this plot with the default parameters
 
-    plot_param_dict = {'mom_dim': 0,
+    plot_param_dict = {'twoD' : 1,
+                       'mom_dim': 0,
                        'masked': 1,
                        'norm_type': 'LogNorm',
                        'prtl_type': 0,
@@ -98,6 +99,10 @@ class PhasePanel:
     def draw(self):
         # In order to speed up the plotting, we only recalculate everything
         # if necessary.
+        # Figure out the color
+        self.energy_color = self.parent.ion_color
+        if self.GetPlotParam('prtl_type') == 1:
+            self.energy_color = self.parent.electron_color
         if self.prev_time != self.parent.TimeStep.value or self.reload_data:
             # Generate the X-axis values
             self.c_omp = self.FigWrap.LoadKey('c_omp')[0]

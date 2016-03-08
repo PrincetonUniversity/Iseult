@@ -27,12 +27,10 @@ def destroy(e):
 class MyCustomToolbar(NavigationToolbar2TkAgg):
     def __init__(self, plotCanvas, parent):
         # create the default toolbar
-#
-        # Only display the buttons we need.
-
-#        self.toolitems = [t for t in NavigationToolbar2TkAgg.toolitems if
-#                 t[0] in ('Subplots','Save')]
+        # plotCanvas is the tk Canvas we want to link to the toolbar,
+        # parent is the iseult main app
         NavigationToolbar2TkAgg.__init__(self, plotCanvas, parent)
+
 
 class Spinbox(ttk.Entry):
     def __init__(self, master=None, **kw):
@@ -61,7 +59,10 @@ class SubPlotWrapper:
         self.figure = figure
         self.subplot_spec = subplot_spec
         self.pos = pos
+        self.pos_in_views = None
         self.graph = graph
+        self.Changedto1D = False
+        self.Changedto2D = False
         #
     def GetKeys(self):
         return self.graph.set_plot_keys()
@@ -84,6 +85,13 @@ class SubPlotWrapper:
     def SetPlotParam(self, pname, val, ctype = None, update_plot = True):
         if ctype is None:
             ctype = self.chartType
+
+        # Check to see if a Cbar was added or removed and if
+        if pname =='twoD':
+            if self.PlotParamsDict[ctype][pname] == 1 and val == 0:
+                self.Changedto1D = True
+            if self.PlotParamsDict[ctype][pname] == 0 and val == 1:
+                self.Changedto2D = True
 
         self.PlotParamsDict[ctype][pname] = val
         if update_plot:
@@ -828,8 +836,8 @@ class MainApp(Tk.Tk):
         self.playbackbar = PlaybackBar(self, self.TimeStep, canvas = self.canvas)
 
         # Add the toolbar
-        toolbar =  MyCustomToolbar(self.canvas, self)
-        toolbar.update()
+        self.toolbar =  MyCustomToolbar(self.canvas, self)
+        self.toolbar.update()
         self.canvas._tkcanvas.pack(side=Tk.RIGHT, fill=Tk.BOTH, expand=1)
 
         # Look for the tristan output files and load the file paths into
@@ -1075,35 +1083,98 @@ class MainApp(Tk.Tk):
                                 self.DataDict[elm] = f[elm][:]
         self.prev_time = self.TimeStep.value
 
+    def SaveView(self):
+        # A function that will make sure our view will stay the same as the
+        # plot updates.
+        cur_view =  list(self.toolbar._views.__call__())
+        # Go to the home view
+        self.toolbar._views.home()
+        self.toolbar._positions.home()
+        home_view =  list(self.toolbar._views.__call__())
 
-    def RefreshCanvas(self):
+        # Filter out the colorbar axes
+        num_cbars = 0
+        for k in range(len(cur_view)):
+            if cur_view[k] == (0.0, 1.0, 0.0, 1.0):
+                num_cbars += 1
+        while num_cbars > 0:
+            cur_view.remove((0.0, 1.0, 0.0, 1.0))
+            home_view.remove((0.0, 1.0, 0.0, 1.0))
+            num_cbars -= 1
+
+        self.is_changed_list = []
+        self.old_views = []
+        if cur_view is not None:
+            for i in range(len(cur_view)):
+                is_changed = False
+                for j in range(4):
+                    if home_view[i][j] != cur_view[i][j]:
+                        is_changed = True
+                if is_changed:
+                    self.is_changed_list.append(i)
+                    self.old_views.append(cur_view[i])
+
+        self.prev_ctype_list = []
+        for i in range(self.numOfRows.get()):
+            tmplist = []
+            for j in range(self.numOfColumns.get()):
+                    tmplist.append(self.SubPlotList[i][j].chartType)
+
+            self.prev_ctype_list.append(tmplist)
+
+    def LoadView(self):
+        if len(self.is_changed_list)>0:
+                        # Push the home view onto the stack..
+            self.toolbar.push_current()
+            next_view = list(self.toolbar._views.__call__())
+
+
+                # put the parts from the old view into the proper place in the next view
+            m = 0
+            k = 0
+            for i in range(self.numOfRows.get()):
+                for j in range(self.numOfColumns.get()):
+                    if self.prev_ctype_list[i][j] == self.SubPlotList[i][j].chartType:
+                        if m in self.is_changed_list:
+                            tmp_view = list(self.old_views.pop(0))
+                            if self.SubPlotList[i][j].Changedto2D:
+                                tmptup =  tmp_view[0], tmp_view[1], next_view[k][2], next_view[k][3]
+                                next_view[k] = tmptup
+                            elif self.SubPlotList[i][j].Changedto1D:
+                                tmptup =  tmp_view[0], tmp_view[1], next_view[k][2], next_view[k][3]
+                                next_view[k] = tmptup
+                            else:
+                                next_view[k] = tmp_view
+
+
+                    if self.SubPlotList[i][j].GetPlotParam('twoD') == 1:
+                        if self.SubPlotList[i][j].GetPlotParam('show_cbar') == 1:
+                            k += 2
+                    else:
+                        k += 1
+                    m += 1
+
+            self.toolbar._views.push(next_view)
+            self.toolbar.set_history_buttons()
+            self.toolbar._update_view()
+
+        # We must now figure out the pos of the charts that changed in the earlier view.
+
+    def RefreshCanvas(self, keep_view = True):
+        # If we change one of the plots from
+        #  We need to see if the user has moved around the zoom level in python.
+        # First we see if there are any views in the toolbar
+        cur_view =  self.toolbar._views.__call__()
+
+        if cur_view is None:
+            keep_view = False
+        if keep_view:
+            self.SaveView()
+
         self.f.clf()
         #
         if self.clear_fig:
             self.canvas.show()
-        # The time step has changed, we need to see if the plots are zoomed in,
-        # then save that value:
-        if self.first_x is not None:
-            # See where the first shared axis has for its xmin and max
-            cur_xlim = self.SubPlotList[self.first_x[0]][self.first_x[1]].graph.axes.get_xlim()
-
-            # Calculate the true xmin and xmax
-            fshape = self.DataDict['dens'][0,:,:].shape
-            xmin = 0
-            xmax = fshape[1]/self.DataDict['c_omp'][0]*self.DataDict['istep'][0]
-            if xmin != cur_xlim[0] or xmax != cur_xlim[1]:
-                self.xlim = [True, cur_xlim[0], cur_xlim[1]]
-
-        if self.first_y is not None:
-            # See where the first shared axis has for its xmin and max
-            cur_ylim = self.SubPlotList[self.first_y[0]][self.first_y[1]].graph.axes.get_ylim()
-
-            # Calculate the true xmin and xmax
-            fshape = self.DataDict['dens'][0,:,:].shape
-            ymin = 0
-            ymax = fshape[0]/self.DataDict['c_omp'][0]*self.DataDict['istep'][0]
-            if ymin != cur_ylim[0] or xmax != cur_ylim[1]:
-                self.ylim = [True, cur_ylim[0], cur_ylim[1]]
 
         self.LoadAllKeys()
 
@@ -1115,8 +1186,11 @@ class MainApp(Tk.Tk):
         # Find the first position with a physical x and y direction:
         self.first_x = None
         self.first_y = None
+        k = 0
         for i in range(self.numOfRows.get()):
             for j in range(self.numOfColumns.get()):
+
+                # First handle the axes sharing
                 if self.SubPlotList[i][j].chartType == 'SpectraPlot':
                     # The plot type is a spectral plot, which has no spatial dim
                     pass
@@ -1138,11 +1212,33 @@ class MainApp(Tk.Tk):
                     if self.first_y is None and self.SubPlotList[i][j].GetPlotParam('spatial_y'):
                         self.first_y = (i,j)
 
+                # Now find the position in the views_list
+                if self.SubPlotList[i][j].chartType == 'SpectraPlot':
+                    self.SubPlotList[i][j].pos_in_views = k
+                    k += 1
+                elif self.SubPlotList[i][j].chartType == 'PhasePlot':
+                    self.SubPlotList[i][j].pos_in_views = k
+                    k += 2
+                elif  self.SubPlotList[i][j].GetPlotParam('twoD'):
+                    self.SubPlotList[i][j].pos_in_views = k
+                    k += 2
+                else:
+                    self.SubPlotList[i][j].pos_in_views = k
+                    k += 1
+
+
+                # Now... We can draw the graph.
                 self.SubPlotList[i][j].DrawGraph()
         if self.show_title:
             self.f.suptitle(os.path.abspath(self.dirname)+ ' at time t = %d $\omega_p$'  % round(self.DataDict['time'][0]))
+
+        if keep_view:
+            print 'hi'
+            self.LoadView()
+
         self.canvas.show()
         self.canvas.get_tk_widget().update_idletasks()
+
 
     def onclick(self, event):
         '''After being clicked, we should use the x and y of the cursor to
