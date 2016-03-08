@@ -1153,6 +1153,8 @@ class MainApp(Tk.Tk):
                     else:
                         k += 1
                     m += 1
+                    self.SubPlotList[i][j].Changedto1D = False
+                    self.SubPlotList[i][j].Changedto2D = False
 
             self.toolbar._views.push(next_view)
             self.toolbar.set_history_buttons()
