@@ -1022,7 +1022,7 @@ class MainApp(Tk.Tk):
         '''A function that handles updates the gridspec that divides up of the
         plot into X x Y subplots'''
         self.gs0 = gridspec.GridSpec(self.numOfRows.get(),self.numOfColumns.get())
-        self.RefreshCanvas()
+        self.RefreshCanvas(keep_view = False)
 
     def LoadAllKeys(self):
         ''' A function that will find out will arrays need to be loaded for
@@ -1233,7 +1233,6 @@ class MainApp(Tk.Tk):
             self.f.suptitle(os.path.abspath(self.dirname)+ ' at time t = %d $\omega_p$'  % round(self.DataDict['time'][0]))
 
         if keep_view:
-            print 'hi'
             self.LoadView()
 
         self.canvas.show()
