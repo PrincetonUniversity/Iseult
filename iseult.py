@@ -1110,14 +1110,18 @@ class MainApp(Tk.Tk):
         home_view =  list(self.toolbar._views.__call__())
 
         # Filter out the colorbar axes
-        num_cbar = 0
+        cbar_loc = []
         for k in range(len(cur_view)):
-            if cur_view[k] == (0.0, 1.0, 0.0, 1.0):
-                num_cbar += 1
-        while num_cbar > 0:
-            cur_view.remove((0.0, 1.0, 0.0, 1.0))
-            home_view.remove((0.0, 1.0, 0.0, 1.0))
-            num_cbar -= 1
+            first_zero = np.abs(cur_view[k][0])<1E-10
+            second_one = np.abs(cur_view[k][1]-1)<1E-10
+            third_zero = np.abs(cur_view[k][2])<1E-10
+            forth_one = np.abs(cur_view[k][3]-1)<1E-10
+            if first_zero and second_one and third_zero and forth_one:
+                cbar_loc.append(k)
+
+        for j in range(len(cbar_loc))[::-1]:
+            cur_view.pop(cbar_loc[j])
+            home_view.pop(cbar_loc[j])
 
         self.is_changed_list = []
         self.old_views = []
