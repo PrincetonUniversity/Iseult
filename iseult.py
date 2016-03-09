@@ -712,8 +712,12 @@ class MainApp(Tk.Tk):
         # 3 : All 2-D, non p-x plots are shared
         self.LinkSpatial = 2
 
-        # A param that sets the aspect ratio for the spatial
+        # A param that sets the aspect ratio for the spatial, 2d plots
         self.plot_aspect = 0
+
+        # A param that will tell us if we want to set the E_temp
+        self.set_Te = True
+        self.delgam_e = 0.03
 
         self.numOfRows = Tk.IntVar(self)
         self.numOfRows.set(3)

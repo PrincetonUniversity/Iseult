@@ -8,6 +8,7 @@ import new_cmaps
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
+from scipy.special import kn # Modified Bessel function
 
 class SpectralPanel:
     # A diction of all of the parameters for this plot with the default parameters
@@ -17,7 +18,7 @@ class SpectralPanel:
                        'show_ions': 1,
                        'show_electrons': 1,
                        'rest_frame': False,
-                       'set_ylim': True,
+                       'set_ylim': False,
                        'set_xlim': True,
                        'x_min': None,
                        'x_max': None,
@@ -50,7 +51,7 @@ class SpectralPanel:
         # First make sure that omega_plasma & istep is loaded so we can fix the
         # integrate over the specified regions
 
-        self.arrs_needed = ['c_omp', 'istep', 'gamma', 'xsl']
+        self.arrs_needed = ['c_omp', 'istep', 'gamma', 'xsl', 'mi', 'me']
         if self.GetPlotParam('rest_frame'):
             # Set the loading of the rest frame spectra
             self.arrs_needed.append('specerest')
@@ -159,6 +160,23 @@ class SpectralPanel:
             if self.GetPlotParam('show_ions'):
                 self.axes.plot(self.momentum, self.mompdist, color = self.parent.ion_color)
             if self.GetPlotParam('show_electrons'):
+                # See if we want to plot the electron temperature
+                if self.parent.set_Te:
+                    delgame0=self.parent.delgam_e*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
+                    print delgame0
+                    if delgame0 >= 0.013:
+                        aconst = 1/(delgame0*np.exp(1.0/delgame0)*kn(2, 1.0/delgame0))
+                    else:
+                        aconst = np.sqrt(2/np.pi)/delgame0**1.5
+                        aconst -= 15.0/(4.*np.sqrt(delgame0)*np.sqrt(2*np.pi))
+                        aconst += (345*np.sqrt(delgame0))/(64.*np.sqrt(2*np.pi))
+                        aconst -= (3285*delgame0**1.5)/(512.*np.sqrt(2*np.pi))
+                        aconst += (95355*delgame0**2.5)/(16384.*np.sqrt(2*np.pi))
+                        aconst -= (232065*delgame0**3.5)/(131072.*np.sqrt(2*np.pi))
+                    femommax = self.momentum**4*aconst*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**22-1)
+                    femommax *= np.exp(-self.gamma/delgame0)/(4*np.pi*self.momentum)/(self.gamma+1.0)
+                    self.axes.plot(self.momentum, femommax, color = self.parent.electron_color, linestyle = '--', linewidth = 0.5)
+
                 self.axes.plot(self.momentum, self.momedist, color = self.parent.electron_color)
 
             self.axes.set_xscale("log")
