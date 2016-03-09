@@ -35,10 +35,10 @@ class SpectralPanel:
         self.figure = self.FigWrap.figure
         if self.GetPlotParam('spectral_type') == 0:
             self.SetPlotParam('x_min', 0.05, update_plot = False)
-            self.SetPlotParam('x_max', 500, update_plot = False)
+            self.SetPlotParam('x_max', 200, update_plot = False)
         if self.GetPlotParam('spectral_type') == 1:
-            self.SetPlotParam('x_min', 0.005, update_plot = False)
-            self.SetPlotParam('x_max', 500, update_plot = False)
+            self.SetPlotParam('x_min', 0.0005, update_plot = False)
+            self.SetPlotParam('x_max', 100, update_plot = False)
 
 
     def ChangePlotType(self, str_arg):
@@ -172,7 +172,7 @@ class SpectralPanel:
 
             self.axes.tick_params(labelsize = 10, color=tick_color)
 
-            self.axes.set_xlabel(r'$p(mc)$', labelpad = self.parent.xlabel_pad, color = 'black')
+            self.axes.set_xlabel(r'$p\ [mc]$', labelpad = self.parent.xlabel_pad, color = 'black')
             self.axes.set_ylabel(r'$p^4f(p)$', labelpad = self.parent.ylabel_pad, color = 'black')
 
         if self.GetPlotParam('spectral_type') == 1: #Show the energy dist
@@ -183,11 +183,14 @@ class SpectralPanel:
             self.axes.set_xscale("log")
             self.axes.set_yscale("log")
             self.axes.set_axis_bgcolor('lightgrey')
-            self.axes.set_xlim(0.005,500)
-            self.axes.set_ylim(1E-6,1)
+            if self.GetPlotParam('set_xlim'):
+                self.axes.set_xlim(self.GetPlotParam('x_min'), self.GetPlotParam('x_max'))
+            if self.GetPlotParam('set_ylim'):
+                self.axes.set_ylim(10**self.GetPlotParam('y_min'), 10**self.GetPlotParam('y_max'))
+
             self.axes.tick_params(labelsize = 10, color=tick_color)
 
-            self.axes.set_xlabel(r'$E(mc^2)$', labelpad = -2, color = 'black')
+            self.axes.set_xlabel(r'$E\ [mc^2]$', labelpad = -2, color = 'black')
             self.axes.set_ylabel(r'$E(dn/dE)/n$', labelpad = 0, color = 'black')
 
     def GetPlotParam(self, keyname):
