@@ -73,6 +73,8 @@ class SubPlotWrapper:
     def ChangeGraph(self, str_arg):
         # Change the graph type
         self.chartType = str_arg
+        # put a list of the previous chart types in iseult
+
         self.graph = self.PlotTypeDict[self.chartType](self.parent, self)
         self.parent.RefreshCanvas()
 
@@ -1004,6 +1006,7 @@ class MainApp(Tk.Tk):
         # divy up the figure into a bunch of subplots using GridSpec.
         self.gs0 = gridspec.GridSpec(self.numOfRows.get(),self.numOfColumns.get())
 
+
         # Create the list of all of subplot wrappers
         self.SubPlotList = []
         for i in range(self.maxRows):
@@ -1022,7 +1025,8 @@ class MainApp(Tk.Tk):
         self.SubPlotList[1][0].SetGraph('DensityPlot')
         self.SubPlotList[2][0].SetGraph('SpectraPlot')
 
-
+        # Make a list that will hold the previous ctype
+        self.MakePrevCtypeList()
         self.canvas.show()
         self.canvas.get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
         self.RefreshCanvas()
@@ -1099,7 +1103,13 @@ class MainApp(Tk.Tk):
                             else:
                                 self.DataDict[elm] = f[elm][:]
         self.prev_time = self.TimeStep.value
-
+    def MakePrevCtypeList(self):
+        self.prev_ctype_list = []
+        for i in range(self.numOfRows.get()):
+            tmp_ctype_l = []
+            for j in range(self.numOfColumns.get()):
+                tmp_ctype_l.append(str(self.SubPlotList[i][j].chartType))
+            self.prev_ctype_list.append(tmp_ctype_l)
     def SaveView(self):
         # A function that will make sure our view will stay the same as the
         # plot updates.
@@ -1111,6 +1121,7 @@ class MainApp(Tk.Tk):
 
         # Filter out the colorbar axes
         cbar_loc = []
+        # find the axes they are tuples that are like (0, 1, 0, 1) (but floats)
         for k in range(len(cur_view)):
             first_zero = np.abs(cur_view[k][0])<1E-10
             second_one = np.abs(cur_view[k][1]-1)<1E-10
@@ -1119,6 +1130,7 @@ class MainApp(Tk.Tk):
             if first_zero and second_one and third_zero and forth_one:
                 cbar_loc.append(k)
 
+        # remove all of them
         for j in range(len(cbar_loc))[::-1]:
             cur_view.pop(cbar_loc[j])
             home_view.pop(cbar_loc[j])
@@ -1133,14 +1145,6 @@ class MainApp(Tk.Tk):
                 self.is_changed_list.append(is_changed)
                 self.old_views.append(cur_view[i])
 
-        self.prev_ctype_list = []
-        for i in range(self.numOfRows.get()):
-            tmplist = []
-            for j in range(self.numOfColumns.get()):
-                tmplist.append(self.SubPlotList[i][j].chartType)
-
-            self.prev_ctype_list.append(tmplist)
-
     def LoadView(self):
         # Push the home view onto the stack..
         self.toolbar.push_current()
@@ -1153,9 +1157,9 @@ class MainApp(Tk.Tk):
         k = 0 # A counter that skips over the cbar axes in next_view
         for i in range(self.numOfRows.get()):
             for j in range(self.numOfColumns.get()):
+                tmp_old_view = list(self.old_views.pop(0))
+                tmp_new_view = list(next_view[k])
                 if self.prev_ctype_list[i][j] == self.SubPlotList[i][j].chartType:
-                    tmp_old_view = list(self.old_views.pop(0))
-                    tmp_new_view = list(next_view[k])
                     is_changed = self.is_changed_list[m]
                     if self.SubPlotList[i][j].Changedto2D or self.SubPlotList[i][j].Changedto1D:
                         # only keep the x values if they have changed
@@ -1167,7 +1171,7 @@ class MainApp(Tk.Tk):
                         for n in range(4):
                             if is_changed[n]:
                                 tmp_new_view[n] = tmp_old_view[n]
-                    next_view[k] = tmp_new_view
+                next_view[k] = tmp_new_view
                 # Handle the counting of the 'views' array in matplotlib
                 if self.SubPlotList[i][j].GetPlotParam('twoD') == 1:
                     if self.SubPlotList[i][j].GetPlotParam('show_cbar') == 1:
@@ -1261,6 +1265,7 @@ class MainApp(Tk.Tk):
         if keep_view:
             self.LoadView()
 
+        self.MakePrevCtypeList()
         self.canvas.show()
         self.canvas.get_tk_widget().update_idletasks()
 
