@@ -132,12 +132,21 @@ class DensPanel:
             if self.GetPlotParam('set_z_max'):
                 self.vmax = self.GetPlotParam('z_max')
 
-            self.cax = self.axes.imshow(self.zval,
-                cmap = new_cmaps.cmaps[self.parent.cmap],
-                origin = 'lower', aspect = 'auto',
-                extent = (self.xmin,self.xmax, self.ymin, self.ymax),
-                vmin = self.vmin, vmax = self.vmax,
-                interpolation=self.GetPlotParam('interpolation'))
+            if self.parent.plot_aspect:
+                self.cax = self.axes.imshow(self.zval,
+                    cmap = new_cmaps.cmaps[self.parent.cmap],
+                    origin = 'lower',
+                    extent = (self.xmin,self.xmax, self.ymin, self.ymax),
+                    vmin = self.vmin, vmax = self.vmax,
+                    interpolation=self.GetPlotParam('interpolation'))
+
+            else:
+                self.cax = self.axes.imshow(self.zval,
+                    cmap = new_cmaps.cmaps[self.parent.cmap],
+                    origin = 'lower', aspect = 'auto',
+                    extent = (self.xmin,self.xmax, self.ymin, self.ymax),
+                    vmin = self.vmin, vmax = self.vmax,
+                    interpolation=self.GetPlotParam('interpolation'))
 
 
             if self.GetPlotParam('show_shock'):

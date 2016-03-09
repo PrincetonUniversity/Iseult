@@ -378,6 +378,21 @@ class SettingsFrame(Tk.Toplevel):
                     command = self.RadioLinked,
                     value=i).grid(row = 1+i, column = 2, sticky =Tk.N)
 
+        self.AspectVar = Tk.IntVar()
+        self.AspectVar.set(self.parent.plot_aspect)
+        self.AspectVar.trace('w', self.AspectVarChanged)
+
+        cb = ttk.Checkbutton(frm, text = "Aspect = 1",
+                                variable = self.AspectVar)
+        cb.grid(row = 6, column = 1, sticky = Tk.N)
+
+    def AspectVarChanged(self, *args):
+        if self.AspectVar.get() == self.parent.plot_aspect:
+            pass
+        else:
+            self.parent.plot_aspect = self.AspectVar.get()
+            self.parent.RefreshCanvas()
+
 
     def TitleChanged(self, *args):
         if self.TitleVar.get()==self.parent.show_title:
@@ -694,7 +709,8 @@ class MainApp(Tk.Tk):
         # 3 : All 2-D, non p-x plots are shared
         self.LinkSpatial = 2
 
-
+        # A param that sets the aspect ratio for the spatial
+        self.plot_aspect = 0
 
         self.numOfRows = Tk.IntVar(self)
         self.numOfRows.set(3)
@@ -1093,72 +1109,73 @@ class MainApp(Tk.Tk):
         home_view =  list(self.toolbar._views.__call__())
 
         # Filter out the colorbar axes
-        num_cbars = 0
+        num_cbar = 0
         for k in range(len(cur_view)):
             if cur_view[k] == (0.0, 1.0, 0.0, 1.0):
-                num_cbars += 1
-        while num_cbars > 0:
+                num_cbar += 1
+        while num_cbar > 0:
             cur_view.remove((0.0, 1.0, 0.0, 1.0))
             home_view.remove((0.0, 1.0, 0.0, 1.0))
-            num_cbars -= 1
+            num_cbar -= 1
 
         self.is_changed_list = []
         self.old_views = []
         if cur_view is not None:
             for i in range(len(cur_view)):
-                is_changed = False
+                is_changed =[]
                 for j in range(4):
-                    if home_view[i][j] != cur_view[i][j]:
-                        is_changed = True
-                if is_changed:
-                    self.is_changed_list.append(i)
-                    self.old_views.append(cur_view[i])
+                    is_changed.append(home_view[i][j] != cur_view[i][j])
+                self.is_changed_list.append(is_changed)
+                self.old_views.append(cur_view[i])
 
         self.prev_ctype_list = []
         for i in range(self.numOfRows.get()):
             tmplist = []
             for j in range(self.numOfColumns.get()):
-                    tmplist.append(self.SubPlotList[i][j].chartType)
+                tmplist.append(self.SubPlotList[i][j].chartType)
 
             self.prev_ctype_list.append(tmplist)
 
     def LoadView(self):
-        if len(self.is_changed_list)>0:
-                        # Push the home view onto the stack..
-            self.toolbar.push_current()
-            next_view = list(self.toolbar._views.__call__())
+        # Push the home view onto the stack..
+        self.toolbar.push_current()
+        next_view = list(self.toolbar._views.__call__())
 
 
-                # put the parts from the old view into the proper place in the next view
-            m = 0
-            k = 0
-            for i in range(self.numOfRows.get()):
-                for j in range(self.numOfColumns.get()):
-                    if self.prev_ctype_list[i][j] == self.SubPlotList[i][j].chartType:
-                        if m in self.is_changed_list:
-                            tmp_view = list(self.old_views.pop(0))
-                            if self.SubPlotList[i][j].Changedto2D:
-                                tmptup =  tmp_view[0], tmp_view[1], next_view[k][2], next_view[k][3]
-                                next_view[k] = tmptup
-                            elif self.SubPlotList[i][j].Changedto1D:
-                                tmptup =  tmp_view[0], tmp_view[1], next_view[k][2], next_view[k][3]
-                                next_view[k] = tmptup
-                            else:
-                                next_view[k] = tmp_view
-
-
-                    if self.SubPlotList[i][j].GetPlotParam('twoD') == 1:
-                        if self.SubPlotList[i][j].GetPlotParam('show_cbar') == 1:
-                            k += 2
+        # put the parts that have changed from the old view
+        # into the proper place in the next view
+        m = 0 # a counter that allows us to go from labeling the plots in [i][j] to 1d
+        k = 0 # A counter that skips over the cbar axes in next_view
+        for i in range(self.numOfRows.get()):
+            for j in range(self.numOfColumns.get()):
+                if self.prev_ctype_list[i][j] == self.SubPlotList[i][j].chartType:
+                    tmp_old_view = list(self.old_views.pop(0))
+                    tmp_new_view = list(next_view[k])
+                    is_changed = self.is_changed_list[m]
+                    if self.SubPlotList[i][j].Changedto2D or self.SubPlotList[i][j].Changedto1D:
+                        # only keep the x values if they have changed
+                        for n in range(2):
+                            if is_changed[n]:
+                                tmp_new_view[n] = tmp_old_view[n]
                     else:
-                        k += 1
-                    m += 1
-                    self.SubPlotList[i][j].Changedto1D = False
-                    self.SubPlotList[i][j].Changedto2D = False
+                        # Keep any y or x that is changed
+                        for n in range(4):
+                            if is_changed[n]:
+                                tmp_new_view[n] = tmp_old_view[n]
+                    next_view[k] = tmp_new_view
+                # Handle the counting of the 'views' array in matplotlib
+                if self.SubPlotList[i][j].GetPlotParam('twoD') == 1:
+                    if self.SubPlotList[i][j].GetPlotParam('show_cbar') == 1:
+                        k += 2
+                else:
+                    k += 1
+                m += 1
+                self.SubPlotList[i][j].Changedto1D = False
+                self.SubPlotList[i][j].Changedto2D = False
 
-            self.toolbar._views.push(next_view)
-            self.toolbar.set_history_buttons()
-            self.toolbar._update_view()
+        self.toolbar._views.push(next_view)
+        self.toolbar.set_history_buttons()
+        self.toolbar._update_view()
 
         # We must now figure out the pos of the charts that changed in the earlier view.
 
