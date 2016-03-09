@@ -716,8 +716,13 @@ class MainApp(Tk.Tk):
         self.plot_aspect = 0
 
         # A param that will tell us if we want to set the E_temp
-        self.set_Te = True
+        self.set_Te = False
         self.delgam_e = 0.03
+
+        # A param that will tell us if we want to set the p_temp
+        self.set_Tp = False
+        self.delgam_p = 0.06
+
 
         self.numOfRows = Tk.IntVar(self)
         self.numOfRows.set(3)

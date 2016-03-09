@@ -18,7 +18,7 @@ class SpectralPanel:
                        'show_ions': 1,
                        'show_electrons': 1,
                        'rest_frame': False,
-                       'set_ylim': False,
+                       'set_ylim': True,
                        'set_xlim': True,
                        'x_min': None,
                        'x_max': None,
@@ -159,11 +159,30 @@ class SpectralPanel:
         if self.GetPlotParam('spectral_type') == 0: #Show the momentum dist
             if self.GetPlotParam('show_ions'):
                 self.axes.plot(self.momentum, self.mompdist, color = self.parent.ion_color)
+                # See if we want to plot the electron temperature
+                if self.parent.set_Tp:
+                    self.parent.delgam_p
+                    if self.parent.delgam_p >= 0.013:
+                        aconst = 1/(self.parent.delgam_p*np.exp(1.0/self.parent.delgam_p)*kn(2, 1.0/self.parent.delgam_p))
+                    else:
+                        aconst = np.sqrt(2/np.pi)/self.parent.delgam_p**1.5
+                        aconst -= 15.0/(4.*np.sqrt(self.parent.delgam_p)*np.sqrt(2*np.pi))
+                        aconst += (345*np.sqrt(self.parent.delgam_p))/(64.*np.sqrt(2*np.pi))
+                        aconst -= (3285*self.parent.delgam_p**1.5)/(512.*np.sqrt(2*np.pi))
+                        aconst += (95355*self.parent.delgam_p**2.5)/(16384.*np.sqrt(2*np.pi))
+                        aconst -= (232065*self.parent.delgam_p**3.5)/(131072.*np.sqrt(2*np.pi))
+
+                    fpmommax = self.momentum**4*aconst*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
+                    fpmommax *= np.exp(-self.gamma/self.parent.delgam_p)/(4*np.pi*self.momentum)/(self.gamma+1.0)
+                    self.axes.plot(self.momentum, fpmommax, color = 'r', linestyle = '--', linewidth = 1.0)
+
+
             if self.GetPlotParam('show_electrons'):
+
+                self.axes.plot(self.momentum, self.momedist, color = self.parent.electron_color)
                 # See if we want to plot the electron temperature
                 if self.parent.set_Te:
                     delgame0=self.parent.delgam_e*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
-                    print delgame0
                     if delgame0 >= 0.013:
                         aconst = 1/(delgame0*np.exp(1.0/delgame0)*kn(2, 1.0/delgame0))
                     else:
@@ -173,11 +192,12 @@ class SpectralPanel:
                         aconst -= (3285*delgame0**1.5)/(512.*np.sqrt(2*np.pi))
                         aconst += (95355*delgame0**2.5)/(16384.*np.sqrt(2*np.pi))
                         aconst -= (232065*delgame0**3.5)/(131072.*np.sqrt(2*np.pi))
-                    femommax = self.momentum**4*aconst*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**22-1)
-                    femommax *= np.exp(-self.gamma/delgame0)/(4*np.pi*self.momentum)/(self.gamma+1.0)
-                    self.axes.plot(self.momentum, femommax, color = self.parent.electron_color, linestyle = '--', linewidth = 0.5)
 
-                self.axes.plot(self.momentum, self.momedist, color = self.parent.electron_color)
+                    femommax = self.momentum**4*aconst*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
+                    femommax *= np.exp(-self.gamma/delgame0)/(4*np.pi*self.momentum)/(self.gamma+1.0)
+                    self.axes.plot(self.momentum, femommax, color = 'yellow', linestyle = '--', linewidth = 1.0)
+
+
 
             self.axes.set_xscale("log")
             self.axes.set_yscale("log")
