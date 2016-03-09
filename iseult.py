@@ -389,6 +389,7 @@ class SettingsFrame(Tk.Toplevel):
     def AspectVarChanged(self, *args):
         if self.AspectVar.get() == self.parent.plot_aspect:
             pass
+
         else:
             self.parent.plot_aspect = self.AspectVar.get()
             self.parent.RefreshCanvas()
@@ -1167,6 +1168,8 @@ class MainApp(Tk.Tk):
                 if self.SubPlotList[i][j].GetPlotParam('twoD') == 1:
                     if self.SubPlotList[i][j].GetPlotParam('show_cbar') == 1:
                         k += 2
+                    else:
+                        k += 1
                 else:
                     k += 1
                 m += 1
