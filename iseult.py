@@ -652,7 +652,7 @@ class MeasureFrame(Tk.Toplevel):
         cb = ttk.Checkbutton(frm, text='Show T_e', variable =  self.SetTeVar)
         cb.grid(row = 5, sticky = Tk.W)
 
-        ttk.Label(frm, text=u'\u0394'+u'\u0263' + u'\u2091' + '=').grid(row= 5, column =1, sticky = Tk.N)
+        ttk.Label(frm, text=u'\u0394'+u'\u0263' + '=').grid(row= 5, column =1, sticky = Tk.N)
 
         self.SetTpVar = Tk.IntVar()
         self.SetTpVar.set(self.parent.set_Tp)
