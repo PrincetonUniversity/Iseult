@@ -174,7 +174,7 @@ class SpectralPanel:
 
                     fpmommax = self.momentum**4*aconst*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
                     fpmommax *= np.exp(-self.gamma/self.parent.delgam_p)/(4*np.pi*self.momentum)/(self.gamma+1.0)
-                    self.axes.plot(self.momentum, fpmommax, color = 'r', linestyle = '--', linewidth = 1.0)
+                    self.axes.plot(self.momentum, fpmommax, color = self.parent.ion_fit_color, linestyle = '--', linewidth = 1.0)
 
 
             if self.GetPlotParam('show_electrons'):
@@ -195,7 +195,7 @@ class SpectralPanel:
 
                     femommax = self.momentum**4*aconst*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
                     femommax *= np.exp(-self.gamma/delgame0)/(4*np.pi*self.momentum)/(self.gamma+1.0)
-                    self.axes.plot(self.momentum, femommax, color = 'yellow', linestyle = '--', linewidth = 1.0)
+                    self.axes.plot(self.momentum, femommax, color = self.parent.electron_fit_color, linestyle = '--', linewidth = 1.0)
 
 
 

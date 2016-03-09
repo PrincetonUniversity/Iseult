@@ -310,6 +310,7 @@ class SettingsFrame(Tk.Toplevel):
         self.wm_title('General Settings')
         self.protocol('WM_DELETE_WINDOW', self.OnClosing)
 
+        self.bind('<Return>', self.SettingsCallback)
 
         self.parent = parent
         frm = ttk.Frame(self)
@@ -362,9 +363,52 @@ class SettingsFrame(Tk.Toplevel):
         self.TitleVar.set(self.parent.show_title)
         self.TitleVar.trace('w', self.TitleChanged)
 
+        self.LimVar = Tk.IntVar()
+        self.LimVar.set(self.parent.xlim[0])
+        self.LimVar.trace('w', self.LimChanged)
+
+
+
+        self.xleft = Tk.StringVar()
+        self.xleft.set(str(self.parent.xlim[1]))
+        self.xright = Tk.StringVar()
+        self.xright.set(str(self.parent.xlim[2]))
+
+
+        ttk.Label(frm, text = 'min').grid(row= 6, column = 1, sticky = Tk.N)
+        ttk.Label(frm, text = 'max').grid(row= 6, column = 2, sticky = Tk.N)
+        cb = ttk.Checkbutton(frm, text ='Set xlim',
+                        variable = self.LimVar)
+        cb.grid(row = 7, sticky = Tk.N)
+        self.eLEnter = ttk.Entry(frm, textvariable=self.xleft, width = 8)
+        self.eLEnter.grid(row = 7, column =1, sticky = Tk.N)
+        self.eREnter = ttk.Entry(frm, textvariable=self.xright, width = 8)
+        self.eREnter.grid(row = 7, column =2, sticky = Tk.N)
+
+
+        self.yLimVar = Tk.IntVar()
+        self.yLimVar.set(self.parent.ylim[0])
+        self.yLimVar.trace('w', self.yLimChanged)
+
+
+
+        self.yleft = Tk.StringVar()
+        self.yleft.set(str(self.parent.ylim[1]))
+        self.yright = Tk.StringVar()
+        self.yright.set(str(self.parent.ylim[2]))
+
+
+        cb = ttk.Checkbutton(frm, text ='Set ylim',
+                        variable = self.yLimVar)
+        cb.grid(row = 8, sticky = Tk.N)
+        self.eLEnter = ttk.Entry(frm, textvariable=self.yleft, width = 8 )
+        self.eLEnter.grid(row = 8, column =1, sticky = Tk.N)
+        self.eREnter = ttk.Entry(frm, textvariable=self.yright, width =8 )
+        self.eREnter.grid(row = 8, column =2, sticky = Tk.N)
+
         cb = ttk.Checkbutton(frm, text = "Show Title",
                         variable = self.TitleVar)
-        cb.grid(row = 6, sticky = Tk.N)
+        cb.grid(row = 10, sticky = Tk.N)
 
         # Control whether or not axes are shared with a radio box:
         self.toLinkList = ['None', 'All spatial', 'All non p-x', 'All 2-D spatial']
@@ -386,7 +430,7 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Aspect = 1",
                                 variable = self.AspectVar)
-        cb.grid(row = 6, column = 1, sticky = Tk.N)
+        cb.grid(row = 10, column = 1, sticky = Tk.N)
 
     def AspectVarChanged(self, *args):
         if self.AspectVar.get() == self.parent.plot_aspect:
@@ -421,10 +465,15 @@ class SettingsFrame(Tk.Toplevel):
             if self.parent.cmap == 'viridis' or self.parent.cmap == 'nipy_spectral':
                 self.parent.ion_color =  new_cmaps.cmaps['plasma'](0.55)
                 self.parent.electron_color = new_cmaps.cmaps['plasma'](0.8)
+                self.parent.ion_fit_color = 'r'
+                self.parent.electron_fit_color = 'yellow'
 
             else:
                 self.parent.ion_color = new_cmaps.cmaps['viridis'](0.45)
                 self.parent.electron_color = new_cmaps.cmaps['viridis'](0.75)
+                self.parent.ion_fit_color = 'mediumturquoise'
+                self.parent.electron_fit_color = 'lime'
+
 
             self.parent.RefreshCanvas()
 
@@ -477,6 +526,59 @@ class SettingsFrame(Tk.Toplevel):
                 self.parent.playbackbar.waitTime = float(self.waitTime.get())
         except ValueError:
             self.waitTime.set(self.parent.playbackbar.waitTime)
+
+    def CheckIfXLimChanged(self):
+        to_reload = False
+        tmplist = [self.xleft, self.xright]
+        for j in range(2):
+
+            try:
+            #make sure the user types in a a number and that it has changed.
+                if np.abs(float(tmplist[j].get()) - self.parent.xlim[j+1]) > 1E-4:
+                    self.parent.xlim[j+1] = float(tmplist[j].get())
+                    to_reload += True
+
+            except ValueError:
+                #if they type in random stuff, just set it ot the param value
+                tmplist[j].set(str(self.parent.xlim[j+1]))
+        return to_reload*self.parent.xlim[0]
+
+    def CheckIfYLimChanged(self):
+        to_reload = False
+        tmplist = [self.yleft, self.yright]
+        for j in range(2):
+
+            try:
+            #make sure the user types in a int
+                if np.abs(float(tmplist[j].get()) - self.parent.ylim[j+1]) > 1E-4:
+                    self.parent.ylim[j+1] = float(tmplist[j].get())
+                    to_reload += True
+
+            except ValueError:
+                #if they type in random stuff, just set it ot the param value
+                tmplist[j].set(str(self.parent.ylim[j+1]))
+        return to_reload*self.parent.ylim[0]
+
+    def LimChanged(self, *args):
+        if self.LimVar.get()==self.parent.xlim[0]:
+            pass
+        else:
+            self.parent.xlim[0] = self.LimVar.get()
+            self.parent.RefreshCanvas()
+
+    def yLimChanged(self, *args):
+        if self.yLimVar.get()==self.parent.ylim[0]:
+            pass
+        else:
+            self.parent.ylim[0] = self.yLimVar.get()
+            self.parent.RefreshCanvas()
+
+    def SettingsCallback(self, e):
+        to_reload = self.CheckIfXLimChanged()
+        to_reload += self.CheckIfYLimChanged()
+
+        if to_reload:
+            self.parent.RefreshCanvas()
 
 
     def OnReload(self, event=None):
@@ -544,82 +646,56 @@ class MeasureFrame(Tk.Toplevel):
                         variable = self.RelVar)
         cb.grid(row = 3, columnspan = 3, sticky = Tk.W)
 
-
-        self.LimVar = Tk.IntVar()
-        self.LimVar.set(self.parent.xlim[0])
-        self.LimVar.trace('w', self.LimChanged)
-
-
-
-        self.xleft = Tk.StringVar()
-        self.xleft.set(str(self.parent.xlim[1]))
-        self.xright = Tk.StringVar()
-        self.xright.set(str(self.parent.xlim[2]))
-
-
-        cb = ttk.Checkbutton(frm, text ='Set xlim',
-                        variable = self.LimVar)
-        cb.grid(row = 4, sticky = Tk.W)
-        self.eLEnter = ttk.Entry(frm, textvariable=self.xleft, width=7)
-        self.eLEnter.grid(row = 4, column =1)
-        self.eREnter = ttk.Entry(frm, textvariable=self.xright, width=7)
-        self.eREnter.grid(row = 4, column =2)
-
-
-        self.yLimVar = Tk.IntVar()
-        self.yLimVar.set(self.parent.ylim[0])
-        self.yLimVar.trace('w', self.yLimChanged)
-
-
-
-        self.yleft = Tk.StringVar()
-        self.yleft.set(str(self.parent.ylim[1]))
-        self.yright = Tk.StringVar()
-        self.yright.set(str(self.parent.ylim[2]))
-
-
-        cb = ttk.Checkbutton(frm, text ='Set ylim',
-                        variable = self.yLimVar)
+        self.SetTeVar = Tk.IntVar()
+        self.SetTeVar.set(self.parent.set_Te)
+        self.SetTeVar.trace('w', self.SetTeChanged)
+        cb = ttk.Checkbutton(frm, text='Show T_e', variable =  self.SetTeVar)
         cb.grid(row = 5, sticky = Tk.W)
-        self.eLEnter = ttk.Entry(frm, textvariable=self.yleft, width=7)
-        self.eLEnter.grid(row = 5, column =1)
-        self.eREnter = ttk.Entry(frm, textvariable=self.yright, width=7)
-        self.eREnter.grid(row = 5, column =2)
+
+        ttk.Label(frm, text=u'\u0394'+u'\u0263' + u'\u2091' + '=').grid(row= 5, column =1, sticky = Tk.N)
+
+        self.SetTpVar = Tk.IntVar()
+        self.SetTpVar.set(self.parent.set_Tp)
+        self.SetTpVar.trace('w', self.SetTpChanged)
+
+        cb = ttk.Checkbutton(frm, text='Show T_p', variable =  self.SetTpVar)
+        cb.grid(row = 6, sticky = Tk.W)
+        ttk.Label(frm, text=u'\u0394'+u'\u0263' + '=').grid(row= 6, column =1, sticky = Tk.N)
+
+        self.delgameVar = Tk.StringVar()
+        self.delgameVar.set(str(self.parent.delgam_e))
+        self.delgampVar = Tk.StringVar()
+        self.delgampVar.set(str(self.parent.delgam_p))
 
 
+        ttk.Entry(frm, textvariable=self.delgameVar, width = 7).grid(row = 5, column = 2, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.delgampVar, width = 7).grid(row = 6, column =2, sticky = Tk.N)
 
-
-    def CheckIfXLimChanged(self):
+    def CheckIfTeChanged(self):
         to_reload = False
-        tmplist = [self.xleft, self.xright]
-        for j in range(2):
+        try:
+        #make sure the user types in a int
+            if np.abs(float(self.delgameVar.get()) - self.parent.delgam_e) > 1E-4:
+                self.parent.delgam_e = float(self.delgameVar.get())
+                to_reload += True*self.parent.set_Te
 
-            try:
-            #make sure the user types in a int
-                if np.abs(float(tmplist[j].get()) - self.parent.xlim[j+1]) > 1E-4:
-                    self.parent.xlim[j+1] = float(tmplist[j].get())
-                    to_reload += True
+        except ValueError:
+            #if they type in random stuff, just set it ot the param value
+            self.delgameVar.set(str(self.parent.delgam_e))
+        return to_reload
 
-            except ValueError:
-                #if they type in random stuff, just set it ot the param value
-                tmplist[j].set(str(value))
-        return to_reload*self.parent.xlim[0]
-
-    def CheckIfYLimChanged(self):
+    def CheckIfTpChanged(self):
         to_reload = False
-        tmplist = [self.yleft, self.yright]
-        for j in range(2):
+        try:
+        #make sure the user types in a flof
+            if np.abs(float(self.delgampVar.get()) - self.parent.delgam_p) > 1E-4:
+                    self.parent.delgam_p = float(self.delgampVar.get())
+                    to_reload += True*self.parent.set_Tp
 
-            try:
-            #make sure the user types in a int
-                if np.abs(float(tmplist[j].get()) - self.parent.ylim[j+1]) > 1E-4:
-                    self.parent.ylim[j+1] = float(tmplist[j].get())
-                    to_reload += True
-
-            except ValueError:
-                #if they type in random stuff, just set it ot the param value
-                tmplist[j].set(str(value))
-        return to_reload*self.parent.ylim[0]
+        except ValueError:
+            #if they type in random stuff, just set it ot the param value
+            self.delgampVar.set(str(self.parent.delgam_p))
+        return to_reload
 
 
     def CheckIfIntChanged(self, tkVar, valVar):
@@ -635,6 +711,19 @@ class MeasureFrame(Tk.Toplevel):
             tkVar.set(str(valVar.get()))
             return to_reload
 
+    def SetTeChanged(self, *args):
+        if self.SetTeVar.get()==self.parent.set_Te:
+            pass
+        else:
+            self.parent.set_Te = self.SetTeVar.get()
+            self.parent.RefreshCanvas()
+
+    def SetTpChanged(self, *args):
+        if self.SetTpVar.get()==self.parent.set_Tp:
+            pass
+        else:
+            self.parent.set_Tp = self.SetTpVar.get()
+            self.parent.RefreshCanvas()
 
     def TxtEnter(self, e):
         self.MeasuresCallback()
@@ -646,19 +735,6 @@ class MeasureFrame(Tk.Toplevel):
             self.parent.e_relative = self.RelVar.get()
             self.parent.RefreshCanvas()
 
-    def LimChanged(self, *args):
-        if self.LimVar.get()==self.parent.xlim[0]:
-            pass
-        else:
-            self.parent.xlim[0] = self.LimVar.get()
-            self.parent.RefreshCanvas()
-
-    def yLimChanged(self, *args):
-        if self.yLimVar.get()==self.parent.ylim[0]:
-            pass
-        else:
-            self.parent.ylim[0] = self.yLimVar.get()
-            self.parent.RefreshCanvas()
 
 
     def MeasuresCallback(self):
@@ -669,8 +745,8 @@ class MeasureFrame(Tk.Toplevel):
         for j in range(len(tkvarIntList)):
             to_reload += self.CheckIfIntChanged(tkvarIntList[j], IntValList[j])
 
-        to_reload += self.CheckIfXLimChanged()
-        to_reload += self.CheckIfYLimChanged()
+        to_reload += self.CheckIfTeChanged()
+        to_reload += self.CheckIfTpChanged()
 
         if to_reload:
             self.parent.RefreshCanvas()
@@ -893,11 +969,15 @@ class MainApp(Tk.Tk):
             self.shock_color = 'w'
             self.ion_color =  new_cmaps.cmaps['plasma'](0.55)
             self.electron_color = new_cmaps.cmaps['plasma'](0.8)
+            self.ion_fit_color = 'r'
+            self.electron_fit_color = 'yellow'
 
         else:
             self.shock_color = 'w'
             self.ion_color = new_cmaps.cmaps['viridis'](0.45)
             self.electron_color = new_cmaps.cmaps['viridis'](0.75)
+            self.ion_fit_color = 'mediumturquoise'
+            self.electron_fit_color = 'limegreen'
 
 
 
