@@ -9,13 +9,11 @@ IDL script.
 
 UPDATES:
 -------
-The code as stands is almost ready enough to send out to others.
-What's left before I feel comfortable sharing:
-1) Spectral plots (DONE!) + settings (not yet!)
-2) Density plots + settings (DONE!)   
-3) Ability to set the minimum and maximum x and y values
-4) Ability to take some measurements, Maxwellian fits and eps_e/b
-5) Save plots (Done!).
+The code is now it's alpha phase. See the implemented column for what has 
+already been implemented. First priority is to add measurement taking. There is
+also a bug that occasionally pops up about keeping zoomed in between plot updates.
+It's not very repeatable so I am not sure how to fix it. The bug does not appear to
+affect the home view, so one can always press that to ameliorate this bug.
 
 
 Dependencies:
