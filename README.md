@@ -49,9 +49,10 @@ Enjoy!
 | Movie (without recording) |
 | Basic plotting |
 | ability to modularly change plots. |
-| plot control panel to edit things about indv. plots (not finished for all plots)|
+| plot control panel to edit things about indv. plots |
 | shock-finding |
 | figure saving |
+| zooming |
 
 
 | Left to Implement:|
