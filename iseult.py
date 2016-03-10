@@ -1047,6 +1047,7 @@ class MainApp(Tk.Tk):
             is_okay &= len(self.PathDict[key]) > 0
 
         if is_okay:
+            self.NewDirectory = True
             self.TimeStep.setMax(max(len(self.PathDict['Flds']),1))
             self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
             self.shock_finder()
@@ -1165,7 +1166,7 @@ class MainApp(Tk.Tk):
                     self.ToLoad[ftype].append(elm)
 
         # Now iterate over each path key and create a datadictionary
-        if self.prev_time != self.TimeStep.value:
+        if self.prev_time != self.TimeStep.value or self.NewDirectory:
             # The time has changed so we have to reload everything
             self.DataDict = {}
             for pkey in self.ToLoad.keys():
@@ -1179,6 +1180,7 @@ class MainApp(Tk.Tk):
                                 self.DataDict[elm] = f['dens'][:]
                             else:
                                 self.DataDict[elm] = f[elm][:]
+            self.NewDirectory = False
         else:
             # The time has not changed, so we only load keys that haven't been
             # loaded already.
@@ -1296,9 +1298,10 @@ class MainApp(Tk.Tk):
 
         if cur_view is None:
             keep_view = False
+        if self.NewDirectory:
+            keep_view = False
         if keep_view:
             self.SaveView()
-
         self.f.clf()
         #
         if self.clear_fig:
