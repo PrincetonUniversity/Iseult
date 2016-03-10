@@ -49,10 +49,10 @@ class DensPanel:
         # First make sure that omega_plasma & xi is loaded so we can fix the
         # x & y distances.
 
-        self.arrs_needed = ['c_omp', 'istep', 'dens']
+        self.arrs_needed = ['c_omp', 'istep', 'dens', 'densi']
         # To plot rho we need both dens and densi
-        if self.GetPlotParam('dens_type') == 1: # Load the ion density
-            self.arrs_needed.append('densi')
+#        if self.GetPlotParam('dens_type') == 1: # Load the ion density
+#            self.arrs_needed.append('densi')
 
         return self.arrs_needed
 
@@ -83,10 +83,10 @@ class DensPanel:
 
         # load the density values
         if self.GetPlotParam('dens_type') == 0:
-            self.zval= self.FigWrap.LoadKey('dens')[0,:,:]
+            self.zval = self.FigWrap.LoadKey('dens')[0,:,:]
 
         if self.GetPlotParam('dens_type') == 1: # Load calculate rho
-            self.zval = 2*self.FigWrap.LoadKey('densi')[0,:,:]-self.zval
+            self.zval = 2*self.FigWrap.LoadKey('densi')[0,:,:] -self.FigWrap.LoadKey('dens')[0,:,:]
 
         # Generate the x and y axes
         self.y_values =  np.arange(self.zval.shape[0])/self.c_omp*self.istep
