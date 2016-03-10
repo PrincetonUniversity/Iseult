@@ -465,7 +465,7 @@ class SettingsFrame(Tk.Toplevel):
             pass
         else:
             self.parent.cmap = self.cmapvar.get()
-            if self.parent.cmap == 'viridis' or self.parent.cmap == 'nipy_spectral' or self.parent.cmap == 'Blue/Green/Red/Yellow':
+            if self.parent.cmap == 'viridis' or self.parent.cmap == 'Rainbow + White' or self.parent.cmap == 'Blue/Green/Red/Yellow':
                 self.parent.ion_color =  new_cmaps.cmaps['plasma'](0.55)
                 self.parent.electron_color = new_cmaps.cmaps['plasma'](0.8)
                 self.parent.ion_fit_color = 'r'
@@ -968,7 +968,7 @@ class MainApp(Tk.Tk):
         self.xlim = [False, 0, 100]
         self.ylim = [False, 0, 100]
         # Set the particle colors
-        if self.cmap == 'viridis' or self.cmap == 'nipy_spectral' or self.cmap == 'Blue/Green/Red/Yellow':
+        if self.cmap == 'viridis' or self.cmap == 'Rainbow + White' or self.cmap == 'Blue/Green/Red/Yellow':
             self.shock_color = 'w'
             self.ion_color =  new_cmaps.cmaps['plasma'](0.55)
             self.electron_color = new_cmaps.cmaps['plasma'](0.8)
