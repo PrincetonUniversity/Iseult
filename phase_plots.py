@@ -147,7 +147,7 @@ class PhasePanel:
                 self.pmin = self.FigWrap.GetPlotParam('p_min')
             self.pmax = max(self.y_values)
             if self.FigWrap.GetPlotParam('set_p_max'):
-                self.pmin = self.FigWrap.GetPlotParam('p_max')
+                self.pmax = self.FigWrap.GetPlotParam('p_max')
 
             self.xmin = 0
 
