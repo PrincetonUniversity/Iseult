@@ -11,7 +11,7 @@ import matplotlib.patheffects as PathEffects
 
 
 class PhasePanel:
-    # A diction of all of the parameters for this plot with the default parameters
+    # A dictionary of all of the parameters for this plot with the default parameters
 
     plot_param_dict = {'twoD' : 1,
                        'mom_dim': 0,
@@ -141,8 +141,14 @@ class PhasePanel:
                     self.y_values = self.FigWrap.LoadKey('we')
                     self.y_label  = r'$P_{ez}\ [c]$'
 
+
             self.pmin = min(self.y_values)
+            if self.FigWrap.GetPlotParam('set_p_min'):
+                self.pmin = self.FigWrap.GetPlotParam('p_min')
             self.pmax = max(self.y_values)
+            if self.FigWrap.GetPlotParam('set_p_max'):
+                self.pmin = self.FigWrap.GetPlotParam('p_max')
+
             self.xmin = 0
 
             self.istep = self.FigWrap.LoadKey('istep')[0]
@@ -509,13 +515,13 @@ class PhaseSettings(Tk.Toplevel):
         if self.setPminVar.get() == self.parent.GetPlotParam('set_p_min'):
             pass
         else:
-            self.parent.SetPlotParam('set_p_min', self.setPminVar.get())
+            self.parent.SetPlotParam('set_p_min', self.setPminVar.get(), reload_data = True)
 
     def setPmaxChanged(self, *args):
         if self.setPmaxVar.get() == self.parent.GetPlotParam('set_p_max'):
             pass
         else:
-            self.parent.SetPlotParam('set_p_max', self.setPmaxVar.get())
+            self.parent.SetPlotParam('set_p_max', self.setPmaxVar.get(), reload_data = True)
 
 
     def TxtEnter(self, e):
