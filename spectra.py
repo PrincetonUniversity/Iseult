@@ -24,6 +24,7 @@ class SpectralPanel:
                        'x_max': None,
                        'spatial_x': False,
                        'spatial_y': False,
+                       'show_legend': True,
                        'y_min': -6,
                        'y_max': 0}
 
@@ -161,7 +162,6 @@ class SpectralPanel:
                 self.axes.plot(self.momentum, self.mompdist, color = self.parent.ion_color)
                 # See if we want to plot the electron temperature
                 if self.parent.set_Tp:
-                    self.parent.delgam_p
                     if self.parent.delgam_p >= 0.013:
                         aconst = 1/(self.parent.delgam_p*np.exp(1.0/self.parent.delgam_p)*kn(2, 1.0/self.parent.delgam_p))
                     else:
@@ -174,7 +174,7 @@ class SpectralPanel:
 
                     fpmommax = self.momentum**4*aconst*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
                     fpmommax *= np.exp(-self.gamma/self.parent.delgam_p)/(4*np.pi*self.momentum)/(self.gamma+1.0)
-                    self.axes.plot(self.momentum, fpmommax, color = self.parent.ion_fit_color, linestyle = '--', linewidth = 1.0)
+                    self.T_p, = self.axes.plot(self.momentum, fpmommax, color = self.parent.ion_fit_color, linestyle = '--', linewidth = 1.0)
 
 
             if self.GetPlotParam('show_electrons'):
@@ -182,20 +182,20 @@ class SpectralPanel:
                 self.axes.plot(self.momentum, self.momedist, color = self.parent.electron_color)
                 # See if we want to plot the electron temperature
                 if self.parent.set_Te:
-                    delgame0=self.parent.delgam_e*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
-                    if delgame0 >= 0.013:
-                        aconst = 1/(delgame0*np.exp(1.0/delgame0)*kn(2, 1.0/delgame0))
+                    self.delgame0=self.parent.delgam_e*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
+                    if self.delgame0 >= 0.013:
+                        aconst = 1/(self.delgame0*np.exp(1.0/self.delgame0)*kn(2, 1.0/self.delgame0))
                     else:
-                        aconst = np.sqrt(2/np.pi)/delgame0**1.5
-                        aconst -= 15.0/(4.*np.sqrt(delgame0)*np.sqrt(2*np.pi))
-                        aconst += (345*np.sqrt(delgame0))/(64.*np.sqrt(2*np.pi))
-                        aconst -= (3285*delgame0**1.5)/(512.*np.sqrt(2*np.pi))
-                        aconst += (95355*delgame0**2.5)/(16384.*np.sqrt(2*np.pi))
-                        aconst -= (232065*delgame0**3.5)/(131072.*np.sqrt(2*np.pi))
+                        aconst = np.sqrt(2/np.pi)/self.delgame0**1.5
+                        aconst -= 15.0/(4.*np.sqrt(self.delgame0)*np.sqrt(2*np.pi))
+                        aconst += (345*np.sqrt(self.delgame0))/(64.*np.sqrt(2*np.pi))
+                        aconst -= (3285*self.delgame0**1.5)/(512.*np.sqrt(2*np.pi))
+                        aconst += (95355*self.delgame0**2.5)/(16384.*np.sqrt(2*np.pi))
+                        aconst -= (232065*self.delgame0**3.5)/(131072.*np.sqrt(2*np.pi))
 
                     femommax = self.momentum**4*aconst*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
-                    femommax *= np.exp(-self.gamma/delgame0)/(4*np.pi*self.momentum)/(self.gamma+1.0)
-                    self.axes.plot(self.momentum, femommax, color = self.parent.electron_fit_color, linestyle = '--', linewidth = 1.0)
+                    femommax *= np.exp(-self.gamma/self.delgame0)/(4*np.pi*self.momentum)/(self.gamma+1.0)
+                    self.T_e, = self.axes.plot(self.momentum, femommax, color = self.parent.electron_fit_color, linestyle = '--', linewidth = 1.0)
 
 
 
@@ -207,8 +207,23 @@ class SpectralPanel:
             if self.GetPlotParam('set_ylim'):
                 self.axes.set_ylim(10**self.GetPlotParam('y_min'), 10**self.GetPlotParam('y_max'))
 
+            if self.GetPlotParam('show_legend'):
+                legend_handles = []
+                legend_labels = []
+                if self.GetPlotParam('show_electrons') and self.parent.set_Te:
+                    legend_handles.append(self.T_e)
+                    tmpstr = '%.3f' % self.delgame0
+                    legend_labels.append(r'$T_e\ = $' +  ' ' + tmpstr + ' ' + r'$m_e c^2$')
+                if self.GetPlotParam('show_ions') and self.parent.set_Tp:
+                    legend_handles.append(self.T_p)
+                    tmpcon =self.parent.delgam_p*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
+                    tmpstr = '%.3f' % tmpcon
+                    legend_labels.append(r'$T_p\ = $' +  ' ' + tmpstr + ' ' + r'$m_e c^2$')
+                if len(legend_handles)> 0:
+                    leg = self.axes.legend(legend_handles, legend_labels, framealpha = .4, fontsize = 11, loc = 'best')
+                    leg.get_frame().set_linewidth(0.0)
 
-            self.axes.tick_params(labelsize = 10, color=tick_color)
+            self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
 
             self.axes.set_xlabel(r'$p\ [mc]$', labelpad = self.parent.xlabel_pad, color = 'black')
             self.axes.set_ylabel(r'$p^4f(p)$', labelpad = self.parent.ylabel_pad, color = 'black')
@@ -216,8 +231,40 @@ class SpectralPanel:
         if self.GetPlotParam('spectral_type') == 1: #Show the energy dist
             if self.GetPlotParam('show_electrons'):
                 self.axes.plot(self.gamma, self.edist, color = self.parent.electron_color)
+                if self.parent.set_Te:
+                    self.delgame0=self.parent.delgam_e*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
+                    if self.delgame0 >= 0.013:
+                        aconst = 1/(self.delgame0*np.exp(1.0/self.delgame0)*kn(2, 1.0/self.delgame0))
+                    else:
+                        aconst = np.sqrt(2/np.pi)/self.delgame0**1.5
+                        aconst -= 15.0/(4.*np.sqrt(self.delgame0)*np.sqrt(2*np.pi))
+                        aconst += (345*np.sqrt(self.delgame0))/(64.*np.sqrt(2*np.pi))
+                        aconst -= (3285*self.delgame0**1.5)/(512.*np.sqrt(2*np.pi))
+                        aconst += (95355*self.delgame0**2.5)/(16384.*np.sqrt(2*np.pi))
+                        aconst -= (232065*self.delgame0**3.5)/(131072.*np.sqrt(2*np.pi))
+
+                    femax = aconst*self.gamma*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
+                    femax *= np.exp(-self.gamma/self.delgame0)
+                    self.T_e, = self.axes.plot(self.gamma, femax, color = self.parent.electron_fit_color, linestyle = '--', linewidth = 1.0)
+
             if self.GetPlotParam('show_ions'):
                 self.axes.plot(self.gamma, self.pdist, color = self.parent.ion_color)
+                if self.parent.set_Tp:
+                    if self.parent.delgam_p >= 0.013:
+                        aconst = 1/(self.parent.delgam_p*np.exp(1.0/self.parent.delgam_p)*kn(2, 1.0/self.parent.delgam_p))
+                    else:
+                        aconst = np.sqrt(2/np.pi)/self.parent.delgam_p**1.5
+                        aconst -= 15.0/(4.*np.sqrt(self.parent.delgam_p)*np.sqrt(2*np.pi))
+                        aconst += (345*np.sqrt(self.parent.delgam_p))/(64.*np.sqrt(2*np.pi))
+                        aconst -= (3285*self.parent.delgam_p**1.5)/(512.*np.sqrt(2*np.pi))
+                        aconst += (95355*self.parent.delgam_p**2.5)/(16384.*np.sqrt(2*np.pi))
+                        aconst -= (232065*self.parent.delgam_p**3.5)/(131072.*np.sqrt(2*np.pi))
+
+                    fpmax = aconst*self.gamma*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
+                    fpmax *= np.exp(-self.gamma/self.parent.delgam_p)
+                    self.T_p, = self.axes.plot(self.gamma, fpmax, color = self.parent.ion_fit_color, linestyle = '--', linewidth = 1.0)
+
+
             self.axes.set_xscale("log")
             self.axes.set_yscale("log")
             self.axes.set_axis_bgcolor('lightgrey')
@@ -226,7 +273,23 @@ class SpectralPanel:
             if self.GetPlotParam('set_ylim'):
                 self.axes.set_ylim(10**self.GetPlotParam('y_min'), 10**self.GetPlotParam('y_max'))
 
-            self.axes.tick_params(labelsize = 10, color=tick_color)
+            if self.GetPlotParam('show_legend'):
+                legend_handles = []
+                legend_labels = []
+                if self.GetPlotParam('show_electrons') and self.parent.set_Te:
+                    legend_handles.append(self.T_e)
+                    tmpstr = '%.3f' % self.delgame0
+                    legend_labels.append(r'$T_e\ = $' +  ' ' + tmpstr + ' ' + r'$m_e c^2$')
+                if self.GetPlotParam('show_ions') and self.parent.set_Tp:
+                    legend_handles.append(self.T_p)
+                    tmpcon =self.parent.delgam_p*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
+                    tmpstr = '%.3f' % tmpcon
+                    legend_labels.append(r'$T_p\ = $' +  ' ' + tmpstr + ' ' + r'$m_e c^2$')
+                if len(legend_handles)> 0:
+                    leg = self.axes.legend(legend_handles, legend_labels, framealpha = .4, fontsize = 11, loc = 'best')
+                    leg.get_frame().set_linewidth(0.0)
+
+            self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
 
             self.axes.set_xlabel(r'$E\ [mc^2]$', labelpad = -2, color = 'black')
             self.axes.set_ylabel(r'$E(dn/dE)/n$', labelpad = 0, color = 'black')

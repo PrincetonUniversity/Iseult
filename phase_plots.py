@@ -238,12 +238,12 @@ class PhasePanel:
                     ctick_labels.append(tmp_s)
 
                 self.cbar.set_ticklabels(ctick_labels)
-                self.cbar.ax.tick_params(labelsize=10)
+                self.cbar.ax.tick_params(labelsize=self.parent.num_font_size)
             if self.GetPlotParam('norm_type')== 'Linear':
                 self.cbar.set_ticks(np.linspace(self.zval.min(),self.zval.max(), 5))
 
         self.axes.set_axis_bgcolor('lightgrey')
-        self.axes.tick_params(labelsize = 10, color=self.tick_color)
+        self.axes.tick_params(labelsize = self.parent.num_font_size, color=self.tick_color)
         if self.parent.xlim[0] and self.parent.LinkSpatial == 1:
             self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
         else:

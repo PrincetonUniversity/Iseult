@@ -234,14 +234,14 @@ class FieldsPanel:
                     cmax = self.vmax
 
                 self.cbar.set_ticks(np.linspace(cmin, cmax, 5))
-                self.cbar.ax.tick_params(labelsize=10)
+                self.cbar.ax.tick_params(labelsize=self.parent.num_font_size)
 
             if self.GetPlotParam('show_shock'):
                 self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
                                     PathEffects.Normal()])
 
             self.axes.set_axis_bgcolor('lightgrey')
-            self.axes.tick_params(labelsize = 10, color=tick_color)
+            self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
 #        self.axes.set_xlim(self.xmin,self.xmax)
             if self.parent.xlim[0]:
                 self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
@@ -302,7 +302,7 @@ class FieldsPanel:
                         PathEffects.Normal()])
 
             self.axes.set_axis_bgcolor('lightgrey')
-            self.axes.tick_params(labelsize = 10, color=tick_color)#, tick1On= False, tick2On= False)
+            self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)#, tick1On= False, tick2On= False)
 
             if self.parent.xlim[0]:
                 self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])

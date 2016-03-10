@@ -172,10 +172,10 @@ class DensPanel:
                     cmax = self.vmax
 
                 self.cbar.set_ticks(np.linspace(cmin, cmax, 5))
-                self.cbar.ax.tick_params(labelsize=10)
+                self.cbar.ax.tick_params(labelsize=self.parent.num_font_size)
 
             self.axes.set_axis_bgcolor('lightgrey')
-            self.axes.tick_params(labelsize = 10, color=tick_color)
+            self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
 
             if self.parent.xlim[0] and self.parent.LinkSpatial != 0:
                 self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
@@ -211,7 +211,7 @@ class DensPanel:
 
 
             self.axes.set_axis_bgcolor('lightgrey')
-            self.axes.tick_params(labelsize = 10, color=tick_color)
+            self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
             if self.parent.xlim[0]:
                 self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
             else:

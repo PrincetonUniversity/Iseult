@@ -21,6 +21,9 @@ import Tkinter as Tk
 import ttk as ttk
 import tkFileDialog
 
+matplotlib.rcParams['mathtext.fontset'] = 'stix'
+matplotlib.rcParams['font.family'] = 'STIXGeneral'
+
 def destroy(e):
     sys.exit()
 
@@ -462,7 +465,7 @@ class SettingsFrame(Tk.Toplevel):
             pass
         else:
             self.parent.cmap = self.cmapvar.get()
-            if self.parent.cmap == 'viridis' or self.parent.cmap == 'nipy_spectral':
+            if self.parent.cmap == 'viridis' or self.parent.cmap == 'nipy_spectral' or self.parent.cmap == 'Blue/Green/Red/Yellow':
                 self.parent.ion_color =  new_cmaps.cmaps['plasma'](0.55)
                 self.parent.electron_color = new_cmaps.cmaps['plasma'](0.8)
                 self.parent.ion_fit_color = 'r'
@@ -652,7 +655,7 @@ class MeasureFrame(Tk.Toplevel):
         cb = ttk.Checkbutton(frm, text='Show T_e', variable =  self.SetTeVar)
         cb.grid(row = 5, sticky = Tk.W)
 
-        ttk.Label(frm, text=u'\u0394'+u'\u0263' + '=').grid(row= 5, column =1, sticky = Tk.N)
+        ttk.Label(frm, text=u'\u0394'+u'\u0263' + ' =').grid(row= 5, column =1, sticky = Tk.N)
 
         self.SetTpVar = Tk.IntVar()
         self.SetTpVar.set(self.parent.set_Tp)
@@ -660,7 +663,7 @@ class MeasureFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text='Show T_p', variable =  self.SetTpVar)
         cb.grid(row = 6, sticky = Tk.W)
-        ttk.Label(frm, text=u'\u0394'+u'\u0263' + '=').grid(row= 6, column =1, sticky = Tk.N)
+        ttk.Label(frm, text=u'\u0394'+u'\u0263' + ' =').grid(row= 6, column =1, sticky = Tk.N)
 
         self.delgameVar = Tk.StringVar()
         self.delgameVar.set(str(self.parent.delgam_e))
@@ -772,7 +775,7 @@ class MainApp(Tk.Tk):
         self.first_x = None
         self.first_y = None
 
-
+        self.num_font_size = 11
         #
         # Set the number of rows and columns in the figure
         # (As well as the max rows)
@@ -965,7 +968,7 @@ class MainApp(Tk.Tk):
         self.xlim = [False, 0, 100]
         self.ylim = [False, 0, 100]
         # Set the particle colors
-        if self.cmap == 'viridis' or self.cmap == 'nipy_spectral':
+        if self.cmap == 'viridis' or self.cmap == 'nipy_spectral' or self.cmap == 'Blue/Green/Red/Yellow':
             self.shock_color = 'w'
             self.ion_color =  new_cmaps.cmaps['plasma'](0.55)
             self.electron_color = new_cmaps.cmaps['plasma'](0.8)
@@ -1349,7 +1352,7 @@ class MainApp(Tk.Tk):
                 # Now... We can draw the graph.
                 self.SubPlotList[i][j].DrawGraph()
         if self.show_title:
-            self.f.suptitle(os.path.abspath(self.dirname)+ ' at time t = %d $\omega_p$'  % round(self.DataDict['time'][0]))
+            self.f.suptitle(os.path.abspath(self.dirname)+ ' at time t = %d $\omega_{pe}$'  % round(self.DataDict['time'][0]))
 
         if keep_view:
             self.LoadView()
