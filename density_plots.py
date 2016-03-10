@@ -10,7 +10,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
 
 class DensPanel:
-    # A diction of all of the parameters for this plot with the default parameters
+    # A dictionary of all of the parameters for this plot with the default parameters
 
     plot_param_dict = {'twoD': 0,
                        'dens_type': 0, #0 = n, 1 = rho

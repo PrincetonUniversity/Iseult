@@ -1352,7 +1352,7 @@ class MainApp(Tk.Tk):
                 # Now... We can draw the graph.
                 self.SubPlotList[i][j].DrawGraph()
         if self.show_title:
-            self.f.suptitle(os.path.abspath(self.dirname)+ ' at time t = %d $\omega_{pe}$'  % round(self.DataDict['time'][0]))
+            self.f.suptitle(os.path.abspath(self.dirname)+ ' at time t = %d $\omega_{pe}$'  % round(self.DataDict['time'][0]), size = 15)
 
         if keep_view:
             self.LoadView()
