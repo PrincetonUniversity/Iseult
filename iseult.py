@@ -951,7 +951,6 @@ class MainApp(Tk.Tk):
         # previous objects
         self.dirname = os.curdir
         self.findDir()
-        self.shock_finder()
 
         # Choose the integration region for the particles
         self.e_relative = True
@@ -1047,13 +1046,18 @@ class MainApp(Tk.Tk):
         for key in self.PathDict.keys():
             is_okay &= len(self.PathDict[key]) > 0
 
-        self.TimeStep.setMax(max(len(self.PathDict['Flds']),1))
-        self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
+        if is_okay:
+            self.TimeStep.setMax(max(len(self.PathDict['Flds']),1))
+            self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
+            self.shock_finder()
+
         return is_okay
 
 
     def OnOpen(self, e = None):
         """open a file"""
+
+
         tmpdir = tkFileDialog.askdirectory(title = 'Choose the directory of the output files', **self.dir_opt)
         if tmpdir == '':
             self.findDir()
@@ -1082,7 +1086,7 @@ class MainApp(Tk.Tk):
             if not self.pathOK():
 #                p = MyDialog(self, 'Directory must contain either the output directory or all of the following: \n flds.tot.*, ptrl.tot.*, params.*, spect.*', title = 'Cannot find output files')
 #                self.wait_window(p.top)
-                self.FindDir()
+                self.findDir()
 
 
     def DrawCanvas(self):
@@ -1195,6 +1199,7 @@ class MainApp(Tk.Tk):
                             else:
                                 self.DataDict[elm] = f[elm][:]
         self.prev_time = self.TimeStep.value
+
     def MakePrevCtypeList(self):
         self.prev_ctype_list = []
         for i in range(self.numOfRows.get()):
@@ -1202,6 +1207,7 @@ class MainApp(Tk.Tk):
             for j in range(self.numOfColumns.get()):
                 tmp_ctype_l.append(str(self.SubPlotList[i][j].chartType))
             self.prev_ctype_list.append(tmp_ctype_l)
+
     def SaveView(self):
         # A function that will make sure our view will stay the same as the
         # plot updates.
