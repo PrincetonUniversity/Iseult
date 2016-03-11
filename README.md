@@ -9,9 +9,8 @@ IDL script.
 
 UPDATES:
 -------
-The code is now it's alpha phase. See the implemented column for what has 
+The code is now it's alpha phase. See the implemented column for what has
 already been implemented. First priority is to add measurement taking.
-
 
 Dependencies:
 -------------
@@ -30,10 +29,10 @@ $ iseult.py
 ```
 
 When iseult is started, it prompts you to select the directory of where you
-Tristan-MP is saved. To edit/change any of the plots, just click on the subplot
-directly. You can also change the number of columns, the colormap, and spacing
-of the plots by clicking the settings button. The measure button allows you to
-take measurements like T_i, T_e, etc.
+Tristan-MP is saved. To edit/change any of the plots, just right click on the
+subplot directly. You can also change the number of columns, the colormap, by
+clicking the settings button. The measure button allows you to take measurements
+like T_i, T_e, etc. The matplotlib interactive toolbar is beneath.
 
 Enjoy!
 
@@ -64,4 +63,5 @@ Resources:
 | http://python.org |
 | http://effbot.org/tkinterbook/ |
 | http://matplotlib.org |
+| http://matplotlib.org/users/navigation_toolbar.html |
 | http://h5py.org |

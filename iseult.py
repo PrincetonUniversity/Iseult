@@ -225,17 +225,31 @@ class PlaybackBar(Tk.Frame):
 
 
         # a measurement button that should lauch a window to take measurements.
-        self.SettingsB= ttk.Button(self, text='Measure', command=self.OpenMeasures)
-        self.SettingsB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+        self.MeasuresB= ttk.Button(self, text='Measure', command=self.OpenMeasures)
+        self.MeasuresB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
 
 
         # a settings button that should lauch some global settings.
         self.SettingsB= ttk.Button(self, text='Settings', command=self.OpenSettings)
         self.SettingsB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
 
-
+        self.RecVar = Tk.IntVar()
+        self.RecVar.set(self.parent.recording)
+        self.RecVar.trace('w', self.RecChanged)
+        self.RecordFrames = ttk.Checkbutton(self, text = 'Record',
+                                            variable = self.RecVar)
+        self.RecordFrames.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
         #attach the parameter to the Playbackbar
         self.param.attach(self)
+
+    def RecChanged(self, *args):
+        if self.RecVar.get() == self.parent.recording:
+            pass
+        else:
+            self.parent.recording = self.RecVar.get()
+            if self.parent.recording == 1:
+                self.parent.PrintFig()
+
 
     def SkipLeft(self, e = None):
         self.param.set(self.param.value - self.skipSize)
@@ -776,6 +790,7 @@ class MainApp(Tk.Tk):
         self.first_y = None
 
         self.num_font_size = 11
+        self.recording = False
         #
         # Set the number of rows and columns in the figure
         # (As well as the max rows)
@@ -1396,6 +1411,20 @@ class MainApp(Tk.Tk):
         self.canvas.show()
         self.canvas.get_tk_widget().update_idletasks()
 
+        if self.recording:
+            self.PrintFig()
+
+
+    def PrintFig(self):
+        movie_dir = os.path.abspath(os.path.join(self.dirname, '..', 'Movie'))
+        try:
+            os.makedirs(movie_dir)
+        except OSError:
+            if not os.path.isdir(movie_dir):
+                raise
+
+        fname = 'iseult_img_'+ str(self.TimeStep.value).zfill(3)+'.png'
+        self.f.savefig(os.path.join(movie_dir, fname))
 
     def onclick(self, event):
         '''After being clicked, we should use the x and y of the cursor to
