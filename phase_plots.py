@@ -40,7 +40,6 @@ class PhasePanel:
 
     def __init__(self, parent, figwrapper):
         self.settings_window = None
-        self.prev_time = None
         self.reload_data = True
         self.FigWrap = figwrapper
         self.parent = parent
@@ -103,7 +102,11 @@ class PhasePanel:
         self.energy_color = self.parent.ion_color
         if self.GetPlotParam('prtl_type') == 1:
             self.energy_color = self.parent.electron_color
-        if self.prev_time != self.parent.TimeStep.value or self.reload_data:
+
+        if self.BinnedDataInDict():
+            self.hist2d = self.parent.DataDict[self.key_name]
+
+        else:
             # Generate the X-axis values
             self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
             self.weights = None
@@ -143,11 +146,11 @@ class PhasePanel:
 
 
             self.pmin = min(self.y_values)
-            if self.FigWrap.GetPlotParam('set_p_min'):
-                self.pmin = self.FigWrap.GetPlotParam('p_min')
+#            if self.FigWrap.GetPlotParam('set_p_min'):
+#                self.pmin = self.FigWrap.GetPlotParam('p_min')
             self.pmax = max(self.y_values)
-            if self.FigWrap.GetPlotParam('set_p_max'):
-                self.pmax = self.FigWrap.GetPlotParam('p_max')
+#            if self.FigWrap.GetPlotParam('set_p_max'):
+#                self.pmax = self.FigWrap.GetPlotParam('p_max')
 
             self.xmin = 0
 
@@ -155,16 +158,18 @@ class PhasePanel:
             self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.istep
             self.hist2d = np.histogram2d(self.y_values, self.x_values, bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')], range = [[self.pmin,self.pmax],[0,self.xmax]], weights = self.weights)
 
-            self.zval = ma.masked_array(self.hist2d[0])
+            self.parent.DataDict[self.key_name] = self.hist2d
+
+        self.zval = ma.masked_array(self.hist2d[0])
 
 
-            if self.GetPlotParam('masked'):
-                self.zval[self.zval == 0] = ma.masked
-                self.tick_color = 'k'
-            else:
-                self.tick_color = 'white'
-                self.zval[self.zval==0] = 1
-            self.zval *= self.zval.max()**(-1)
+        if self.GetPlotParam('masked'):
+            self.zval[self.zval == 0] = ma.masked
+            self.tick_color = 'k'
+        else:
+            self.tick_color = 'white'
+            self.zval[self.zval==0] = 1
+        self.zval *= self.zval.max()**(-1)
 
         self.vmin = None
         if self.GetPlotParam('set_v_min'):
@@ -187,7 +192,7 @@ class PhasePanel:
                                     cmap = new_cmaps.cmaps[self.parent.cmap],
                                     norm = self.norm(), origin = 'lower',
                                     aspect = 'auto',
-                                    extent=[self.xmin,self.xmax,self.hist2d[1][0],self.hist2d[1][-1]],
+                                    extent=[self.hist2d[2][0],self.hist2d[2][-1],self.hist2d[1][0],self.hist2d[1][-1]],
                                     vmin = self.vmin, vmax = self.vmax,
                                     interpolation=self.GetPlotParam('interpolation'))
 
@@ -270,6 +275,21 @@ class PhasePanel:
     def SetPlotParam(self, keyname, value,  update_plot = True, reload_data = False):
         self.reload_data = reload_data
         self.FigWrap.SetPlotParam(keyname, value,  update_plot = update_plot)
+
+    def BinnedDataInDict(self):
+        # First figure out what the key_name is
+        self.key_name = ''
+        if self.GetPlotParam('weighted'):
+            self.key_name += 'weighted_'
+        if self.GetPlotParam('prtl_type') == 0: #protons
+            self.key_name += 'proton_p'
+        else:
+            self.key_name += 'electron_p'
+
+        opt = ['x-x', 'y-x', 'z-x']
+        self.key_name += opt[self.GetPlotParam('mom_dim')]
+
+        return self.key_name is self.parent.DataDict.keys()
 
     def OpenSettings(self):
         if self.settings_window is None:
@@ -515,13 +535,13 @@ class PhaseSettings(Tk.Toplevel):
         if self.setPminVar.get() == self.parent.GetPlotParam('set_p_min'):
             pass
         else:
-            self.parent.SetPlotParam('set_p_min', self.setPminVar.get(), reload_data = True)
+            self.parent.SetPlotParam('set_p_min', self.setPminVar.get(), reload_data = False)
 
     def setPmaxChanged(self, *args):
         if self.setPmaxVar.get() == self.parent.GetPlotParam('set_p_max'):
             pass
         else:
-            self.parent.SetPlotParam('set_p_max', self.setPmaxVar.get(), reload_data = True)
+            self.parent.SetPlotParam('set_p_max', self.setPmaxVar.get(), reload_data = False)
 
 
     def TxtEnter(self, e):
