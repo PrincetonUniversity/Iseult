@@ -37,10 +37,11 @@ class PhasePanel:
                        'spatial_x': True,
                        'spatial_y': False,
                        'interpolation': 'hermite'}
-
+    prtl_opts = ['proton_p', 'electron_p']
+    direction_opts = ['x-x', 'y-x', 'z-x']
     def __init__(self, parent, figwrapper):
+
         self.settings_window = None
-        self.reload_data = True
         self.FigWrap = figwrapper
         self.parent = parent
         self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
@@ -103,7 +104,14 @@ class PhasePanel:
         if self.GetPlotParam('prtl_type') == 1:
             self.energy_color = self.parent.electron_color
 
-        if self.BinnedDataInDict():
+        self.key_name = ''
+        if self.GetPlotParam('weighted'):
+            self.key_name += 'weighted_'
+
+        self.key_name += self.prtl_opts[self.GetPlotParam('prtl_type')]
+        self.key_name += self.direction_opts[self.GetPlotParam('mom_dim')]
+
+        if self.key_name in self.parent.DataDict.keys():
             self.hist2d = self.parent.DataDict[self.key_name]
 
         else:
@@ -267,13 +275,11 @@ class PhasePanel:
         self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
         self.axes.set_ylabel(self.y_label, labelpad = self.parent.ylabel_pad, color = 'black')
         self.prev_time = self.parent.TimeStep.value
-        self.reload_data = False
 
     def GetPlotParam(self, keyname):
         return self.FigWrap.GetPlotParam(keyname)
 
-    def SetPlotParam(self, keyname, value,  update_plot = True, reload_data = False):
-        self.reload_data = reload_data
+    def SetPlotParam(self, keyname, value,  update_plot = True):
         self.FigWrap.SetPlotParam(keyname, value,  update_plot = update_plot)
 
     def BinnedDataInDict(self):
@@ -289,7 +295,7 @@ class PhasePanel:
         opt = ['x-x', 'y-x', 'z-x']
         self.key_name += opt[self.GetPlotParam('mom_dim')]
 
-        return self.key_name is self.parent.DataDict.keys()
+        return self.key_name in self.parent.DataDict.keys()
 
     def OpenSettings(self):
         if self.settings_window is None:
@@ -399,7 +405,7 @@ class PhaseSettings(Tk.Toplevel):
         cb = ttk.Checkbutton(frm, text = "Weight by charge",
                         variable = self.WeightVar,
                         command = lambda:
-                        self.parent.SetPlotParam('weighted', self.WeightVar.get(), reload_data = True))
+                        self.parent.SetPlotParam('weighted', self.WeightVar.get()))
         cb.grid(row = 7, sticky = Tk.W)
 
         # Show energy integration region
@@ -417,7 +423,7 @@ class PhaseSettings(Tk.Toplevel):
         cb = ttk.Checkbutton(frm, text = "Mask Zeros",
                         variable = self.MaskVar,
                         command = lambda:
-                        self.parent.SetPlotParam('masked', self.MaskVar.get(), reload_data = True))
+                        self.parent.SetPlotParam('masked', self.MaskVar.get()))
         cb.grid(row = 8, sticky = Tk.W)
 
 
@@ -505,13 +511,13 @@ class PhaseSettings(Tk.Toplevel):
         if self.pvar.get() == self.parent.GetPlotParam('prtl_type'):
             pass
         else:
-            self.parent.SetPlotParam('prtl_type', self.pvar.get(), reload_data = True)
+            self.parent.SetPlotParam('prtl_type', self.pvar.get())
 
     def RadioDim(self):
         if self.dimvar.get() == self.parent.GetPlotParam('mom_dim'):
             pass
         else:
-            self.parent.SetPlotParam('mom_dim', self.dimvar.get(), reload_data =True)
+            self.parent.SetPlotParam('mom_dim', self.dimvar.get())
 
     def RadioNorm(self):
         if self.cnormList[self.normvar.get()] == self.parent.GetPlotParam('norm_type'):
@@ -535,13 +541,13 @@ class PhaseSettings(Tk.Toplevel):
         if self.setPminVar.get() == self.parent.GetPlotParam('set_p_min'):
             pass
         else:
-            self.parent.SetPlotParam('set_p_min', self.setPminVar.get(), reload_data = False)
+            self.parent.SetPlotParam('set_p_min', self.setPminVar.get())
 
     def setPmaxChanged(self, *args):
         if self.setPmaxVar.get() == self.parent.GetPlotParam('set_p_max'):
             pass
         else:
-            self.parent.SetPlotParam('set_p_max', self.setPmaxVar.get(), reload_data = False)
+            self.parent.SetPlotParam('set_p_max', self.setPmaxVar.get())
 
 
     def TxtEnter(self, e):
