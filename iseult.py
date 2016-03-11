@@ -769,7 +769,6 @@ class MainApp(Tk.Tk):
         self.wm_title(name)
         self.settings_window = None
         self.measure_window = None
-        self.prev_time = None
         self.clear_fig = True # A parameter that causes the graph to disappear as soon as something is pressed. Here is the dictionary of the keys:
 
         self.first_x = None
@@ -833,6 +832,8 @@ class MainApp(Tk.Tk):
         param_re = re.compile('param.*')
         self.re_list = [f_re, prtl_re, s_re, param_re]
 
+
+        # The dictionary that holdsd the paths
         self.PathDict = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
 
         # A dictionary that allows use to see in what HDF5 file each key is stored.
@@ -1164,9 +1165,42 @@ class MainApp(Tk.Tk):
                     ftype = self.H5KeyDict[elm]
                     # add the key to the list of that file type
                     self.ToLoad[ftype].append(elm)
+        # See if we are in a new Directory
+        if self.NewDirectory:
+            # Make a list of timesteps we have already loaded.
+            self.timestep_visited = []
+            # For each timestep we visit, we will load a dictionary and place it in a list
+            self.ListOfDataDict = []
 
-        # Now iterate over each path key and create a datadictionary
-        if self.prev_time != self.TimeStep.value or self.NewDirectory:
+            self.NewDirectory = False
+
+
+        if self.TimeStep.value in self.timestep_visited:
+            cur_ind = self.timestep_visited.index(self.TimeStep.value)
+            self.DataDict = self.ListOfDataDict.pop(cur_ind)
+            self.timestep_visited.pop(cur_ind)
+            for pkey in self.ToLoad.keys():
+                tmplist = list(set(self.ToLoad[pkey])) # get rid of duplicate keys
+                tmplist2 = np.copy(tmplist)
+
+                # get rid of keys that are already loaded
+                for i in range(len(tmplist2)):
+                    if tmplist2[i] in self.DataDict.keys():
+                        tmplist.remove(tmplist2[i])
+                # Now iterate over each path key and create a datadictionary
+                if len(tmplist)> 0:
+                    with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
+                        for elm in tmplist:
+                            # Load all the keys
+                            if elm == 'spect_dens':
+                                self.DataDict[elm] = f['dens'][:]
+                            else:
+                                self.DataDict[elm] = f[elm][:]
+            self.ListOfDataDict.append(self.DataDict)
+            self.timestep_visited.append(self.TimeStep.value)
+
+
+        else:
             # The time has changed so we have to reload everything
             self.DataDict = {}
             for pkey in self.ToLoad.keys():
@@ -1180,27 +1214,12 @@ class MainApp(Tk.Tk):
                                 self.DataDict[elm] = f['dens'][:]
                             else:
                                 self.DataDict[elm] = f[elm][:]
-            self.NewDirectory = False
-        else:
-            # The time has not changed, so we only load keys that haven't been
-            # loaded already.
-            for pkey in self.ToLoad.keys():
-                tmplist = list(set(self.ToLoad[pkey])) # get rid of duplicate keys
-                tmplist2 = np.copy(tmplist)
+            if len(self.timestep_visited)>10:
+                self.timestep_visited.pop(0)
+                self.ListOfDataDict.pop(0)
+            self.timestep_visited.append(self.TimeStep.value)
+            self.ListOfDataDict.append(self.DataDict)
 
-                # get rid of keys that are already loaded
-                for i in range(len(tmplist2)):
-                    if tmplist2[i] in self.DataDict.keys():
-                        tmplist.remove(tmplist2[i])
-                if len(tmplist)> 0:
-                    with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
-                        for elm in tmplist:
-                            # Load all the keys
-                            if elm == 'spect_dens':
-                                self.DataDict[elm] = f['dens'][:]
-                            else:
-                                self.DataDict[elm] = f[elm][:]
-        self.prev_time = self.TimeStep.value
 
     def MakePrevCtypeList(self):
         self.prev_ctype_list = []
