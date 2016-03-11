@@ -169,6 +169,10 @@ class PhasePanel:
             self.parent.DataDict[self.key_name] = self.hist2d
 
         self.zval = ma.masked_array(self.hist2d[0])
+        self.xmin = self.hist2d[2][0]
+        self.xmax = self.hist2d[2][-1]
+        self.ymin = self.hist2d[1][0]
+        self.ymax = self.hist2d[1][-1]
 
 
         if self.GetPlotParam('masked'):
@@ -200,7 +204,7 @@ class PhasePanel:
                                     cmap = new_cmaps.cmaps[self.parent.cmap],
                                     norm = self.norm(), origin = 'lower',
                                     aspect = 'auto',
-                                    extent=[self.hist2d[2][0],self.hist2d[2][-1],self.hist2d[1][0],self.hist2d[1][-1]],
+                                    extent=[self.xmin, self.xmax, self.ymin, self.ymax],
                                     vmin = self.vmin, vmax = self.vmax,
                                     interpolation=self.GetPlotParam('interpolation'))
 
