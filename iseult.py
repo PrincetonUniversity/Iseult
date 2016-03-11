@@ -7,6 +7,7 @@ import time,string
 import matplotlib
 import new_cmaps
 import numpy as np
+from collections import deque
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 matplotlib.use('TkAgg')
@@ -1169,6 +1170,11 @@ class MainApp(Tk.Tk):
         if self.NewDirectory:
             # Make a list of timesteps we have already loaded.
             self.timestep_visited = []
+
+            # Timestep queue that ensures that we delete the oldest viewed
+            # timestep if memory gets too large
+            self.timestep_queue = deque()
+
             # For each timestep we visit, we will load a dictionary and place it in a list
             self.ListOfDataDict = []
 
@@ -1177,8 +1183,8 @@ class MainApp(Tk.Tk):
 
         if self.TimeStep.value in self.timestep_visited:
             cur_ind = self.timestep_visited.index(self.TimeStep.value)
-            self.DataDict = self.ListOfDataDict.pop(cur_ind)
-            self.timestep_visited.pop(cur_ind)
+            self.timestep_queue.remove(self.TimeStep.value)
+            self.DataDict = self.ListOfDataDict[cur_ind]
             for pkey in self.ToLoad.keys():
                 tmplist = list(set(self.ToLoad[pkey])) # get rid of duplicate keys
                 tmplist2 = np.copy(tmplist)
@@ -1196,9 +1202,7 @@ class MainApp(Tk.Tk):
                                 self.DataDict[elm] = f['dens'][:]
                             else:
                                 self.DataDict[elm] = f[elm][:]
-            self.ListOfDataDict.append(self.DataDict)
-            self.timestep_visited.append(self.TimeStep.value)
-
+            self.timestep_queue.append(self.TimeStep.value)
 
         else:
             # The time has changed so we have to reload everything
@@ -1215,10 +1219,13 @@ class MainApp(Tk.Tk):
                             else:
                                 self.DataDict[elm] = f[elm][:]
             if len(self.timestep_visited)>10:
-                self.timestep_visited.pop(0)
-                self.ListOfDataDict.pop(0)
+                oldest_time = self.timestep_queue.popleft()
+                oldest_ind = self.timestep_visited.index(oldest_time)
+                self.timestep_visited.remove(oldest_time)
+                self.ListOfDataDict.pop(oldest_ind)
             self.timestep_visited.append(self.TimeStep.value)
             self.ListOfDataDict.append(self.DataDict)
+            self.timestep_queue.append(self.TimeStep.value)
 
 
     def MakePrevCtypeList(self):
