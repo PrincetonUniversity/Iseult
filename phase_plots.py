@@ -164,7 +164,8 @@ class PhasePanel:
 
             self.istep = self.FigWrap.LoadKey('istep')[0]
             self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.istep
-            self.hist2d = np.histogram2d(self.y_values, self.x_values, bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')], range = [[self.pmin,self.pmax],[0,self.xmax]], weights = self.weights)
+            self.hist2d = np.histogram2d(self.y_values, self.x_values, bins = 
+[self.GetPlotParam('pbins'), self.GetPlotParam('xbins')], range = [[self.pmin,self.pmax],[0,self.xmax]], weights = self.weights)
 
             self.parent.DataDict[self.key_name] = self.hist2d
 
@@ -200,21 +201,13 @@ class PhasePanel:
                 self.axes = self.figure.add_subplot(self.gs[18:92,:], sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
         else:
             self.axes = self.figure.add_subplot(self.gs[18:92,:])
-#        self.cax = self.axes.imshow(self.zval,
-#                                    cmap = new_cmaps.cmaps[self.parent.cmap],
-#                                    norm = self.norm(), origin = 'lower',
-#                                    aspect = 'auto',
-#                                    extent=[self.xmin, self.xmax, self.ymin, self.ymax],
-#                                    vmin = self.vmin, vmax = self.vmax,
-#                                    interpolation=self.GetPlotParam('interpolation'))
-
-            self.cax =self.axes.hexbin(self.x_values, self.y_values, #self.zval,
-                                    cmap = new_cmaps.cmaps[self.parent.cmap]),bins='log' )
-#                                    norm = self.norm(), origin = 'lower',
-#                                    aspect = 'auto',
-#                                    extent=[self.xmin, self.xmax, self.ymin, self.ymax],
-#                                    vmin = self.vmin, vmax = self.vmax,
-#                                    interpolation=self.GetPlotParam('interpolation'))
+        self.cax = self.axes.imshow(self.zval,
+                                    cmap = new_cmaps.cmaps[self.parent.cmap],
+                                    norm = self.norm(), origin = 'lower',
+                                    aspect = 'auto',
+                                    extent=[self.xmin, self.xmax, self.ymin, self.ymax],
+                                    vmin = self.vmin, vmax = self.vmax,
+                                    interpolation=self.GetPlotParam('interpolation'))
 
 
         if self.GetPlotParam('show_shock'):
