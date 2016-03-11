@@ -200,13 +200,22 @@ class PhasePanel:
                 self.axes = self.figure.add_subplot(self.gs[18:92,:], sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
         else:
             self.axes = self.figure.add_subplot(self.gs[18:92,:])
-        self.cax = self.axes.imshow(self.zval,
-                                    cmap = new_cmaps.cmaps[self.parent.cmap],
-                                    norm = self.norm(), origin = 'lower',
-                                    aspect = 'auto',
-                                    extent=[self.xmin, self.xmax, self.ymin, self.ymax],
-                                    vmin = self.vmin, vmax = self.vmax,
-                                    interpolation=self.GetPlotParam('interpolation'))
+#        self.cax = self.axes.imshow(self.zval,
+#                                    cmap = new_cmaps.cmaps[self.parent.cmap],
+#                                    norm = self.norm(), origin = 'lower',
+#                                    aspect = 'auto',
+#                                    extent=[self.xmin, self.xmax, self.ymin, self.ymax],
+#                                    vmin = self.vmin, vmax = self.vmax,
+#                                    interpolation=self.GetPlotParam('interpolation'))
+
+            self.cax =self.axes.hexbin(self.x_values, self.y_values, #self.zval,
+                                    cmap = new_cmaps.cmaps[self.parent.cmap]),bins='log' )
+#                                    norm = self.norm(), origin = 'lower',
+#                                    aspect = 'auto',
+#                                    extent=[self.xmin, self.xmax, self.ymin, self.ymax],
+#                                    vmin = self.vmin, vmax = self.vmax,
+#                                    interpolation=self.GetPlotParam('interpolation'))
+
 
         if self.GetPlotParam('show_shock'):
             self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
