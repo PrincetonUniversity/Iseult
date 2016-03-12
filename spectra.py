@@ -35,6 +35,8 @@ class SpectralPanel:
         self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
         self.chartType = self.FigWrap.chartType
         self.figure = self.FigWrap.figure
+        self.PowerlawPworked = False
+        self.PowerlawEworked = False
         if self.GetPlotParam('spectral_type') == 0:
             self.SetPlotParam('x_min', 0.05, update_plot = False)
             self.SetPlotParam('x_max', 200, update_plot = False)
