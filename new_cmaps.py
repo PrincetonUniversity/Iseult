@@ -2309,6 +2309,7 @@ _Linear_L_data = [[  1.43000000e-02,   1.43000000e-02,   1.43000000e-02],
        [  9.91200000e-01,   9.91200000e-01,   9.91200000e-01],
        [  9.95600000e-01,   9.95600000e-01,   9.95600000e-01],
        [  1.00000000e+00,   1.00000000e+00,   1.00000000e+00]]
+
 from matplotlib.colors import ListedColormap
 from matplotlib.cm  import get_cmap
 

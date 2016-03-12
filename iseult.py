@@ -983,6 +983,9 @@ class MainApp(Tk.Tk):
         # Whether or not to set a xlim or ylim
         self.xlim = [False, 0, 100]
         self.ylim = [False, 0, 100]
+
+        self.PowerLawFitElectron = [True, 1.0, 10.0]
+        self.PowerLawFitIon = [True, 1.0, 10.0]
         # Set the particle colors
         if self.cmap in self.cmaps_with_green:
             self.shock_color = 'w'
