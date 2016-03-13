@@ -24,8 +24,8 @@ class PhasePanel:
                        'show_shock': False,
                        'show_int_region': True,
                        'set_color_limits': False,
-#                       'xbins' : 200,
-#                       'pbins' : 200,
+                       'xbins' : 200,
+                       'pbins' : 200,
                        'v_min': -2.0,
                        'v_max' : 0,
                        'set_v_min': False,
@@ -164,17 +164,19 @@ class PhasePanel:
 
             self.istep = self.FigWrap.LoadKey('istep')[0]
             self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.istep
-#            self.hist2d = np.histogram2d(self.y_values, self.x_values, bins =
-#[self.GetPlotParam('pbins'), self.GetPlotParam('xbins')], range = [[self.pmin,self.pmax],[0,self.xmax]], weights = self.weights)
+            self.hist2d = np.histogram2d(self.y_values, self.x_values,
+                                bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
+                                range = [[self.pmin,self.pmax],[0,self.xmax]],
+                                weights = self.weights)
 
-            IQR_y = np.subtract(*np.percentile(self.y_values, [75, 25]))
-            num_of_ybins = int((self.pmax-self.pmin)/(2*IQR_y*len(self.y_values)**(-1.0/3)))
+#            IQR_y = np.subtract(*np.percentile(self.y_values, [75, 25]))
+#            num_of_ybins = int((self.pmax-self.pmin)/(2*IQR_y*len(self.y_values)**(-1.0/3)))
 #            num_of_ybins  = max(200, num_of_ybins)
-            IQR_x = np.subtract(*np.percentile(self.x_values, [75, 25]))
-            num_of_xbins = int((self.xmax-self.xmin)/(2*IQR_x*len(self.x_values)**(-1.0/3)))
-            num_of_xbins  = max(200, num_of_xbins)
-            self.hist2d = np.histogram2d(self.y_values, self.x_values, bins =
-[num_of_ybins, num_of_xbins], range = [[self.pmin,self.pmax],[0,self.xmax]], weights = self.weights)
+#            IQR_x = np.subtract(*np.percentile(self.x_values, [75, 25]))
+#            num_of_xbins = int((self.xmax-self.xmin)/(2*IQR_x*len(self.x_values)**(-1.0/3)))
+#            num_of_xbins  = max(200, num_of_xbins)
+#            self.hist2d = np.histogram2d(self.y_values, self.x_values, bins =
+# [num_of_ybins, num_of_xbins], range = [[self.pmin,self.pmax],[0,self.xmax]], weights = self.weights)
 
             self.parent.DataDict[self.key_name] = self.hist2d
 
