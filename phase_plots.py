@@ -169,10 +169,10 @@ class PhasePanel:
 
             IQR_y = np.subtract(*np.percentile(self.y_values, [75, 25]))
             num_of_ybins = int((self.pmax-self.pmin)/(2*IQR_y*len(self.y_values)**(-1.0/3)))
-
+#            num_of_ybins  = max(200, num_of_ybins)
             IQR_x = np.subtract(*np.percentile(self.x_values, [75, 25]))
             num_of_xbins = int((self.xmax-self.xmin)/(2*IQR_x*len(self.x_values)**(-1.0/3)))
-
+            num_of_xbins  = max(200, num_of_xbins)
             self.hist2d = np.histogram2d(self.y_values, self.x_values, bins =
 [num_of_ybins, num_of_xbins], range = [[self.pmin,self.pmax],[0,self.xmax]], weights = self.weights)
 
