@@ -1384,6 +1384,7 @@ class MainApp(Tk.Tk):
 
     def LoadView(self):
         # Push the home view onto the stack..
+        self.toolbar._views.clear()
         self.toolbar.push_current()
         next_view = list(self.toolbar._views.__call__())
 
