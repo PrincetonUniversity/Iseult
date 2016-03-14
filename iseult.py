@@ -80,7 +80,7 @@ class SubPlotWrapper:
         # put a list of the previous chart types in iseult
 
         self.graph = self.PlotTypeDict[self.chartType](self.parent, self)
-        self.parent.RefreshCanvas()
+        self.parent.RenewCanvas(ForceRedraw = True)
 
     def GenParamDict(self):
         # Generate a dictionary that will store all of the params at dict['ctype']['param_name']
@@ -89,19 +89,21 @@ class SubPlotWrapper:
             self.PlotParamsDict[elm] = {key: self.PlotTypeDict[elm].plot_param_dict[key] for key in self.PlotTypeDict[elm].plot_param_dict.keys()}
 
     def SetPlotParam(self, pname, val, ctype = None, update_plot = True):
+        NeedsRedraw = False
         if ctype is None:
             ctype = self.chartType
-
         # Check to see if a Cbar was added or removed and if
         if pname =='twoD':
             if self.PlotParamsDict[ctype][pname] == 1 and val == 0:
                 self.Changedto1D = True
+                NeedsRedraw = True
             if self.PlotParamsDict[ctype][pname] == 0 and val == 1:
                 self.Changedto2D = True
+                NeedsRedraw = True
 
         self.PlotParamsDict[ctype][pname] = val
-        if update_plot:
-            self.parent.RefreshCanvas()
+        if update_plot or NeedsRedraw:
+            self.parent.RenewCanvas(ForceRedraw = NeedsRedraw)
 
 
     def GetPlotParam(self, pname, ctype = None):
@@ -116,6 +118,9 @@ class SubPlotWrapper:
 
     def DrawGraph(self):
         self.graph.draw()
+
+    def RefreshGraph(self):
+        self.graph.refresh()
 
     def OpenSubplotSettings(self):
         self.graph.OpenSettings()
@@ -456,7 +461,7 @@ class SettingsFrame(Tk.Toplevel):
 
         else:
             self.parent.plot_aspect = self.AspectVar.get()
-            self.parent.RefreshCanvas()
+            self.parent.RenewCanvas(ForceRedraw = True)
 
 
     def TitleChanged(self, *args):
@@ -464,14 +469,15 @@ class SettingsFrame(Tk.Toplevel):
             pass
         else:
             self.parent.show_title = self.TitleVar.get()
-            self.parent.RefreshCanvas()
+            self.parent.RenewCanvas()
 
     def RadioLinked(self, *args):
+        # If the shared axes are changed, the whole plot must be redrawn
         if self.LinkedVar.get() == self.parent.LinkSpatial:
             pass
         else:
             self.parent.LinkSpatial = self.LinkedVar.get()
-            self.parent.RefreshCanvas()
+            self.parent.RenewCanvas(ForceRedraw = True)
 
 
     def CmapChanged(self, *args):
@@ -493,7 +499,7 @@ class SettingsFrame(Tk.Toplevel):
                 self.parent.electron_fit_color = 'lime'
 
 
-            self.parent.RefreshCanvas()
+            self.parent.RenewCanvas()
 
 
     def SkipSizeChanged(self, *args):
@@ -582,21 +588,21 @@ class SettingsFrame(Tk.Toplevel):
             pass
         else:
             self.parent.xlim[0] = self.LimVar.get()
-            self.parent.RefreshCanvas()
+            self.parent.RenewCanvas()
 
     def yLimChanged(self, *args):
         if self.yLimVar.get()==self.parent.ylim[0]:
             pass
         else:
             self.parent.ylim[0] = self.yLimVar.get()
-            self.parent.RefreshCanvas()
+            self.parent.RenewCanvas()
 
     def SettingsCallback(self, e):
         to_reload = self.CheckIfXLimChanged()
         to_reload += self.CheckIfYLimChanged()
 
         if to_reload:
-            self.parent.RefreshCanvas()
+            self.parent.RenewCanvas()
 
 
     def OnReload(self, event=None):
@@ -727,14 +733,14 @@ class MeasureFrame(Tk.Toplevel):
             pass
         else:
             self.parent.PowerLawFitElectron[0] = self.PLFitEVar.get()
-            self.parent.RefreshCanvas()
+            self.parent.RenewCanvas()
 
     def PLFitPChanged(self, *args):
         if self.PLFitPVar.get() == self.parent.PowerLawFitIon[0]:
             pass
         else:
             self.parent.PowerLawFitIon[0] = self.PLFitPVar.get()
-            self.parent.RefreshCanvas()
+            self.parent.RenewCanvas()
 
     def CheckIfTeChanged(self):
         to_reload = False
@@ -801,14 +807,14 @@ class MeasureFrame(Tk.Toplevel):
             pass
         else:
             self.parent.set_Te = self.SetTeVar.get()
-            self.parent.RefreshCanvas()
+            self.parent.RenewCanvas()
 
     def SetTpChanged(self, *args):
         if self.SetTpVar.get()==self.parent.set_Tp:
             pass
         else:
             self.parent.set_Tp = self.SetTpVar.get()
-            self.parent.RefreshCanvas()
+            self.parent.RenewCanvas()
 
     def TxtEnter(self, e):
         self.MeasuresCallback()
@@ -818,7 +824,7 @@ class MeasureFrame(Tk.Toplevel):
             pass
         else:
             self.parent.e_relative = self.RelVar.get()
-            self.parent.RefreshCanvas()
+            self.parent.RenewCanvas()
 
 
 
@@ -837,7 +843,7 @@ class MeasureFrame(Tk.Toplevel):
         to_reload += self.CheckIfTpChanged()
         to_reload += self.CheckIfPLChanged()
         if to_reload:
-            self.parent.RefreshCanvas()
+            self.parent.RenewCanvas()
 
     def OnClosing(self):
         self.parent.settings_window = None
@@ -889,10 +895,12 @@ class MainApp(Tk.Tk):
 
 
         self.numOfRows = Tk.IntVar(self)
-        self.numOfRows.set(3)
+#        self.numOfRows.set(3)
+        self.numOfRows.set(2)
         self.numOfRows.trace('w', self.UpdateGridSpec)
         self.numOfColumns = Tk.IntVar(self)
-        self.numOfColumns.set(2)
+#        self.numOfColumns.set(2)
+        self.numOfColumns.set(1)
         self.numOfColumns.trace('w', self.UpdateGridSpec)
         self.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.93, 'bottom':0.06, 'wspace':0.15, 'hspace':0.15}
         matplotlib.rc('figure.subplot', **self.SubPlotParams)
@@ -1216,7 +1224,7 @@ class MainApp(Tk.Tk):
         self.MakePrevCtypeList()
         self.canvas.show()
         self.canvas.get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
-        self.RefreshCanvas()
+        self.ReDrawCanvas()
 
 
         self.f.canvas.mpl_connect('button_press_event', self.onclick)
@@ -1230,7 +1238,7 @@ class MainApp(Tk.Tk):
         '''A function that handles updates the gridspec that divides up of the
         plot into X x Y subplots'''
         self.gs0 = gridspec.GridSpec(self.numOfRows.get(),self.numOfColumns.get())
-        self.RefreshCanvas(keep_view = False)
+        self.RenewCanvas(keep_view = False, ForceRedraw = True)
 
     def LoadAllKeys(self):
         ''' A function that will find out will arrays need to be loaded for
@@ -1419,8 +1427,23 @@ class MainApp(Tk.Tk):
 
         # We must now figure out the pos of the charts that changed in the earlier view.
 
-    def RefreshCanvas(self, keep_view = True):
-        # If we change one of the plots from
+
+    def RenewCanvas(self, keep_view = True, ForceRedraw = False):
+
+        '''We have two way of updated the graphs: one) by refreshing them using
+        self.RefreshCanvas, we don't recreate all of the artists that matplotlib
+        needs to make the plot work. self.RefreshCanvas should be fast. Two we
+        can ReDraw the canvas using self.ReDrawCanvas. This recreates all the
+        artists and will be slow. Sometimes the graph must be redrawn however,
+        if the GridSpec changed, more plots are added, the chartype changed, if
+        the plot went from 2d to 1D, etc.. If any change occurs that requires a
+        redraw, renewcanvas must be called with ForceRedraw = True. '''
+
+        if ForceRedraw:
+            self.ReDrawCanvas(keep_view = keep_view)
+        else:
+            self.RefreshCanvas()
+    def ReDrawCanvas(self, keep_view = True):
         #  We need to see if the user has moved around the zoom level in python.
         # First we see if there are any views in the toolbar
         cur_view =  self.toolbar._views.__call__()
@@ -1503,6 +1526,60 @@ class MainApp(Tk.Tk):
             self.PrintFig()
 
 
+    def RefreshCanvas(self, keep_view = True):
+        #  We need to see if the user has moved around the zoom level in python.
+        # First we see if there are any views in the toolbar
+        cur_view =  self.toolbar._views.__call__()
+
+        if cur_view is None:
+            keep_view = False
+        if self.NewDirectory:
+            keep_view = False
+        if keep_view:
+            self.SaveView()
+
+        self.LoadAllKeys()
+
+        # Calculate the new shock location
+        self.shock_loc = self.DataDict['time'][0]*self.shock_speed
+
+        # By design, the first_x and first_y cannot change if the graph is
+        # being refreshed. Any call that would require this needs a redraw
+        # Find the first position with a physical x and y direction:
+
+        k = 0
+        for i in range(self.numOfRows.get()):
+            for j in range(self.numOfColumns.get()):
+                # Now find the position in the views_list
+                if self.SubPlotList[i][j].chartType == 'SpectraPlot':
+                    self.SubPlotList[i][j].pos_in_views = k
+                    k += 1
+                elif self.SubPlotList[i][j].chartType == 'PhasePlot':
+                    self.SubPlotList[i][j].pos_in_views = k
+                    k += 2
+                elif  self.SubPlotList[i][j].GetPlotParam('twoD'):
+                    self.SubPlotList[i][j].pos_in_views = k
+                    k += 2
+                else:
+                    self.SubPlotList[i][j].pos_in_views = k
+                    k += 1
+
+
+                # Now... We can refresh the graph.
+                self.SubPlotList[i][j].RefreshGraph()
+        if self.show_title:
+            self.f.suptitle(os.path.abspath(self.dirname)+ ' at time t = %d $\omega_{pe}$'  % round(self.DataDict['time'][0]), size = 15)
+
+        if keep_view:
+            self.LoadView()
+
+        self.MakePrevCtypeList()
+        self.canvas.show()
+        self.canvas.get_tk_widget().update_idletasks()
+
+        if self.recording:
+            self.PrintFig()
+
     def PrintFig(self):
         movie_dir = os.path.abspath(os.path.join(self.dirname, '..', 'Movie'))
         try:
@@ -1583,7 +1660,7 @@ class MainApp(Tk.Tk):
 
     def setKnob(self, value):
         # If the time parameter changes update the plots
-        self.RefreshCanvas()
+        self.RenewCanvas()
 
     def TxtEnter(self, e):
         self.playbackbar.TextCallback()

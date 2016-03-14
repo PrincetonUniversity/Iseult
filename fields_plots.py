@@ -1,4 +1,4 @@
-#!/usr/bin/env pythonw
+#!/usr/bin/env python
 import Tkinter as Tk
 import ttk as ttk
 import matplotlib
@@ -28,6 +28,9 @@ class FieldsPanel:
                        'spatial_y': None,
                        'interpolation': 'hermite'}
 
+    b_key_names = ['bx', 'by', 'bz']
+    e_key_names = ['ex', 'ey', 'ez']
+
     def __init__(self, parent, figwrapper):
         self.settings_window = None
         self.FigWrap = figwrapper
@@ -39,6 +42,7 @@ class FieldsPanel:
         self.InterpolationMethods = ['nearest', 'bilinear', 'bicubic', 'spline16',
             'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
+
 
 
     def ChangePlotType(self, str_arg):
@@ -53,7 +57,7 @@ class FieldsPanel:
         ### Commenting out this because loading the HDF5 file is more expensive
         ### than just storing it in RAM. Therefore I should just load everything
         '''
-        self.arrs_needed = ['c_omp', 'istep', 'sizex']
+        self.arrs_needed = ['c_omp', 'istep']
         # Then see if we are plotting E-field or B-Field
         if self.GetPlotParam('field_type') == 0: # Load the B-Field
             if self.GetPlotParam('show_x'):
@@ -74,15 +78,102 @@ class FieldsPanel:
         self.arrs_needed = ['c_omp', 'istep', 'bx', 'by', 'bz', 'ex', 'ey', 'ez']
         return self.arrs_needed
 
-    def draw(self):
-        # Get the x, y, and z colors from the colormap
+    def LoadData(self):
+        ''' A Helper function that loads the data for the plot'''
+        # First see of the x_axis and y_axis values have already been calculated
+        # and stored in the DataDict for this time step
+        self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
+        self.istep = self.FigWrap.LoadKey('istep')[0]
         self.xcolor = new_cmaps.cmaps[self.parent.cmap](0.2)
         self.ycolor = new_cmaps.cmaps[self.parent.cmap](0.5)
         self.zcolor = new_cmaps.cmaps[self.parent.cmap](0.8)
 
+        # see if the axis values are saved in the data dict
+        if 'xaxis_values' in self.parent.DataDict.keys():
+            self.xaxis_values = self.parent.DataDict['xaxis_values']
+        else:
+            # x-values haven't been calculated yet, generate them then save them to the dictionary for later.
+            self.xaxis_values = np.arange(self.FigWrap.LoadKey('bx')[0,:,:].shape[1])/self.c_omp*self.istep
+        #            print self.xaxis_values
+            self.parent.DataDict['xaxis_values'] = np.copy(self.xaxis_values)
 
-        self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
-        self.istep = self.FigWrap.LoadKey('istep')[0]
+        # Now the y_values Not needed so commenting out
+        '''
+        if 'yaxis_values' in self.parent.DataDict.keys():
+            self.yaxis_values = self.parent.DataDict('y_values')
+        else:
+            self.yaxis_values = np.arange(self.FigWrap.LoadKey('bx')[0,:,:].shape[0])/self.c_omp*self.istep
+            self.parent.DataDict('yaxis_values') = self.yaxis_values
+        '''
+
+
+        if self.GetPlotParam('field_type') == 0: # Load the B-Field
+            self.fx = self.FigWrap.LoadKey('bx')[0,:,:]
+            self.fy = self.FigWrap.LoadKey('by')[0,:,:]
+            self.fz = self.FigWrap.LoadKey('bz')[0,:,:]
+
+
+            # Have we already calculated min/max?
+            if 'bxmin_max' in self.parent.DataDict.keys():
+                self.bxmin_max = self.parent.DataDict['bxmin_max']
+
+            else:
+                self.bxmin_max =  [self.fx.min(), self.fx.max()]
+                self.parent.DataDict['bxmin_max'] = list(self.bxmin_max)
+
+            if 'bymin_max' in self.parent.DataDict.keys():
+                self.bymin_max = self.parent.DataDict['bymin_max']
+
+            else:
+                self.bymin_max =  [self.fy.min(), self.fy.max()]
+                self.parent.DataDict['bymin_max'] = list(self.bymin_max)
+
+            if 'bzmin_max' in self.parent.DataDict.keys():
+                self.bzmin_max = self.parent.DataDict['bzmin_max']
+
+            else:
+                self.bzmin_max =  [self.fz.min(), self.fz.max()]
+                self.parent.DataDict['bzmin_max'] = list(self.bzmin_max)
+
+            self.annotate_text_list = [r'$B_x$', r'$B_y$',r'$B_z$']
+        if self.GetPlotParam('field_type') == 1: # Load the e-Field
+            self.fx = self.FigWrap.LoadKey('ex')[0,:,:]
+            self.fy = self.FigWrap.LoadKey('ey')[0,:,:]
+            self.fz = self.FigWrap.LoadKey('ez')[0,:,:]
+
+            # Have we already calculated min/max?
+
+
+            if 'exmin_max' in self.parent.DataDict.keys():
+                self.exmin_max = self.parent.DataDict['exmin_max']
+
+            else:
+                self.exmin_max =  [self.fx.min(), self.fx.max()]
+                self.parent.DataDict['exmin_max'] = list(self.exmin_max)
+
+            if 'eymin_max' in self.parent.DataDict.keys():
+                self.eymin_max = self.parent.DataDict['eymin_max']
+
+            else:
+                self.eymin_max =  [self.fy.min(), self.fy.max()]
+                self.parent.DataDict['eymin_max'] = list(self.eymin_max)
+
+            if 'ezmin_max' in self.parent.DataDict.keys():
+                self.ezmin_max = self.parent.DataDict['ezmin_max']
+
+            else:
+                self.ezmin_max =  [self.fz.min(), self.fz.max()]
+                self.parent.DataDict['ezmin_max'] = list(self.ezmin_max)
+            self.annotate_text_list = [r'$E_x$',r'$E_y$',r'$E_z$']
+    def draw(self):
+
+        ''' A function that draws the data. In the interest in speeding up the
+        code, draw should only be called when you want to recreate the whole
+        figure, i.e. it  will be slow. Most times you will only want to update
+        what has changed in the figure. This will be done in a function called
+        refresh, that should be much much faster.'''
+
+
 
         if self.GetPlotParam('OutlineText'):
             self.annotate_kwargs = {'horizontalalignment': 'right',
@@ -95,48 +186,15 @@ class FieldsPanel:
             'verticalalignment' : 'top',
             'size' : 18}
 
+
         # Set the tick color
         tick_color = 'black'
 
         # Create a gridspec to handle spacing better
-        self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])#, bottom=0.2,left=0.1,right=0.95, top = 0.95)
+        self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])
 
-        self.fx = None
-        self.fy = None
-        self.fz = None
-
-        if self.GetPlotParam('field_type') == 0: # Load the B-Field
-            if self.GetPlotParam('show_x'):
-                self.fx = self.FigWrap.LoadKey('bx')[0,:,:]
-            if self.GetPlotParam('show_y'):
-                self.fy = self.FigWrap.LoadKey('by')[0,:,:]
-            if self.GetPlotParam('show_z'):
-                self.fz = self.FigWrap.LoadKey('bz')[0,:,:]
-
-        if self.GetPlotParam('field_type') == 1: # Load the e-Field
-            if self.GetPlotParam('show_x'):
-                self.fx = self.FigWrap.LoadKey('ex')[0,:,:]
-            if self.GetPlotParam('show_y'):
-                self.fy = self.FigWrap.LoadKey('ey')[0,:,:]
-            if self.GetPlotParam('show_z'):
-                self.fz = self.FigWrap.LoadKey('ez')[0,:,:]
-
-        # Generate the x and y axes
-        if self.GetPlotParam('show_x'):
-            self.y_values =  np.arange(self.fx.shape[0])/self.c_omp*self.istep
-            self.x_values =  np.arange(self.fx.shape[1])/self.c_omp*self.istep
-
-        elif self.GetPlotParam('show_y'):
-            self.y_values =  np.arange(self.fy.shape[0])/self.c_omp*self.istep
-            self.x_values =  np.arange(self.fy.shape[1])/self.c_omp*self.istep
-
-
-        elif self.GetPlotParam('show_z'):
-            self.y_values =  np.arange(self.fz.shape[0])/self.c_omp*self.istep
-            self.x_values =  np.arange(self.fz.shape[1])/self.c_omp*self.istep
-
-
-        self.zval = None
+        #load the data
+        self.LoadData()
         # Now that the data is loaded, start making the plots
         if self.GetPlotParam('twoD'):
             if self.parent.LinkSpatial != 0:
@@ -197,7 +255,6 @@ class FieldsPanel:
             self.vmax = None
             if self.GetPlotParam('set_z_max'):
                 self.vmax = self.GetPlotParam('z_max')
-
             if self.parent.plot_aspect:
                 self.cax = self.axes.imshow(self.zval,
                     cmap = new_cmaps.cmaps[self.parent.cmap],
@@ -209,36 +266,43 @@ class FieldsPanel:
             else:
                 self.cax = self.axes.imshow(self.zval,
                     cmap = new_cmaps.cmaps[self.parent.cmap],
-                    origin = 'lower', aspect = 'auto',
+                    origin = 'lower',
+                    aspect = 'auto',
                     extent = (self.xmin,self.xmax, self.ymin, self.ymax),
                     vmin = self.vmin,
                     vmax = self.vmax,
                     interpolation=self.GetPlotParam('interpolation'))
 
-            self.axes.annotate(self.two_d_labels[self.GetPlotParam('field_type')],
+
+
+            self.TwoDan = self.axes.annotate(self.two_d_labels[self.GetPlotParam('field_type')],
                             xy = (0.9,.9),
                             xycoords= 'axes fraction',
                             color = 'white',
                             **self.annotate_kwargs)
+
             self.axes.set_axis_bgcolor('lightgrey')
 
-            if self.GetPlotParam('show_cbar'):
-                self.axC = self.figure.add_subplot(self.gs[:4,:])
-                self.cbar = self.figure.colorbar(self.cax, ax = self.axes, cax = self.axC, orientation = 'horizontal')
+            self.axC = self.figure.add_subplot(self.gs[:4,:])
+            self.cbar = self.figure.colorbar(self.cax, ax = self.axes, cax = self.axC, orientation = 'horizontal')
 
-                cmin = self.zval.min()
-                if self.vmin:
-                    cmin = self.vmin
-                cmax = self.zval.max()
-                if self.vmax:
-                    cmax = self.vmax
+            cmin = self.zval.min()
+            if self.vmin:
+                cmin = self.vmin
+            cmax = self.zval.max()
+            if self.vmax:
+                cmax = self.vmax
+            self.cbar.set_ticks(np.linspace(cmin, cmax, 5))
+            self.cbar.ax.tick_params(labelsize=self.parent.num_font_size)
 
-                self.cbar.set_ticks(np.linspace(cmin, cmax, 5))
-                self.cbar.ax.tick_params(labelsize=self.parent.num_font_size)
+            if self.GetPlotParam('show_cbar') == 0:
+                self.cbar.set_visible = False
 
-            if self.GetPlotParam('show_shock'):
-                self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
+
+
+            self.shockline_2d = self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
                                     PathEffects.Normal()])
+            self.shockline_2d.set_visible(self.GetPlotParam('show_shock'))
 
             self.axes.set_axis_bgcolor('lightgrey')
             self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
@@ -261,45 +325,52 @@ class FieldsPanel:
                 self.axes = self.figure.add_subplot(self.gs[18:92,:])
 
             self.annotate_pos = [0.8,0.9]
-            if self.GetPlotParam('show_x'):
-                self.axes.plot(self.x_values, self.fx[self.fx.shape[0]/2,:], color = self.xcolor)
-                if self.GetPlotParam('field_type') == 0:
-                    tmp_str = r'$B_x$'
-                else:
-                    tmp_str = r'$E_x$'
-                self.axes.annotate(tmp_str, xy = self.annotate_pos,
-                                xycoords = 'axes fraction',
-                                color = self.xcolor,
-                                **self.annotate_kwargs)
-                self.annotate_pos[0] += .08
-            if self.GetPlotParam('show_y'):
-                self.axes.plot(self.x_values, self.fy[self.fy.shape[0]/2,:], color = self.ycolor)
-                if self.GetPlotParam('field_type') == 0:
-                    tmp_str = r'$B_y$'
-                else:
-                    tmp_str = r'$E_y$'
-                self.axes.annotate(tmp_str, xy = self.annotate_pos,
-                                xycoords= 'axes fraction',
-                                color = self.ycolor,
-                                **self.annotate_kwargs)
+            self.linex = self.axes.plot(self.xaxis_values, self.fx[self.fx.shape[0]/2,:], color = self.xcolor)
+            self.linex[0].set_visible(self.GetPlotParam('show_x'))
+            if self.GetPlotParam('field_type') == 0:
+                tmp_str = r'$B_x$'
+            else:
+                tmp_str = r'$E_x$'
+            self.anx = self.axes.annotate(tmp_str, xy = self.annotate_pos,
+                            xycoords = 'axes fraction',
+                            color = self.xcolor,
+                            **self.annotate_kwargs)
+            self.anx.set_visible(self.GetPlotParam('show_x'))
 
-                self.annotate_pos[0] += .08
+            self.annotate_pos[0] += .08
+            self.liney = self.axes.plot(self.xaxis_values, self.fy[self.fy.shape[0]/2,:], color = self.ycolor)
+            self.liney[0].set_visible(self.GetPlotParam('show_y'))
+            if self.GetPlotParam('field_type') == 0:
+                tmp_str = r'$B_y$'
+            else:
+                tmp_str = r'$E_y$'
+            self.any =self.axes.annotate(tmp_str, xy = self.annotate_pos,
+                            xycoords= 'axes fraction',
+                            color = self.ycolor,
+                            **self.annotate_kwargs)
 
-            if self.GetPlotParam('show_z'):
-                self.axes.plot(self.x_values, self.fz[self.fz.shape[0]/2,:], color = self.zcolor)
-                if self.GetPlotParam('field_type') == 0:
-                    tmp_str = r'$B_z$'
-                else:
-                    tmp_str = r'$E_z$'
-                self.axes.annotate(tmp_str, xy = self.annotate_pos,
+            self.any.set_visible(self.GetPlotParam('show_y'))
+            self.annotate_pos[0] += .08
+
+
+            self.linez = self.axes.plot(self.xaxis_values, self.fz[self.fz.shape[0]/2,:], color = self.zcolor)
+            self.linez[0].set_visible(self.GetPlotParam('show_z'))
+
+            if self.GetPlotParam('field_type') == 0:
+                tmp_str = r'$B_z$'
+            else:
+                tmp_str = r'$E_z$'
+            self.anz = self.axes.annotate(tmp_str, xy = self.annotate_pos,
                                 xycoords= 'axes fraction',
                                 color = self.zcolor,
                                 **self.annotate_kwargs
                                 )
+            self.anz.set_visible(self.GetPlotParam('show_z'))
 
-            if self.GetPlotParam('show_shock'):
-                self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
+            self.shock_line = self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
                         PathEffects.Normal()])
+
+            self.shock_line.set_visible(self.GetPlotParam('show_shock'))
 
             self.axes.set_axis_bgcolor('lightgrey')
             self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)#, tick1On= False, tick2On= False)
@@ -307,14 +378,120 @@ class FieldsPanel:
             if self.parent.xlim[0]:
                 self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
             else:
-                self.axes.set_xlim(self.x_values[0],self.x_values[-1])
+                self.axes.set_xlim(self.xaxis_values[0],self.xaxis_values[-1])
+
+
+            self.axes.relim(visible_only=True)
+            self.axes.autoscale_view(scaley = True)
             if self.GetPlotParam('set_z_min'):
-                print self.GetPlotParam('z_min')
                 self.axes.set_ylim(ymin = self.GetPlotParam('z_min'))
             if self.GetPlotParam('set_z_max'):
                 self.axes.set_ylim(ymax = self.GetPlotParam('z_max'))
 
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
+
+    def refresh(self):
+
+        '''This is a function that will be called only if self.axes already
+        holds a fields type plot. We only update things that have changed.  If
+        hasn't changed, don't touch it. The difference between this and last
+        time, is that we won't actually do any drawing in the plot. The plot
+        will be redrawn after all subplots are refreshed. '''
+        self.LoadData()
+
+        # Main goal, only change what is showing..
+        # First do the 1D plots, because it is simpler
+        if self.GetPlotParam('twoD') == 0:
+            if self.GetPlotParam('show_x'):
+                self.linex[0].set_data(self.xaxis_values, self.fx[self.fx.shape[0]/2,:])
+                self.linex[0].set_color(self.xcolor)
+                self.anx.set_color(self.xcolor)
+
+
+            if self.GetPlotParam('show_y'):
+                self.liney[0].set_data(self.xaxis_values, self.fy[self.fy.shape[0]/2,:])
+                self.liney[0].set_color(self.ycolor)
+                self.any.set_color(self.ycolor)
+
+
+            if self.GetPlotParam('show_z'):
+                self.linez[0].set_data(self.xaxis_values, self.fz[self.fz.shape[0]/2,:])
+                self.linez[0].set_color(self.zcolor)
+                self.anz.set_color(self.zcolor)
+
+
+            if self.GetPlotParam('show_shock'):
+                self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
+
+            self.axes.relim(visible_only=True)
+            self.axes.autoscale_view(scaley = True)
+            if self.parent.xlim[0]:
+                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+            else:
+                self.axes.set_xlim(self.xaxis_values[0], self.xaxis_values[-1])
+
+            if self.GetPlotParam('set_z_min'):
+                self.axes.set_ylim(ymin = self.GetPlotParam('z_min'))
+            if self.GetPlotParam('set_z_max'):
+                self.axes.set_ylim(ymax = self.GetPlotParam('z_max'))
+
+        else: # Now refresh the plot if it is 2D
+            if self.GetPlotParam('show_x'):
+                self.cax.set_data(self.fx)
+                self.ymin = 0
+                self.ymax =  self.fx.shape[0]/self.c_omp*self.istep
+                self.xmin = 0
+                self.xmax =  self.fx.shape[1]/self.c_omp*self.istep
+                if self.GetPlotParam('field_type') == 0:
+                    self.clims = self.bxmin_max
+                    self.TwoDan.set_text(r'$B_x$')
+                else:
+                    self.clims = self.exmin_max
+                    self.TwoDan.set_text(r'$E_x$')
+
+            if self.GetPlotParam('show_y'):
+                self.cax.set_data(self.fy)
+                self.ymin = 0
+                self.ymax =  self.fy.shape[0]/self.c_omp*self.istep
+                self.xmin = 0
+                self.xmax =  self.fy.shape[1]/self.c_omp*self.istep
+                if self.GetPlotParam('field_type') == 0:
+                    self.clims = self.bymin_max
+                    self.TwoDan.set_text(r'$B_y$')
+                else:
+                    self.clims = self.eymin_max
+                    self.TwoDan.set_text(r'$E_y$')
+
+            if self.GetPlotParam('show_z'):
+                self.cax.set_data(self.fz)
+                self.ymin = 0
+                self.ymax =  self.fz.shape[0]/self.c_omp*self.istep
+                self.xmin = 0
+                self.xmax =  self.fz.shape[1]/self.c_omp*self.istep
+                if self.GetPlotParam('field_type') == 0:
+                    self.clims = self.bzmin_max
+                    self.TwoDan.set_text(r'$B_z$')
+                else:
+                    self.clims = self.ezmin_max
+                    self.TwoDan.set_text(r'$E_z$')
+
+            self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
+
+
+            self.cax.set_clim(self.clims)
+
+            self.climArgs = {}
+            if self.GetPlotParam('set_z_min'):
+                self.climArgs['vmin'] =  self.GetPlotParam('z_min')
+            if self.GetPlotParam('set_z_max'):
+                self.climArgs['vmax'] =  self.GetPlotParam('z_max')
+            if len(self.climArgs)>0:
+                self.cax.set_clim(**self.climArgs)
+
+            self.cbar.set_ticks(np.linspace(self.cax.get_clim()[0],self.cax.get_clim()[1], 5))
+
+            if self.GetPlotParam('show_shock'):
+                self.shockline_2d.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
 
 
     def GetPlotParam(self, keyname):
@@ -452,10 +629,20 @@ class FieldSettings(Tk.Toplevel):
         self.ShockVar.set(self.parent.GetPlotParam('show_shock'))
         cb = ttk.Checkbutton(frm, text = "Show Shock",
                         variable = self.ShockVar,
-                        command = lambda:
-                        self.parent.SetPlotParam('show_shock', self.ShockVar.get()))
+                        command = self.ShockVarHandler)
         cb.grid(row = 6, column = 1, sticky = Tk.W)
 
+
+    def ShockVarHandler(self, *args):
+        if self.parent.GetPlotParam('show_shock')== self.ShockVar.get():
+            pass
+        else:
+            if self.parent.GetPlotParam('twoD'):
+                self.parent.shockline_2d.set_visible(self.ShockVar.get())
+            else:
+                self.parent.shock_line.set_visible(self.ShockVar.get())
+
+            self.parent.SetPlotParam('show_shock', self.ShockVar.get())
 
     def Change2d(self):
 
@@ -508,6 +695,15 @@ class FieldSettings(Tk.Toplevel):
         if self.FieldTypeVar.get() == self.parent.GetPlotParam('field_type'):
             pass
         else:
+            if self.FieldTypeVar.get() == 0:
+                self.parent.anx.set_text(r'$B_x$')
+                self.parent.any.set_text(r'$B_y$')
+                self.parent.anz.set_text(r'$B_z$')
+            else:
+                self.parent.anx.set_text(r'$E_x$')
+                self.parent.any.set_text(r'$E_y$')
+                self.parent.anz.set_text(r'$E_z$')
+
             self.parent.SetPlotParam('field_type', self.FieldTypeVar.get())
 
     def Selector(self):
@@ -560,12 +756,18 @@ class FieldSettings(Tk.Toplevel):
         else:
 
             if self.parent.GetPlotParam('show_x') != self.ShowXVar.get():
+                self.parent.linex[0].set_visible(self.ShowXVar.get())
+                self.parent.anx.set_visible(self.ShowXVar.get())
                 self.parent.SetPlotParam('show_x', self.ShowXVar.get())
 
             elif self.parent.GetPlotParam('show_y') != self.ShowYVar.get():
+                self.parent.liney[0].set_visible(self.ShowYVar.get())
+                self.parent.any.set_visible(self.ShowYVar.get())
                 self.parent.SetPlotParam('show_y', self.ShowYVar.get())
 
             elif self.parent.GetPlotParam('show_z') != self.ShowZVar.get():
+                self.parent.linez[0].set_visible(self.ShowZVar.get())
+                self.parent.anz.set_visible(self.ShowZVar.get())
                 self.parent.SetPlotParam('show_z', self.ShowZVar.get())
 
     def TxtEnter(self, e):
