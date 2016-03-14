@@ -71,7 +71,7 @@ class FieldsPanel:
             if self.GetPlotParam('show_z'):
                 self.arrs_needed.append('ez')
         '''
-        self.arrs_needed = ['c_omp', 'istep', 'sizex', 'bx', 'by', 'bz', 'ex', 'ey', 'ez']
+        self.arrs_needed = ['c_omp', 'istep', 'bx', 'by', 'bz', 'ex', 'ey', 'ez']
         return self.arrs_needed
 
     def draw(self):

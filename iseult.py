@@ -676,7 +676,7 @@ class MeasureFrame(Tk.Toplevel):
         self.SetTpVar.set(self.parent.set_Tp)
         self.SetTpVar.trace('w', self.SetTpChanged)
 
-        cb = ttk.Checkbutton(frm, text='Show T_p', variable =  self.SetTpVar)
+        cb = ttk.Checkbutton(frm, text='Show T_i', variable =  self.SetTpVar)
         cb.grid(row = 6, sticky = Tk.W)
         ttk.Label(frm, text=u'\u0394'+u'\u0263' + ' =').grid(row= 6, column =1, sticky = Tk.N)
 
@@ -688,6 +688,53 @@ class MeasureFrame(Tk.Toplevel):
 
         ttk.Entry(frm, textvariable=self.delgameVar, width = 7).grid(row = 5, column = 2, sticky = Tk.N)
         ttk.Entry(frm, textvariable=self.delgampVar, width = 7).grid(row = 6, column =2, sticky = Tk.N)
+
+        ttk.Label(frm, text='Powerlaw fits:').grid(row = 8, sticky = Tk.W)
+        ttk.Label(frm, text='E_min [mc^2]').grid(row = 8, column = 1, sticky = Tk.N)
+        ttk.Label(frm, text='E_max [mc^2]').grid(row = 8, column = 2, sticky = Tk.N)
+
+        self.PLFitEVar = Tk.IntVar()
+        self.PLFitEVar.set(self.parent.PowerLawFitElectron[0])
+        self.PLFitEVar.trace('w', self.PLFitEChanged)
+        ttk.Checkbutton(frm, text='Electrons', variable =  self.PLFitEVar).grid(row = 9, sticky = Tk.W)
+
+        self.E1Var = Tk.StringVar()
+        self.E1Var.set(str(self.parent.PowerLawFitElectron[1]))
+        self.E2Var = Tk.StringVar()
+        self.E2Var.set(str(self.parent.PowerLawFitElectron[2]))
+
+
+        ttk.Entry(frm, textvariable=self.E1Var, width = 7).grid(row = 9, column = 1, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.E2Var, width = 7).grid(row = 9, column =2, sticky = Tk.N)
+
+
+        self.PLFitPVar = Tk.IntVar()
+        self.PLFitPVar.set(self.parent.PowerLawFitIon[0])
+        self.PLFitPVar.trace('w', self.PLFitPChanged)
+        ttk.Checkbutton(frm, text='Ions', variable =  self.PLFitPVar).grid(row = 10, sticky = Tk.W)
+
+        self.P1Var = Tk.StringVar()
+        self.P1Var.set(str(self.parent.PowerLawFitIon[1]))
+        self.P2Var = Tk.StringVar()
+        self.P2Var.set(str(self.parent.PowerLawFitIon[2]))
+
+        ttk.Entry(frm, textvariable=self.P1Var, width = 7).grid(row = 10, column = 1, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.P2Var, width = 7).grid(row = 10, column =2, sticky = Tk.N)
+
+
+    def PLFitEChanged(self, *args):
+        if self.PLFitEVar.get() == self.parent.PowerLawFitElectron[0]:
+            pass
+        else:
+            self.parent.PowerLawFitElectron[0] = self.PLFitEVar.get()
+            self.parent.RefreshCanvas()
+
+    def PLFitPChanged(self, *args):
+        if self.PLFitPVar.get() == self.parent.PowerLawFitIon[0]:
+            pass
+        else:
+            self.parent.PowerLawFitIon[0] = self.PLFitPVar.get()
+            self.parent.RefreshCanvas()
 
     def CheckIfTeChanged(self):
         to_reload = False
@@ -715,6 +762,26 @@ class MeasureFrame(Tk.Toplevel):
             self.delgampVar.set(str(self.parent.delgam_p))
         return to_reload
 
+
+    def CheckIfPLChanged(self):
+        to_reload = False
+
+        PLList = [self.parent.PowerLawFitElectron, self.parent.PowerLawFitIon]
+        VarList = [[self.E1Var, self.E2Var], [self.P1Var, self.P2Var]]
+
+        for j in range(2):
+            for k in range(2):
+                try:
+                    #make sure the user types in a int
+                    if np.abs(float(VarList[j][k].get())- PLList[j][k+1])>1E-6:
+
+                        PLList[j][k+1] = float(VarList[j][k].get())
+                        to_reload += True
+
+                except ValueError:
+                    #if they type in random stuff, just set it to the value
+                    VarList[j][k].set(str(PLList[j][k+1]))
+        return to_reload
 
     def CheckIfIntChanged(self, tkVar, valVar):
         to_reload = False
@@ -758,14 +825,17 @@ class MeasureFrame(Tk.Toplevel):
     def MeasuresCallback(self):
         tkvarIntList = [self.ileft, self.iright, self.eleft, self.eright]
         IntValList = [self.parent.i_L, self.parent.i_R, self.parent.e_L, self.parent.e_R]
+
         to_reload = False
+
+
 
         for j in range(len(tkvarIntList)):
             to_reload += self.CheckIfIntChanged(tkvarIntList[j], IntValList[j])
 
         to_reload += self.CheckIfTeChanged()
         to_reload += self.CheckIfTpChanged()
-
+        to_reload += self.CheckIfPLChanged()
         if to_reload:
             self.parent.RefreshCanvas()
 
@@ -1215,11 +1285,19 @@ class MainApp(Tk.Tk):
                 if len(tmplist)> 0:
                     with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
                         for elm in tmplist:
-                            # Load all the keys
-                            if elm == 'spect_dens':
-                                self.DataDict[elm] = f['dens'][:]
-                            else:
-                                self.DataDict[elm] = f[elm][:]
+                            try:
+                                # Load all the keys
+                                if elm == 'spect_dens':
+                                    self.DataDict[elm] = f['dens'][:]
+                                else:
+                                    self.DataDict[elm] = f[elm][:]
+
+                            except KeyError:
+                                if elm == 'sizex':
+                                    self.DataDict[elm] = 1
+                                else:
+                                    raise
+
             self.timestep_queue.append(self.TimeStep.value)
 
         else:
@@ -1232,11 +1310,18 @@ class MainApp(Tk.Tk):
                     with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
                         for elm in tmplist:
                         # Load all the keys
-                            if elm == 'spect_dens':
-                                self.DataDict[elm] = f['dens'][:]
-                            else:
-                                self.DataDict[elm] = f[elm][:]
-            if len(self.timestep_visited)>10:
+                            try:
+                                if elm == 'spect_dens':
+                                    self.DataDict[elm] = f['dens'][:]
+                                else:
+                                    self.DataDict[elm] = f[elm][:]
+                            except KeyError:
+                                if elm == 'sizex':
+                                    self.DataDict[elm] = 1
+                                else:
+                                    raise
+            # don't keep more than 15 time steps in memory because of RAM issues
+            if len(self.timestep_visited)>30:
                 oldest_time = self.timestep_queue.popleft()
                 oldest_ind = self.timestep_visited.index(oldest_time)
                 self.timestep_visited.remove(oldest_time)

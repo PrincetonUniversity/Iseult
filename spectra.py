@@ -177,6 +177,8 @@ class SpectralPanel:
                     fpmommax = self.momentum**4*aconst*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
                     fpmommax *= np.exp(-self.gamma/self.parent.delgam_p)/(4*np.pi*self.momentum)/(self.gamma+1.0)
                     self.T_p, = self.axes.plot(self.momentum, fpmommax, color = self.parent.ion_fit_color, linestyle = '--', linewidth = 1.5)
+
+            self.PowerlawPworked = False
             if self.parent.PowerLawFitIon[0]:
                 # Find the part of the spectrum chosen by the fitting
                 #first convert to
@@ -186,11 +188,12 @@ class SpectralPanel:
                 impRight = self.momentum.searchsorted(mompright, side='Right')
 
                 # a while loop to make sure that the program won't mess up if mompdist == 0
-                while np.abs(self.mompdist[impLeft]) <= 1E-10:
+                while np.abs(self.mompdist[impLeft]) <= 1E-10 and impLeft < len(self.mompdist)-1:
                     impLeft += 1
-                while np.abs(self.mompdist[impRight]) <= 1E-10:
+                while np.abs(self.mompdist[impRight]) <= 1E-10 and impRight > 0:
                     impRight -=1
-                self.PowerlawPworked = False
+                print impLeft, impRight
+
                 if impRight>impLeft:
                     pslope, pintercept, pr_value, pp_value, pstderr = linregress(np.log(self.momentum[impLeft:impRight]), np.log(self.mompdist[impLeft:impRight]))
 
@@ -219,6 +222,7 @@ class SpectralPanel:
                     femommax *= np.exp(-self.gamma/self.delgame0)/(4*np.pi*self.momentum)/(self.gamma+1.0)
                     self.T_e, = self.axes.plot(self.momentum, femommax, color = self.parent.electron_fit_color, linestyle = '--', linewidth = 1.5)
 
+            self.PowerlawEworked = False
             if self.parent.PowerLawFitElectron[0]:
                 # Find the part of the spectrum chosen by the fitting
                 #first convert to
@@ -228,13 +232,13 @@ class SpectralPanel:
                 imeRight = self.momentum.searchsorted(momeright, side='Right')
 
                 # a while loop to make sure that the program won't mess up if momedist == 0
-                while np.abs(self.momedist[imeLeft]) <= 1E-10:
+                while np.abs(self.momedist[imeLeft]) <= 1E-14 and imeLeft < len(self.momedist)-1:
                     imeLeft += 1
 
-                while np.abs(self.momedist[imeRight]) <= 1E-8:
+                while np.abs(self.momedist[imeRight]) <= 1E-14 and imeRight > 0:
                     imeRight -=1
 
-                self.PowerlawEworked = False
+
                 if imeRight>imeLeft:
                     slope, intercept, r_value, p_value, stderr = linregress(np.log(self.momentum[imeLeft:imeRight]), np.log(self.momedist[imeLeft:imeRight]))
 
@@ -309,6 +313,28 @@ class SpectralPanel:
                     femax *= np.exp(-self.gamma/self.delgame0)
                     self.T_e, = self.axes.plot(self.gamma, femax, color = self.parent.electron_fit_color, linestyle = '--', linewidth = 1.5)
 
+            self.PowerlawEworked = False
+            if self.parent.PowerLawFitElectron[0]:
+                # Find the part of the spectrum chosen by the fitting
+                #first convert to
+                ieLeft = self.gamma.searchsorted(self.parent.PowerLawFitElectron[1])
+                ieRight = self.gamma.searchsorted(self.parent.PowerLawFitElectron[2], side='Right')
+
+                # a while loop to make sure that the program won't mess up if momedist == 0
+                while np.abs(self.edist[ieLeft]) <= 1E-14 and ieLeft < len(self.edist)-1:
+                    ieLeft += 1
+
+                while np.abs(self.edist[ieRight]) <= 1E-14 and ieRight > 0:
+                    ieRight -=1
+
+                if ieRight>ieLeft:
+                    eslope, eintercept, er_value, ep_value, estderr = linregress(np.log(self.gamma[ieLeft:ieRight]), np.log(self.edist[ieLeft:ieRight]))
+
+                    if np.isnan(eslope) == False and np.isnan(eintercept) == False:
+                        self.PowerlawEworked = True
+                        self.PLE, = self.axes.plot(self.gamma, np.exp(eintercept)*self.gamma**eslope, color = self.parent.electron_fit_color, linestyle = ':', linewidth = 1.5)
+
+
             if self.GetPlotParam('show_ions'):
                 self.axes.plot(self.gamma, self.pdist, color = self.parent.ion_color)
                 if self.parent.set_Tp:
@@ -325,6 +351,24 @@ class SpectralPanel:
                     fpmax = aconst*self.gamma*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
                     fpmax *= np.exp(-self.gamma/self.parent.delgam_p)
                     self.T_p, = self.axes.plot(self.gamma, fpmax, color = self.parent.ion_fit_color, linestyle = '--', linewidth = 1.5)
+
+                self.PowerlawPworked = False
+                if self.parent.PowerLawFitIon[0]:
+                    # Find the part of the spectrum chosen by the fitting
+                    iepLeft = self.gamma.searchsorted(self.parent.PowerLawFitIon[1])
+                    iepRight = self.gamma.searchsorted(self.parent.PowerLawFitIon[2], side='Right')
+
+                    # a while loop to make sure that the program won't mess up if mompdist == 0
+                    while np.abs(self.pdist[iepLeft]) <= 1E-14 and iepLeft < len(self.pdist)-1:
+                        iepLeft += 1
+                    while np.abs(self.pdist[iepRight]) <= 1E-14 and iepRight > 0:
+                        iepRight -=1
+                    print iepLeft, iepRight
+                    if iepRight>iepLeft:
+                        peslope, peintercept, per_value, pep_value, pestderr = linregress(np.log(self.gamma[iepLeft:iepRight]), np.log(self.pdist[iepLeft:iepRight]))
+                        if np.isnan(peslope) == False and np.isnan(peintercept) == False:
+                            self.PowerlawPworked = True
+                            self.PLP, = self.axes.plot(self.gamma, np.exp(peintercept)*self.gamma**peslope, color = self.parent.ion_fit_color, linestyle = ':', linewidth = 1.5)
 
 
             self.axes.set_xscale("log")
@@ -348,8 +392,25 @@ class SpectralPanel:
                     tmpstr = '%.3f' % tmpcon
                     legend_labels.append(r'$T_p\ = $' +  ' ' + tmpstr + ' ' + r'$m_e c^2$')
                 if len(legend_handles)> 0:
-                    leg = self.axes.legend(legend_handles, legend_labels, framealpha = .4, fontsize = 11, loc = 'best')
+                    leg = self.axes.legend(legend_handles, legend_labels, framealpha = .4, fontsize = 11, loc = 'upper left')
                     leg.get_frame().set_linewidth(0.0)
+                    self.axes.add_artist(leg)
+
+                    # now make the power-fit legend
+                legend_handles = []
+                legend_labels = []
+                if self.GetPlotParam('show_electrons') and self.PowerlawEworked:
+                    legend_handles.append(self.PLE)
+                    tmpstr = '%.1f' % eslope
+                    legend_labels.append(r'$\delta_e\ = $' +  ' ' + tmpstr)
+                if self.GetPlotParam('show_ions') and self.PowerlawPworked:
+                    legend_handles.append(self.PLP)
+                    tmpstr = '%.1f' % peslope
+                    legend_labels.append(r'$\delta_p\ = $' +  ' ' + tmpstr)
+                if len(legend_handles)> 0:
+                    legDelta = self.axes.legend(legend_handles, legend_labels, framealpha = .4, fontsize = 11, loc = 'upper right')
+                    legDelta.get_frame().set_linewidth(0.0)
+
 
             self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
 
