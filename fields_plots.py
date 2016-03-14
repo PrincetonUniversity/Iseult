@@ -8,6 +8,7 @@ import new_cmaps
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
+import time
 
 class FieldsPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
@@ -392,6 +393,7 @@ class FieldsPanel:
 
     def refresh(self):
 
+        tic = time.time()
         '''This is a function that will be called only if self.axes already
         holds a fields type plot. We only update things that have changed.  If
         hasn't changed, don't touch it. The difference between this and last
@@ -434,6 +436,13 @@ class FieldsPanel:
                 self.axes.set_ylim(ymin = self.GetPlotParam('z_min'))
             if self.GetPlotParam('set_z_max'):
                 self.axes.set_ylim(ymax = self.GetPlotParam('z_max'))
+            self.axes.draw_artist(self.axes.patch)
+            self.axes.draw_artist(self.linex[0])
+            self.axes.draw_artist(self.liney[0])
+            self.axes.draw_artist(self.linez[0])
+            self.axes.draw_artist(self.anx)
+            self.axes.draw_artist(self.any)
+            self.axes.draw_artist(self.anz)
 
         else: # Now refresh the plot if it is 2D
             if self.GetPlotParam('show_x'):
@@ -492,6 +501,11 @@ class FieldsPanel:
 
             if self.GetPlotParam('show_shock'):
                 self.shockline_2d.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
+            self.axes.draw_artist(self.axes.patch)
+            self.axes.draw_artist(self.cax)
+
+        toc = time.time()
+        print toc-tic
 
 
     def GetPlotParam(self, keyname):

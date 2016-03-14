@@ -896,7 +896,7 @@ class MainApp(Tk.Tk):
 
         self.numOfRows = Tk.IntVar(self)
 #        self.numOfRows.set(3)
-        self.numOfRows.set(2)
+        self.numOfRows.set(1)
         self.numOfRows.trace('w', self.UpdateGridSpec)
         self.numOfColumns = Tk.IntVar(self)
 #        self.numOfColumns.set(2)
@@ -1209,7 +1209,7 @@ class MainApp(Tk.Tk):
             self.SubPlotList.append(tmplist)
         for i in range(self.maxRows):
             for j in range(self.maxCols):
-                self.SubPlotList[i][j].SetGraph('PhasePlot')
+                self.SubPlotList[i][j].SetGraph('FieldsPlot')
 
         self.SubPlotList[0][1].PlotParamsDict['PhasePlot']['prtl_type'] = 1
 
@@ -1383,7 +1383,7 @@ class MainApp(Tk.Tk):
                 self.old_views.append(cur_view[i])
 
     def LoadView(self):
-        # Push the home view onto the stack..
+        # Clear the toolbar.
         self.toolbar._views.clear()
         self.toolbar.push_current()
         next_view = list(self.toolbar._views.__call__())
@@ -1528,6 +1528,7 @@ class MainApp(Tk.Tk):
 
 
     def RefreshCanvas(self, keep_view = True):
+        tic = time.time()
         #  We need to see if the user has moved around the zoom level in python.
         # First we see if there are any views in the toolbar
         cur_view =  self.toolbar._views.__call__()
@@ -1575,9 +1576,10 @@ class MainApp(Tk.Tk):
             self.LoadView()
 
         self.MakePrevCtypeList()
-        self.canvas.show()
+        self.canvas.blit()
         self.canvas.get_tk_widget().update_idletasks()
-
+        toc = time.time()
+        print tic-toc
         if self.recording:
             self.PrintFig()
 
