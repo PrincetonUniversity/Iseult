@@ -9,7 +9,7 @@ import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
 import time
-
+#from modest_image import ModestImage
 class FieldsPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
 
@@ -257,24 +257,35 @@ class FieldsPanel:
             if self.GetPlotParam('set_z_max'):
                 self.vmax = self.GetPlotParam('z_max')
             if self.parent.plot_aspect:
-                self.cax = self.axes.imshow(self.zval,
+                self.cax = ModestImage(self.axes, data = self.zval,
                     cmap = new_cmaps.cmaps[self.parent.cmap],
                     origin = 'lower',
-                    extent = (self.xmin,self.xmax, self.ymin, self.ymax),
-                    vmin = self.vmin,
-                    vmax = self.vmax,
+#                    extent = (self.xmin,self.xmax, self.ymin, self.ymax),
+#                    vmin = self.vmin,
+#                    vmax = self.vmax,
                     interpolation=self.GetPlotParam('interpolation'))
             else:
+#                self.cax = ModestImage(self.axes, data = self.zval)#,
+#                    cmap = new_cmaps.cmaps[self.parent.cmap],
+#                    origin = 'lower',
+#                    aspect = 'auto',
+#                    vmin = self.vmin,
+#                    vmax = self.vmax,
+#                    interpolation=self.GetPlotParam('interpolation'))
+
                 self.cax = self.axes.imshow(self.zval,
                     cmap = new_cmaps.cmaps[self.parent.cmap],
                     origin = 'lower',
                     aspect = 'auto',
-                    extent = (self.xmin,self.xmax, self.ymin, self.ymax),
                     vmin = self.vmin,
                     vmax = self.vmax,
                     interpolation=self.GetPlotParam('interpolation'))
 
-
+#            self.axes.add_artist(self.cax)
+#            self.cax.norm.vmin = self.vmin
+#            self.cax.norm.vmax = self.vmax
+#            self.axes.set_xlim(self.xmin, self.xmax)
+#            self.axes.set_ylim(self.ymin, self.ymax)
 
             self.TwoDan = self.axes.annotate(self.two_d_labels[self.GetPlotParam('field_type')],
                             xy = (0.9,.9),
@@ -436,13 +447,15 @@ class FieldsPanel:
                 self.axes.set_ylim(ymin = self.GetPlotParam('z_min'))
             if self.GetPlotParam('set_z_max'):
                 self.axes.set_ylim(ymax = self.GetPlotParam('z_max'))
-            self.axes.draw_artist(self.axes.patch)
-            self.axes.draw_artist(self.linex[0])
-            self.axes.draw_artist(self.liney[0])
-            self.axes.draw_artist(self.linez[0])
-            self.axes.draw_artist(self.anx)
-            self.axes.draw_artist(self.any)
-            self.axes.draw_artist(self.anz)
+
+            # Code for trying blitting, not worth it.
+#            self.axes.draw_artist(self.axes.patch)
+#            self.axes.draw_artist(self.linex[0])
+#            self.axes.draw_artist(self.liney[0])
+#            self.axes.draw_artist(self.linez[0])
+#            self.axes.draw_artist(self.anx)
+#            self.axes.draw_artist(self.any)
+#            self.axes.draw_artist(self.anz)
 
         else: # Now refresh the plot if it is 2D
             if self.GetPlotParam('show_x'):
@@ -485,7 +498,8 @@ class FieldsPanel:
                     self.TwoDan.set_text(r'$E_z$')
 
             self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
-
+            self.axes.set_xlim(self.xmin,self.xmax)
+            self.axes.set_ylim(self.ymin,self.ymax)
 
             self.cax.set_clim(self.clims)
 
@@ -501,9 +515,9 @@ class FieldsPanel:
 
             if self.GetPlotParam('show_shock'):
                 self.shockline_2d.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
-            self.axes.draw_artist(self.axes.patch)
-            self.axes.draw_artist(self.cax)
-
+            #self.axes.draw_artist(self.axes.patch)
+            #self.axes.draw_artist(self.cax)
+            #self.axes.draw_artist(self.axes.xaxis)
         toc = time.time()
         print toc-tic
 

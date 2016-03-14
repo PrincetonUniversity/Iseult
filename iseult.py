@@ -1443,7 +1443,7 @@ class MainApp(Tk.Tk):
         if ForceRedraw:
             self.ReDrawCanvas(keep_view = keep_view)
         else:
-            self.RefreshCanvas()
+            self.RefreshCanvas(keep_view = keep_view)
     def ReDrawCanvas(self, keep_view = True):
         #  We need to see if the user has moved around the zoom level in python.
         # First we see if there are any views in the toolbar
@@ -1576,7 +1576,9 @@ class MainApp(Tk.Tk):
             self.LoadView()
 
         self.MakePrevCtypeList()
-        self.canvas.blit()
+        self.canvas.draw()
+#        self.canvas.blit(bbox = self.f.bbox)
+#        self.canvas.blit()
         self.canvas.get_tk_widget().update_idletasks()
         toc = time.time()
         print tic-toc
