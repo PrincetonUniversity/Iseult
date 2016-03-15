@@ -1528,7 +1528,6 @@ class MainApp(Tk.Tk):
 
 
     def RefreshCanvas(self, keep_view = True):
-        tic = time.time()
         #  We need to see if the user has moved around the zoom level in python.
         # First we see if there are any views in the toolbar
         cur_view =  self.toolbar._views.__call__()
@@ -1582,8 +1581,6 @@ class MainApp(Tk.Tk):
 #        self.canvas.blit(bbox = self.f.bbox)
 #        self.canvas.blit()
         self.canvas.get_tk_widget().update_idletasks()
-        toc = time.time()
-        print tic-toc
         if self.recording:
             self.PrintFig()
 
