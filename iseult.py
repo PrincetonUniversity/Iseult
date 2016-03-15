@@ -92,7 +92,7 @@ class SubPlotWrapper:
         NeedsRedraw = False
         if ctype is None:
             ctype = self.chartType
-        # Check to see if a Cbar was added or removed and if
+        # Check to see if a plot is changed from 1d to 2d
         if pname =='twoD':
             if self.PlotParamsDict[ctype][pname] == 1 and val == 0:
                 self.Changedto1D = True
@@ -499,7 +499,7 @@ class SettingsFrame(Tk.Toplevel):
                 self.parent.electron_fit_color = 'lime'
 
 
-            self.parent.RenewCanvas()
+            self.parent.RenewCanvas(ForceRedraw = True)
 
 
     def SkipSizeChanged(self, *args):
@@ -896,7 +896,7 @@ class MainApp(Tk.Tk):
 
         self.numOfRows = Tk.IntVar(self)
 #        self.numOfRows.set(3)
-        self.numOfRows.set(1)
+        self.numOfRows.set(2)
         self.numOfRows.trace('w', self.UpdateGridSpec)
         self.numOfColumns = Tk.IntVar(self)
 #        self.numOfColumns.set(2)
@@ -1378,12 +1378,12 @@ class MainApp(Tk.Tk):
             for i in range(len(cur_view)):
                 is_changed =[]
                 for j in range(4):
-                    is_changed.append(home_view[i][j] != cur_view[i][j])
+                    is_changed.append(np.abs(home_view[i][j]-cur_view[i][j])>1E-5)
                 self.is_changed_list.append(is_changed)
                 self.old_views.append(cur_view[i])
 
     def LoadView(self):
-        # Clear the toolbar.
+
         self.toolbar._views.clear()
         self.toolbar.push_current()
         next_view = list(self.toolbar._views.__call__())
@@ -1444,6 +1444,7 @@ class MainApp(Tk.Tk):
             self.ReDrawCanvas(keep_view = keep_view)
         else:
             self.RefreshCanvas(keep_view = keep_view)
+
     def ReDrawCanvas(self, keep_view = True):
         #  We need to see if the user has moved around the zoom level in python.
         # First we see if there are any views in the toolbar
@@ -1532,13 +1533,15 @@ class MainApp(Tk.Tk):
         #  We need to see if the user has moved around the zoom level in python.
         # First we see if there are any views in the toolbar
         cur_view =  self.toolbar._views.__call__()
-
+        print cur_view
         if cur_view is None:
             keep_view = False
         if self.NewDirectory:
             keep_view = False
         if keep_view:
             self.SaveView()
+
+        self.toolbar._views.clear()
 
         self.LoadAllKeys()
 
@@ -1581,7 +1584,7 @@ class MainApp(Tk.Tk):
 #        self.canvas.blit()
         self.canvas.get_tk_widget().update_idletasks()
         toc = time.time()
-        print tic-toc
+#        print tic-toc
         if self.recording:
             self.PrintFig()
 

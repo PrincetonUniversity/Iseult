@@ -25,7 +25,7 @@ class DensPanel:
                        'OutlineText': True,
                        'spatial_x': True,
                        'spatial_y': None,
-                       'interpolation': 'hermite'}
+                       'interpolation': 'nearest'}
 
     def __init__(self, parent, figwrapper):
         self.settings_window = None
@@ -55,15 +55,46 @@ class DensPanel:
 #            self.arrs_needed.append('densi')
 
         return self.arrs_needed
+    def LoadData(self):
+        ''' A Helper function that loads the data for the plot'''
 
-    def draw(self):
-        # Get the color from the colormap
         self.dens_color = new_cmaps.cmaps[self.parent.cmap](0.5)
         # get c_omp and istep to convert cells to physical units
         self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
         self.istep = self.FigWrap.LoadKey('istep')[0]
 
+        self.dens = self.FigWrap.LoadKey('dens')[0,:,:]
+        # see if this time has already been checked
+        if 'my_rho' in self.parent.DataDict.keys():
+            self.rho = self.parent.DataDict['my_rho']
+        else:
+            self.rho = 2*self.FigWrap.LoadKey('densi')[0,:,:] -self.FigWrap.LoadKey('dens')[0,:,:]
+            self.parent.DataDict['my_rho'] = self.rho
 
+        # see if the min/max of all the arrays has aready been calculated.
+        if 'dens_min_max' in self.parent.DataDict.keys():
+            self.dens_min_max = self.parent.DataDict['dens_min_max']
+        else:
+            self.dens_min_max = [self.dens.min(), self.dens.max()]
+            self.parent.DataDict['dens_min_max'] = self.dens_min_max
+
+        if 'rho_min_max' in self.parent.DataDict.keys():
+            self.rho_min_max = self.parent.DataDict['rho_min_max']
+        else:
+            self.rho_min_max = [self.rho.min(), self.rho.max()]
+            self.parent.DataDict['rho_min_max'] = self.rho_min_max
+
+        if 'xaxis_values' in self.parent.DataDict.keys():
+            # Generate the x and y axes
+            self.xaxis_values = self.parent.DataDict['xaxis_values']
+        else:
+            self.xaxis_values = np.arange(self.dens.shape[1])/self.c_omp*self.istep
+            self.parent.DataDict['xaxis_values'] = self.xaxis_values
+        # y values not needed so commenting out
+        # self.y_values =  np.arange(self.zval.shape[0])/self.c_omp*self.istep
+
+
+    def draw(self):
         if self.GetPlotParam('OutlineText'):
             self.annotate_kwargs = {'horizontalalignment': 'right',
             'verticalalignment': 'top',
@@ -81,17 +112,7 @@ class DensPanel:
         # Create a gridspec to handle spacing better
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])#, bottom=0.2,left=0.1,right=0.95, top = 0.95)
 
-        # load the density values
-        if self.GetPlotParam('dens_type') == 0:
-            self.zval = self.FigWrap.LoadKey('dens')[0,:,:]
-
-        if self.GetPlotParam('dens_type') == 1: # Load calculate rho
-            self.zval = 2*self.FigWrap.LoadKey('densi')[0,:,:] -self.FigWrap.LoadKey('dens')[0,:,:]
-
-        # Generate the x and y axes
-        self.y_values =  np.arange(self.zval.shape[0])/self.c_omp*self.istep
-        self.x_values =  np.arange(self.zval.shape[1])/self.c_omp*self.istep
-
+        self.LoadData()
 
         # Now that the data is loaded, start making the plots
         if self.GetPlotParam('twoD'):
@@ -116,8 +137,11 @@ class DensPanel:
                 self.axes = self.figure.add_subplot(self.gs[18:92,:])
 
             # First choose the 'zval' to plot, we can only do one because it is 2-d.
-            self.two_d_label = r'$n_e$'
+            if self.FigWrap.GetPlotParam('dens_type') == 0:
+                self.zval = self.dens
+                self.two_d_label = r'$n_e$'
             if self.FigWrap.GetPlotParam('dens_type') == 1:
+                self.zval = self.rho
                 self.two_d_label = r'$\rho$'
 
             self.ymin = 0
@@ -148,31 +172,36 @@ class DensPanel:
                     vmin = self.vmin, vmax = self.vmax,
                     interpolation=self.GetPlotParam('interpolation'))
 
+            self.shockline_2d = self.axes.axvline(self.parent.shock_loc,
+                                                    linewidth = 1.5,
+                                                    linestyle = '--',
+                                                    color = self.parent.shock_color,
+                                                    path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
+                                                    PathEffects.Normal()])
+            self.shockline_2d.set_visible(self.GetPlotParam('show_shock'))
 
-            if self.GetPlotParam('show_shock'):
-                self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
-                                    PathEffects.Normal()])
+            self.an_2d = self.axes.annotate(self.two_d_label,
+                                            xy = (0.9,.9),
+                                            xycoords= 'axes fraction',
+                                            color = 'white',
+                                            **self.annotate_kwargs)
+            self.an_2d.set_visible(self.GetPlotParam('show_labels'))
 
-            if self.FigWrap.GetPlotParam('show_labels'):
-                self.axes.annotate(self.two_d_label,
-                                xy = (0.9,.9),
-                                xycoords= 'axes fraction',
-                                color = 'white',
-                                **self.annotate_kwargs)
             self.axes.set_axis_bgcolor('lightgrey')
 
+            self.axC = self.figure.add_subplot(self.gs[:4,:])
+            self.cbar = self.figure.colorbar(self.cax, ax = self.axes, cax = self.axC, orientation = 'horizontal')
             if self.GetPlotParam('show_cbar'):
-                self.axC = self.figure.add_subplot(self.gs[:4,:])
-                self.cbar = self.figure.colorbar(self.cax, ax = self.axes, cax = self.axC, orientation = 'horizontal')
                 cmin = self.zval.min()
                 if self.vmin:
                     cmin = self.vmin
                 cmax = self.zval.max()
                 if self.vmax:
                     cmax = self.vmax
-
                 self.cbar.set_ticks(np.linspace(cmin, cmax, 5))
                 self.cbar.ax.tick_params(labelsize=self.parent.num_font_size)
+            else:
+                self.axC.set_visible(False)
 
             self.axes.set_axis_bgcolor('lightgrey')
             self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
@@ -189,6 +218,7 @@ class DensPanel:
             self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.ylabel_pad, color = 'black')
 
         else:
+            # Do the 1D Plots
             if self.parent.LinkSpatial != 0 and self.parent.LinkSpatial != 3:
                 if self.FigWrap.pos == self.parent.first_x:
                     self.axes = self.figure.add_subplot(self.gs[18:92,:])
@@ -199,30 +229,106 @@ class DensPanel:
                 self.axes = self.figure.add_subplot(self.gs[18:92,:])
 
             # Make the 1-D plots
-            self.axes.plot(self.x_values, self.zval[self.zval.shape[0]/2,:], color = self.dens_color)
-            tmp_str = r'$\rm density$'
-            if self.GetPlotParam('dens_type') == 1:
-                tmp_str = r'$\rho$'
+            self.linedens = self.axes.plot(self.xaxis_values, self.dens[self.dens.shape[0]/2,:], color = self.dens_color)
+            self.linedens[0].set_visible(not self.GetPlotParam('dens_type')) #visible if dens_type == 0
+
+            self.linerho = self.axes.plot(self.xaxis_values, self.dens[self.dens.shape[0]/2,:], color = self.dens_color)
+            self.linerho[0].set_visible(self.GetPlotParam('dens_type'))
 
 
-            if self.GetPlotParam('show_shock'):
-                self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
-                        PathEffects.Normal()])
-
+            self.shock_line =self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
+                    PathEffects.Normal()])
+            self.shock_line.set_visible(self.GetPlotParam('show_shock'))
 
             self.axes.set_axis_bgcolor('lightgrey')
             self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
+
             if self.parent.xlim[0]:
                 self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
             else:
-                self.axes.set_xlim(self.x_values[0],self.x_values[-1])
+                self.axes.set_xlim(self.xaxis_values[0],self.xaxis_values[-1])
+
             if self.GetPlotParam('set_z_min'):
                 self.axes.set_ylim(ymin = self.GetPlotParam('z_min'))
             if self.GetPlotParam('set_z_max'):
                 self.axes.set_ylim(ymax = self.GetPlotParam('z_max'))
 
+            # Handle the axes labeling
+            tmp_str = r'$\rm density$'
+            if self.GetPlotParam('dens_type') == 1:
+                tmp_str = r'$\rho$'
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
             self.axes.set_ylabel(tmp_str, labelpad = self.parent.ylabel_pad, color = 'black')
+
+
+    def refresh(self):
+        '''This is a function that will be called only if self.axes already
+        holds a fields type plot. We only update things that have shown.  If
+        hasn't changed, or isn't viewed, don't touch it. The difference between this and last
+        time, is that we won't actually do any drawing in the plot. The plot
+        will be redrawn after all subplots data is changed. '''
+        self.LoadData()
+
+        # Main goal, only change what is showing..
+        # First do the 1D plots, because it is simpler
+        if self.GetPlotParam('twoD') == 0:
+            if self.GetPlotParam('dens_type') == 0:
+                self.linedens[0].set_data(self.xaxis_values, self.dens[self.dens.shape[0]/2,:])
+                self.axes.set_ylim(self.dens_min_max)
+            else:
+                self.linerho[0].set_data(self.xaxis_values, self.rho[self.rho.shape[0]/2,:])
+                self.axes.set_ylim(self.rho_min_max)
+            if self.GetPlotParam('show_shock'):
+                self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
+
+
+
+            if self.parent.xlim[0]:
+                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+            else:
+                self.axes.set_xlim(self.xaxis_values[0], self.xaxis_values[-1])
+
+
+            if self.GetPlotParam('set_z_min'):
+                self.axes.set_ylim(ymin = self.GetPlotParam('z_min'))
+            if self.GetPlotParam('set_z_max'):
+                self.axes.set_ylim(ymax = self.GetPlotParam('z_max'))
+
+        else: # Now refresh the plot if it is 2D
+            if self.GetPlotParam('dens_type')==0:
+                self.cax.set_data(self.dens)
+                self.ymin = 0
+                self.ymax =  self.dens.shape[0]/self.c_omp*self.istep
+                self.xmin = 0
+                self.xmax =  self.xaxis_values[-1]
+                self.clims = self.dens_min_max
+
+            else:
+                self.cax.set_data(self.rho)
+                self.ymin = 0
+                self.ymax =  self.rho.shape[0]/self.c_omp*self.istep
+                self.xmin = 0
+                self.xmax =  self.xaxis_values[-1]
+                self.clims = self.rho_min_max
+
+            self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
+            self.axes.set_xlim(self.xmin,self.xmax)
+            self.axes.set_ylim(self.ymin,self.ymax)
+
+            self.cax.set_clim(self.clims)
+
+            self.climArgs = {}
+            if self.GetPlotParam('set_z_min'):
+                self.climArgs['vmin'] =  self.GetPlotParam('z_min')
+            if self.GetPlotParam('set_z_max'):
+                self.climArgs['vmax'] =  self.GetPlotParam('z_max')
+            if len(self.climArgs)>0:
+                self.cax.set_clim(**self.climArgs)
+            if self.GetPlotParam('show_cbar'):
+                self.cbar.set_ticks(np.linspace(self.cax.get_clim()[0],self.cax.get_clim()[1], 5))
+
+            if self.GetPlotParam('show_shock'):
+                self.shockline_2d.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
 
     def GetPlotParam(self, keyname):
         return self.FigWrap.GetPlotParam(keyname)
@@ -297,8 +403,7 @@ class DensSettings(Tk.Toplevel):
         self.CbarVar.set(self.parent.GetPlotParam('show_cbar'))
         cb = ttk.Checkbutton(frm, text = "Show Color bar",
                         variable = self.CbarVar,
-                        command = lambda:
-                        self.parent.SetPlotParam('show_cbar', self.CbarVar.get()))
+                        command = self.CbarHandler)
         cb.grid(row = 6, sticky = Tk.W)
 
         # show shock
@@ -306,8 +411,7 @@ class DensSettings(Tk.Toplevel):
         self.ShockVar.set(self.parent.GetPlotParam('show_shock'))
         cb = ttk.Checkbutton(frm, text = "Show Shock",
                         variable = self.ShockVar,
-                        command = lambda:
-                        self.parent.SetPlotParam('show_shock', self.ShockVar.get()))
+                        command = self.ShockVarHandler)
         cb.grid(row = 6, column = 1, sticky = Tk.W)
 
         # Now the field lim
@@ -341,6 +445,25 @@ class DensSettings(Tk.Toplevel):
         self.ZmaxEnter = ttk.Entry(frm, textvariable=self.Zmax, width=7)
         self.ZmaxEnter.grid(row = 4, column = 3)
 
+    def ShockVarHandler(self, *args):
+        if self.parent.GetPlotParam('show_shock')== self.ShockVar.get():
+            pass
+        else:
+            if self.parent.GetPlotParam('twoD'):
+                self.parent.shockline_2d.set_visible(self.ShockVar.get())
+            else:
+                self.parent.shock_line.set_visible(self.ShockVar.get())
+
+            self.parent.SetPlotParam('show_shock', self.ShockVar.get())
+
+    def CbarHandler(self, *args):
+        if self.parent.GetPlotParam('show_cbar')== self.CbarVar.get():
+            pass
+        else:
+            if self.parent.GetPlotParam('twoD'):
+                self.parent.axC.set_visible(self.CbarVar.get())
+
+            self.parent.SetPlotParam('show_cbar', self.CbarVar.get(), update_plot =self.parent.GetPlotParam('twoD'))
 
 
     def Change2d(self):
@@ -349,7 +472,6 @@ class DensSettings(Tk.Toplevel):
         else:
             self.parent.SetPlotParam('spatial_y', self.TwoDVar.get(), update_plot = False)
             self.parent.SetPlotParam('twoD', self.TwoDVar.get())
-
 
 
     def ctypeChanged(self, *args):
@@ -403,6 +525,21 @@ class DensSettings(Tk.Toplevel):
         if self.DensTypeVar.get() == self.parent.GetPlotParam('dens_type'):
             pass
         else:
+            if self.parent.GetPlotParam('twoD'):
+                if self.DensTypeVar.get() == 0:
+                    self.parent.an_2d.set_text(r'$n_e$')
+                else:
+                    self.parent.an_2d.set_text(r'$\rho$')
+            else:
+                if self.DensTypeVar.get() == 0:
+                    self.parent.linerho[0].set_visible(False)
+                    self.parent.linedens[0].set_visible(True)
+                    self.parent.axes.set_ylabel('density')
+                else:
+                    self.parent.linerho[0].set_visible(True)
+                    self.parent.linedens[0].set_visible(False)
+                    self.parent.axes.set_ylabel(r'$\rho$')
+
             self.parent.SetPlotParam('dens_type', self.DensTypeVar.get())
 
 

@@ -27,7 +27,7 @@ class FieldsPanel:
                        'OutlineText': True,
                        'spatial_x': True,
                        'spatial_y': None,
-                       'interpolation': 'hermite'}
+                       'interpolation': 'nearest'}
 
     b_key_names = ['bx', 'by', 'bz']
     e_key_names = ['ex', 'ey', 'ez']
@@ -256,30 +256,24 @@ class FieldsPanel:
             self.vmax = None
             if self.GetPlotParam('set_z_max'):
                 self.vmax = self.GetPlotParam('z_max')
-            if self.parent.plot_aspect:
-                self.cax = ModestImage(self.axes, data = self.zval,
-                    cmap = new_cmaps.cmaps[self.parent.cmap],
-                    origin = 'lower',
-#                    extent = (self.xmin,self.xmax, self.ymin, self.ymax),
-#                    vmin = self.vmin,
-#                    vmax = self.vmax,
-                    interpolation=self.GetPlotParam('interpolation'))
-            else:
-#                self.cax = ModestImage(self.axes, data = self.zval)#,
-#                    cmap = new_cmaps.cmaps[self.parent.cmap],
-#                    origin = 'lower',
-#                    aspect = 'auto',
-#                    vmin = self.vmin,
-#                    vmax = self.vmax,
-#                    interpolation=self.GetPlotParam('interpolation'))
 
+            if self.parent.plot_aspect:
                 self.cax = self.axes.imshow(self.zval,
                     cmap = new_cmaps.cmaps[self.parent.cmap],
                     origin = 'lower',
-                    aspect = 'auto',
+                    extent = (self.xmin,self.xmax, self.ymin, self.ymax),
                     vmin = self.vmin,
                     vmax = self.vmax,
                     interpolation=self.GetPlotParam('interpolation'))
+            else:
+                self.cax = self.axes.imshow(self.zval,
+                    cmap = new_cmaps.cmaps[self.parent.cmap],
+                    origin = 'lower', aspect = 'auto',
+                    extent = (self.xmin,self.xmax, self.ymin, self.ymax),
+                    vmin = self.vmin,
+                    vmax = self.vmax,
+                    interpolation=self.GetPlotParam('interpolation'))
+
 
 #            self.axes.add_artist(self.cax)
 #            self.cax.norm.vmin = self.vmin
@@ -308,7 +302,7 @@ class FieldsPanel:
             self.cbar.ax.tick_params(labelsize=self.parent.num_font_size)
 
             if self.GetPlotParam('show_cbar') == 0:
-                self.cbar.set_visible = False
+                self.axC.set_visible = False
 
 
 
@@ -387,14 +381,16 @@ class FieldsPanel:
             self.axes.set_axis_bgcolor('lightgrey')
             self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)#, tick1On= False, tick2On= False)
 
+
+            self.axes.relim()
+            self.axes.autoscale_view(scaley = True)
+
             if self.parent.xlim[0]:
                 self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
             else:
                 self.axes.set_xlim(self.xaxis_values[0],self.xaxis_values[-1])
 
 
-            self.axes.relim(visible_only=True)
-            self.axes.autoscale_view(scaley = True)
             if self.GetPlotParam('set_z_min'):
                 self.axes.set_ylim(ymin = self.GetPlotParam('z_min'))
             if self.GetPlotParam('set_z_max'):
@@ -404,40 +400,55 @@ class FieldsPanel:
 
     def refresh(self):
 
-        tic = time.time()
         '''This is a function that will be called only if self.axes already
-        holds a fields type plot. We only update things that have changed.  If
-        hasn't changed, don't touch it. The difference between this and last
-        time, is that we won't actually do any drawing in the plot. The plot
-        will be redrawn after all subplots are refreshed. '''
+        holds a fields type plot. We only update things that have changed & are
+        shown.  If hasn't changed or isn't shown, don't touch it. The difference
+        between this and last time, is that we won't actually do any drawing in
+        the plot. The plot will be redrawn after all subplots are refreshed. '''
+
+
+        tic = time.time()
+
         self.LoadData()
 
         # Main goal, only change what is showing..
         # First do the 1D plots, because it is simpler
         if self.GetPlotParam('twoD') == 0:
+            self.line_ymin_max = [np.inf, -np.inf]
             if self.GetPlotParam('show_x'):
                 self.linex[0].set_data(self.xaxis_values, self.fx[self.fx.shape[0]/2,:])
-                self.linex[0].set_color(self.xcolor)
-                self.anx.set_color(self.xcolor)
-
+                if self.GetPlotParam('field_type') == 0:
+                    self.line_ymin_max[0] = min(self.bxmin_max[0], self.line_ymin_max[0])
+                    self.line_ymin_max[1] = max(self.bxmin_max[1], self.line_ymin_max[1])
+                else:
+                    self.line_ymin_max[0] = min(self.exmin_max[0], self.line_ymin_max[0])
+                    self.line_ymin_max[1] = max(self.exmin_max[1], self.line_ymin_max[1])
 
             if self.GetPlotParam('show_y'):
                 self.liney[0].set_data(self.xaxis_values, self.fy[self.fy.shape[0]/2,:])
-                self.liney[0].set_color(self.ycolor)
-                self.any.set_color(self.ycolor)
+                if self.GetPlotParam('field_type') == 0:
+                    self.line_ymin_max[0] = min(self.bymin_max[0], self.line_ymin_max[0])
+                    self.line_ymin_max[1] = max(self.bymin_max[1], self.line_ymin_max[1])
+                else:
+                    self.line_ymin_max[0] = min(self.eymin_max[0], self.line_ymin_max[0])
+                    self.line_ymin_max[1] = max(self.eymin_max[1], self.line_ymin_max[1])
 
 
             if self.GetPlotParam('show_z'):
                 self.linez[0].set_data(self.xaxis_values, self.fz[self.fz.shape[0]/2,:])
-                self.linez[0].set_color(self.zcolor)
-                self.anz.set_color(self.zcolor)
+                if self.GetPlotParam('field_type') == 0:
+                    self.line_ymin_max[0] = min(self.bzmin_max[0], self.line_ymin_max[0])
+                    self.line_ymin_max[1] = max(self.bzmin_max[1], self.line_ymin_max[1])
+                else:
+                    self.line_ymin_max[0] = min(self.ezmin_max[0], self.line_ymin_max[0])
+                    self.line_ymin_max[1] = max(self.ezmin_max[1], self.line_ymin_max[1])
 
-
+            if not self.GetPlotParam('show_z') and not self.GetPlotParam('show_z') and not self.GetPlotParam('show_z'):
+                self.line_ymin_max = [0,1]
             if self.GetPlotParam('show_shock'):
                 self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
 
-            self.axes.relim(visible_only=True)
-            self.axes.autoscale_view(scaley = True)
+            self.axes.set_ylim(self.line_ymin_max)
             if self.parent.xlim[0]:
                 self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
             else:
@@ -618,8 +629,7 @@ class FieldSettings(Tk.Toplevel):
         self.CbarVar.set(self.parent.GetPlotParam('show_cbar'))
         cb = ttk.Checkbutton(frm, text = "Show Color bar",
                         variable = self.CbarVar,
-                        command = lambda:
-                        self.parent.SetPlotParam('show_cbar', self.CbarVar.get()))
+                        command = self.CbarHandler)
         cb.grid(row = 6, sticky = Tk.W)
 
         # Now the field lim
@@ -660,6 +670,14 @@ class FieldSettings(Tk.Toplevel):
                         command = self.ShockVarHandler)
         cb.grid(row = 6, column = 1, sticky = Tk.W)
 
+    def CbarHandler(self, *args):
+        if self.parent.GetPlotParam('show_cbar')== self.CbarVar.get():
+            pass
+        else:
+            if self.parent.GetPlotParam('twoD'):
+                self.parent.axC.set_visible(self.CbarVar.get())
+
+            self.parent.SetPlotParam('show_cbar', self.CbarVar.get(), update_plot =self.parent.GetPlotParam('twoD'))
 
     def ShockVarHandler(self, *args):
         if self.parent.GetPlotParam('show_shock')== self.ShockVar.get():
