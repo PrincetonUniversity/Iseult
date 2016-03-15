@@ -899,8 +899,7 @@ class MainApp(Tk.Tk):
         self.numOfRows.set(2)
         self.numOfRows.trace('w', self.UpdateGridSpec)
         self.numOfColumns = Tk.IntVar(self)
-#        self.numOfColumns.set(2)
-        self.numOfColumns.set(1)
+        self.numOfColumns.set(2)
         self.numOfColumns.trace('w', self.UpdateGridSpec)
         self.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.93, 'bottom':0.06, 'wspace':0.15, 'hspace':0.15}
         matplotlib.rc('figure.subplot', **self.SubPlotParams)
@@ -1209,7 +1208,7 @@ class MainApp(Tk.Tk):
             self.SubPlotList.append(tmplist)
         for i in range(self.maxRows):
             for j in range(self.maxCols):
-                self.SubPlotList[i][j].SetGraph('FieldsPlot')
+                self.SubPlotList[i][j].SetGraph('PhasePlot')
 
         self.SubPlotList[0][1].PlotParamsDict['PhasePlot']['prtl_type'] = 1
 
@@ -1533,7 +1532,7 @@ class MainApp(Tk.Tk):
         #  We need to see if the user has moved around the zoom level in python.
         # First we see if there are any views in the toolbar
         cur_view =  self.toolbar._views.__call__()
-        print cur_view
+
         if cur_view is None:
             keep_view = False
         if self.NewDirectory:
@@ -1584,7 +1583,7 @@ class MainApp(Tk.Tk):
 #        self.canvas.blit()
         self.canvas.get_tk_widget().update_idletasks()
         toc = time.time()
-#        print tic-toc
+        print tic-toc
         if self.recording:
             self.PrintFig()
 

@@ -96,15 +96,14 @@ class PhasePanel:
                 self.arrs_needed.append('we')
         return self.arrs_needed
 
-    def draw(self):
-        # In order to speed up the plotting, we only recalculate everything
-        # if necessary.
-        # Figure out the color
-        self.energy_color = self.parent.ion_color
-        if self.GetPlotParam('prtl_type') == 1:
-            self.energy_color = self.parent.electron_color
-
+    def LoadData(self):
+        ''' A helper function that checks if the histogram has
+        already been calculated and if it hasn't, it calculates
+        it then stores it.'''
         self.key_name = ''
+        if self.GetPlotParam('masked'):
+            self.key_name += 'masked_'
+
         if self.GetPlotParam('weighted'):
             self.key_name += 'weighted_'
 
@@ -154,20 +153,15 @@ class PhasePanel:
 
 
             self.pmin = min(self.y_values)
-#            if self.FigWrap.GetPlotParam('set_p_min'):
-#                self.pmin = self.FigWrap.GetPlotParam('p_min')
             self.pmax = max(self.y_values)
-#            if self.FigWrap.GetPlotParam('set_p_max'):
-#                self.pmax = self.FigWrap.GetPlotParam('p_max')
 
             self.xmin = 0
-
             self.istep = self.FigWrap.LoadKey('istep')[0]
             self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.istep
             self.hist2d = np.histogram2d(self.y_values, self.x_values,
-                                bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
-                                range = [[self.pmin,self.pmax],[0,self.xmax]],
-                                weights = self.weights)
+                        bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
+                        range = [[self.pmin,self.pmax],[0,self.xmax]],
+                        weights = self.weights)
 
 #            IQR_y = np.subtract(*np.percentile(self.y_values, [75, 25]))
 #            num_of_ybins = int((self.pmax-self.pmin)/(2*IQR_y*len(self.y_values)**(-1.0/3)))
@@ -178,29 +172,53 @@ class PhasePanel:
 #            self.hist2d = np.histogram2d(self.y_values, self.x_values, bins =
 # [num_of_ybins, num_of_xbins], range = [[self.pmin,self.pmax],[0,self.xmax]], weights = self.weights)
 
+
+            if self.GetPlotParam('masked'):
+                zval = ma.masked_array(self.hist2d[0])
+                zval[zval == 0] = ma.masked
+                zval *= float(zval.max())**(-1)
+                tmplist = [zval[~zval.mask].min(), zval.max()]
+            else:
+                zval = np.copy(self.hist2d[0])
+                zval[zval==0] = 0.5
+                zval *= float(zval.max())**(-1)
+                tmplist = [zval.min(), zval.max()]
+            print tmplist
+            self.hist2d = zval, self.hist2d[1], self.hist2d[2], tmplist
             self.parent.DataDict[self.key_name] = self.hist2d
 
-        self.zval = ma.masked_array(self.hist2d[0])
+
+
+    def draw(self):
+        # In order to speed up the plotting, we only recalculate everything
+        # if necessary.
+        # Figure out the color
+
+        self.energy_color = self.parent.ion_color
+        if self.GetPlotParam('prtl_type') == 1:
+            self.energy_color = self.parent.electron_color
+
+        self.LoadData()
+#        print self.hist2d
+
         self.xmin = self.hist2d[2][0]
         self.xmax = self.hist2d[2][-1]
+
         self.ymin = self.hist2d[1][0]
         self.ymax = self.hist2d[1][-1]
 
-
         if self.GetPlotParam('masked'):
-            self.zval[self.zval == 0] = ma.masked
             self.tick_color = 'k'
         else:
             self.tick_color = 'white'
-            self.zval[self.zval==0] = 1
-        self.zval *= self.zval.max()**(-1)
 
-        self.vmin = None
+
+        self.clim = list(self.hist2d[3])
+        print self.clim
         if self.GetPlotParam('set_v_min'):
-            self.vmin = 10**self.GetPlotParam('v_min')
-        self.vmax = None
+            self.clim[0] = 10**self.GetPlotParam('v_min')
         if self.GetPlotParam('set_v_max'):
-            self.vmax = 10**self.GetPlotParam('v_max')
+            self.clim[1] = 10**self.GetPlotParam('v_max')
 
 
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])#, bottom=0.2,left=0.1,right=0.95, top = 0.95)
@@ -212,78 +230,81 @@ class PhasePanel:
                 self.axes = self.figure.add_subplot(self.gs[18:92,:], sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
         else:
             self.axes = self.figure.add_subplot(self.gs[18:92,:])
-        self.cax = self.axes.imshow(self.zval,
+        self.cax = self.axes.imshow(self.hist2d[0],
                                     cmap = new_cmaps.cmaps[self.parent.cmap],
                                     norm = self.norm(), origin = 'lower',
                                     aspect = 'auto',
-                                    extent=[self.xmin, self.xmax, self.ymin, self.ymax],
-                                    vmin = self.vmin, vmax = self.vmax,
                                     interpolation=self.GetPlotParam('interpolation'))
 
+        self.cax.set_extent([self.xmin, self.xmax, self.ymin, self.ymax])
 
-        if self.GetPlotParam('show_shock'):
-            self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
-                       PathEffects.Normal()])
+        self.cax.set_clim(self.clim)
 
-        if self.GetPlotParam('show_int_region'):
-            # find the location
-            left_loc = self.parent.i_L.get()
-            right_loc = self.parent.i_R.get()
-
-            if self.parent.e_relative:
-                left_loc = self.parent.shock_loc+self.parent.i_L.get()
-                right_loc = self.parent.shock_loc+self.parent.i_R.get()
-
-            if self.GetPlotParam('prtl_type') == 1:
-                left_loc = self.parent.e_L.get()
-                right_loc = self.parent.e_R.get()
-
-                if self.parent.e_relative:
-                    left_loc = self.parent.shock_loc+self.parent.e_L.get()
-                    right_loc = self.parent.shock_loc+self.parent.e_R.get()
-
-            left_loc = max(left_loc, self.xmin+1)
-            right_loc = min(right_loc, self.xmax-1)
-            self.axes.axvline(left_loc, linewidth = 1.5, linestyle = '-', color = self.energy_color)
-            self.axes.axvline(right_loc, linewidth = 1.5, linestyle = '-', color = self.energy_color)
+        self.shock_line = self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
+                   PathEffects.Normal()])
+        if not self.GetPlotParam('show_shock'):
+            self.shock_line.set_visible(False)
 
 
-        if self.GetPlotParam('show_cbar'):
-            self.axC = self.figure.add_subplot(self.gs[:4,:])
-            self.cbar = self.figure.colorbar(self.cax, ax = self.axes, cax = self.axC, orientation = 'horizontal')
-            if self.GetPlotParam('norm_type')== 'PowerNorm':
-                self.cbar.set_ticks(np.linspace(self.zmin(),self.zval.max(), 5)**(1./self.FigWrap.GetPlotParam('pow_num')))
+        if self.GetPlotParam('prtl_type') ==0 and self.parent.e_relative:
+            self.left_loc = self.parent.shock_loc+self.parent.i_L.get()
+            self.right_loc = self.parent.shock_loc+self.parent.i_R.get()
 
-            if self.GetPlotParam('norm_type') == 'LogNorm':
-                cmin = self.zval.min()
-                if self.vmin:
-                    cmin = self.vmin
-                cmax = self.zval.max()
-                if self.vmax:
-                    cmax = self.vmax
+        elif self.GetPlotParam('prtl_type') == 0:
+            self.left_loc = self.parent.i_L.get()
+            self.right_loc = self.parent.i_R.get()
+
+        elif self.GetPlotParam('prtl_type') == 1 and self.parent.e_relative:
+            self.left_loc = self.parent.shock_loc+self.parent.e_L.get()
+            self.right_loc = self.parent.shock_loc+self.parent.e_R.get()
+
+        else:
+            self.left_loc = self.parent.e_L.get()
+            self.right_loc = self.parent.e_R.get()
+
+        self.left_loc = max(self.left_loc, self.xmin+1)
+        self.right_loc = min(self.right_loc, self.xmax-1)
+        self.lineleft = self.axes.axvline(self.left_loc, linewidth = 1.5, linestyle = '-', color = self.energy_color)
+        self.lineright = self.axes.axvline(self.right_loc, linewidth = 1.5, linestyle = '-', color = self.energy_color)
+
+        if not self.GetPlotParam('show_int_region'):
+            self.lineleft.set_visible(False)
+            self.lineright.set_visible(False)
 
 
-                ctick_range = np.logspace(np.log10(cmin),np.log10(cmax), 5)
-                self.cbar.set_ticks(ctick_range)
-                ctick_labels = []
-                for elm in ctick_range:
-                    if np.abs(np.log10(elm))<1E-2:
-                        tmp_s = '0'
-                    else:
-                        tmp_s = '%.2f' % np.log10(elm)
-                    ctick_labels.append(tmp_s)
+        self.axC = self.figure.add_subplot(self.gs[:4,:])
+        self.cbar = self.figure.colorbar(self.cax, ax = self.axes, cax = self.axC, orientation = 'horizontal')
 
-                self.cbar.set_ticklabels(ctick_labels)
-                self.cbar.ax.tick_params(labelsize=self.parent.num_font_size)
-            if self.GetPlotParam('norm_type')== 'Linear':
-                self.cbar.set_ticks(np.linspace(self.zval.min(),self.zval.max(), 5))
+        if not self.GetPlotParam('show_cbar'):
+            self.axC.set_visible(False)
+
+        else:
+            #Gotta generate the cticks
+            # Deprecated code that allowed you to change the color norm
+#            if self.GetPlotParam('norm_type')== 'PowerNorm':
+#                self.cbar.set_ticks(np.linspace(self.zmin(),self.zval.max(), 5)**(1./self.FigWrap.GetPlotParam('pow_num')))
+
+            ctick_range = np.logspace(np.log10(self.clim[0]),np.log10(self.clim[1]), 5)
+            self.cbar.set_ticks(ctick_range)
+            ctick_labels = []
+            for elm in ctick_range:
+                if np.abs(np.log10(elm))<1E-2:
+                    tmp_s = '0'
+                else:
+                    tmp_s = '%.2f' % np.log10(elm)
+                ctick_labels.append(tmp_s)
+
+            self.cbar.set_ticklabels(ctick_labels)
+            self.cbar.ax.tick_params(labelsize=self.parent.num_font_size)
+#            if self.GetPlotParam('norm_type')== 'Linear':
+#                self.cbar.set_ticks(np.linspace(self.zval.min(),self.zval.max(), 5))
 
         self.axes.set_axis_bgcolor('lightgrey')
         self.axes.tick_params(labelsize = self.parent.num_font_size, color=self.tick_color)
         if self.parent.xlim[0] and self.parent.LinkSpatial == 1:
             self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
-        else:
-            self.axes.set_xlim(self.xmin,self.xmax)
+#        else:
+#            self.axes.set_xlim(self.xmin,self.xmax)
         if self.GetPlotParam('set_p_min'):
             self.axes.set_ylim(ymin = self.GetPlotParam('p_min'))
         if self.GetPlotParam('set_p_max'):
@@ -291,28 +312,91 @@ class PhasePanel:
 
         self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
         self.axes.set_ylabel(self.y_label, labelpad = self.parent.ylabel_pad, color = 'black')
-        self.prev_time = self.parent.TimeStep.value
+
+    def refresh(self):
+        '''This is a function that will be called only if self.axes already
+        holds a density type plot. We only update things that have shown.  If
+        hasn't changed, or isn't viewed, don't touch it. The difference between this and last
+        time, is that we won't actually do any drawing in the plot. The plot
+        will be redrawn after all subplots data is changed. '''
+        self.LoadData()
+
+        # Main goal, only change what is showing..
+
+
+        self.xmin = self.hist2d[2][0]
+        self.xmax = self.hist2d[2][-1]
+        self.ymin = self.hist2d[1][0]
+        self.ymax = self.hist2d[1][-1]
+        self.clim = list(self.hist2d[3])
+
+        self.cax.set_data(self.hist2d[0])
+
+        self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
+
+
+
+        if self.GetPlotParam('set_v_min'):
+            self.clim[0] =  10**self.GetPlotParam('v_min')
+        if self.GetPlotParam('set_v_max'):
+            self.clim[1] =  10**self.GetPlotParam('v_max')
+
+        self.cax.set_clim(self.clim)
+
+        if self.GetPlotParam('show_cbar'):
+            ctick_range = np.logspace(np.log10(self.clim[0]),np.log10(self.clim[1]), 5)
+            self.cbar.set_ticks(ctick_range)
+            ctick_labels = []
+            for elm in ctick_range:
+                if np.abs(np.log10(elm))<1E-2:
+                    tmp_s = '0'
+                else:
+                    tmp_s = '%.2f' % np.log10(elm)
+                ctick_labels.append(tmp_s)
+            self.cbar.set_ticklabels(ctick_labels)
+
+        if self.GetPlotParam('show_shock'):
+            self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
+
+        if self.GetPlotParam('show_int_region'):
+            if self.GetPlotParam('prtl_type') ==0 and self.parent.e_relative:
+                self.left_loc = self.parent.shock_loc+self.parent.i_L.get()
+                self.right_loc = self.parent.shock_loc+self.parent.i_R.get()
+
+            elif self.GetPlotParam('prtl_type') == 0:
+                self.left_loc = self.parent.i_L.get()
+                self.right_loc = self.parent.i_R.get()
+
+            elif self.GetPlotParam('prtl_type') == 1 and self.parent.e_relative:
+                self.left_loc = self.parent.shock_loc+self.parent.e_L.get()
+                self.right_loc = self.parent.shock_loc+self.parent.e_R.get()
+
+            else:
+                self.left_loc = self.parent.e_L.get()
+                self.right_loc = self.parent.e_R.get()
+
+            self.left_loc = max(self.left_loc, self.xmin+1)
+            self.lineleft.set_xdata([self.left_loc,self.left_loc])
+
+            self.right_loc = min(self.right_loc, self.xmax-1)
+            self.lineright.set_xdata([self.right_loc,self.right_loc])
+
+        if self.GetPlotParam('set_p_min'):
+            self.ymin = self.GetPlotParam('p_min')
+        if self.GetPlotParam('set_p_max'):
+            self.ymax = self.GetPlotParam('p_max')
+        self.axes.set_ylim(self.ymin, self.ymax)
+
+        if self.parent.xlim[0] and self.parent.LinkSpatial == 1:
+            self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+        else:
+            self.axes.set_xlim(self.xmin,self.xmax)
 
     def GetPlotParam(self, keyname):
         return self.FigWrap.GetPlotParam(keyname)
 
     def SetPlotParam(self, keyname, value,  update_plot = True):
         self.FigWrap.SetPlotParam(keyname, value,  update_plot = update_plot)
-
-    def BinnedDataInDict(self):
-        # First figure out what the key_name is
-        self.key_name = ''
-        if self.GetPlotParam('weighted'):
-            self.key_name += 'weighted_'
-        if self.GetPlotParam('prtl_type') == 0: #protons
-            self.key_name += 'proton_p'
-        else:
-            self.key_name += 'electron_p'
-
-        opt = ['x-x', 'y-x', 'z-x']
-        self.key_name += opt[self.GetPlotParam('mom_dim')]
-
-        return self.key_name in self.parent.DataDict.keys()
 
     def OpenSettings(self):
         if self.settings_window is None:
@@ -402,8 +486,7 @@ class PhaseSettings(Tk.Toplevel):
         self.CbarVar.set(self.parent.GetPlotParam('show_cbar'))
         cb = ttk.Checkbutton(frm, text = "Show Color bar",
                         variable = self.CbarVar,
-                        command = lambda:
-                        self.parent.SetPlotParam('show_cbar', self.CbarVar.get()))
+                        command = self.CbarHandler)
         cb.grid(row = 6, sticky = Tk.W)
 
         # show shock
@@ -411,8 +494,7 @@ class PhaseSettings(Tk.Toplevel):
         self.ShockVar.set(self.parent.GetPlotParam('show_shock'))
         cb = ttk.Checkbutton(frm, text = "Show Shock",
                         variable = self.ShockVar,
-                        command = lambda:
-                        self.parent.SetPlotParam('show_shock', self.ShockVar.get()))
+                        command = self.ShockVarHandler)
         cb.grid(row = 6, column = 1, sticky = Tk.W)
 
 
@@ -430,8 +512,7 @@ class PhaseSettings(Tk.Toplevel):
         self.IntRegVar.set(self.parent.GetPlotParam('show_int_region'))
         cb = ttk.Checkbutton(frm, text = "Show Energy Region",
                         variable = self.IntRegVar,
-                        command = lambda:
-                        self.parent.SetPlotParam('show_int_region', self.IntRegVar.get()))
+                        command = self.ShowIntRegionHandler)
         cb.grid(row = 7, column = 1, sticky = Tk.W)
 
         # control mask
@@ -508,6 +589,27 @@ class PhaseSettings(Tk.Toplevel):
         self.PmaxEnter = ttk.Entry(frm, textvariable=self.Pmax, width=7)
         self.PmaxEnter.grid(row = 6, column = 3)
 
+    def ShockVarHandler(self, *args):
+        if self.parent.GetPlotParam('show_shock')== self.ShockVar.get():
+            pass
+        else:
+            self.parent.shock_line.set_visible(self.ShockVar.get())
+            self.parent.SetPlotParam('show_shock', self.ShockVar.get())
+
+    def ShowIntRegionHandler(self, *args):
+        if self.parent.GetPlotParam('show_int_region')== self.IntRegVar.get():
+            pass
+        else:
+            self.parent.lineleft.set_visible(self.IntRegVar.get())
+            self.parent.lineright.set_visible(self.IntRegVar.get())
+            self.parent.SetPlotParam('show_int_region', self.IntRegVar.get())
+
+    def CbarHandler(self, *args):
+        if self.parent.GetPlotParam('show_cbar')== self.CbarVar.get():
+            pass
+        else:
+            self.parent.axC.set_visible(self.CbarVar.get())
+            self.parent.SetPlotParam('show_cbar', self.CbarVar.get(), update_plot =self.parent.GetPlotParam('twoD'))
 
 
     def ctypeChanged(self, *args):
@@ -521,6 +623,7 @@ class PhaseSettings(Tk.Toplevel):
         if self.InterpolVar.get() == self.parent.GetPlotParam('interpolation'):
             pass
         else:
+            self.parent.cax.set_interpolation(self.InterpolVar.get())
             self.parent.SetPlotParam('interpolation', self.InterpolVar.get())
 
 

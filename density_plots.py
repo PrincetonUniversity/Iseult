@@ -263,7 +263,7 @@ class DensPanel:
 
     def refresh(self):
         '''This is a function that will be called only if self.axes already
-        holds a fields type plot. We only update things that have shown.  If
+        holds a density type plot. We only update things that have shown.  If
         hasn't changed, or isn't viewed, don't touch it. The difference between this and last
         time, is that we won't actually do any drawing in the plot. The plot
         will be redrawn after all subplots data is changed. '''
@@ -485,6 +485,7 @@ class DensSettings(Tk.Toplevel):
         if self.InterpolVar.get() == self.parent.GetPlotParam('interpolation'):
             pass
         else:
+            self.parent.cax.set_interpolation(self.InterpolVar.get())
             self.parent.SetPlotParam('interpolation', self.InterpolVar.get())
 
     def setZminChanged(self, *args):

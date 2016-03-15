@@ -8,7 +8,6 @@ import new_cmaps
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
-import time
 #from modest_image import ModestImage
 class FieldsPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
@@ -407,8 +406,6 @@ class FieldsPanel:
         the plot. The plot will be redrawn after all subplots are refreshed. '''
 
 
-        tic = time.time()
-
         self.LoadData()
 
         # Main goal, only change what is showing..
@@ -529,8 +526,7 @@ class FieldsPanel:
             #self.axes.draw_artist(self.axes.patch)
             #self.axes.draw_artist(self.cax)
             #self.axes.draw_artist(self.axes.xaxis)
-        toc = time.time()
-        print toc-tic
+
 
 
     def GetPlotParam(self, keyname):
@@ -723,6 +719,7 @@ class FieldSettings(Tk.Toplevel):
         if self.InterpolVar.get() == self.parent.GetPlotParam('interpolation'):
             pass
         else:
+            self.parent.cax.set_interpolation(self.InterpolVar.get())
             self.parent.SetPlotParam('interpolation', self.InterpolVar.get())
 
     def setZminChanged(self, *args):
