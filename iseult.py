@@ -895,8 +895,8 @@ class MainApp(Tk.Tk):
 
 
         self.numOfRows = Tk.IntVar(self)
-#        self.numOfRows.set(3)
-        self.numOfRows.set(2)
+        self.numOfRows.set(3)
+#        self.numOfRows.set(2)
         self.numOfRows.trace('w', self.UpdateGridSpec)
         self.numOfColumns = Tk.IntVar(self)
         self.numOfColumns.set(2)

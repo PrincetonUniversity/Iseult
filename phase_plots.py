@@ -183,7 +183,7 @@ class PhasePanel:
                 zval[zval==0] = 0.5
                 zval *= float(zval.max())**(-1)
                 tmplist = [zval.min(), zval.max()]
-            print tmplist
+
             self.hist2d = zval, self.hist2d[1], self.hist2d[2], tmplist
             self.parent.DataDict[self.key_name] = self.hist2d
 
@@ -214,7 +214,7 @@ class PhasePanel:
 
 
         self.clim = list(self.hist2d[3])
-        print self.clim
+
         if self.GetPlotParam('set_v_min'):
             self.clim[0] = 10**self.GetPlotParam('v_min')
         if self.GetPlotParam('set_v_max'):
