@@ -120,8 +120,8 @@ class SpectralPanel:
             e_right_loc = self.parent.e_R.get()
 
             if self.parent.e_relative:
-                e_left_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.e_L.get()
-                e_right_loc = self.parent.shock_loc/self.c_omp*self.istep+self.parent.e_R.get()
+                e_left_loc = self.parent.shock_loc*self.istep/self.c_omp+self.parent.e_L.get()
+                e_right_loc = self.parent.shock_loc*self.istep/self.c_omp+self.parent.e_R.get()
 
             eL = self.xsl.searchsorted(e_left_loc)
             eR = self.xsl.searchsorted(e_right_loc, side='right')
@@ -130,8 +130,8 @@ class SpectralPanel:
             i_right_loc = self.parent.i_R.get()
 
             if self.parent.e_relative:
-                i_left_loc = self.parent.shock_loc+self.parent.i_L.get()
-                i_right_loc = self.parent.shock_loc+self.parent.i_R.get()
+                i_left_loc = self.parent.shock_loc*self.istep/self.c_omp+self.parent.i_L.get()
+                i_right_loc = self.parent.shock_loc*self.istep/self.c_omp+self.parent.i_R.get()
 
             iL = self.xsl.searchsorted(i_left_loc)
             iR = self.xsl.searchsorted(i_right_loc, side='right')
@@ -174,263 +174,64 @@ class SpectralPanel:
 
         # Set the tick color
         tick_color = 'black'
-        self.LoadData()
         # Create a gridspec to handle spacing better
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])#, bottom=0.2,left=0.1,right=0.95, top = 0.95)
 
-        # load the density values
         self.axes = self.figure.add_subplot(self.gs[18:92,:])
 
-        if self.GetPlotParam('spectral_type') == 0: #Show the momentum dist
-            self.ion_spect = self.axes.plot(self.momentum, self.mompdist, color = self.parent.ion_color)
-            if not self.GetPlotParam('show_ions'):
-                self.ion_spect[0].set_visible(False)
+        self.ion_spect = self.axes.plot(self.momentum, self.mompdist, color = self.parent.ion_color)
+        if not self.GetPlotParam('show_ions'):
+            self.ion_spect[0].set_visible(False)
+        self.ion_temp = self.axes.plot(self.momentum, self.mompdist,
+                                       color = self.parent.ion_fit_color,
+                                       linestyle = '--', linewidth = 1.5) # a placeholder
+        # See if we want to plot the electron temperature
+        if not self.parent.set_Tp:
+            self.ion_temp[0].set_visible(False)
 
-            self.ion_temp = self.axes.plot(self.momentum, self.mompdist,
-                                           color = self.parent.ion_fit_color,
-                                           linestyle = '--', linewidth = 1.5) # a placeholder
-            # See if we want to plot the electron temperature
-            if not self.parent.set_Tp:
-                self.ion_temp[0].set_visible(False)
-            else:
-                if self.parent.delgam_p >= 0.013:
-                    aconst = 1/(self.parent.delgam_p*np.exp(1.0/self.parent.delgam_p)*kn(2, 1.0/self.parent.delgam_p))
-                else:
-                    aconst = np.sqrt(2/np.pi)/self.parent.delgam_p**1.5
-                    aconst -= 15.0/(4.*np.sqrt(self.parent.delgam_p)*np.sqrt(2*np.pi))
-                    aconst += (345*np.sqrt(self.parent.delgam_p))/(64.*np.sqrt(2*np.pi))
-                    aconst -= (3285*self.parent.delgam_p**1.5)/(512.*np.sqrt(2*np.pi))
-                    aconst += (95355*self.parent.delgam_p**2.5)/(16384.*np.sqrt(2*np.pi))
-                    aconst -= (232065*self.parent.delgam_p**3.5)/(131072.*np.sqrt(2*np.pi))
-
-                fpmommax = self.momentum**4*aconst*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
-                fpmommax *= np.exp(-self.gamma/self.parent.delgam_p)/(4*np.pi*self.momentum)/(self.gamma+1.0)
-                self.ion_temp[0].set_data(self.momentum, fpmommax)
-                self.ion_temp[0].set_color(self.parent.ion_fit_color)
-
-            self.PowerlawPworked = False
-             # a placeholder
-            self.PLP = self.axes.plot(self.momentum, self.mompdist,
-                                            color = self.parent.ion_fit_color,
-                                            linestyle = ':', linewidth = 1.5)
+         # a placeholder
+        self.PLP = self.axes.plot(self.momentum, self.mompdist,
+                                        color = self.parent.ion_fit_color,
+                                        linestyle = ':', linewidth = 1.5)
+        self.PLP[0].set_visible(False)
 
 
-            self.PLP[0].set_visible(False)
-            if self.parent.PowerLawFitIon[0]:
-                # Find the part of the spectrum chosen by the fitting
-                #first convert to
-                mompleft = np.sqrt((self.parent.PowerLawFitIon[1]+1)**2-1)
-                mompright = np.sqrt((self.parent.PowerLawFitIon[2]+1.)**2-1.)
-                impLeft = self.momentum.searchsorted(mompleft)
-                impRight = self.momentum.searchsorted(mompright, side='Right')
-
-                # a while loop to make sure that the program won't mess up if mompdist == 0
-                while np.abs(self.mompdist[impLeft]) <= 1E-10 and impLeft < len(self.mompdist)-1:
-                    impLeft += 1
-                while np.abs(self.mompdist[impRight]) <= 1E-10 and impRight > 0:
-                    impRight -=1
-                print impLeft, impRight
-
-                if impRight>impLeft:
-                    self.pslope, self.pintercept, pr_value, pp_value, pstderr = linregress(np.log(self.momentum[impLeft:impRight]), np.log(self.mompdist[impLeft:impRight]))
-
-                    if np.isnan(self.pslope) == False and np.isnan(self.pintercept) == False:
-                        self.PowerlawPworked = True
-                        self.PLP[0].set_data(self.momentum, np.exp(self.pintercept)*self.momentum**self.pslope)
-                        self.PLP[0].set_visible(True)
-
-            self.electron_spect = self.axes.plot(self.momentum, self.momedist, color = self.parent.electron_color)
-            if not self.GetPlotParam('show_electrons'):
-                self.electron_spect[0].set_visible(False)
+        self.electron_spect = self.axes.plot(self.momentum, self.momedist, color = self.parent.electron_color)
+        if not self.GetPlotParam('show_electrons'):
+            self.electron_spect[0].set_visible(False)
 
             # a placeholder
-            self.electron_temp =  self.axes.plot(self.momentum, self.momedist,
-                                                color = self.parent.electron_fit_color,
-                                                linestyle = '--', linewidth = 1.5)
-            if not self.parent.set_Te:
-                self.electron_temp[0].set_visible(False)
-            else:
-                self.delgame0=self.parent.delgam_e*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
-                if self.delgame0 >= 0.013:
-                    aconst = 1/(self.delgame0*np.exp(1.0/self.delgame0)*kn(2, 1.0/self.delgame0))
-                else:
-                    aconst = np.sqrt(2/np.pi)/self.delgame0**1.5
-                    aconst -= 15.0/(4.*np.sqrt(self.delgame0)*np.sqrt(2*np.pi))
-                    aconst += (345*np.sqrt(self.delgame0))/(64.*np.sqrt(2*np.pi))
-                    aconst -= (3285*self.delgame0**1.5)/(512.*np.sqrt(2*np.pi))
-                    aconst += (95355*self.delgame0**2.5)/(16384.*np.sqrt(2*np.pi))
-                    aconst -= (232065*self.delgame0**3.5)/(131072.*np.sqrt(2*np.pi))
+        self.electron_temp =  self.axes.plot(self.momentum, self.momedist,
+                                            color = self.parent.electron_fit_color,
+                                            linestyle = '--', linewidth = 1.5)
+        if not self.parent.set_Te:
+            self.electron_temp[0].set_visible(False)
 
-                femommax = self.momentum**4*aconst*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
-                femommax *= np.exp(-self.gamma/self.delgame0)/(4*np.pi*self.momentum)/(self.gamma+1.0)
-                self.electron_temp[0].set_data(self.momentum, femommax)
+        self.PLE = self.axes.plot(self.momentum, self.momedist,
+                                  color = self.parent.electron_fit_color,
+                                  linestyle = ':', linewidth = 1.5)
+        self.PLE[0].set_visible(False)
 
-            # Now the power-law
-            self.PLE = self.axes.plot(self.momentum, self.momedist,
-                                        color = self.parent.electron_fit_color,
-                                        linestyle = ':', linewidth = 1.5)
-            self.PowerlawEworked = False
-            self.PLE[0].set_visible(False)
-            if self.parent.PowerLawFitElectron[0]:
-                # Find the part of the spectrum chosen by the fitting
-                #first convert to
-                momeleft = np.sqrt((self.parent.PowerLawFitElectron[1]+1)**2-1)
-                momeright = np.sqrt((self.parent.PowerLawFitElectron[2]+1.)**2-1.)
-                imeLeft = self.momentum.searchsorted(momeleft)
-                imeRight = self.momentum.searchsorted(momeright, side='Right')
+        self.axes.set_xscale("log")
+        self.axes.set_yscale("log")
+        self.axes.set_axis_bgcolor('lightgrey')
+        if self.GetPlotParam('set_xlim'):
+            self.axes.set_xlim(self.GetPlotParam('x_min'), self.GetPlotParam('x_max'))
+        if self.GetPlotParam('set_ylim'):
+            self.axes.set_ylim(10**self.GetPlotParam('y_min'), 10**self.GetPlotParam('y_max'))
 
-                # a while loop to make sure that the program won't mess up if momedist == 0
-                while np.abs(self.momedist[imeLeft]) <= 1E-14 and imeLeft < len(self.momedist)-1:
-                    imeLeft += 1
+        self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
 
-                while np.abs(self.momedist[imeRight]) <= 1E-14 and imeRight > 0:
-                    imeRight -=1
-
-
-                if imeRight>imeLeft:
-                    self.eslope, self.eintercept, r_value, p_value, stderr = linregress(np.log(self.momentum[imeLeft:imeRight]), np.log(self.momedist[imeLeft:imeRight]))
-
-                    if np.isnan(self.eslope) == False and np.isnan(self.eintercept) == False:
-                        self.PowerlawEworked = True
-                        self.PLE[0].set_data(self.momentum, np.exp(self.eintercept)*self.momentum**self.eslope)
-                        self.PLE[0].set_visible(True)
-
-            self.axes.set_xscale("log")
-            self.axes.set_yscale("log")
-            self.axes.set_axis_bgcolor('lightgrey')
-            if self.GetPlotParam('set_xlim'):
-                self.axes.set_xlim(self.GetPlotParam('x_min'), self.GetPlotParam('x_max'))
-            if self.GetPlotParam('set_ylim'):
-                self.axes.set_ylim(10**self.GetPlotParam('y_min'), 10**self.GetPlotParam('y_max'))
-
-
-
-            self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
-
+        if self.GetPlotParam('spectral_type') == 0:
             self.axes.set_xlabel(r'$p\ [mc]$', labelpad = self.parent.xlabel_pad, color = 'black')
             self.axes.set_ylabel(r'$p^4f(p)$', labelpad = self.parent.ylabel_pad, color = 'black')
-
-        if self.GetPlotParam('spectral_type') == 1: #Show the energy dist
-            self.electron_spect = self.axes.plot(self.gamma, self.edist, color = self.parent.electron_color)
-            if not self.GetPlotParam('show_electrons'):
-                self.electron_spect[0].set_visible(False)
-
-            # a placeholder
-            self.electron_temp = self.axes.plot(self.gamma, self.edist,
-                                        color = self.parent.electron_fit_color,
-                                        linestyle = '--', linewidth = 1.5)
-            if not self.parent.set_Te:
-                self.electron_temp[0].set_visible(False)
-            else:
-                self.delgame0=self.parent.delgam_e*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
-                if self.delgame0 >= 0.013:
-                    aconst = 1/(self.delgame0*np.exp(1.0/self.delgame0)*kn(2, 1.0/self.delgame0))
-                else:
-                    aconst = np.sqrt(2/np.pi)/self.delgame0**1.5
-                    aconst -= 15.0/(4.*np.sqrt(self.delgame0)*np.sqrt(2*np.pi))
-                    aconst += (345*np.sqrt(self.delgame0))/(64.*np.sqrt(2*np.pi))
-                    aconst -= (3285*self.delgame0**1.5)/(512.*np.sqrt(2*np.pi))
-                    aconst += (95355*self.delgame0**2.5)/(16384.*np.sqrt(2*np.pi))
-                    aconst -= (232065*self.delgame0**3.5)/(131072.*np.sqrt(2*np.pi))
-
-                femax = aconst*self.gamma*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
-                femax *= np.exp(-self.gamma/self.delgame0)
-                self.electron_temp[0].set_data(self.gamma, femax)
-
-            # the power-law
-            self.PLE = self.axes.plot(self.gamma, self.edist,
-                                    color = self.parent.electron_fit_color,
-                                    linestyle = ':', linewidth = 1.5)
-
-            self.PowerlawEworked = False
-            self.PLE[0].set_visible(False)
-            if self.parent.PowerLawFitElectron[0]:
-                # Find the part of the spectrum chosen by the fitting
-                #first convert to
-                ieLeft = self.gamma.searchsorted(self.parent.PowerLawFitElectron[1])
-                ieRight = self.gamma.searchsorted(self.parent.PowerLawFitElectron[2], side='Right')
-
-                # a while loop to make sure that the program won't mess up if momedist == 0
-                while np.abs(self.edist[ieLeft]) <= 1E-14 and ieLeft < len(self.edist)-1:
-                    ieLeft += 1
-
-                while np.abs(self.edist[ieRight]) <= 1E-14 and ieRight > 0:
-                    ieRight -=1
-
-                if ieRight>ieLeft:
-                    self.eslope, self.eintercept, er_value, ep_value, estderr = linregress(np.log(self.gamma[ieLeft:ieRight]), np.log(self.edist[ieLeft:ieRight]))
-
-                    if np.isnan(self.eslope) == False and np.isnan(self.eintercept) == False:
-                        self.PowerlawEworked = True
-                        self.PLE[0].set_data(self.gamma, np.exp(self.eintercept)*self.gamma**self.eslope)
-                        self.PLE[0].set_visible(True)
-            self.ion_spect = self.axes.plot(self.gamma, self.pdist, color = self.parent.ion_color)
-            if not self.GetPlotParam('show_ions'):
-                self.ion_spect[0].set_visible(False)
-
-            self.ion_temp = self.axes.plot(self.gamma, self.pdist,
-                                           color = self.parent.ion_fit_color,
-                                           linestyle = '--', linewidth = 1.5)
-            if not self.parent.set_Tp:
-                self.ion_temp[0].set_visible(False)
-            else:
-                if self.parent.delgam_p >= 0.013:
-                    aconst = 1/(self.parent.delgam_p*np.exp(1.0/self.parent.delgam_p)*kn(2, 1.0/self.parent.delgam_p))
-                else:
-                    aconst = np.sqrt(2/np.pi)/self.parent.delgam_p**1.5
-                    aconst -= 15.0/(4.*np.sqrt(self.parent.delgam_p)*np.sqrt(2*np.pi))
-                    aconst += (345*np.sqrt(self.parent.delgam_p))/(64.*np.sqrt(2*np.pi))
-                    aconst -= (3285*self.parent.delgam_p**1.5)/(512.*np.sqrt(2*np.pi))
-                    aconst += (95355*self.parent.delgam_p**2.5)/(16384.*np.sqrt(2*np.pi))
-                    aconst -= (232065*self.parent.delgam_p**3.5)/(131072.*np.sqrt(2*np.pi))
-
-                fpmax = aconst*self.gamma*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
-                fpmax *= np.exp(-self.gamma/self.parent.delgam_p)
-                self.ion_temp[0].set_data(self.gamma, fpmax)
-
-            self.PLP = self.axes.plot(self.gamma, self.pdist,
-                                      color = self.parent.ion_fit_color,
-                                      linestyle = ':', linewidth = 1.5)
-
-            self.PowerlawPworked = False
-            self.PLP[0].set_visible(False)
-            if self.parent.PowerLawFitIon[0]:
-                # Find the part of the spectrum chosen by the fitting
-                iepLeft = self.gamma.searchsorted(self.parent.PowerLawFitIon[1])
-                iepRight = self.gamma.searchsorted(self.parent.PowerLawFitIon[2], side='Right')
-
-                # a while loop to make sure that the program won't mess up if mompdist == 0
-                while np.abs(self.pdist[iepLeft]) <= 1E-14 and iepLeft < len(self.pdist)-1:
-                    iepLeft += 1
-                while np.abs(self.pdist[iepRight]) <= 1E-14 and iepRight > 0:
-                    iepRight -=1
-
-                if iepRight>iepLeft:
-                    self.pslope, pintercept, per_value, pep_value, pestderr = linregress(np.log(self.gamma[iepLeft:iepRight]), np.log(self.pdist[iepLeft:iepRight]))
-                    if np.isnan(self.pslope) == False and np.isnan(self.pintercept) == False:
-                        self.PowerlawPworked = True
-                        self.PLP[0].set_data(self.gamma, np.exp(self.pintercept)*self.gamma**self.pslope)
-                        self.PLP[0].set_visible(True)
-
-            self.axes.set_xscale("log")
-            self.axes.set_yscale("log")
-            self.axes.set_axis_bgcolor('lightgrey')
-            if self.GetPlotParam('set_xlim'):
-                self.axes.set_xlim(self.GetPlotParam('x_min'), self.GetPlotParam('x_max'))
-            if self.GetPlotParam('set_ylim'):
-                self.axes.set_ylim(10**self.GetPlotParam('y_min'), 10**self.GetPlotParam('y_max'))
-
-
-            self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
-
+        else:
             self.axes.set_xlabel(r'$E\ [mc^2]$', labelpad = -2, color = 'black')
             self.axes.set_ylabel(r'$E(dn/dE)/n$', labelpad = 0, color = 'black')
-        if self.GetPlotParam('show_legend'):
-            self.MakeLegend()
 
+        self.refresh()
 
     def refresh(self):
-        self.LoadData()
         if self.GetPlotParam('spectral_type') == 0: #Show the momentum dist
             if self.GetPlotParam('show_ions'):
                 self.ion_spect[0].set_data(self.momentum, self.mompdist)
@@ -633,7 +434,6 @@ class SpectralPanel:
 
         if self.GetPlotParam('show_legend'):
             self.MakeLegend()
-
 
 
 

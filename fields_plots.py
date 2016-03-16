@@ -8,7 +8,9 @@ import new_cmaps
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
-#from modest_image import ModestImage
+from modest_image import ModestImage
+from matplotlib.ticker import FuncFormatter
+
 class FieldsPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
 
@@ -93,7 +95,7 @@ class FieldsPanel:
             self.xaxis_values = self.parent.DataDict['xaxis_values']
         else:
             # x-values haven't been calculated yet, generate them then save them to the dictionary for later.
-            self.xaxis_values = np.arange(self.FigWrap.LoadKey('bx')[0,:,:].shape[1])/self.c_omp*self.istep
+            self.xaxis_values = np.arange(self.FigWrap.LoadKey('bx')[0,:,:].shape[1])
         #            print self.xaxis_values
             self.parent.DataDict['xaxis_values'] = np.copy(self.xaxis_values)
 
@@ -173,8 +175,6 @@ class FieldsPanel:
         what has changed in the figure. This will be done in a function called
         refresh, that should be much much faster.'''
 
-
-
         if self.GetPlotParam('OutlineText'):
             self.annotate_kwargs = {'horizontalalignment': 'right',
             'verticalalignment': 'top',
@@ -193,8 +193,6 @@ class FieldsPanel:
         # Create a gridspec to handle spacing better
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])
 
-        #load the data
-        self.LoadData()
         # Now that the data is loaded, start making the plots
         if self.GetPlotParam('twoD'):
             if self.parent.LinkSpatial != 0:
@@ -245,9 +243,9 @@ class FieldsPanel:
 
 
             self.ymin = 0
-            self.ymax =  self.zval.shape[0]/self.c_omp*self.istep
+            self.ymax =  self.zval.shape[0]
             self.xmin = 0
-            self.xmax =  self.zval.shape[1]/self.c_omp*self.istep
+            self.xmax =  self.zval.shape[1]
 
             self.vmin = None
             if self.GetPlotParam('set_z_min'):
@@ -257,28 +255,21 @@ class FieldsPanel:
                 self.vmax = self.GetPlotParam('z_max')
 
             if self.parent.plot_aspect:
-                self.cax = self.axes.imshow(self.zval,
-                    cmap = new_cmaps.cmaps[self.parent.cmap],
-                    origin = 'lower',
-                    extent = (self.xmin,self.xmax, self.ymin, self.ymax),
-                    vmin = self.vmin,
-                    vmax = self.vmax,
-                    interpolation=self.GetPlotParam('interpolation'))
+                self.axes.set_aspect('equal')
+
+                self.cax = ModestImage(self.axes, data = self.zval,
+                                        origin = 'lower')
+                self.cax.set_cmap(new_cmaps.cmaps[self.parent.cmap])
+                self.cax.norm.vmin = self.vmin
+                self.cax.norm.vmax = self.vmax
             else:
-                self.cax = self.axes.imshow(self.zval,
-                    cmap = new_cmaps.cmaps[self.parent.cmap],
-                    origin = 'lower', aspect = 'auto',
-                    extent = (self.xmin,self.xmax, self.ymin, self.ymax),
-                    vmin = self.vmin,
-                    vmax = self.vmax,
-                    interpolation=self.GetPlotParam('interpolation'))
+                self.cax = ModestImage(self.axes, data = self.zval, origin = 'lower')
+                self.cax.set_cmap(new_cmaps.cmaps[self.parent.cmap])
+                self.cax.norm.vmin = self.vmin
+                self.cax.norm.vmax = self.vmax
 
+            self.axes.add_artist(self.cax)
 
-#            self.axes.add_artist(self.cax)
-#            self.cax.norm.vmin = self.vmin
-#            self.cax.norm.vmax = self.vmax
-#            self.axes.set_xlim(self.xmin, self.xmax)
-#            self.axes.set_ylim(self.ymin, self.ymax)
 
             self.TwoDan = self.axes.annotate(self.two_d_labels[self.GetPlotParam('field_type')],
                             xy = (0.9,.9),
@@ -313,11 +304,20 @@ class FieldsPanel:
             self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
 #        self.axes.set_xlim(self.xmin,self.xmax)
             if self.parent.xlim[0]:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+                self.axes.set_xlim(self.parent.xlim[1]*self.c_omp/self.istep,self.parent.xlim[2]*self.c_omp/self.istep)
+            else:
+                self.axes.set_xlim(self.xmin, self.xmax)
             if self.parent.ylim[0]:
-                self.axes.set_ylim(self.parent.ylim[1],self.parent.ylim[2])
+                self.axes.set_ylim(self.parent.ylim[1]*self.c_omp/self.istep,self.parent.ylim[2]*self.c_omp/self.istep)
+            else:
+                self.axes.set_ylim(self.ymin, self.ymax)
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
             self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.ylabel_pad, color = 'black')
+
+            # convert from the simulation grid to physical units
+            tick_formatter = FuncFormatter(self.Sim2PhysDist)
+            self.axes.xaxis.set_major_formatter(tick_formatter)
+            self.axes.yaxis.set_major_formatter(tick_formatter)
 
         else:
             if self.parent.LinkSpatial != 0 and self.parent.LinkSpatial != 3:
@@ -385,7 +385,7 @@ class FieldsPanel:
             self.axes.autoscale_view(scaley = True)
 
             if self.parent.xlim[0]:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+                self.axes.set_xlim(self.parent.xlim[1]*self.c_omp/self.istep,self.parent.xlim[2]*self.c_omp/self.istep)
             else:
                 self.axes.set_xlim(self.xaxis_values[0],self.xaxis_values[-1])
 
@@ -397,6 +397,14 @@ class FieldsPanel:
 
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
 
+            # convert from the simulation grid to physical units
+            tick_formatter = FuncFormatter(self.Sim2PhysDist)
+            self.axes.xaxis.set_major_formatter(tick_formatter)
+
+    def Sim2PhysDist(self, x, pos):
+        'The two args are the value and tick position'
+        return '%1.f' % (x/self.c_omp*self.istep)
+
     def refresh(self):
 
         '''This is a function that will be called only if self.axes already
@@ -405,8 +413,6 @@ class FieldsPanel:
         between this and last time, is that we won't actually do any drawing in
         the plot. The plot will be redrawn after all subplots are refreshed. '''
 
-
-        self.LoadData()
 
         # Main goal, only change what is showing..
         # First do the 1D plots, because it is simpler
@@ -447,7 +453,7 @@ class FieldsPanel:
 
             self.axes.set_ylim(self.line_ymin_max)
             if self.parent.xlim[0]:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+                self.axes.set_xlim(self.parent.xlim[1]*self.c_omp/self.istep,self.parent.xlim[2]*self.c_omp/self.istep)
             else:
                 self.axes.set_xlim(self.xaxis_values[0], self.xaxis_values[-1])
 
@@ -469,9 +475,9 @@ class FieldsPanel:
             if self.GetPlotParam('show_x'):
                 self.cax.set_data(self.fx)
                 self.ymin = 0
-                self.ymax =  self.fx.shape[0]/self.c_omp*self.istep
+                self.ymax =  self.fx.shape[0]
                 self.xmin = 0
-                self.xmax =  self.fx.shape[1]/self.c_omp*self.istep
+                self.xmax =  self.fx.shape[1]
                 if self.GetPlotParam('field_type') == 0:
                     self.clims = self.bxmin_max
                     self.TwoDan.set_text(r'$B_x$')
@@ -482,9 +488,9 @@ class FieldsPanel:
             if self.GetPlotParam('show_y'):
                 self.cax.set_data(self.fy)
                 self.ymin = 0
-                self.ymax =  self.fy.shape[0]/self.c_omp*self.istep
+                self.ymax =  self.fy.shape[0]
                 self.xmin = 0
-                self.xmax =  self.fy.shape[1]/self.c_omp*self.istep
+                self.xmax =  self.fy.shape[1]
                 if self.GetPlotParam('field_type') == 0:
                     self.clims = self.bymin_max
                     self.TwoDan.set_text(r'$B_y$')
@@ -495,19 +501,23 @@ class FieldsPanel:
             if self.GetPlotParam('show_z'):
                 self.cax.set_data(self.fz)
                 self.ymin = 0
-                self.ymax =  self.fz.shape[0]/self.c_omp*self.istep
+                self.ymax =  self.fz.shape[0]
                 self.xmin = 0
-                self.xmax =  self.fz.shape[1]/self.c_omp*self.istep
+                self.xmax =  self.fz.shape[1]
                 if self.GetPlotParam('field_type') == 0:
                     self.clims = self.bzmin_max
                     self.TwoDan.set_text(r'$B_z$')
                 else:
                     self.clims = self.ezmin_max
                     self.TwoDan.set_text(r'$E_z$')
-
-            self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
-            self.axes.set_xlim(self.xmin,self.xmax)
-            self.axes.set_ylim(self.ymin,self.ymax)
+            if self.parent.xlim[0]:
+                self.axes.set_xlim(self.parent.xlim[1]*self.c_omp/self.istep,self.parent.xlim[2]*self.c_omp/self.istep)
+            else:
+                self.axes.set_xlim(self.xmin,self.xmax)
+            if self.parent.ylim[0]:
+                self.axes.set_ylim(self.parent.ylim[1]*self.c_omp/self.istep,self.parent.ylim[2]*self.c_omp/self.istep)
+            else:
+                self.axes.set_ylim(self.ymin,self.ymax)
 
             self.cax.set_clim(self.clims)
 
@@ -526,7 +536,6 @@ class FieldsPanel:
             #self.axes.draw_artist(self.axes.patch)
             #self.axes.draw_artist(self.cax)
             #self.axes.draw_artist(self.axes.xaxis)
-
 
 
     def GetPlotParam(self, keyname):

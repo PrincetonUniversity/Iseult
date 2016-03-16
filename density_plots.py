@@ -8,11 +8,13 @@ import new_cmaps
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
+from modest_image import ModestImage
+from matplotlib.ticker import FuncFormatter
 
 class DensPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
 
-    plot_param_dict = {'twoD': 0,
+    plot_param_dict = {'twoD': 1,
                        'dens_type': 0, #0 = n, 1 = rho
                        'show_cbar': True,
                        'set_color_limits': False,
@@ -88,11 +90,10 @@ class DensPanel:
             # Generate the x and y axes
             self.xaxis_values = self.parent.DataDict['xaxis_values']
         else:
-            self.xaxis_values = np.arange(self.dens.shape[1])/self.c_omp*self.istep
+            self.xaxis_values = np.arange(self.dens.shape[1])#/self.c_omp*self.istep
             self.parent.DataDict['xaxis_values'] = self.xaxis_values
         # y values not needed so commenting out
         # self.y_values =  np.arange(self.zval.shape[0])/self.c_omp*self.istep
-
 
     def draw(self):
         if self.GetPlotParam('OutlineText'):
@@ -112,11 +113,8 @@ class DensPanel:
         # Create a gridspec to handle spacing better
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])#, bottom=0.2,left=0.1,right=0.95, top = 0.95)
 
-        self.LoadData()
-
         # Now that the data is loaded, start making the plots
         if self.GetPlotParam('twoD'):
-
             # Link up the spatial axes if desired
             if self.parent.LinkSpatial != 0:
                 if self.FigWrap.pos == self.parent.first_x and self.FigWrap.pos == self.parent.first_y:
@@ -145,9 +143,9 @@ class DensPanel:
                 self.two_d_label = r'$\rho$'
 
             self.ymin = 0
-            self.ymax =  self.zval.shape[0]/self.c_omp*self.istep
+            self.ymax =  self.zval.shape[0]
             self.xmin = 0
-            self.xmax =  self.zval.shape[1]/self.c_omp*self.istep
+            self.xmax =  self.zval.shape[1]
 
             self.vmin = None
             if self.GetPlotParam('set_z_min'):
@@ -157,20 +155,22 @@ class DensPanel:
                 self.vmax = self.GetPlotParam('z_max')
 
             if self.parent.plot_aspect:
-                self.cax = self.axes.imshow(self.zval,
-                    cmap = new_cmaps.cmaps[self.parent.cmap],
-                    origin = 'lower',
-                    extent = (self.xmin,self.xmax, self.ymin, self.ymax),
-                    vmin = self.vmin, vmax = self.vmax,
-                    interpolation=self.GetPlotParam('interpolation'))
+                self.axes.set_aspect('equal')
+                self.cax = ModestImage(self.axes, data = self.zval,
+                    origin = 'lower')
+                self.cax.set_cmap(new_cmaps.cmaps[self.parent.cmap])
+                self.cax.norm.vmin = self.vmin
+                self.cax.norm.vmax = self.vmax
+
+
 
             else:
-                self.cax = self.axes.imshow(self.zval,
-                    cmap = new_cmaps.cmaps[self.parent.cmap],
-                    origin = 'lower', aspect = 'auto',
-                    extent = (self.xmin,self.xmax, self.ymin, self.ymax),
-                    vmin = self.vmin, vmax = self.vmax,
-                    interpolation=self.GetPlotParam('interpolation'))
+                self.cax = ModestImage(self.axes, data = self.zval, origin = 'lower')
+                self.cax.set_cmap(new_cmaps.cmaps[self.parent.cmap])
+                self.cax.norm.vmin = self.vmin
+                self.cax.norm.vmax = self.vmax
+
+            self.axes.add_artist(self.cax)
 
             self.shockline_2d = self.axes.axvline(self.parent.shock_loc,
                                                     linewidth = 1.5,
@@ -207,15 +207,21 @@ class DensPanel:
             self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
 
             if self.parent.xlim[0] and self.parent.LinkSpatial != 0:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
-            else:
-                self.axes.set_xlim(self.xmin,self.xmax)
+                self.axes.set_xlim(self.parent.xlim[1]*self.c_omp/self.istep,self.parent.xlim[2]*self.c_omp/self.istep)
+#            else:
+#                self.axes.set_xlim(self.xmin,self.xmax)
 
             if self.parent.ylim[0]:
-                self.axes.set_ylim(self.parent.ylim[1], self.parent.ylim[2])
-
+                self.axes.set_ylim(self.parent.ylim[1]*self.c_omp/self.istep, self.parent.ylim[2]*self.c_omp/self.istep)
+            else:
+                self.axes.set_ylim(self.ymin, self.ymax)
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
             self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.ylabel_pad, color = 'black')
+
+            # convert from the simulation grid to physical units
+            tick_formatter = FuncFormatter(self.Sim2PhysDist)
+            self.axes.xaxis.set_major_formatter(tick_formatter)
+            self.axes.yaxis.set_major_formatter(tick_formatter)
 
         else:
             # Do the 1D Plots
@@ -261,13 +267,20 @@ class DensPanel:
             self.axes.set_ylabel(tmp_str, labelpad = self.parent.ylabel_pad, color = 'black')
 
 
+            # convert from the simulation grid to physical units
+            tick_formatter = FuncFormatter(self.Sim2PhysDist)
+            self.axes.xaxis.set_major_formatter(tick_formatter)
+
+    def Sim2PhysDist(self, x, pos):
+        'The two args are the value and tick position'
+        return '%1.f' % (x/self.c_omp*self.istep)
+
     def refresh(self):
         '''This is a function that will be called only if self.axes already
         holds a density type plot. We only update things that have shown.  If
         hasn't changed, or isn't viewed, don't touch it. The difference between this and last
         time, is that we won't actually do any drawing in the plot. The plot
         will be redrawn after all subplots data is changed. '''
-        self.LoadData()
 
         # Main goal, only change what is showing..
         # First do the 1D plots, because it is simpler
@@ -284,7 +297,7 @@ class DensPanel:
 
 
             if self.parent.xlim[0]:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+                self.axes.set_xlim(self.parent.xlim[1]*self.c_omp/self.istep,self.parent.xlim[2]*self.c_omp/self.istep)
             else:
                 self.axes.set_xlim(self.xaxis_values[0], self.xaxis_values[-1])
 
@@ -298,7 +311,7 @@ class DensPanel:
             if self.GetPlotParam('dens_type')==0:
                 self.cax.set_data(self.dens)
                 self.ymin = 0
-                self.ymax =  self.dens.shape[0]/self.c_omp*self.istep
+                self.ymax =  self.dens.shape[0]
                 self.xmin = 0
                 self.xmax =  self.xaxis_values[-1]
                 self.clims = self.dens_min_max
@@ -306,14 +319,23 @@ class DensPanel:
             else:
                 self.cax.set_data(self.rho)
                 self.ymin = 0
-                self.ymax =  self.rho.shape[0]/self.c_omp*self.istep
+                self.ymax =  self.rho.shape[0]
                 self.xmin = 0
                 self.xmax =  self.xaxis_values[-1]
                 self.clims = self.rho_min_max
 
             self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
-            self.axes.set_xlim(self.xmin,self.xmax)
-            self.axes.set_ylim(self.ymin,self.ymax)
+            if self.parent.xlim[0]:
+                self.axes.set_xlim(self.parent.xlim[1]*self.c_omp/self.istep,self.parent.xlim[2]*self.c_omp/self.istep)
+            else:
+                self.axes.set_xlim(self.xmin,self.xmax)
+
+            if self.parent.ylim[0]:
+                self.axes.set_ylim(self.parent.ylim[1]*self.c_omp/self.istep,self.parent.ylim[2]*self.c_omp/self.istep)
+            else:
+                self.axes.set_ylim(self.ymin,self.ymax)
+
+
 
             self.cax.set_clim(self.clims)
 
@@ -329,6 +351,7 @@ class DensPanel:
 
             if self.GetPlotParam('show_shock'):
                 self.shockline_2d.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
+
 
     def GetPlotParam(self, keyname):
         return self.FigWrap.GetPlotParam(keyname)

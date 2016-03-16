@@ -17,6 +17,7 @@ from phase_plots import PhasePanel
 from fields_plots import FieldsPanel
 from density_plots import DensPanel
 from spectra import SpectralPanel
+import multiprocessing
 
 import Tkinter as Tk
 import ttk as ttk
@@ -63,7 +64,6 @@ class SubPlotWrapper:
         self.figure = figure
         self.subplot_spec = subplot_spec
         self.pos = pos
-        self.pos_in_views = None
         self.graph = graph
         self.Changedto1D = False
         self.Changedto2D = False
@@ -73,7 +73,8 @@ class SubPlotWrapper:
 
     def LoadKey(self, h5key):
         return self.parent.DataDict[h5key]
-
+    def LoadData(self):
+        self.graph.LoadData()
     def ChangeGraph(self, str_arg):
         # Change the graph type
         self.chartType = str_arg
@@ -860,7 +861,13 @@ class MainApp(Tk.Tk):
         self.wm_title(name)
         self.settings_window = None
         self.measure_window = None
-        self.clear_fig = True # A parameter that causes the graph to disappear as soon as something is pressed. Here is the dictionary of the keys:
+
+        # A parameter that causes the graph to when it is redrawn
+        self.clear_fig = True
+
+        # A parameter that turns on multiprocessing
+        self.UseMultiprocess = True
+
 
         self.first_x = None
         self.first_y = None
@@ -1337,6 +1344,15 @@ class MainApp(Tk.Tk):
             self.ListOfDataDict.append(self.DataDict)
             self.timestep_queue.append(self.TimeStep.value)
 
+        # Calculate the new shock location
+        self.shock_loc = self.DataDict['time'][0]*self.shock_speed
+
+        # Now that the DataDict is created, iterate over all the subplots and
+        # load the data into them:
+        for i in range(self.numOfRows.get()):
+            for j in range(self.numOfColumns.get()):
+                self.SubPlotList[i][j].LoadData()
+
 
     def MakePrevCtypeList(self):
         self.prev_ctype_list = []
@@ -1462,8 +1478,6 @@ class MainApp(Tk.Tk):
 
         self.LoadAllKeys()
 
-        # Calculate the new shock location
-        self.shock_loc = self.DataDict['time'][0]*self.shock_speed
 
         # Calculate the new xmin, and xmax
 
@@ -1495,21 +1509,6 @@ class MainApp(Tk.Tk):
                         self.first_x = (i,j)
                     if self.first_y is None and self.SubPlotList[i][j].GetPlotParam('spatial_y'):
                         self.first_y = (i,j)
-
-                # Now find the position in the views_list
-                if self.SubPlotList[i][j].chartType == 'SpectraPlot':
-                    self.SubPlotList[i][j].pos_in_views = k
-                    k += 1
-                elif self.SubPlotList[i][j].chartType == 'PhasePlot':
-                    self.SubPlotList[i][j].pos_in_views = k
-                    k += 2
-                elif  self.SubPlotList[i][j].GetPlotParam('twoD'):
-                    self.SubPlotList[i][j].pos_in_views = k
-                    k += 2
-                else:
-                    self.SubPlotList[i][j].pos_in_views = k
-                    k += 1
-
 
                 # Now... We can draw the graph.
                 self.SubPlotList[i][j].DrawGraph()
@@ -1546,6 +1545,7 @@ class MainApp(Tk.Tk):
         # Calculate the new shock location
         self.shock_loc = self.DataDict['time'][0]*self.shock_speed
 
+
         # By design, the first_x and first_y cannot change if the graph is
         # being refreshed. Any call that would require this needs a redraw
         # Find the first position with a physical x and y direction:
@@ -1553,23 +1553,9 @@ class MainApp(Tk.Tk):
         k = 0
         for i in range(self.numOfRows.get()):
             for j in range(self.numOfColumns.get()):
-                # Now find the position in the views_list
-                if self.SubPlotList[i][j].chartType == 'SpectraPlot':
-                    self.SubPlotList[i][j].pos_in_views = k
-                    k += 1
-                elif self.SubPlotList[i][j].chartType == 'PhasePlot':
-                    self.SubPlotList[i][j].pos_in_views = k
-                    k += 2
-                elif  self.SubPlotList[i][j].GetPlotParam('twoD'):
-                    self.SubPlotList[i][j].pos_in_views = k
-                    k += 2
-                else:
-                    self.SubPlotList[i][j].pos_in_views = k
-                    k += 1
-
-
-                # Now... We can refresh the graph.
+                # Now we can refresh the graph.
                 self.SubPlotList[i][j].RefreshGraph()
+
         if self.show_title:
             self.f.suptitle(os.path.abspath(self.dirname)+ ' at time t = %d $\omega_{pe}$'  % round(self.DataDict['time'][0]), size = 15)
 
@@ -1649,7 +1635,8 @@ class MainApp(Tk.Tk):
         jstart = min(10*c_omp/istep, nxf0)
         # build the final x_axis of the plot
 
-        xaxis_final = np.arange(dens_arr.shape[1])/c_omp*istep
+        # switching to doing everything in the grid units
+        xaxis_final = np.arange(dens_arr.shape[1])#/c_omp*istep
         # Find the shock by seeing where the density is 1/2 of it's
         # max value.
 
@@ -1669,6 +1656,17 @@ class MainApp(Tk.Tk):
     def TxtEnter(self, e):
         self.playbackbar.TextCallback()
 
+def CallAThread(iseult, i, j):
+    '''Code that will hopefully allow multiprocessing on refreshing the graphs...
+    Not working, doesn't update the plot'''
+    p = multiprocessing.Process(target=worker, args=(iseult,i,j))
+    p.start()
+
+
+def worker(iseult,i,j):
+    iseult.SubPlotList[i][j].RefreshGraph()
+    return
 if __name__ == "__main__":
+
     app = MainApp('Iseult')
     app.mainloop()
