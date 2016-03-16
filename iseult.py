@@ -1635,8 +1635,7 @@ class MainApp(Tk.Tk):
         jstart = min(10*c_omp/istep, nxf0)
         # build the final x_axis of the plot
 
-        # switching to doing everything in the grid units
-        xaxis_final = np.arange(dens_arr.shape[1])#/c_omp*istep
+        xaxis_final = np.arange(dens_arr.shape[1])/c_omp*istep
         # Find the shock by seeing where the density is 1/2 of it's
         # max value.
 

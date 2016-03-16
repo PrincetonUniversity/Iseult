@@ -120,8 +120,8 @@ class SpectralPanel:
             e_right_loc = self.parent.e_R.get()
 
             if self.parent.e_relative:
-                e_left_loc = self.parent.shock_loc*self.istep/self.c_omp+self.parent.e_L.get()
-                e_right_loc = self.parent.shock_loc*self.istep/self.c_omp+self.parent.e_R.get()
+                e_left_loc = self.parent.shock_loc+self.parent.e_L.get()
+                e_right_loc = self.parent.shock_loc+self.parent.e_R.get()
 
             eL = self.xsl.searchsorted(e_left_loc)
             eR = self.xsl.searchsorted(e_right_loc, side='right')
@@ -130,8 +130,8 @@ class SpectralPanel:
             i_right_loc = self.parent.i_R.get()
 
             if self.parent.e_relative:
-                i_left_loc = self.parent.shock_loc*self.istep/self.c_omp+self.parent.i_L.get()
-                i_right_loc = self.parent.shock_loc*self.istep/self.c_omp+self.parent.i_R.get()
+                i_left_loc = self.parent.shock_loc+self.parent.i_L.get()
+                i_right_loc = self.parent.shock_loc+self.parent.i_R.get()
 
             iL = self.xsl.searchsorted(i_left_loc)
             iR = self.xsl.searchsorted(i_right_loc, side='right')

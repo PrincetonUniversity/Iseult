@@ -8,7 +8,6 @@ import new_cmaps
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
-from matplotlib.ticker import FuncFormatter
 
 class PhasePanel:
     # A dictionary of all of the parameters for this plot with the default parameters
@@ -124,7 +123,7 @@ class PhasePanel:
             # Choose the particle type and px, py, or pz
             if self.GetPlotParam('prtl_type') == 0: #protons
                 self.energy_color = self.parent.ion_color
-                self.x_values = self.FigWrap.LoadKey('xi')/self.istep#/self.c_omp
+                self.x_values = self.FigWrap.LoadKey('xi')/self.c_omp
                 if self.GetPlotParam('weighted'):
                     self.weights = self.FigWrap.LoadKey('chi')
                 if self.GetPlotParam('mom_dim') == 0:
@@ -139,7 +138,7 @@ class PhasePanel:
 
             if self.GetPlotParam('prtl_type') == 1: #electons
                 self.energy_color = self.parent.electron_color
-                self.x_values = self.FigWrap.LoadKey('xe')/self.istep#/self.c_omp
+                self.x_values = self.FigWrap.LoadKey('xe')/self.c_omp
                 if self.GetPlotParam('weighted'):
                     self.weights = self.FigWrap.LoadKey('che')
                 if self.GetPlotParam('mom_dim') == 0:
@@ -157,7 +156,7 @@ class PhasePanel:
             self.pmax = max(self.y_values)
 
             self.xmin = 0
-            self.xmax = self.FigWrap.LoadKey('bx').shape[2]#/self.c_omp
+            self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.istep
             self.hist2d = np.histogram2d(self.y_values, self.x_values,
                         bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
                         range = [[self.pmin,self.pmax],[0,self.xmax]],
@@ -265,13 +264,6 @@ class PhasePanel:
 
         self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
         self.axes.set_ylabel(self.y_label, labelpad = self.parent.ylabel_pad, color = 'black')
-        tick_formatter = FuncFormatter(self.Sim2PhysDist)
-        self.axes.xaxis.set_major_formatter(tick_formatter)
-        self.refresh()
-
-    def Sim2PhysDist(self, x, pos):
-        'The two args are the value and tick position'
-        return '%1.f' % (x/self.c_omp*self.istep)
 
 
     def refresh(self):
@@ -320,20 +312,20 @@ class PhasePanel:
 
         if self.GetPlotParam('show_int_region'):
             if self.GetPlotParam('prtl_type') ==0 and self.parent.e_relative:
-                self.left_loc = self.parent.shock_loc+self.parent.i_L.get()*self.c_omp/self.istep
-                self.right_loc = self.parent.shock_loc+self.parent.i_R.get()*self.c_omp/self.istep
+                self.left_loc = self.parent.shock_loc+self.parent.i_L.get()
+                self.right_loc = self.parent.shock_loc+self.parent.i_R.get()
 
             elif self.GetPlotParam('prtl_type') == 0:
-                self.left_loc = self.parent.i_L.get()*self.c_omp/self.istep
-                self.right_loc = self.parent.i_R.get()*self.c_omp/self.istep
+                self.left_loc = self.parent.i_L.get()
+                self.right_loc = self.parent.i_R.get()
 
             elif self.GetPlotParam('prtl_type') == 1 and self.parent.e_relative:
-                self.left_loc = self.parent.shock_loc+self.parent.e_L.get()*self.c_omp/self.istep
-                self.right_loc = self.parent.shock_loc+self.parent.e_R.get()*self.c_omp/self.istep
+                self.left_loc = self.parent.shock_loc+self.parent.e_L.get()
+                self.right_loc = self.parent.shock_loc+self.parent.e_R.get()
 
             else:
-                self.left_loc = self.parent.e_L.get()*self.c_omp/self.istep
-                self.right_loc = self.parent.e_R.get()*self.c_omp/self.istep
+                self.left_loc = self.parent.e_L.get()
+                self.right_loc = self.parent.e_R.get()
 
             self.left_loc = max(self.left_loc, self.xmin+1)
             self.lineleft.set_xdata([self.left_loc,self.left_loc])
@@ -348,7 +340,7 @@ class PhasePanel:
         self.axes.set_ylim(self.ymin, self.ymax)
 
         if self.parent.xlim[0] and self.parent.LinkSpatial == 1:
-            self.axes.set_xlim(self.parent.xlim[1]*self.c_omp/self.istep,self.parent.xlim[2]*self.c_omp/self.istep)
+            self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
         else:
             self.axes.set_xlim(self.xmin,self.xmax)
 
