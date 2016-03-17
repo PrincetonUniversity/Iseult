@@ -19,6 +19,10 @@ from density_plots import DensPanel
 from spectra import SpectralPanel
 import multiprocessing
 
+# I don't think that matplotlib allows multi-threading, in the interactive mode.
+# This is a flag that i have so I can mess around trying to get it to work.
+Use_MultiProcess = False # DO NOT SET TO TRUE!
+import time
 import Tkinter as Tk
 import ttk as ttk
 import tkFileDialog
@@ -165,6 +169,18 @@ class Param:
             for feedbackKnob in self.knobs:
                 if feedbackKnob != knob:
                     feedbackKnob.setKnob(self.value)
+        # Adding a new feature that allows one to loop backwards or forwards:
+        elif self.maximum != self.minimum:
+            if self.value == self.maximum:
+                self.value = self.minimum
+                for feedbackKnob in self.knobs:
+                    if feedbackKnob != knob:
+                        feedbackKnob.setKnob(self.value)
+            elif self.value == self.minimum:
+                self.value = self.maximum
+                for feedbackKnob in self.knobs:
+                    if feedbackKnob != knob:
+                        feedbackKnob.setKnob(self.value)
         return self.value
 
     def setMax(self, max_arg, knob=None):
@@ -865,10 +881,7 @@ class MainApp(Tk.Tk):
         # A parameter that causes the graph to when it is redrawn
         self.clear_fig = True
 
-        # A parameter that turns on multiprocessing
-        self.UseMultiprocess = True
-
-
+        self.num_of_graphs_refreshed = 0
         self.first_x = None
         self.first_y = None
 
@@ -1550,11 +1563,25 @@ class MainApp(Tk.Tk):
         # being refreshed. Any call that would require this needs a redraw
         # Find the first position with a physical x and y direction:
 
-        k = 0
-        for i in range(self.numOfRows.get()):
-            for j in range(self.numOfColumns.get()):
-                # Now we can refresh the graph.
-                self.SubPlotList[i][j].RefreshGraph()
+        if Use_MultiProcess:
+            jobs = []
+            # Refresh graphs in parallel
+            for i in range(self.numOfRows.get()):
+                for j in range(self.numOfColumns.get()):
+                    jobs.append(CallAThread(self, i, j))
+
+            while len(jobs)>0:
+                for process in jobs:
+                    if not process.is_alive():
+                        jobs.remove(process)
+                time.sleep(.05)
+            print 'refreshed'
+
+        else:
+            for i in range(self.numOfRows.get()):
+                for j in range(self.numOfColumns.get()):
+                    # Now we can refresh the graph.
+                    self.SubPlotList[i][j].RefreshGraph()
 
         if self.show_title:
             self.f.suptitle(os.path.abspath(self.dirname)+ ' at time t = %d $\omega_{pe}$'  % round(self.DataDict['time'][0]), size = 15)
@@ -1660,6 +1687,9 @@ def CallAThread(iseult, i, j):
     Not working, doesn't update the plot'''
     p = multiprocessing.Process(target=worker, args=(iseult,i,j))
     p.start()
+    p.join()
+    return p
+
 
 
 def worker(iseult,i,j):
