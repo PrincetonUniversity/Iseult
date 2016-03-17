@@ -136,12 +136,10 @@ class SpectralPanel:
             iL = self.xsl.searchsorted(i_left_loc)
             iR = self.xsl.searchsorted(i_right_loc, side='right')
 
-            if iL >= iR:
-                iL = iR
-                iR += 1
-            if eL >= eR:
-                eL = eR
-                eR += 1
+            if iL == iR:
+                iL -= 1
+            if eL == eR:
+                eL -= 1
             # total particles in each linear x bin
             norme = np.copy(self.xsl)
             normp = np.copy(self.xsl)
@@ -364,14 +362,17 @@ class SpectralPanel:
                 # the power-law
                 self.PowerlawEworked = False
                 self.PLE[0].set_visible(False)
+
                 if self.parent.PowerLawFitElectron[0]:
-
-
                     # Find the part of the spectrum chosen by the fitting
                     #first convert to
                     ieLeft = self.gamma.searchsorted(self.parent.PowerLawFitElectron[1])
                     ieRight = self.gamma.searchsorted(self.parent.PowerLawFitElectron[2], side='Right')
+                    if ieLeft == len(self.gamma):
+                        ieLeft -= 1
 
+                    if ieRight == len(self.gamma):
+                        ieRight -= 1
                     # a while loop to make sure that the program won't mess up if momedist == 0
                     while np.abs(self.edist[ieLeft]) <= 1E-14 and ieLeft < len(self.edist)-1:
                         ieLeft += 1
@@ -415,6 +416,10 @@ class SpectralPanel:
                     iepLeft = self.gamma.searchsorted(self.parent.PowerLawFitIon[1])
                     iepRight = self.gamma.searchsorted(self.parent.PowerLawFitIon[2], side='Right')
 
+                    if iepLeft == len(self.gamma):
+                        iepLeft -= 1
+                    if iepRight == len(self.gamma):
+                        iepRight -=1
                     # a while loop to make sure that the program won't mess up if mompdist == 0
                     while np.abs(self.pdist[iepLeft]) <= 1E-14 and iepLeft < len(self.pdist)-1:
                         iepLeft += 1
@@ -446,8 +451,8 @@ class SpectralPanel:
     def MakeLegend(self):
         ''' A helper function to make the legend'''
         # First make the temperature legend
-        legend_handles = []
-        legend_labels = []
+        Tlegend_handles = []
+        Tlegend_labels = []
         # check if the legend already exists. It it does, we need to remove it.
 
         try:
@@ -457,21 +462,17 @@ class SpectralPanel:
 
 
         if self.GetPlotParam('show_electrons') and self.parent.set_Te:
-            legend_handles.append(self.electron_temp[0])
+            Tlegend_handles.append(self.electron_temp[0])
             tmpstr = '%.3f' % self.delgame0
-            legend_labels.append(r'$T_e\ = $' +  ' ' + tmpstr + ' ' + r'$m_e c^2$')
+            Tlegend_labels.append(r'$T_e\ = $' +  ' ' + tmpstr + ' ' + r'$m_e c^2$')
         if self.GetPlotParam('show_ions') and self.parent.set_Tp:
-            legend_handles.append(self.ion_temp[0])
+            Tlegend_handles.append(self.ion_temp[0])
             tmpcon =self.parent.delgam_p*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
             tmpstr = '%.3f' % tmpcon
-            legend_labels.append(r'$T_p\ = $' +  ' ' + tmpstr + ' ' + r'$m_e c^2$')
-        if len(legend_handles)> 0:
-            self.legT = self.axes.legend(legend_handles, legend_labels, framealpha = .4, fontsize = 11, loc = 'upper left')
-            self.legT.get_frame().set_linewidth(0.0)
-            self.axes.add_artist(self.legT)
+            Tlegend_labels.append(r'$T_p\ = $' +  ' ' + tmpstr + ' ' + r'$m_e c^2$')
 
 
-            # now make the power-fit legend
+        # now make the power-fit legend
         legend_handles = []
         legend_labels = []
         if self.GetPlotParam('show_electrons') and self.PowerlawEworked:
@@ -482,10 +483,26 @@ class SpectralPanel:
             legend_handles.append(self.PLP[0])
             tmpstr = '%.1f' % self.pslope
             legend_labels.append(r'$\delta_p\ = $' +  ' ' + tmpstr)
+
+
+        # Draw the legend, there is a complication here because each plot can only have one legend.
+        if len(Tlegend_handles)> 0 and len(legend_handles) == 0:
+            self.legT = self.axes.legend(Tlegend_handles, Tlegend_labels, framealpha = .05, fontsize = 11, loc = 'upper left')
+            self.legT.get_frame().set_facecolor('k')
+            self.legT.get_frame().set_linewidth(0.0)
+
+        elif len(Tlegend_handles) > 0:
+            self.legT = self.axes.legend(Tlegend_handles, Tlegend_labels, framealpha = .05, fontsize = 11, loc = 'upper left')
+            self.legT.get_frame().set_facecolor('k')
+            self.legT.get_frame().set_linewidth(0.0)
+            self.axes.add_artist(self.legT)
+
         if len(legend_handles)> 0:
-            legDelta = self.axes.legend(legend_handles, legend_labels,
-            framealpha = .4, fontsize = 11, loc = 'upper right')
-            legDelta.get_frame().set_linewidth(0.0)
+            self.legDelta = self.axes.legend(legend_handles, legend_labels,
+            framealpha = .05, fontsize = 11, loc = 'upper right')
+            self.legDelta.get_frame().set_facecolor('k')
+            self.legDelta.get_frame().set_linewidth(0.0)
+
     def OpenSettings(self):
         if self.settings_window is None:
             self.settings_window = SpectraSettings(self)

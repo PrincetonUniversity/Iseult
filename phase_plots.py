@@ -265,6 +265,7 @@ class PhasePanel:
         self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
         self.axes.set_ylabel(self.y_label, labelpad = self.parent.ylabel_pad, color = 'black')
 
+        self.refresh()
 
     def refresh(self):
         '''This is a function that will be called only if self.axes already

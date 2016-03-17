@@ -246,6 +246,15 @@ class PlaybackBar(Tk.Frame):
         self.slider.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
 
 
+        self.RecVar = Tk.IntVar()
+        self.RecVar.set(self.parent.recording)
+        self.RecVar.trace('w', self.RecChanged)
+        self.RecordFrames = ttk.Checkbutton(self, text = 'Record',
+                                            variable = self.RecVar)
+        self.RecordFrames.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+
+
+
         # a measurement button that should lauch a window to take measurements.
         self.MeasuresB= ttk.Button(self, text='Measure', command=self.OpenMeasures)
         self.MeasuresB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
@@ -255,14 +264,14 @@ class PlaybackBar(Tk.Frame):
         self.SettingsB= ttk.Button(self, text='Settings', command=self.OpenSettings)
         self.SettingsB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
 
-        self.RecVar = Tk.IntVar()
-        self.RecVar.set(self.parent.recording)
-        self.RecVar.trace('w', self.RecChanged)
-        self.RecordFrames = ttk.Checkbutton(self, text = 'Record',
-                                            variable = self.RecVar)
-        self.RecordFrames.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+        # a reload button that reloads the files and then refreshes the plot
+        ttk.Button(self, text = 'Reload', command = self.OnReload).pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
         #attach the parameter to the Playbackbar
         self.param.attach(self)
+
+    def OnReload(self, *args):
+        self.parent.findDir()
+        self.parent.RenewCanvas()
 
     def RecChanged(self, *args):
         if self.RecVar.get() == self.parent.recording:
@@ -622,8 +631,6 @@ class SettingsFrame(Tk.Toplevel):
             self.parent.RenewCanvas()
 
 
-    def OnReload(self, event=None):
-        self.parent.findDir()
 
     def OnClosing(self):
         self.parent.settings_window = None
@@ -793,17 +800,42 @@ class MeasureFrame(Tk.Toplevel):
         VarList = [[self.E1Var, self.E2Var], [self.P1Var, self.P2Var]]
 
         for j in range(2):
-            for k in range(2):
-                try:
-                    #make sure the user types in a int
-                    if np.abs(float(VarList[j][k].get())- PLList[j][k+1])>1E-6:
+            try:
+                # First check if the left index changed
+                if np.abs(float(VarList[j][0].get())- PLList[j][1])>1E-6:
+                    # See if the left index is larger than the right index
+                    if float(VarList[j][0].get()) > float(VarList[j][1].get()):
+                        # it is, so make it larger:
+                        VarList[j][1].set(str(float(VarList[j][0].get())*2))
+                        #set the parent value to the right var value
+                        PLList[j][2] = float(VarList[j][1].get())
 
-                        PLList[j][k+1] = float(VarList[j][k].get())
-                        to_reload += True
+                    # Set the parent value to the left var value
+                    PLList[j][1] = float(VarList[j][0].get())
+                    to_reload += True
+            except ValueError:
+                #if they type in random stuff, just set it to the value
+                VarList[j][k].set(str(PLList[j][k+1]))
 
-                except ValueError:
-                    #if they type in random stuff, just set it to the value
-                    VarList[j][k].set(str(PLList[j][k+1]))
+            try:
+                # First check if the left index changed
+                if np.abs(float(VarList[j][1].get())- PLList[j][2])>1E-6:
+                    # See if the left index is larger than the right index
+                    if float(VarList[j][1].get()) < float(VarList[j][0].get()):
+                        # it is, so make it smaller:
+                        VarList[j][0].set(str(float(VarList[j][1].get())*.5))
+                        #set the parent value to the left var value
+                        PLList[j][1] = float(VarList[j][0].get())
+
+                    # Set the parent value to the right var value
+                    PLList[j][2] = float(VarList[j][1].get())
+                    to_reload += True
+
+            except ValueError:
+                #if they type in random stuff, just set it to the value
+                VarList[j][k].set(str(PLList[j][k+1]))
+
+        print PLList[0]
         return to_reload
 
     def CheckIfIntChanged(self, tkVar, valVar):
