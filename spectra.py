@@ -136,11 +136,14 @@ class SpectralPanel:
             iL = self.xsl.searchsorted(i_left_loc)
             iR = self.xsl.searchsorted(i_right_loc, side='right')
 
-            if iL == iR:
-                iL -= 1
-            if eL == eR:
-                eL -= 1
-            # total particles in each linear x bin
+            if iL >= iR:
+                iL = iR
+                iR += 1
+            if eL >= eR:
+                eL = eR
+                eR += 1
+
+                # total particles in each linear x bin
             norme = np.copy(self.xsl)
             normp = np.copy(self.xsl)
             for i in range(len(norme)):
@@ -153,10 +156,19 @@ class SpectralPanel:
 
 
             for k in range(len(self.fe)):
-                self.fe[k]=sum(self.spece[k][eL:eR])/(sum(norme[eL:eR])*self.dgamma[k])
-                self.fp[k]=sum(self.specp[k][iL:iR])/(sum(normp[iL:iR])*self.dgamma[k])
+                if sum(norme[eL:eR])*self.dgamma[k] > 1E-100:
+                    self.fe[k]=sum(self.spece[k][eL:eR])/(sum(norme[eL:eR])*self.dgamma[k])
+                else:
+                    print 'RUNTIME WARNING: spectra.py can\'t find the electrons in the integration region, plot may be wrong'
+                    self.fe[k] = 1E-100
+                if sum(norme[iL:iR])*self.dgamma[k] > 1E-100:
+                    self.fp[k]=sum(self.specp[k][iL:iR])/(sum(normp[iL:iR])*self.dgamma[k])
+                else:
+                    print 'RUNTIME WARNING: spectra.py can\'t find ions in the integration region, plot may be wrong'
+                    self.fp[k] = 1E-100
 
-
+            self.fe[self.fe <= 0] = 1E-100
+            self.fp[self.fe <= 0] = 1E-100
             #  NOTE: gamma ---> gamma-1 ***
             self.edist=self.gamma*self.fe
             self.pdist=self.gamma*self.fp
