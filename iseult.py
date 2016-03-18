@@ -248,13 +248,20 @@ class PlaybackBar(Tk.Frame):
         self.slider.bind("<ButtonRelease-1>", self.UpdateValue)
 
 
+        self.LoopVar = Tk.IntVar()
+        self.LoopVar.set(self.parent.LoopPlayback)
+        self.LoopVar.trace('w', self.LoopChanged)
+        self.RecordFrames = ttk.Checkbutton(self, text = 'Loop',
+                                            variable = self.LoopVar)
+        self.RecordFrames.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+
+
         self.RecVar = Tk.IntVar()
         self.RecVar.set(self.parent.recording)
         self.RecVar.trace('w', self.RecChanged)
         self.RecordFrames = ttk.Checkbutton(self, text = 'Record',
                                             variable = self.RecVar)
         self.RecordFrames.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
-
 
 
         # a measurement button that should lauch a window to take measurements.
@@ -285,7 +292,11 @@ class PlaybackBar(Tk.Frame):
             self.parent.recording = self.RecVar.get()
             if self.parent.recording == 1:
                 self.parent.PrintFig()
-
+    def LoopChanged(self, *args):
+        if self.LoopVar.get() == self.parent.LoopPlayback:
+            pass
+        else:
+            self.parent.LoopPlayback = self.LoopVar.get()
 
     def SkipLeft(self, e = None):
         self.param.set(self.param.value - self.skipSize)
@@ -325,7 +336,7 @@ class PlaybackBar(Tk.Frame):
     def blink(self):
         if self.playPressed:
             # First check to see if the timestep can get larger
-            if self.param.value == self.param.maximum:
+            if self.param.value == self.param.maximum and not self.parent.LoopPlayback:
                 # push pause button
                 self.PlayHandler()
 
@@ -919,6 +930,10 @@ class MainApp(Tk.Tk):
 
         # A parameter that pushes the timestep to the last value if reload is pressed.
         self.Reload2End = True
+
+        # A paramter that causes the play button to go to back to the beginning
+        # after reaching the end
+        self.LoopPlayback = True
 
         # A parameter that causes the graph to when it is redrawn
         self.clear_fig = True
