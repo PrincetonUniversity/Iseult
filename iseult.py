@@ -273,7 +273,10 @@ class PlaybackBar(Tk.Frame):
 
     def OnReload(self, *args):
         self.parent.findDir()
-        self.parent.RenewCanvas()
+        if self.parent.Reload2End:
+            self.param.set(self.param.maximum)
+        else:
+            self.parent.RenewCanvas()
 
     def RecChanged(self, *args):
         if self.RecVar.get() == self.parent.recording:
@@ -913,6 +916,9 @@ class MainApp(Tk.Tk):
         self.wm_title(name)
         self.settings_window = None
         self.measure_window = None
+
+        # A parameter that pushes the timestep to the last value if reload is pressed.
+        self.Reload2End = True
 
         # A parameter that causes the graph to when it is redrawn
         self.clear_fig = True
