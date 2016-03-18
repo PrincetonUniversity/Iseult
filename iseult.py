@@ -240,10 +240,12 @@ class PlaybackBar(Tk.Frame):
         self.txtEnter.pack(side=Tk.LEFT, fill = Tk.BOTH, expand = 0)
 
         # A slider that will show the progress in the simulation as well as
-        # allow us to select a time
+        # allow us to select a time. Now the slider just changes the tstep box
         self.slider = ttk.Scale(self, from_=self.param.minimum, to=self.param.maximum, command = self.ScaleHandler)
         self.slider.set(self.param.value)
         self.slider.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
+        # bind releasing the moust button to updating the plots.
+        self.slider.bind("<ButtonRelease-1>", self.UpdateValue)
 
 
         self.RecVar = Tk.IntVar()
@@ -343,9 +345,11 @@ class PlaybackBar(Tk.Frame):
 
     def ScaleHandler(self, e):
         # if changing the scale will change the value of the parameter, do so
-        if self.param.value != int(self.slider.get()):
+        if self.tstep.get() != int(self.slider.get()):
+            self.tstep.set(int(self.slider.get()))
+    def UpdateValue(self, *args):
+        if int(self.slider.get()) != self.param.value:
             self.param.set(int(self.slider.get()))
-
     def setKnob(self, value):
         #set the text entry value
         self.tstep.set(str(value))
