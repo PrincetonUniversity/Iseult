@@ -343,7 +343,6 @@ class SpectralPanel:
                             self.PLE[0].set_data(self.momentum, np.exp(self.eintercept)*self.momentum**self.eslope)
                             self.PLE[0].set_visible(True)
 
-
             self.axes.set_xlim(self.GetPlotParam('x_min'), self.GetPlotParam('x_max'))
             self.axes.set_ylim(10**self.GetPlotParam('y_min'), 10**self.GetPlotParam('y_max'))
 
@@ -444,7 +443,6 @@ class SpectralPanel:
                             self.PowerlawPworked = True
                             self.PLP[0].set_data(self.gamma, np.exp(self.pintercept)*self.gamma**self.pslope)
                             self.PLP[0].set_visible(False)
-
 
                 self.axes.set_xlim(self.GetPlotParam('x_min'), self.GetPlotParam('x_max'))
                 self.axes.set_ylim(10**self.GetPlotParam('y_min'), 10**self.GetPlotParam('y_max'))

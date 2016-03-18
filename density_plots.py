@@ -66,6 +66,8 @@ class DensPanel:
         self.istep = self.FigWrap.LoadKey('istep')[0]
 
         self.dens = self.FigWrap.LoadKey('dens')[0,:,:]
+        self.oneDslice = self.dens.shape[0]/2
+
         # see if this time has already been checked
         if 'my_rho' in self.parent.DataDict.keys():
             self.rho = self.parent.DataDict['my_rho']
@@ -77,13 +79,13 @@ class DensPanel:
         if 'dens_min_max' in self.parent.DataDict.keys():
             self.dens_min_max = self.parent.DataDict['dens_min_max']
         else:
-            self.dens_min_max = [self.dens.min(), self.dens.max()]
+            self.dens_min_max = self.min_max_finder(self.dens)
             self.parent.DataDict['dens_min_max'] = self.dens_min_max
 
         if 'rho_min_max' in self.parent.DataDict.keys():
             self.rho_min_max = self.parent.DataDict['rho_min_max']
         else:
-            self.rho_min_max = [self.rho.min(), self.rho.max()]
+            self.rho_min_max = self.min_max_finder(self.rho)
             self.parent.DataDict['rho_min_max'] = self.rho_min_max
 
         if 'xaxis_values' in self.parent.DataDict.keys():
@@ -94,6 +96,20 @@ class DensPanel:
             self.parent.DataDict['xaxis_values'] = self.xaxis_values
         # y values not needed so commenting out
         # self.y_values =  np.arange(self.zval.shape[0])/self.c_omp*self.istep
+
+    def min_max_finder(self, arr):
+        # find 1d lims
+        oneD_lims = [arr[self.oneDslice,:].min(), arr[self.oneDslice,:].max()]
+        # now give it a bit of spacing, a 2% percent difference of the distance
+        dist = oneD_lims[1]-oneD_lims[0]
+        if oneD_lims[0] <=.01*dist and oneD_lims[0]>=0:
+            # the limit is sufficiently close to zero, do nothing.
+            oneD_lims[0] = 0
+        else:
+            oneD_lims[0] -= 0.04*dist
+        oneD_lims[1] += 0.04*dist
+        twoD_lims = [arr.min(), arr.max()]
+        return [oneD_lims, twoD_lims]
 
     def draw(self):
         if self.GetPlotParam('OutlineText'):
@@ -224,10 +240,10 @@ class DensPanel:
                 self.axes = self.figure.add_subplot(self.gs[18:92,:])
 
             # Make the 1-D plots
-            self.linedens = self.axes.plot(self.xaxis_values, self.dens[self.dens.shape[0]/2,:], color = self.dens_color)
+            self.linedens = self.axes.plot(self.xaxis_values, self.dens[self.oneDslice,:], color = self.dens_color)
             self.linedens[0].set_visible(not self.GetPlotParam('dens_type')) #visible if dens_type == 0
 
-            self.linerho = self.axes.plot(self.xaxis_values, self.dens[self.dens.shape[0]/2,:], color = self.dens_color)
+            self.linerho = self.axes.plot(self.xaxis_values, self.dens[self.oneDslice,:], color = self.dens_color)
             self.linerho[0].set_visible(self.GetPlotParam('dens_type'))
 
 
@@ -267,11 +283,11 @@ class DensPanel:
         # First do the 1D plots, because it is simpler
         if self.GetPlotParam('twoD') == 0:
             if self.GetPlotParam('dens_type') == 0:
-                self.linedens[0].set_data(self.xaxis_values, self.dens[self.dens.shape[0]/2,:])
-                self.axes.set_ylim(self.dens_min_max)
+                self.linedens[0].set_data(self.xaxis_values, self.dens[self.oneDslice,:])
+                self.axes.set_ylim(self.dens_min_max[0])
             else:
-                self.linerho[0].set_data(self.xaxis_values, self.rho[self.rho.shape[0]/2,:])
-                self.axes.set_ylim(self.rho_min_max)
+                self.linerho[0].set_data(self.xaxis_values, self.rho[self.oneDslice,:])
+                self.axes.set_ylim(self.rho_min_max[0])
             if self.GetPlotParam('show_shock'):
                 self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
 
@@ -295,7 +311,7 @@ class DensPanel:
                 self.ymax =  self.dens.shape[0]/self.c_omp*self.istep
                 self.xmin = 0
                 self.xmax =  self.xaxis_values[-1]
-                self.clims = self.dens_min_max
+                self.clims = self.dens_min_max[1]
 
             else:
                 self.cax.set_data(self.rho)
@@ -303,7 +319,7 @@ class DensPanel:
                 self.ymax =  self.rho.shape[0]/self.c_omp*self.istep
                 self.xmin = 0
                 self.xmax =  self.xaxis_values[-1]
-                self.clims = self.rho_min_max
+                self.clims = self.rho_min_max[1]
 
             self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
             if self.parent.xlim[0]:

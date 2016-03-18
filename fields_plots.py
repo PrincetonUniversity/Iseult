@@ -112,34 +112,37 @@ class FieldsPanel:
             self.fy = self.FigWrap.LoadKey('by')[0,:,:]
             self.fz = self.FigWrap.LoadKey('bz')[0,:,:]
 
+            self.oneDslice = self.fx.shape[0]/2
             # Have we already calculated min/max?
             if 'bxmin_max' in self.parent.DataDict.keys():
                 self.bxmin_max = self.parent.DataDict['bxmin_max']
 
             else:
-                self.bxmin_max =  [self.fx.min(), self.fx.max()]
+                self.bxmin_max =  self.min_max_finder(self.fx)
                 self.parent.DataDict['bxmin_max'] = list(self.bxmin_max)
 
             if 'bymin_max' in self.parent.DataDict.keys():
                 self.bymin_max = self.parent.DataDict['bymin_max']
 
             else:
-                self.bymin_max =  [self.fy.min(), self.fy.max()]
+                self.bymin_max = self.min_max_finder(self.fy)
                 self.parent.DataDict['bymin_max'] = list(self.bymin_max)
 
             if 'bzmin_max' in self.parent.DataDict.keys():
                 self.bzmin_max = self.parent.DataDict['bzmin_max']
 
             else:
-                self.bzmin_max =  [self.fz.min(), self.fz.max()]
+                self.bzmin_max = self.min_max_finder(self.fz)
                 self.parent.DataDict['bzmin_max'] = list(self.bzmin_max)
+
+
 
             self.annotate_text_list = [r'$B_x$', r'$B_y$',r'$B_z$']
         if self.GetPlotParam('field_type') == 1: # Load the e-Field
             self.fx = self.FigWrap.LoadKey('ex')[0,:,:]
             self.fy = self.FigWrap.LoadKey('ey')[0,:,:]
             self.fz = self.FigWrap.LoadKey('ez')[0,:,:]
-
+            self.oneDslice = self.fx.shape[0]/2
             # Have we already calculated min/max?
 
 
@@ -147,23 +150,32 @@ class FieldsPanel:
                 self.exmin_max = self.parent.DataDict['exmin_max']
 
             else:
-                self.exmin_max = [self.fx.min(), self.fx.max()]
+                self.exmin_max = self.min_max_finder(self.fx)
                 self.parent.DataDict['exmin_max'] = list(self.exmin_max)
 
             if 'eymin_max' in self.parent.DataDict.keys():
                 self.eymin_max = self.parent.DataDict['eymin_max']
 
             else:
-                self.eymin_max =  [self.fy.min(), self.fy.max()]
+                self.eymin_max = self.min_max_finder(self.fy)
                 self.parent.DataDict['eymin_max'] = list(self.eymin_max)
 
             if 'ezmin_max' in self.parent.DataDict.keys():
                 self.ezmin_max = self.parent.DataDict['ezmin_max']
 
             else:
-                self.ezmin_max =  [self.fz.min(), self.fz.max()]
+                self.ezmin_max = self.min_max_finder(self.fz)
                 self.parent.DataDict['ezmin_max'] = list(self.ezmin_max)
             self.annotate_text_list = [r'$E_x$',r'$E_y$',r'$E_z$']
+    def min_max_finder(self, arr):
+        # find 1d lims
+        oneD_lims = [arr[self.oneDslice,:].min(), arr[self.oneDslice,:].max()]
+        # now give it a bit of spacing, a 2% percent difference of the distance
+        dist = oneD_lims[1]-oneD_lims[0]
+        oneD_lims[0] -= 0.04*dist
+        oneD_lims[1] += 0.04*dist
+        twoD_lims = [arr.min(), arr.max()]
+        return [oneD_lims, twoD_lims]
     def draw(self):
 
         ''' A function that draws the data. In the interest in speeding up the
@@ -317,7 +329,7 @@ class FieldsPanel:
                 self.axes = self.figure.add_subplot(self.gs[18:92,:])
 
             self.annotate_pos = [0.8,0.9]
-            self.linex = self.axes.plot(self.xaxis_values, self.fx[self.fx.shape[0]/2,:], color = self.xcolor)
+            self.linex = self.axes.plot(self.xaxis_values, self.fx[self.oneDslice,:], color = self.xcolor)
             self.linex[0].set_visible(self.GetPlotParam('show_x'))
             if self.GetPlotParam('field_type') == 0:
                 tmp_str = r'$B_x$'
@@ -330,7 +342,7 @@ class FieldsPanel:
             self.anx.set_visible(self.GetPlotParam('show_x'))
 
             self.annotate_pos[0] += .08
-            self.liney = self.axes.plot(self.xaxis_values, self.fy[self.fy.shape[0]/2,:], color = self.ycolor)
+            self.liney = self.axes.plot(self.xaxis_values, self.fy[self.oneDslice,:], color = self.ycolor)
             self.liney[0].set_visible(self.GetPlotParam('show_y'))
             if self.GetPlotParam('field_type') == 0:
                 tmp_str = r'$B_y$'
@@ -345,7 +357,7 @@ class FieldsPanel:
             self.annotate_pos[0] += .08
 
 
-            self.linez = self.axes.plot(self.xaxis_values, self.fz[self.fz.shape[0]/2,:], color = self.zcolor)
+            self.linez = self.axes.plot(self.xaxis_values, self.fz[self.oneDslice,:], color = self.zcolor)
             self.linez[0].set_visible(self.GetPlotParam('show_z'))
 
             if self.GetPlotParam('field_type') == 0:
@@ -398,32 +410,32 @@ class FieldsPanel:
         if self.GetPlotParam('twoD') == 0:
             self.line_ymin_max = [np.inf, -np.inf]
             if self.GetPlotParam('show_x'):
-                self.linex[0].set_data(self.xaxis_values, self.fx[self.fx.shape[0]/2,:])
+                self.linex[0].set_data(self.xaxis_values, self.fx[self.oneDslice,:])
                 if self.GetPlotParam('field_type') == 0:
-                    self.line_ymin_max[0] = min(self.bxmin_max[0], self.line_ymin_max[0])
-                    self.line_ymin_max[1] = max(self.bxmin_max[1], self.line_ymin_max[1])
+                    self.line_ymin_max[0] = min(self.bxmin_max[0][0], self.line_ymin_max[0])
+                    self.line_ymin_max[1] = max(self.bxmin_max[0][1], self.line_ymin_max[1])
                 else:
-                    self.line_ymin_max[0] = min(self.exmin_max[0], self.line_ymin_max[0])
-                    self.line_ymin_max[1] = max(self.exmin_max[1], self.line_ymin_max[1])
+                    self.line_ymin_max[0] = min(self.exmin_max[0][0], self.line_ymin_max[0])
+                    self.line_ymin_max[1] = max(self.exmin_max[0][1], self.line_ymin_max[1])
 
             if self.GetPlotParam('show_y'):
-                self.liney[0].set_data(self.xaxis_values, self.fy[self.fy.shape[0]/2,:])
+                self.liney[0].set_data(self.xaxis_values, self.fy[self.oneDslice,:])
                 if self.GetPlotParam('field_type') == 0:
-                    self.line_ymin_max[0] = min(self.bymin_max[0], self.line_ymin_max[0])
-                    self.line_ymin_max[1] = max(self.bymin_max[1], self.line_ymin_max[1])
+                    self.line_ymin_max[0] = min(self.bymin_max[0][0], self.line_ymin_max[0])
+                    self.line_ymin_max[1] = max(self.bymin_max[0][1], self.line_ymin_max[1])
                 else:
-                    self.line_ymin_max[0] = min(self.eymin_max[0], self.line_ymin_max[0])
-                    self.line_ymin_max[1] = max(self.eymin_max[1], self.line_ymin_max[1])
+                    self.line_ymin_max[0] = min(self.eymin_max[0][0], self.line_ymin_max[0])
+                    self.line_ymin_max[1] = max(self.eymin_max[0][1], self.line_ymin_max[1])
 
 
             if self.GetPlotParam('show_z'):
-                self.linez[0].set_data(self.xaxis_values, self.fz[self.fz.shape[0]/2,:])
+                self.linez[0].set_data(self.xaxis_values, self.fz[self.oneDslice,:])
                 if self.GetPlotParam('field_type') == 0:
-                    self.line_ymin_max[0] = min(self.bzmin_max[0], self.line_ymin_max[0])
-                    self.line_ymin_max[1] = max(self.bzmin_max[1], self.line_ymin_max[1])
+                    self.line_ymin_max[0] = min(self.bzmin_max[0][0], self.line_ymin_max[0])
+                    self.line_ymin_max[1] = max(self.bzmin_max[0][1], self.line_ymin_max[1])
                 else:
-                    self.line_ymin_max[0] = min(self.ezmin_max[0], self.line_ymin_max[0])
-                    self.line_ymin_max[1] = max(self.ezmin_max[1], self.line_ymin_max[1])
+                    self.line_ymin_max[0] = min(self.ezmin_max[0][0], self.line_ymin_max[0])
+                    self.line_ymin_max[1] = max(self.ezmin_max[0][1], self.line_ymin_max[1])
 
             if not self.GetPlotParam('show_z') and not self.GetPlotParam('show_z') and not self.GetPlotParam('show_z'):
                 self.line_ymin_max = [0,1]
@@ -458,10 +470,10 @@ class FieldsPanel:
                 self.xmin = 0
                 self.xmax = self.xaxis_values[-1]
                 if self.GetPlotParam('field_type') == 0:
-                    self.clims = self.bxmin_max
+                    self.clims = self.bxmin_max[1]
                     self.TwoDan.set_text(r'$B_x$')
                 else:
-                    self.clims = self.exmin_max
+                    self.clims = self.exmin_max[1]
                     self.TwoDan.set_text(r'$E_x$')
 
             if self.GetPlotParam('show_y'):
@@ -471,10 +483,10 @@ class FieldsPanel:
                 self.xmin = 0
                 self.xmax = self.xaxis_values[-1]
                 if self.GetPlotParam('field_type') == 0:
-                    self.clims = self.bymin_max
+                    self.clims = self.bymin_max[1]
                     self.TwoDan.set_text(r'$B_y$')
                 else:
-                    self.clims = self.eymin_max
+                    self.clims = self.eymin_max[1]
                     self.TwoDan.set_text(r'$E_y$')
 
             if self.GetPlotParam('show_z'):
@@ -484,10 +496,10 @@ class FieldsPanel:
                 self.xmin = 0
                 self.xmax =  self.xaxis_values[-1]
                 if self.GetPlotParam('field_type') == 0:
-                    self.clims = self.bzmin_max
+                    self.clims = self.bzmin_max[1]
                     self.TwoDan.set_text(r'$B_z$')
                 else:
-                    self.clims = self.ezmin_max
+                    self.clims = self.ezmin_max[1]
                     self.TwoDan.set_text(r'$E_z$')
 
             if self.parent.xlim[0]:
