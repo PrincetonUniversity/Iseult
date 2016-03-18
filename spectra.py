@@ -651,7 +651,7 @@ class SpectraSettings(Tk.Toplevel):
         if self.SpectTypeVar.get() == self.parent.GetPlotParam('spectral_type'):
             pass
         else:
-            if self.parent.GetPlotParam('spectral_type') == 1:
+            if self.SpectTypeVar.get() == 1:
                 self.parent.axes.set_xlabel(r'$E\ [mc^2]$')
                 self.parent.axes.set_ylabel(r'$E(dn/dE)/n$')
             else:
