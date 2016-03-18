@@ -43,8 +43,6 @@ class FieldsPanel:
             'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
 
-
-
     def ChangePlotType(self, str_arg):
         self.FigWrap.ChangeGraph(str_arg)
 
@@ -136,8 +134,6 @@ class FieldsPanel:
                 self.parent.DataDict['bzmin_max'] = list(self.bzmin_max)
 
 
-
-            self.annotate_text_list = [r'$B_x$', r'$B_y$',r'$B_z$']
         if self.GetPlotParam('field_type') == 1: # Load the e-Field
             self.fx = self.FigWrap.LoadKey('ex')[0,:,:]
             self.fy = self.FigWrap.LoadKey('ey')[0,:,:]
@@ -166,7 +162,7 @@ class FieldsPanel:
             else:
                 self.ezmin_max = self.min_max_finder(self.fz)
                 self.parent.DataDict['ezmin_max'] = list(self.ezmin_max)
-            self.annotate_text_list = [r'$E_x$',r'$E_y$',r'$E_z$']
+
     def min_max_finder(self, arr):
         # find 1d lims
         oneD_lims = [arr[self.oneDslice,:].min(), arr[self.oneDslice,:].max()]

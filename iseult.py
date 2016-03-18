@@ -280,7 +280,7 @@ class PlaybackBar(Tk.Frame):
 
     def OnReload(self, *args):
         self.parent.findDir()
-        if self.parent.Reload2End:
+        if self.parent.Reload2End and self.param.value != self.param.maximum:
             self.param.set(self.param.maximum)
         else:
             self.parent.RenewCanvas()
@@ -547,7 +547,7 @@ class SettingsFrame(Tk.Toplevel):
 
 
     def SkipSizeChanged(self, *args):
-    # Note here that Tkinter passes an event object to onselect()
+    # Note here that Tkinter passes an event object to SkipSizeChange()
         try:
             if self.skipSize.get() == '':
                 pass
@@ -557,7 +557,6 @@ class SettingsFrame(Tk.Toplevel):
             self.skipSize.set(self.parent.playbackbar.skipSize)
 
     def RowNumChanged(self, *args):
-    # Note here that Tkinter passes an event object to onselect()
         try:
             if self.rowNum.get() == '':
                 pass
@@ -567,11 +566,11 @@ class SettingsFrame(Tk.Toplevel):
                 self.rowNum.set(self.parent.maxRows)
             else:
                 self.parent.numOfRows.set(int(self.rowNum.get()))
+
         except ValueError:
             self.rowNum.set(self.parent.numOfRows.get())
 
     def ColumnNumChanged(self, *args):
-    # Note here that Tkinter passes an event object to onselect()
         try:
             if self.columnNum.get() == '':
                 pass
@@ -579,9 +578,9 @@ class SettingsFrame(Tk.Toplevel):
                 self.columnNum.set(1)
             elif int(self.columnNum.get())>self.parent.maxCols:
                 self.columnNum.set(self.parent.maxCols)
-
             else:
                 self.parent.numOfColumns.set(int(self.columnNum.get()))
+
         except ValueError:
             self.columnNum.set(self.parent.numOfColumns.get())
 
@@ -1648,8 +1647,6 @@ class MainApp(Tk.Tk):
 
         self.MakePrevCtypeList()
         self.canvas.draw()
-#        self.canvas.blit(bbox = self.f.bbox)
-#        self.canvas.blit()
         self.canvas.get_tk_widget().update_idletasks()
         if self.recording:
             self.PrintFig()
@@ -1741,7 +1738,7 @@ class MainApp(Tk.Tk):
 
 def CallAThread(iseult, i, j):
     '''Code that will hopefully allow multiprocessing on refreshing the graphs...
-    Not working, doesn't update the plot'''
+    Not working, doesn't update the plot DO NOT USE!'''
     p = multiprocessing.Process(target=worker, args=(iseult,i,j))
     p.start()
     p.join()

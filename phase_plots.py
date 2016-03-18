@@ -191,11 +191,26 @@ class PhasePanel:
     def draw(self):
         # In order to speed up the plotting, we only recalculate everything
         # if necessary.
-        # Figure out the color
 
-        self.energy_color = self.parent.ion_color
-        if self.GetPlotParam('prtl_type') == 1:
+        # Figure out the color and ylabel
+        # Choose the particle type and px, py, or pz
+        if self.GetPlotParam('prtl_type') == 0: #protons
+            self.energy_color = self.parent.ion_color
+            if self.GetPlotParam('mom_dim') == 0:
+                self.y_label  = r'$P_{px}\ [c]$'
+            if self.GetPlotParam('mom_dim') == 1:
+                self.y_label  = r'$P_{py}\ [c]$'
+            if self.GetPlotParam('mom_dim') == 2:
+                self.y_label  = r'$P_{pz}\ [c]$'
+
+        if self.GetPlotParam('prtl_type') == 1: #electons
             self.energy_color = self.parent.electron_color
+            if self.GetPlotParam('mom_dim') == 0:
+                self.y_label  = r'$P_{ex}\ [c]$'
+            if self.GetPlotParam('mom_dim') == 1:
+                self.y_label  = r'$P_{ey}\ [c]$'
+            if self.GetPlotParam('mom_dim') == 2:
+                self.y_label  = r'$P_{ez}\ [c]$'
 
 #        print self.hist2d
 
@@ -261,6 +276,7 @@ class PhasePanel:
 
         self.axes.set_axis_bgcolor('lightgrey')
         self.axes.tick_params(labelsize = self.parent.num_font_size, color=self.tick_color)
+        self.cbar.ax.tick_params(labelsize=self.parent.num_font_size)
 
         self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
         self.axes.set_ylabel(self.y_label, labelpad = self.parent.ylabel_pad, color = 'black')
@@ -579,18 +595,42 @@ class PhaseSettings(Tk.Toplevel):
             self.parent.cax.set_interpolation(self.InterpolVar.get())
             self.parent.SetPlotParam('interpolation', self.InterpolVar.get())
 
+    def UpdateYLabelsandColors(self):
+
+        if self.pvar.get() == 0: #protons
+            self.parent.lineleft.set_color(self.parent.parent.ion_color)
+            self.parent.lineright.set_color(self.parent.parent.ion_color)
+            if self.dimvar.get() == 0:
+                self.parent.axes.set_ylabel(r'$P_{px}\ [c]$')
+            if self.dimvar.get() == 1:
+                self.parent.axes.set_ylabel(r'$P_{py}\ [c]$')
+            if self.dimvar.get() == 2:
+                self.parent.axes.set_ylabel(r'$P_{pz}\ [c]$')
+
+        if self.pvar.get() == 1: #electons
+            self.parent.lineleft.set_color(self.parent.parent.electron_color)
+            self.parent.lineright.set_color(self.parent.parent.electron_color)
+            if self.dimvar.get() == 0:
+                self.parent.axes.set_ylabel(r'$P_{ex}\ [c]$')
+            if self.dimvar.get() == 1:
+                self.parent.axes.set_ylabel(r'$P_{ey}\ [c]$')
+            if self.dimvar.get() == 2:
+                self.parent.axes.set_ylabel(r'$P_{ez}\ [c]$')
+
 
     def RadioPrtl(self):
         if self.pvar.get() == self.parent.GetPlotParam('prtl_type'):
             pass
         else:
+            self.UpdateYLabelsandColors()
             self.parent.SetPlotParam('prtl_type', self.pvar.get())
 
     def RadioDim(self):
         if self.dimvar.get() == self.parent.GetPlotParam('mom_dim'):
             pass
         else:
-            self.parent.SetPlotParam('mom_dim', self.dimvar.get())
+            self.UpdateYLabelsandColors()
+            self.parent.SetPlotParam('mom_dim', self.dimvar.get(), update_plot = True)
 
     def RadioNorm(self):
         if self.cnormList[self.normvar.get()] == self.parent.GetPlotParam('norm_type'):
