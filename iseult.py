@@ -5,12 +5,12 @@ import os, sys # Used to make the code portable
 import h5py # Allows us the read the data files
 import time,string
 import matplotlib
+matplotlib.use('TkAgg')
 import new_cmaps
 import numpy as np
 from collections import deque
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
-matplotlib.use('TkAgg')
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
 from phase_plots import PhasePanel
@@ -280,10 +280,7 @@ class PlaybackBar(Tk.Frame):
 
     def OnReload(self, *args):
         self.parent.findDir()
-        if self.parent.Reload2End and self.param.value != self.param.maximum:
-            self.param.set(self.param.maximum)
-        else:
-            self.parent.RenewCanvas()
+        self.parent.RenewCanvas()
 
     def RecChanged(self, *args):
         if self.RecVar.get() == self.parent.recording:
@@ -1168,6 +1165,7 @@ class MainApp(Tk.Tk):
         self.bind('<Return>', self.TxtEnter)
         self.bind('<Left>', self.playbackbar.SkipLeft)
         self.bind('<Right>', self.playbackbar.SkipRight)
+        self.bind('r', self.playbackbar.OnReload)
         self.bind('<space>', self.playbackbar.PlayHandler)
 
     def quit(self, event):
@@ -1221,7 +1219,10 @@ class MainApp(Tk.Tk):
 
         if is_okay:
             self.NewDirectory = True
-            self.TimeStep.setMax(max(len(self.PathDict['Flds']),1))
+            self.TimeStep.setMax(len(self.PathDict['Flds']))
+            if self.Reload2End:
+                self.TimeStep.value = len(self.PathDict['Flds'])
+                self.playbackbar.slider.set(self.TimeStep.value)
             self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
             self.shock_finder()
 
@@ -1524,11 +1525,13 @@ class MainApp(Tk.Tk):
         the plot went from 2d to 1D, etc.. If any change occurs that requires a
         redraw, renewcanvas must be called with ForceRedraw = True. '''
 
+#        tic = time.time()
         if ForceRedraw:
             self.ReDrawCanvas(keep_view = keep_view)
         else:
             self.RefreshCanvas(keep_view = keep_view)
-
+#        toc = time.time()
+#        print toc-tic
     def ReDrawCanvas(self, keep_view = True):
         #  We need to see if the user has moved around the zoom level in python.
         # First we see if there are any views in the toolbar
