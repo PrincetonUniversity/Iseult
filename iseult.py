@@ -791,8 +791,7 @@ class MeasureFrame(Tk.Toplevel):
         ttk.Entry(frm, textvariable=self.parent.eps_eVar, width = 7, state = 'readonly').grid(row = 13, column =2, sticky = Tk.N)
 
 
-        ttk.Label(frm, text='You must have one \'spectra\' plot showing to measure eps').grid(row = 14, columnspan = 3, sticky = Tk.N)
-')
+        ttk.Label(frm, text='NOTE You must have one \'spectra\' plot' +'\r' + 'showing to measure eps_e or eps_p').grid(row = 14, rowspan = 2,columnspan = 3, sticky = Tk.W)
     def eps_pFitChanged(self, *args):
         if self.eps_p_fitVar.get() == self.parent.measure_eps_p:
             pass
@@ -1035,13 +1034,13 @@ class MainApp(Tk.Tk):
         self.delgam_p = 0.06
 
         # The eps_e & eps_p sections
-        self.measure_eps_p = True
+        self.measure_eps_p = False
         self.e_ion_injection = 1.0
         self.eps_pVar = Tk.StringVar(self)
         self.eps_pVar.set('N/A')
 
 
-        self.measure_eps_e = True
+        self.measure_eps_e = False
         self.e_electron_injection = 30.0
         self.eps_eVar = Tk.StringVar(self)
         self.eps_eVar.set('N/A')
