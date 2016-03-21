@@ -433,12 +433,13 @@ class FieldsPanel:
                     self.line_ymin_max[0] = min(self.ezmin_max[0][0], self.line_ymin_max[0])
                     self.line_ymin_max[1] = max(self.ezmin_max[0][1], self.line_ymin_max[1])
 
-            if not self.GetPlotParam('show_z') and not self.GetPlotParam('show_z') and not self.GetPlotParam('show_z'):
+            if not self.GetPlotParam('show_x') and not self.GetPlotParam('show_y') and not self.GetPlotParam('show_z'):
                 self.line_ymin_max = [0,1]
+
+            self.axes.set_ylim(self.line_ymin_max)
             if self.GetPlotParam('show_shock'):
                 self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
 
-            self.axes.set_ylim(self.line_ymin_max)
             if self.parent.xlim[0]:
                 self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
             else:

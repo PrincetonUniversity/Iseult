@@ -766,6 +766,48 @@ class MeasureFrame(Tk.Toplevel):
         ttk.Entry(frm, textvariable=self.P2Var, width = 7).grid(row = 10, column =2, sticky = Tk.N)
 
 
+        ttk.Label(frm, text='Measure eps').grid(row = 11, column = 1, sticky = Tk.N)
+        ttk.Label(frm, text='E_inj [mc^2]').grid(row = 11, column = 1, sticky = Tk.N)
+        ttk.Label(frm, text='eps').grid(row = 11, column = 2, sticky = Tk.N)
+
+        self.eps_p_fitVar = Tk.IntVar()
+        self.eps_p_fitVar.set(self.parent.measure_eps_p)
+        self.eps_p_fitVar.trace('w', self.eps_pFitChanged)
+        ttk.Checkbutton(frm, text='protons', variable =  self.eps_p_fitVar).grid(row = 12, sticky = Tk.W)
+
+        self.EinjPVar = Tk.StringVar()
+        self.EinjPVar.set(str(self.parent.e_ion_injection))
+        ttk.Entry(frm, textvariable=self.EinjPVar, width = 7).grid(row = 12, column = 1, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.parent.eps_pVar, width = 7, state = 'readonly').grid(row = 12, column =2, sticky = Tk.N)
+
+        self.eps_e_fitVar = Tk.IntVar()
+        self.eps_e_fitVar.set(self.parent.measure_eps_e)
+        self.eps_e_fitVar.trace('w', self.eps_eFitChanged)
+        ttk.Checkbutton(frm, text='electrons', variable =  self.eps_e_fitVar).grid(row = 13, sticky = Tk.W)
+
+        self.EinjEVar = Tk.StringVar()
+        self.EinjEVar.set(str(self.parent.e_electron_injection))
+        ttk.Entry(frm, textvariable=self.EinjEVar, width = 7).grid(row = 13, column = 1, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.parent.eps_eVar, width = 7, state = 'readonly').grid(row = 13, column =2, sticky = Tk.N)
+
+
+        ttk.Label(frm, text='You must have one \'spectra\' plot showing to measure eps').grid(row = 14, columnspan = 3, sticky = Tk.N)
+')
+    def eps_pFitChanged(self, *args):
+        if self.eps_p_fitVar.get() == self.parent.measure_eps_p:
+            pass
+        else:
+            self.parent.measure_eps_p = self.eps_p_fitVar.get()
+            self.parent.RenewCanvas()
+
+    def eps_eFitChanged(self, *args):
+        if self.eps_e_fitVar.get() == self.parent.measure_eps_e:
+            pass
+        else:
+            self.parent.measure_eps_e = self.eps_e_fitVar.get()
+            self.parent.RenewCanvas()
+
+
     def PLFitEChanged(self, *args):
         if self.PLFitEVar.get() == self.parent.PowerLawFitElectron[0]:
             pass
@@ -806,6 +848,33 @@ class MeasureFrame(Tk.Toplevel):
             self.delgampVar.set(str(self.parent.delgam_p))
         return to_reload
 
+    def CheckIfEpsChanged(self):
+        to_reload = False
+
+        # The protons first
+        try:
+            # First check if the injection energy changed
+            if np.abs(float(self.EinjPVar.get()) -self.parent.e_ion_injection)>1E-6:
+                # Set the parent value to the var value
+                self.parent.e_ion_injection = float(self.EinjPVar.get())
+                to_reload += self.parent.measure_eps_p
+        except ValueError:
+            #if they type in random stuff, just set it to the value
+            self.EinjPVar(str(self.parent.e_ion_injection))
+
+        # Now the electrons
+        try:
+            # First check if the injection energy changed
+            if np.abs(float(self.EinjEVar.get()) -self.parent.e_electron_injection)>1E-6:
+                # Set the parent value to the var value
+                self.parent.e_electron_injection = float(self.EinjEVar.get())
+                to_reload += self.parent.measure_eps_e
+        except ValueError:
+            #if they type in random stuff, just set it to the value
+            self.EinjEVar(str(self.parent.e_electron_injection))
+
+
+        return to_reload
 
     def CheckIfPLChanged(self):
         to_reload = False
@@ -848,8 +917,6 @@ class MeasureFrame(Tk.Toplevel):
             except ValueError:
                 #if they type in random stuff, just set it to the value
                 VarList[j][k].set(str(PLList[j][k+1]))
-
-        print PLList[0]
         return to_reload
 
     def CheckIfIntChanged(self, tkVar, valVar):
@@ -905,6 +972,7 @@ class MeasureFrame(Tk.Toplevel):
         to_reload += self.CheckIfTeChanged()
         to_reload += self.CheckIfTpChanged()
         to_reload += self.CheckIfPLChanged()
+        to_reload += self.CheckIfEpsChanged()
         if to_reload:
             self.parent.RenewCanvas()
 
@@ -966,6 +1034,17 @@ class MainApp(Tk.Tk):
         self.set_Tp = False
         self.delgam_p = 0.06
 
+        # The eps_e & eps_p sections
+        self.measure_eps_p = True
+        self.e_ion_injection = 1.0
+        self.eps_pVar = Tk.StringVar(self)
+        self.eps_pVar.set('N/A')
+
+
+        self.measure_eps_e = True
+        self.e_electron_injection = 30.0
+        self.eps_eVar = Tk.StringVar(self)
+        self.eps_eVar.set('N/A')
 
         self.numOfRows = Tk.IntVar(self)
         self.numOfRows.set(3)

@@ -10,6 +10,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
 from scipy.special import kn # Modified Bessel function
 from scipy.stats import linregress
+from scipy.integrate import simps, cumtrapz
 class SpectralPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
 
@@ -54,7 +55,7 @@ class SpectralPanel:
         # First make sure that omega_plasma & istep is loaded so we can fix the
         # integrate over the specified regions
 
-        self.arrs_needed = ['c_omp', 'istep', 'gamma', 'xsl', 'mi', 'me']
+        self.arrs_needed = ['c_omp', 'istep', 'gamma', 'xsl', 'mi', 'me', 'gamma0']
         if self.GetPlotParam('rest_frame'):
             # Set the loading of the rest frame spectra
             self.arrs_needed.append('specerest')
@@ -70,6 +71,7 @@ class SpectralPanel:
     def LoadData(self):
         self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
         self.istep = self.FigWrap.LoadKey('istep')[0]
+        self.gamma0 = self.FigWrap.LoadKey('gamma0')[0]
         self.xsl = self.FigWrap.LoadKey('xsl')/self.c_omp
         self.gamma = self.FigWrap.LoadKey('gamma')
 
@@ -210,12 +212,25 @@ class SpectralPanel:
         if not self.GetPlotParam('show_electrons'):
             self.electron_spect[0].set_visible(False)
 
-            # a placeholder
+        # a placeholder
         self.electron_temp =  self.axes.plot(self.momentum, self.momedist,
                                             color = self.parent.electron_fit_color,
                                             linestyle = '--', linewidth = 1.5)
         if not self.parent.set_Te:
             self.electron_temp[0].set_visible(False)
+
+        # a placeholder
+        self.electron_Einj =  self.axes.axvline(0, color = self.parent.electron_fit_color,
+                                            linestyle = '-.', linewidth = 1.5)
+        if not self.parent.measure_eps_e:
+            self.electron_Einj.set_visible(False)
+
+
+        # a placeholder
+        self.ion_Einj =  self.axes.axvline(0, color = self.parent.ion_fit_color,
+                                            linestyle = '-.', linewidth = 1.5)
+        if not self.parent.measure_eps_p:
+            self.ion_Einj.set_visible(False)
 
         self.PLE = self.axes.plot(self.momentum, self.momedist,
                                   color = self.parent.electron_fit_color,
@@ -242,10 +257,98 @@ class SpectralPanel:
         self.refresh()
 
     def refresh(self):
+        ############
+        #
+        # First we'll calculate eps_e or eps_e
+        #
+        ############
+
+        if self.parent.measure_eps_p:
+            try:
+
+                # Use a trapezoidal rule in logspace
+                p_injloc=self.gamma.searchsorted(self.parent.e_ion_injection)
+                # Calculate the log trapezoid rule above p_injloc
+                LogY = np.log(self.pdist[p_injloc-1:])
+                # Make all values where LogY ==-inf == -1E4 effectively set them to zero
+                LogY[np.isinf(LogY)] = -1E4
+
+                LogX = np.log(self.gamma[p_injloc-1:])
+                dLogY = np.diff(LogY)
+                dLogX = np.diff(LogX)
+
+                dF = np.exp(LogY[:-1]+LogX[:-1])
+                dF *= dLogX*(np.exp(dLogX+dLogY)-1)
+                dF *= (dLogX+dLogY)**(-1)
+
+                endSumF = np.cumsum(dF[::-1])[::-1]
+
+                # The answer we want will be between the [0] and [1] place in
+                # endSumF. We do linear interpolation in logspace to find the answer
+                logY_left = np.log(endSumF[0])
+                logY_right = np.log(endSumF[1])
+                logX_left = LogX[0]
+                logX_right = LogX[1]
+                # do the linear interpolation in logspace
+                logF = np.log(self.parent.e_ion_injection)-logX_left
+                logF *= (logX_right-logX_left)**(-1)
+                logF *= logY_right-logY_left
+                logF += logY_left
+                # Now calculate the eps_p
+
+                eps_p = 2*np.exp(logF)/(1-self.gamma0**(-2))
+                self.parent.eps_pVar.set('%.5f' % eps_p)
+
+            except IndexError:
+                print 'IndexError when measuring eps_p. Try changing the proton injection energy'
+                self.parent.eps_pVar.set('N/A')
+        else:
+            self.parent.eps_pVar.set('N/A')
+        if self.parent.measure_eps_e:
+            try:
+                # Use a trapezoidal rule in logspace
+                e_injloc=self.gamma.searchsorted(self.parent.e_electron_injection)
+                # Calculate the log trapezoid rule above p_injloc
+                LogY = np.log(self.edist[e_injloc-1:])
+                # Make all values where LogY ==-inf == -1E4 effectively set them to zero
+                LogY[np.isinf(LogY)] = -1E4
+                LogX = np.log(self.gamma[e_injloc-1:])
+                dLogY = np.diff(LogY)
+                dLogX = np.diff(LogX)
+                dF = np.exp(LogY[:-1]+LogX[:-1])
+                dF *= dLogX*(np.exp(dLogX+dLogY)-1)
+                dF *= (dLogX+dLogY)**(-1)
+                endSumF = np.cumsum(dF[::-1])[::-1]
+                # The answer we want will be between the [0] and [1] place in
+                # endSumF. We do linear interpolation in logspace to find the answer
+                logY_left = np.log(endSumF[0])
+                logY_right = np.log(endSumF[1])
+                logX_left = LogX[0]
+                logX_right = LogX[1]
+                # do the linear interpolation in logspace
+                logF = np.log(self.parent.e_electron_injection)-logX_left
+                logF *= (logX_right-logX_left)**(-1)
+                logF *= logY_right-logY_left
+                logF += logY_left
+                # Now calculate the eps_e
+                eps_e = 2*self.FigWrap.LoadKey('me')[0]/self.FigWrap.LoadKey('mi')[0]
+                eps_e *= np.exp(logF)/(1-self.gamma0**(-2))
+                self.parent.eps_eVar.set('%.5f' % eps_e)
+#                print self.parent.eps_eVar.get()
+            except IndexError:
+                print 'IndexError when measuring eps_e. Try changing the electron injection energy'
+                self.parent.eps_eVar.set('N/A')
+        else:
+            self.parent.eps_eVar.set('N/A')
         if self.GetPlotParam('spectral_type') == 0: #Show the momentum dist
             if self.GetPlotParam('show_ions'):
                 self.ion_spect[0].set_data(self.momentum, self.mompdist)
 
+                if self.parent.measure_eps_p:
+                    self.ion_Einj.set_visible(True)
+                    self.ion_Einj.set_xdata([np.sqrt((self.parent.e_ion_injection+1)**2-1.),np.sqrt((self.parent.e_ion_injection+1)**2-1.)])
+                else:
+                    self.ion_Einj.set_visible(False)
                 if self.parent.set_Tp:
                     self.ion_temp[0].set_visible(True)
                     if self.parent.delgam_p >= 0.013:
@@ -292,6 +395,12 @@ class SpectralPanel:
 
             if self.GetPlotParam('show_electrons'):
                 self.electron_spect[0].set_data(self.momentum, self.momedist)
+                if self.parent.measure_eps_e:
+                    self.electron_Einj.set_visible(True)
+                    self.electron_Einj.set_xdata([np.sqrt((self.parent.e_electron_injection+1)**2-1.),np.sqrt((self.parent.e_electron_injection+1)**2-1.)])
+                else:
+                    self.electron_Einj.set_visible(False)
+
                 if self.parent.set_Te:
                     self.electron_temp[0].set_visible(True)
 
@@ -350,6 +459,12 @@ class SpectralPanel:
         if self.GetPlotParam('spectral_type') == 1: #Show the energy dist
             if self.GetPlotParam('show_electrons'):
                 self.electron_spect[0].set_data(self.gamma, self.edist)
+                if self.parent.measure_eps_e:
+                    self.electron_Einj.set_visible(True)
+                    self.electron_Einj.set_xdata([self.parent.e_electron_injection,self.parent.e_electron_injection])
+                else:
+                    self.electron_Einj.set_visible(False)
+
 
                 # The temperature
                 if self.parent.set_Te:
@@ -402,6 +517,11 @@ class SpectralPanel:
 
             if self.GetPlotParam('show_ions'):
                 self.ion_spect[0].set_data(self.gamma, self.pdist)
+                if self.parent.measure_eps_p:
+                    self.ion_Einj.set_visible(True)
+                    self.ion_Einj.set_xdata([self.parent.e_ion_injection,self.parent.e_ion_injection])
+                else:
+                    self.ion_Einj.set_visible(False)
 
                 if self.parent.set_Tp:
                     self.ion_temp[0].set_visible(True)
