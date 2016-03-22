@@ -264,80 +264,14 @@ class SpectralPanel:
         ############
 
         if self.parent.measure_eps_p:
-            try:
-
-                # Use a trapezoidal rule in logspace
-                p_injloc=self.gamma.searchsorted(self.parent.e_ion_injection)
-                # Calculate the log trapezoid rule above p_injloc
-                LogY = np.log(self.pdist[p_injloc-1:])
-                # Make all values where LogY ==-inf == -1E4 effectively set them to zero
-                LogY[np.isinf(LogY)] = -1E4
-
-                LogX = np.log(self.gamma[p_injloc-1:])
-                dLogY = np.diff(LogY)
-                dLogX = np.diff(LogX)
-
-                dF = np.exp(LogY[:-1]+LogX[:-1])
-                dF *= dLogX*(np.exp(dLogX+dLogY)-1)
-                dF *= (dLogX+dLogY)**(-1)
-
-                endSumF = np.cumsum(dF[::-1])[::-1]
-
-                # The answer we want will be between the [0] and [1] place in
-                # endSumF. We do linear interpolation in logspace to find the answer
-                logY_left = np.log(endSumF[0])
-                logY_right = np.log(endSumF[1])
-                logX_left = LogX[0]
-                logX_right = LogX[1]
-                # do the linear interpolation in logspace
-                logF = np.log(self.parent.e_ion_injection)-logX_left
-                logF *= (logX_right-logX_left)**(-1)
-                logF *= logY_right-logY_left
-                logF += logY_left
-                # Now calculate the eps_p
-
-                eps_p = 2*np.exp(logF)/(1-self.gamma0**(-2))
-                self.parent.eps_pVar.set('%.5f' % eps_p)
-
-            except IndexError:
-                print 'IndexError when measuring eps_p. Try changing the proton injection energy'
-                self.parent.eps_pVar.set('N/A')
+            eps_p = self.measure_eps(self.pdist, self.parent.e_ion_injection, 'protron')
+            self.parent.eps_pVar.set('%.6f' % eps_p)
         else:
             self.parent.eps_pVar.set('N/A')
+
         if self.parent.measure_eps_e:
-            try:
-                # Use a trapezoidal rule in logspace
-                e_injloc=self.gamma.searchsorted(self.parent.e_electron_injection)
-                # Calculate the log trapezoid rule above p_injloc
-                LogY = np.log(self.edist[e_injloc-1:])
-                # Make all values where LogY ==-inf == -1E4 effectively set them to zero
-                LogY[np.isinf(LogY)] = -1E4
-                LogX = np.log(self.gamma[e_injloc-1:])
-                dLogY = np.diff(LogY)
-                dLogX = np.diff(LogX)
-                dF = np.exp(LogY[:-1]+LogX[:-1])
-                dF *= dLogX*(np.exp(dLogX+dLogY)-1)
-                dF *= (dLogX+dLogY)**(-1)
-                endSumF = np.cumsum(dF[::-1])[::-1]
-                # The answer we want will be between the [0] and [1] place in
-                # endSumF. We do linear interpolation in logspace to find the answer
-                logY_left = np.log(endSumF[0])
-                logY_right = np.log(endSumF[1])
-                logX_left = LogX[0]
-                logX_right = LogX[1]
-                # do the linear interpolation in logspace
-                logF = np.log(self.parent.e_electron_injection)-logX_left
-                logF *= (logX_right-logX_left)**(-1)
-                logF *= logY_right-logY_left
-                logF += logY_left
-                # Now calculate the eps_e
-                eps_e = 2*self.FigWrap.LoadKey('me')[0]/self.FigWrap.LoadKey('mi')[0]
-                eps_e *= np.exp(logF)/(1-self.gamma0**(-2))
-                self.parent.eps_eVar.set('%.5f' % eps_e)
-#                print self.parent.eps_eVar.get()
-            except IndexError:
-                print 'IndexError when measuring eps_e. Try changing the electron injection energy'
-                self.parent.eps_eVar.set('N/A')
+            eps_e = self.measure_eps(self.edist, self.parent.e_electron_injection, 'electron')
+            self.parent.eps_eVar.set('%.6f' % eps_e)
         else:
             self.parent.eps_eVar.set('N/A')
         if self.GetPlotParam('spectral_type') == 0: #Show the momentum dist
@@ -570,7 +504,51 @@ class SpectralPanel:
         if self.GetPlotParam('show_legend'):
             self.MakeLegend()
 
+    def measure_eps(self, energy_dist, e_inj, prtl_type):
+        injloc=self.gamma.searchsorted(e_inj)
 
+        if injloc == 0:
+            return 1.0
+        elif injloc >= len(energy_dist)-1:
+            return 0.0
+        else:
+            '''
+            HERE is a trapezoidal integration in logspace not using anymore
+            because it is when energy_dist is zero, leaving it in case it is
+            valuable later.
+            # do a cummulative
+            LogY = np.log(energy_dist[e_injloc-1:])
+            # Make all values where LogY ==-inf == -1E4 effectively set them to zero
+            LogY[np.isinf(LogY)] = -1E4
+            LogX = np.log(self.gamma[e_injloc-1:])
+            dLogY = np.diff(LogY)
+            dLogX = np.diff(LogX)
+            dF = np.exp(LogY[:-1]+LogX[:-1])
+            dF *= dLogX*(np.exp(dLogX+dLogY)-1)
+            dF *= (dLogX+dLogY)**(-1)
+            endSumF = np.cumsum(dF[::-1])[::-1]
+            '''
+            # Do a reverse cummulative trapz integration over the energy_dist
+            endSum = cumtrapz(energy_dist[::-1],self.gamma[::-1])[::-1]
+            endSum *= -1
+
+            # The answer we want will be between the [injloc-1] and [injloc] place in
+            # endSumF We do linear interpolation in logspace to find the answer
+            logY_left = np.log(endSum[injloc-1])
+            logY_right = np.log(endSum[injloc])
+            logX_left = np.log(self.gamma[injloc-1])
+            logX_right = np.log(self.gamma[injloc])
+            # do the linear interpolation in logspace
+            logF = np.log(e_inj)-logX_left
+            logF *= (logX_right-logX_left)**(-1)
+            logF *= logY_right-logY_left
+            logF += logY_left
+            # Now calculate the eps
+            if prtl_type == 'electron':
+                psum = np.trapz(self.pdist,self.gamma)
+                return np.exp(logF)/psum * self.FigWrap.LoadKey('me')[0]/self.FigWrap.LoadKey('mi')[0]
+            else:
+                return np.exp(logF)/endSum[0]
 
     def GetPlotParam(self, keyname):
         return self.FigWrap.GetPlotParam(keyname)

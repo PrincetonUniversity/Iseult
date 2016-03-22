@@ -859,7 +859,7 @@ class MeasureFrame(Tk.Toplevel):
                 to_reload += self.parent.measure_eps_p
         except ValueError:
             #if they type in random stuff, just set it to the value
-            self.EinjPVar(str(self.parent.e_ion_injection))
+            self.EinjPVar.set(str(self.parent.e_ion_injection))
 
         # Now the electrons
         try:
@@ -870,7 +870,7 @@ class MeasureFrame(Tk.Toplevel):
                 to_reload += self.parent.measure_eps_e
         except ValueError:
             #if they type in random stuff, just set it to the value
-            self.EinjEVar(str(self.parent.e_electron_injection))
+            self.EinjEVar.set(str(self.parent.e_electron_injection))
 
 
         return to_reload
