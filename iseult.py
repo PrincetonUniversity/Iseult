@@ -496,6 +496,15 @@ class SettingsFrame(Tk.Toplevel):
                                 variable = self.AspectVar)
         cb.grid(row = 10, column = 1, sticky = Tk.N)
 
+        self.LorentzBoostVar = Tk.IntVar()
+        self.LorentzBoostVar.set(self.parent.DoLorentzBoost)
+        self.LorentzBoostVar.trace('w', self.LorentzBoostChanged)
+        cb = ttk.Checkbutton(frm, text='Boost PhasePlots', variable =  self.LorentzBoostVar).grid(row = 11, sticky = Tk.W)
+        ttk.Label(frm, text='Gamma/Beta =').grid(row= 11, column =1, sticky = Tk.E)
+        self.GammaVar = Tk.StringVar()
+        self.GammaVar.set(str(self.parent.GammaBoost))
+        ttk.Entry(frm, textvariable=self.GammaVar, width = 7).grid(row = 11, column = 2, sticky = Tk.N)
+
     def AspectVarChanged(self, *args):
         if self.AspectVar.get() == self.parent.plot_aspect:
             pass
@@ -504,6 +513,14 @@ class SettingsFrame(Tk.Toplevel):
             self.parent.plot_aspect = self.AspectVar.get()
             self.parent.RenewCanvas(ForceRedraw = True)
 
+
+    def LorentzBoostChanged(self, *args):
+        if self.LorentzBoostVar.get() == self.parent.DoLorentzBoost:
+            pass
+
+        else:
+            self.parent.DoLorentzBoost = self.LorentzBoostVar.get()
+            self.parent.RenewCanvas()
 
     def TitleChanged(self, *args):
         if self.TitleVar.get()==self.parent.show_title:
@@ -623,6 +640,20 @@ class SettingsFrame(Tk.Toplevel):
                 tmplist[j].set(str(self.parent.ylim[j+1]))
         return to_reload*self.parent.ylim[0]
 
+    def CheckIfGammaChanged(self):
+        to_reload = False
+        try:
+        #make sure the user types in a float
+            if np.abs(float(self.GammaVar.get()) - self.parent.GammaBoost) > 1E-8:
+                self.parent.GammaBoost = float(self.GammaVar.get())
+                to_reload += True
+
+        except ValueError:
+            #if they type in random stuff, just set it to the param value
+            self.GammaVar.set(str(self.parent.GammaBoost))
+        return to_reload*self.parent.DoLorentzBoost
+
+
     def LimChanged(self, *args):
         if self.LimVar.get()==self.parent.xlim[0]:
             pass
@@ -640,7 +671,7 @@ class SettingsFrame(Tk.Toplevel):
     def SettingsCallback(self, e):
         to_reload = self.CheckIfXLimChanged()
         to_reload += self.CheckIfYLimChanged()
-
+        to_reload += self.CheckIfGammaChanged()
         if to_reload:
             self.parent.RenewCanvas()
 
@@ -766,7 +797,7 @@ class MeasureFrame(Tk.Toplevel):
         ttk.Entry(frm, textvariable=self.P2Var, width = 7).grid(row = 10, column =2, sticky = Tk.N)
 
 
-        ttk.Label(frm, text='Measure eps').grid(row = 11, column = 1, sticky = Tk.N)
+        ttk.Label(frm, text='Measure eps:').grid(row = 11, column = 0, sticky = Tk.W)
         ttk.Label(frm, text='E_inj [mc^2]').grid(row = 11, column = 1, sticky = Tk.N)
         ttk.Label(frm, text='eps').grid(row = 11, column = 2, sticky = Tk.N)
 
@@ -791,7 +822,11 @@ class MeasureFrame(Tk.Toplevel):
         ttk.Entry(frm, textvariable=self.parent.eps_eVar, width = 7, state = 'readonly').grid(row = 13, column =2, sticky = Tk.N)
 
 
-        ttk.Label(frm, text='NOTE You must have one \'spectra\' plot' +'\r' + 'showing to measure eps_e or eps_p').grid(row = 14, rowspan = 2,columnspan = 3, sticky = Tk.W)
+        ttk.Label(frm, text='NOTE: You must have one \'spectra\' plot' +'\r' + 'showing to measure eps_e or eps_p').grid(row = 14, rowspan = 2,columnspan = 3, sticky = Tk.W)
+
+
+
+
     def eps_pFitChanged(self, *args):
         if self.eps_p_fitVar.get() == self.parent.measure_eps_p:
             pass
@@ -1039,11 +1074,15 @@ class MainApp(Tk.Tk):
         self.eps_pVar = Tk.StringVar(self)
         self.eps_pVar.set('N/A')
 
-
         self.measure_eps_e = False
         self.e_electron_injection = 30.0
         self.eps_eVar = Tk.StringVar(self)
         self.eps_eVar.set('N/A')
+
+        # A param that will be capable of Lorenz boosting the phase plots
+        self.DoLorentzBoost = False
+        # A parameter that is interpreted as beta if it is <1 and gamma if it is >=1
+        self.GammaBoost = 0.0
 
         self.numOfRows = Tk.IntVar(self)
         self.numOfRows.set(3)
@@ -1411,6 +1450,7 @@ class MainApp(Tk.Tk):
                 self.ToLoad[self.H5KeyDict['istep']].append('istep')
                 self.ToLoad[self.H5KeyDict['dens']].append('dens')
 
+
                 for elm in tmpList:
                     # find out what type of file the key is stored in
                     ftype = self.H5KeyDict[elm]
@@ -1457,6 +1497,8 @@ class MainApp(Tk.Tk):
                             except KeyError:
                                 if elm == 'sizex':
                                     self.DataDict[elm] = 1
+                                if elm == 'c':
+                                    self.DataDict[elm]= 0.45
                                 else:
                                     raise
 

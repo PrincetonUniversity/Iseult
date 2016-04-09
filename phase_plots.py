@@ -70,12 +70,17 @@ class PhasePanel:
     def set_plot_keys(self):
         '''A helper function that will insure that each hdf5 file will only be
         opened once per time step'''
-        self.arrs_needed = ['c_omp', 'bx', 'istep']
+        self.arrs_needed = ['c_omp', 'bx', 'istep', 'c']
         if self.GetPlotParam('prtl_type') == 0:
             self.arrs_needed.append('xi')
             if self.GetPlotParam('weighted'):
                 self.arrs_needed.append('chi')
-            if self.GetPlotParam('mom_dim') == 0:
+            if self.parent.DoLorentzBoost and np.abs(self.parent.GammaBoost)>1E-8:
+                self.arrs_needed.append('ui')
+                self.arrs_needed.append('vi')
+                self.arrs_needed.append('wi')
+
+            elif self.GetPlotParam('mom_dim') == 0:
                 self.arrs_needed.append('ui')
             elif self.GetPlotParam('mom_dim') == 1:
                 self.arrs_needed.append('vi')
@@ -86,7 +91,10 @@ class PhasePanel:
             self.arrs_needed.append('xe')
             if self.GetPlotParam('weighted'):
                 self.arrs_needed.append('che')
-
+            if self.parent.DoLorentzBoost and np.abs(self.parent.GammaBoost)>1E-8:
+                self.arrs_needed.append('ue')
+                self.arrs_needed.append('ve')
+                self.arrs_needed.append('we')
             elif self.GetPlotParam('mom_dim') == 0:
                 self.arrs_needed.append('ue')
             elif self.GetPlotParam('mom_dim') == 1:
@@ -106,11 +114,124 @@ class PhasePanel:
         if self.GetPlotParam('weighted'):
             self.key_name += 'weighted_'
 
+        if self.parent.DoLorentzBoost and np.abs(self.parent.GammaBoost)>1E-8:
+            self.key_name += 'boosted_'+ str(self.parent.GammaBoost)+'_'
+
         self.key_name += self.prtl_opts[self.GetPlotParam('prtl_type')]
         self.key_name += self.direction_opts[self.GetPlotParam('mom_dim')]
 
         if self.key_name in self.parent.DataDict.keys():
             self.hist2d = self.parent.DataDict[self.key_name]
+
+        elif self.parent.DoLorentzBoost and np.abs(self.parent.GammaBoost)>1E-8:
+            # Gotta boost it
+            self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
+            self.istep = self.FigWrap.LoadKey('istep')[0]
+            self.weights = None
+            self.x_values = None
+            self.y_values = None
+
+            # x_min & x_max before boostin'
+            self.xmin = 0
+            self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.istep
+
+
+            # First calculate beta and gamma
+            if self.parent.GammaBoost >=1:
+                self.gammaBoost = self.parent.GammaBoost
+                self.betaBoost = np.sqrt(1-1/self.gammaBoost**2)
+            else:
+                self.betaBoost = self.parent.GammaBoost
+                self.gammaBoost = np.sqrt(1-self.betaBoost**2)**(-1)
+
+            # Now calculate the transformation of xmin & xmax
+#            self.xmin = self.gammaBoost*(self.xmin+self.betaBoost*self.c)
+#            self.xmax = self.gammaBoost*(self.xmin+self.betaBoost*self.c)
+
+            # Now load the data. We require all 3 dimensions to determine
+            # the velociy and LF in the boosted frame.
+            if self.GetPlotParam('mom_dim') == 0:
+                self.energy_color = self.parent.ion_color
+                # first load everything downstream frame
+                self.x_values = self.FigWrap.LoadKey('xi')/self.c_omp
+
+                u = self.FigWrap.LoadKey('ui')
+                v = self.FigWrap.LoadKey('vi')
+                w = self.FigWrap.LoadKey('wi')
+                if self.GetPlotParam('weighted'):
+                    self.weights = self.FigWrap.LoadKey('chi')
+                if self.GetPlotParam('mom_dim') == 0:
+                    self.y_label  = r'$P_{px}\ [m_i c]$'
+                if self.GetPlotParam('mom_dim') == 1:
+                    self.y_label  = r'$P_{py}\ [m_i c]$'
+                if self.GetPlotParam('mom_dim') == 2:
+                    self.y_label  = r'$P_{pz}\ [m_i c]$'
+            if self.GetPlotParam('prtl_type') == 1: #electons
+                self.energy_color = self.parent.electron_color
+                self.x_values = self.FigWrap.LoadKey('xe')/self.c_omp
+                u = self.FigWrap.LoadKey('ue')
+                v = self.FigWrap.LoadKey('ve')
+                w = self.FigWrap.LoadKey('we')
+
+                if self.GetPlotParam('weighted'):
+                    self.weights = self.FigWrap.LoadKey('che')
+                if self.GetPlotParam('mom_dim') == 0:
+                    self.y_label  = r'$P_{ex}\ [m_e c]$'
+                if self.GetPlotParam('mom_dim') == 1:
+                    self.y_label  = r'$P_{ey}\ [m_e c]$'
+                if self.GetPlotParam('mom_dim') == 2:
+                    self.y_label  = r'$P_{ez}\ [m_e c]$'
+
+            # Transformation of x_values of the particles
+#            self.x_values = self.gammaBoost*(self.x_values+self.betaBoost*self.c)
+
+            # Now calculate gamma of the particles in downstream restframe
+            gamma_ds = np.sqrt(u**2+v**2+w**2+1)
+            # calculate the velocities from the momenta
+            vx = u/gamma_ds
+            vy = v/gamma_ds
+            vz = w/gamma_ds
+
+            # Now calulate the velocities in the boosted frames
+            tmp_helper = 1+vx*self.betaBoost
+            vx_prime = (vx+self.betaBoost)/tmp_helper
+            vy_prime = vy/self.gammaBoost/tmp_helper
+            vz_prime = vz/self.gammaBoost/tmp_helper
+
+            # Now calculate the LF in the boosted frames
+            gamma_prime = 1/np.sqrt(1-vx_prime**2-vy_prime**2-vz_prime**2)
+            if self.GetPlotParam('mom_dim') == 0:
+                self.y_values  = vx_prime*gamma_prime
+            if self.GetPlotParam('mom_dim') == 1:
+                self.y_values  = vy_prime*gamma_prime
+            if self.GetPlotParam('mom_dim') == 2:
+                self.y_values  = vz_prime*gamma_prime
+
+            self.pmin = min(self.y_values)
+            self.pmax = max(self.y_values)
+            print self.y_values
+
+            self.hist2d = np.histogram2d(self.y_values, self.x_values,
+                        bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
+                        range = [[self.pmin,self.pmax],[0,self.xmax]],
+                        weights = self.weights)
+
+
+
+            if self.GetPlotParam('masked'):
+                zval = ma.masked_array(self.hist2d[0])
+                zval[zval == 0] = ma.masked
+                zval *= float(zval.max())**(-1)
+                tmplist = [zval[~zval.mask].min(), zval.max()]
+            else:
+                zval = np.copy(self.hist2d[0])
+                zval[zval==0] = 0.5
+                zval *= float(zval.max())**(-1)
+                tmplist = [zval.min(), zval.max()]
+
+            self.hist2d = zval, self.hist2d[1], self.hist2d[2], tmplist
+            self.parent.DataDict[self.key_name] = self.hist2d
+
 
         else:
             # Generate the X-axis values
@@ -128,13 +249,13 @@ class PhasePanel:
                     self.weights = self.FigWrap.LoadKey('chi')
                 if self.GetPlotParam('mom_dim') == 0:
                     self.y_values = self.FigWrap.LoadKey('ui')
-                    self.y_label  = r'$P_{px}\ [c]$'
+                    self.y_label  = r'$P_{px}\ [m_i c]$'
                 if self.GetPlotParam('mom_dim') == 1:
                     self.y_values = self.FigWrap.LoadKey('vi')
-                    self.y_label  = r'$P_{py}\ [c]$'
+                    self.y_label  = r'$P_{py}\ [m_i c]$'
                 if self.GetPlotParam('mom_dim') == 2:
                     self.y_values = self.FigWrap.LoadKey('wi')
-                    self.y_label  = r'$P_{pz}\ [c]$'
+                    self.y_label  = r'$P_{pz}\ [m_i c]$'
 
             if self.GetPlotParam('prtl_type') == 1: #electons
                 self.energy_color = self.parent.electron_color
@@ -143,13 +264,13 @@ class PhasePanel:
                     self.weights = self.FigWrap.LoadKey('che')
                 if self.GetPlotParam('mom_dim') == 0:
                     self.y_values = self.FigWrap.LoadKey('ue')
-                    self.y_label  = r'$P_{ex}\ [c]$'
+                    self.y_label  = r'$P_{ex}\ [m_e c]$'
                 if self.GetPlotParam('mom_dim') == 1:
                     self.y_values = self.FigWrap.LoadKey('ve')
-                    self.y_label  = r'$P_{ey}\ [c]$'
+                    self.y_label  = r'$P_{ey}\ [m_e c]$'
                 if self.GetPlotParam('mom_dim') == 2:
                     self.y_values = self.FigWrap.LoadKey('we')
-                    self.y_label  = r'$P_{ez}\ [c]$'
+                    self.y_label  = r'$P_{ez}\ [m_e c]$'
 
 
             self.pmin = min(self.y_values)
@@ -194,6 +315,7 @@ class PhasePanel:
 
         # Figure out the color and ylabel
         # Choose the particle type and px, py, or pz
+        self.c = self.FigWrap.LoadKey('c')[0]
         if self.GetPlotParam('prtl_type') == 0: #protons
             self.energy_color = self.parent.ion_color
             if self.GetPlotParam('mom_dim') == 0:
@@ -214,11 +336,13 @@ class PhasePanel:
 
 #        print self.hist2d
 
+
         self.xmin = self.hist2d[2][0]
         self.xmax = self.hist2d[2][-1]
 
         self.ymin = self.hist2d[1][0]
         self.ymax = self.hist2d[1][-1]
+
 
         if self.GetPlotParam('masked'):
             self.tick_color = 'k'
@@ -298,6 +422,7 @@ class PhasePanel:
         self.ymin = self.hist2d[1][0]
         self.ymax = self.hist2d[1][-1]
         self.clim = list(self.hist2d[3])
+
 
         self.cax.set_data(self.hist2d[0])
 

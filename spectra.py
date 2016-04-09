@@ -171,7 +171,7 @@ class SpectralPanel:
 
             self.fe[self.fe <= 0] = 1E-100
             self.fp[self.fe <= 0] = 1E-100
-            #  NOTE: gamma ---> gamma-1 ***
+            #  NOTE: self.gamma is actually the real lorentz factor, gamma, minus 1 ***
             self.edist=self.gamma*self.fe
             self.pdist=self.gamma*self.fp
 
@@ -507,10 +507,9 @@ class SpectralPanel:
     def measure_eps(self, energy_dist, e_inj, prtl_type):
         injloc=self.gamma.searchsorted(e_inj)
 
-        if injloc == 0:
-            return 1.0
-        elif injloc >= len(energy_dist)-1:
+        if injloc >= len(energy_dist)-1:
             return 0.0
+
         else:
             '''
             HERE is a trapezoidal integration in logspace not using anymore
@@ -532,17 +531,23 @@ class SpectralPanel:
             endSum = cumtrapz(energy_dist[::-1],self.gamma[::-1])[::-1]
             endSum *= -1
 
-            # The answer we want will be between the [injloc-1] and [injloc] place in
-            # endSumF We do linear interpolation in logspace to find the answer
-            logY_left = np.log(endSum[injloc-1])
-            logY_right = np.log(endSum[injloc])
-            logX_left = np.log(self.gamma[injloc-1])
-            logX_right = np.log(self.gamma[injloc])
-            # do the linear interpolation in logspace
-            logF = np.log(e_inj)-logX_left
-            logF *= (logX_right-logX_left)**(-1)
-            logF *= logY_right-logY_left
-            logF += logY_left
+            logF = np.nan
+
+            if injloc ==0:
+                logF = np.log(endSum[0])
+            else:
+                # The answer we want will be between the [injloc-1] and [injloc] place in
+                # endSumF We do linear interpolation in logspace to find the answer
+                logY_left = np.log(endSum[injloc-1])
+                logY_right = np.log(endSum[injloc])
+                logX_left = np.log(self.gamma[injloc-1])
+                logX_right = np.log(self.gamma[injloc])
+                # do the linear interpolation in logspace
+                logF = np.log(e_inj)-logX_left
+                logF *= (logX_right-logX_left)**(-1)
+                logF *= logY_right-logY_left
+                logF += logY_left
+
             # Now calculate the eps
             if prtl_type == 'electron':
                 psum = np.trapz(self.pdist,self.gamma)
