@@ -1888,7 +1888,7 @@ class MainApp(Tk.Tk):
 
         if self.show_title:
             tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].split('.')[-1]
-            self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+' at time t = %d $\omega_{pe}$'  % round(self.DataDict['time'][0]), size = 15)
+            self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time'][0]), size = 15)
 
         if keep_view:
             self.LoadView()
