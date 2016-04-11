@@ -70,7 +70,7 @@ class PhasePanel:
     def set_plot_keys(self):
         '''A helper function that will insure that each hdf5 file will only be
         opened once per time step'''
-        self.arrs_needed = ['c_omp', 'bx', 'istep', 'c']
+        self.arrs_needed = ['c_omp', 'bx', 'istep']
         if self.GetPlotParam('prtl_type') == 0:
             self.arrs_needed.append('xi')
             if self.GetPlotParam('weighted'):
@@ -145,13 +145,13 @@ class PhasePanel:
                 self.gammaBoost = np.sqrt(1-self.betaBoost**2)**(-1)
 
             # Now calculate the transformation of xmin & xmax
-#            self.xmin = self.gammaBoost*(self.xmin+self.betaBoost*self.c)
-#            self.xmax = self.gammaBoost*(self.xmin+self.betaBoost*self.c)
+            self.xmin = self.gammaBoost*(self.xmin+self.betaBoost*self.FigWrap.LoadKey('time')[0])
+            self.xmax = self.gammaBoost*(self.xmax+self.betaBoost*self.FigWrap.LoadKey('time')[0])
+
 
             # Now load the data. We require all 3 dimensions to determine
             # the velociy and LF in the boosted frame.
-            if self.GetPlotParam('mom_dim') == 0:
-                self.energy_color = self.parent.ion_color
+            if self.GetPlotParam('prtl_type') == 0:
                 # first load everything downstream frame
                 self.x_values = self.FigWrap.LoadKey('xi')/self.c_omp
 
@@ -160,14 +160,8 @@ class PhasePanel:
                 w = self.FigWrap.LoadKey('wi')
                 if self.GetPlotParam('weighted'):
                     self.weights = self.FigWrap.LoadKey('chi')
-                if self.GetPlotParam('mom_dim') == 0:
-                    self.y_label  = r'$P_{px}\ [m_i c]$'
-                if self.GetPlotParam('mom_dim') == 1:
-                    self.y_label  = r'$P_{py}\ [m_i c]$'
-                if self.GetPlotParam('mom_dim') == 2:
-                    self.y_label  = r'$P_{pz}\ [m_i c]$'
+
             if self.GetPlotParam('prtl_type') == 1: #electons
-                self.energy_color = self.parent.electron_color
                 self.x_values = self.FigWrap.LoadKey('xe')/self.c_omp
                 u = self.FigWrap.LoadKey('ue')
                 v = self.FigWrap.LoadKey('ve')
@@ -175,15 +169,9 @@ class PhasePanel:
 
                 if self.GetPlotParam('weighted'):
                     self.weights = self.FigWrap.LoadKey('che')
-                if self.GetPlotParam('mom_dim') == 0:
-                    self.y_label  = r'$P_{ex}\ [m_e c]$'
-                if self.GetPlotParam('mom_dim') == 1:
-                    self.y_label  = r'$P_{ey}\ [m_e c]$'
-                if self.GetPlotParam('mom_dim') == 2:
-                    self.y_label  = r'$P_{ez}\ [m_e c]$'
 
             # Transformation of x_values of the particles
-#            self.x_values = self.gammaBoost*(self.x_values+self.betaBoost*self.c)
+            self.x_values = self.gammaBoost*(self.x_values+self.betaBoost*self.FigWrap.LoadKey('time')[0])
 
             # Now calculate gamma of the particles in downstream restframe
             gamma_ds = np.sqrt(u**2+v**2+w**2+1)
@@ -209,11 +197,10 @@ class PhasePanel:
 
             self.pmin = min(self.y_values)
             self.pmax = max(self.y_values)
-            print self.y_values
 
             self.hist2d = np.histogram2d(self.y_values, self.x_values,
                         bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
-                        range = [[self.pmin,self.pmax],[0,self.xmax]],
+                        range = [[self.pmin,self.pmax],[self.xmin,self.xmax]],
                         weights = self.weights)
 
 
@@ -230,6 +217,7 @@ class PhasePanel:
                 tmplist = [zval.min(), zval.max()]
 
             self.hist2d = zval, self.hist2d[1], self.hist2d[2], tmplist
+
             self.parent.DataDict[self.key_name] = self.hist2d
 
 
@@ -243,19 +231,15 @@ class PhasePanel:
 
             # Choose the particle type and px, py, or pz
             if self.GetPlotParam('prtl_type') == 0: #protons
-                self.energy_color = self.parent.ion_color
                 self.x_values = self.FigWrap.LoadKey('xi')/self.c_omp
                 if self.GetPlotParam('weighted'):
                     self.weights = self.FigWrap.LoadKey('chi')
                 if self.GetPlotParam('mom_dim') == 0:
                     self.y_values = self.FigWrap.LoadKey('ui')
-                    self.y_label  = r'$P_{px}\ [m_i c]$'
                 if self.GetPlotParam('mom_dim') == 1:
                     self.y_values = self.FigWrap.LoadKey('vi')
-                    self.y_label  = r'$P_{py}\ [m_i c]$'
                 if self.GetPlotParam('mom_dim') == 2:
                     self.y_values = self.FigWrap.LoadKey('wi')
-                    self.y_label  = r'$P_{pz}\ [m_i c]$'
 
             if self.GetPlotParam('prtl_type') == 1: #electons
                 self.energy_color = self.parent.electron_color
@@ -264,14 +248,10 @@ class PhasePanel:
                     self.weights = self.FigWrap.LoadKey('che')
                 if self.GetPlotParam('mom_dim') == 0:
                     self.y_values = self.FigWrap.LoadKey('ue')
-                    self.y_label  = r'$P_{ex}\ [m_e c]$'
                 if self.GetPlotParam('mom_dim') == 1:
                     self.y_values = self.FigWrap.LoadKey('ve')
-                    self.y_label  = r'$P_{ey}\ [m_e c]$'
                 if self.GetPlotParam('mom_dim') == 2:
                     self.y_values = self.FigWrap.LoadKey('we')
-                    self.y_label  = r'$P_{ez}\ [m_e c]$'
-
 
             self.pmin = min(self.y_values)
             self.pmax = max(self.y_values)
@@ -307,7 +287,47 @@ class PhasePanel:
             self.hist2d = zval, self.hist2d[1], self.hist2d[2], tmplist
             self.parent.DataDict[self.key_name] = self.hist2d
 
+    def UpdateLabelsandColors(self):
+        if self.parent.DoLorentzBoost and np.abs(self.parent.GammaBoost)>1E-8:
+            self.x_label = r'$x\prime\ [c/\omega_{\rm pe}]$'
+            if self.GetPlotParam('prtl_type') == 0: #protons
+                self.energy_color = self.parent.ion_color
+                if self.GetPlotParam('mom_dim') == 0:
+                    self.y_label  = r'$P\prime_{px}\ [m_i c]$'
+                if self.GetPlotParam('mom_dim') == 1:
+                    self.y_label  = r'$P\prime_{py}\ [m_i c]$'
+                if self.GetPlotParam('mom_dim') == 2:
+                    self.y_label  = r'$P\prime_{pz}\ [m_i c]$'
 
+            if self.GetPlotParam('prtl_type') == 1: #electons
+                self.energy_color = self.parent.electron_color
+                if self.GetPlotParam('mom_dim') == 0:
+                    self.y_label  = r'$P\prime_{ex}\ [m_e c]$'
+                if self.GetPlotParam('mom_dim') == 1:
+                    self.y_label  = r'$P\prime_{ey}\ [m_e c]$'
+                if self.GetPlotParam('mom_dim') == 2:
+                    self.y_label  = r'$P\prime_{ez}\ [m_e c]$'
+
+        else:
+            self.x_label = r'$x\ [c/\omega_{\rm pe}]$'
+
+            if self.GetPlotParam('prtl_type') == 0: #protons
+                self.energy_color = self.parent.ion_color
+                if self.GetPlotParam('mom_dim') == 0:
+                    self.y_label  = r'$P_{px}\ [m_i c]$'
+                if self.GetPlotParam('mom_dim') == 1:
+                    self.y_label  = r'$P_{py}\ [m_i c]$'
+                if self.GetPlotParam('mom_dim') == 2:
+                    self.y_label  = r'$P_{pz}\ [m_i c]$'
+
+            if self.GetPlotParam('prtl_type') == 1: #electons
+                self.energy_color = self.parent.electron_color
+                if self.GetPlotParam('mom_dim') == 0:
+                    self.y_label  = r'$P_{ex}\ [m_e c]$'
+                if self.GetPlotParam('mom_dim') == 1:
+                    self.y_label  = r'$P_{ey}\ [m_e c]$'
+                if self.GetPlotParam('mom_dim') == 2:
+                    self.y_label  = r'$P_{ez}\ [m_e c]$'
 
     def draw(self):
         # In order to speed up the plotting, we only recalculate everything
@@ -315,27 +335,7 @@ class PhasePanel:
 
         # Figure out the color and ylabel
         # Choose the particle type and px, py, or pz
-        self.c = self.FigWrap.LoadKey('c')[0]
-        if self.GetPlotParam('prtl_type') == 0: #protons
-            self.energy_color = self.parent.ion_color
-            if self.GetPlotParam('mom_dim') == 0:
-                self.y_label  = r'$P_{px}\ [c]$'
-            if self.GetPlotParam('mom_dim') == 1:
-                self.y_label  = r'$P_{py}\ [c]$'
-            if self.GetPlotParam('mom_dim') == 2:
-                self.y_label  = r'$P_{pz}\ [c]$'
-
-        if self.GetPlotParam('prtl_type') == 1: #electons
-            self.energy_color = self.parent.electron_color
-            if self.GetPlotParam('mom_dim') == 0:
-                self.y_label  = r'$P_{ex}\ [c]$'
-            if self.GetPlotParam('mom_dim') == 1:
-                self.y_label  = r'$P_{ey}\ [c]$'
-            if self.GetPlotParam('mom_dim') == 2:
-                self.y_label  = r'$P_{ez}\ [c]$'
-
-#        print self.hist2d
-
+        self.UpdateLabelsandColors()
 
         self.xmin = self.hist2d[2][0]
         self.xmax = self.hist2d[2][-1]
@@ -402,17 +402,18 @@ class PhasePanel:
         self.axes.tick_params(labelsize = self.parent.num_font_size, color=self.tick_color)
         self.cbar.ax.tick_params(labelsize=self.parent.num_font_size)
 
-        self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
+        self.axes.set_xlabel(self.x_label, labelpad = self.parent.xlabel_pad, color = 'black')
         self.axes.set_ylabel(self.y_label, labelpad = self.parent.ylabel_pad, color = 'black')
 
         self.refresh()
 
     def refresh(self):
         '''This is a function that will be called only if self.axes already
-        holds a density type plot. We only update things that have shown.  If
+        holds a density type plot. We only update things that have shown. If
         hasn't changed, or isn't viewed, don't touch it. The difference between this and last
         time, is that we won't actually do any drawing in the plot. The plot
         will be redrawn after all subplots data is changed. '''
+
 
         # Main goal, only change what is showing..
 
@@ -474,6 +475,10 @@ class PhasePanel:
 
             self.right_loc = min(self.right_loc, self.xmax-1)
             self.lineright.set_xdata([self.right_loc,self.right_loc])
+
+        self.UpdateLabelsandColors()
+        self.axes.set_xlabel(self.x_label, labelpad = self.parent.xlabel_pad, color = 'black')
+        self.axes.set_ylabel(self.y_label, labelpad = self.parent.ylabel_pad, color = 'black')
 
         if self.GetPlotParam('set_p_min'):
             self.ymin = self.GetPlotParam('p_min')
@@ -720,42 +725,27 @@ class PhaseSettings(Tk.Toplevel):
             self.parent.cax.set_interpolation(self.InterpolVar.get())
             self.parent.SetPlotParam('interpolation', self.InterpolVar.get())
 
-    def UpdateYLabelsandColors(self):
-
-        if self.pvar.get() == 0: #protons
-            self.parent.lineleft.set_color(self.parent.parent.ion_color)
-            self.parent.lineright.set_color(self.parent.parent.ion_color)
-            if self.dimvar.get() == 0:
-                self.parent.axes.set_ylabel(r'$P_{px}\ [c]$')
-            if self.dimvar.get() == 1:
-                self.parent.axes.set_ylabel(r'$P_{py}\ [c]$')
-            if self.dimvar.get() == 2:
-                self.parent.axes.set_ylabel(r'$P_{pz}\ [c]$')
-
-        if self.pvar.get() == 1: #electons
-            self.parent.lineleft.set_color(self.parent.parent.electron_color)
-            self.parent.lineright.set_color(self.parent.parent.electron_color)
-            if self.dimvar.get() == 0:
-                self.parent.axes.set_ylabel(r'$P_{ex}\ [c]$')
-            if self.dimvar.get() == 1:
-                self.parent.axes.set_ylabel(r'$P_{ey}\ [c]$')
-            if self.dimvar.get() == 2:
-                self.parent.axes.set_ylabel(r'$P_{ez}\ [c]$')
-
-
     def RadioPrtl(self):
         if self.pvar.get() == self.parent.GetPlotParam('prtl_type'):
             pass
         else:
-            self.UpdateYLabelsandColors()
+
+            self.parent.SetPlotParam('prtl_type', self.pvar.get(), update_plot =  False)
+            self.parent.UpdateLabelsandColors()
+            self.parent.axes.set_ylabel(self.parent.y_label, labelpad = self.parent.parent.ylabel_pad, color = 'black')
+            self.parent.lineleft.set_color(self.parent.energy_color)
+            self.parent.lineright.set_color(self.parent.energy_color)
             self.parent.SetPlotParam('prtl_type', self.pvar.get())
 
     def RadioDim(self):
         if self.dimvar.get() == self.parent.GetPlotParam('mom_dim'):
             pass
         else:
-            self.UpdateYLabelsandColors()
-            self.parent.SetPlotParam('mom_dim', self.dimvar.get(), update_plot = True)
+            self.parent.SetPlotParam('mom_dim', self.dimvar.get(), update_plot = False)
+            self.parent.UpdateLabelsandColors()
+            self.parent.axes.set_ylabel(self.parent.y_label, labelpad = self.parent.parent.ylabel_pad, color = 'black')
+            self.parent.SetPlotParam('mom_dim', self.dimvar.get())
+
 
     def RadioNorm(self):
         if self.cnormList[self.normvar.get()] == self.parent.GetPlotParam('norm_type'):

@@ -21,8 +21,8 @@ class SpectralPanel:
                        'rest_frame': False,
                        'set_ylim': True,
                        'set_xlim': True,
-                       'x_min': None,
-                       'x_max': None,
+                       'x_min': 0.05,
+                       'x_max': 200,
                        'spatial_x': False,
                        'spatial_y': False,
                        'show_legend': True,
@@ -38,9 +38,6 @@ class SpectralPanel:
         self.figure = self.FigWrap.figure
         self.PowerlawPworked = False
         self.PowerlawEworked = False
-        if self.GetPlotParam('spectral_type') == 0:
-            self.SetPlotParam('x_min', 0.05, update_plot = False)
-            self.SetPlotParam('x_max', 200, update_plot = False)
         if self.GetPlotParam('spectral_type') == 1:
             self.SetPlotParam('x_min', 0.0005, update_plot = False)
             self.SetPlotParam('x_max', 100, update_plot = False)
@@ -757,12 +754,19 @@ class SpectraSettings(Tk.Toplevel):
             if self.SpectTypeVar.get() == 1:
                 self.parent.axes.set_xlabel(r'$E\ [mc^2]$')
                 self.parent.axes.set_ylabel(r'$E(dn/dE)/n$')
+                self.parent.SetPlotParam('x_min', 0.0005, update_plot = False)
+                self.parent.SetPlotParam('x_max', 100, update_plot = False)
+
             else:
                 self.parent.axes.set_xlabel(r'$p\ [mc]$')
                 self.parent.axes.set_ylabel(r'$p^4f(p)$')
+                self.parent.SetPlotParam('x_min', 0.05, update_plot = False)
+                self.parent.SetPlotParam('x_max', 200, update_plot = False)
 
-
+            self.xmin.set(str(self.parent.GetPlotParam('x_min')))
+            self.xmax.set(str(self.parent.GetPlotParam('x_max')))
             self.parent.SetPlotParam('spectral_type', self.SpectTypeVar.get())
+
 
     def TxtEnter(self, e):
         self.FieldsCallback()

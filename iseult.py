@@ -17,6 +17,7 @@ from phase_plots import PhasePanel
 from fields_plots import FieldsPanel
 from density_plots import DensPanel
 from spectra import SpectralPanel
+from mag_plots import BPanel
 import multiprocessing
 
 # I don't think that matplotlib allows multi-threading, in the interactive mode.
@@ -62,7 +63,8 @@ class SubPlotWrapper:
         self.PlotTypeDict = {'PhasePlot': PhasePanel,
                              'FieldsPlot': FieldsPanel,
                              'DensityPlot': DensPanel,
-                             'SpectraPlot': SpectralPanel}
+                             'SpectraPlot': SpectralPanel,
+                             'MagPlots': BPanel}
         # A dictionary that will store where everything is in Hdf5 Files
         self.GenParamDict()
         self.figure = figure
@@ -92,6 +94,14 @@ class SubPlotWrapper:
         self.PlotParamsDict = {plot_type: '' for plot_type in self.PlotTypeDict.keys()}
         for elm in self.PlotTypeDict.keys():
             self.PlotParamsDict[elm] = {key: self.PlotTypeDict[elm].plot_param_dict[key] for key in self.PlotTypeDict[elm].plot_param_dict.keys()}
+
+    def RestoreDefaultPlotParams(self, ctype = None, RestoreAll = False):
+        if ctype is None:
+            ctype = self.chartType
+        if RestoreAll:
+            self.GenParamDict()
+        else:
+            self.PlotParamsDict[ctype] = {key: self.PlotTypeDict[ctype].plot_param_dict[key] for key in self.PlotTypeDict[ctype].plot_param_dict.keys()}
 
     def SetPlotParam(self, pname, val, ctype = None, update_plot = True):
         NeedsRedraw = False
@@ -574,11 +584,11 @@ class SettingsFrame(Tk.Toplevel):
         try:
             if self.rowNum.get() == '':
                 pass
-            elif int(self.rowNum.get())<1:
+            if int(self.rowNum.get())<1:
                 self.rowNum.set(1)
-            elif int(self.rowNum.get())>self.parent.maxRows:
+            if int(self.rowNum.get())>self.parent.maxRows:
                 self.rowNum.set(self.parent.maxRows)
-            else:
+            if int(self.rowNum.get()) != self.parent.numOfRows:
                 self.parent.numOfRows.set(int(self.rowNum.get()))
 
         except ValueError:
@@ -588,11 +598,11 @@ class SettingsFrame(Tk.Toplevel):
         try:
             if self.columnNum.get() == '':
                 pass
-            elif int(self.columnNum.get())<1:
+            if int(self.columnNum.get())<1:
                 self.columnNum.set(1)
-            elif int(self.columnNum.get())>self.parent.maxCols:
+            if int(self.columnNum.get())>self.parent.maxCols:
                 self.columnNum.set(self.parent.maxCols)
-            else:
+            if int(self.columnNum.get()) != self.parent.numOfColumns.get():
                 self.parent.numOfColumns.set(int(self.columnNum.get()))
 
         except ValueError:
@@ -1091,6 +1101,7 @@ class MainApp(Tk.Tk):
         self.numOfColumns = Tk.IntVar(self)
         self.numOfColumns.set(2)
         self.numOfColumns.trace('w', self.UpdateGridSpec)
+
         self.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.93, 'bottom':0.06, 'wspace':0.15, 'hspace':0.15}
         matplotlib.rc('figure.subplot', **self.SubPlotParams)
 
@@ -1098,10 +1109,14 @@ class MainApp(Tk.Tk):
         self.xlabel_pad = 0
         self.ylabel_pad = 0
         fileMenu = Tk.Menu(menubar, tearoff=False)
+        presetMenu = Tk.Menu(menubar, tearoff=False)
         menubar.add_cascade(label="File", underline=0, menu=fileMenu)
         fileMenu.add_command(label= 'Open Directory', command = self.OnOpen, accelerator='Command+o')
         fileMenu.add_command(label="Exit", underline=1,
                              command=quit, accelerator="Ctrl+Q")
+        menubar.add_cascade(label='Preset Views', underline=0, menu = presetMenu)
+        presetMenu.add_command(label = 'Default View', command = self.MakeDefaultGraphs)
+        presetMenu.add_command(label = 'All Phase Plots', command = self.MakeAllPhase)
         self.config(menu=menubar)
 
         self.bind_all("<Control-q>", self.quit)
@@ -1407,8 +1422,7 @@ class MainApp(Tk.Tk):
         self.SubPlotList[0][1].PlotParamsDict['PhasePlot']['prtl_type'] = 1
 
         self.SubPlotList[1][1].SetGraph('FieldsPlot')
-        self.SubPlotList[2][1].SetGraph('FieldsPlot')
-        self.SubPlotList[2][1].PlotParamsDict['FieldsPlot']['field_type'] = 1
+        self.SubPlotList[2][1].SetGraph('MagPlots')
 
         self.SubPlotList[1][0].SetGraph('DensityPlot')
         self.SubPlotList[2][0].SetGraph('SpectraPlot')
@@ -1426,10 +1440,118 @@ class MainApp(Tk.Tk):
         #self.label = Label(self.top, text = 'Text',bg='orange')
         #self.label.grid()
         # initialize (time index t)
+    def MakeDefaultGraphs(self):
+        # First get rid of any & all pop up windows:
+        if self.settings_window is not None:
+            self.settings_window.destroy()
+        if self.measure_window is not None:
+            self.measure_window.destroy()
+        for i in range(self.numOfRows.get()):
+            for j in range(self.numOfColumns.get()):
+                try:
+                    self.SubPlotList[i][j].graph.settings_window.destroy()
+                except:
+                    pass
+        # set it to a 3x2 subplots
+        if self.numOfRows.get() != 3:
+            self.numOfRows.set(3)
+        if self.numOfColumns.get() != 2:
+            self.numOfColumns.set(2)
+
+        # Now set the plots back to defaults
+        #[0][0] is p_ix vs x phase plotChangeGraph(self, str_arg, redraw = True)
+        self.SubPlotList[0][0].SetGraph('PhasePlot')
+        self.SubPlotList[0][0].RestoreDefaultPlotParams()
+
+        # electron phase diagram
+        self.SubPlotList[0][1].SetGraph('PhasePlot')
+        self.SubPlotList[0][1].RestoreDefaultPlotParams()
+        self.SubPlotList[0][1].PlotParamsDict['PhasePlot']['prtl_type'] = 1
+
+        # Density 1-D
+        self.SubPlotList[1][0].SetGraph('DensityPlot')
+        self.SubPlotList[1][0].RestoreDefaultPlotParams()
+
+        # Mag Fields 1-D
+        self.SubPlotList[1][1].SetGraph('FieldsPlot')
+        self.SubPlotList[1][1].RestoreDefaultPlotParams()
+
+        # Momentum spectrum distribution
+        self.SubPlotList[2][0].SetGraph('SpectraPlot')
+        self.SubPlotList[2][0].RestoreDefaultPlotParams()
+
+        # delta B/B_0
+        self.SubPlotList[2][1].SetGraph('MagPlots')
+        self.SubPlotList[2][1].RestoreDefaultPlotParams()
+
+
+        self.RenewCanvas(ForceRedraw = True)
+
+    def MakeAllPhase(self):
+        # Make a 3x2 plot with the first column being pi-x v x, pi-y v x, pi-z v x
+        # and the second column being the electrons.
+
+        # First get rid of any & all pop up windows:
+        if self.settings_window is not None:
+            self.settings_window.destroy()
+        if self.measure_window is not None:
+            self.measure_window.destroy()
+        for i in range(self.numOfRows.get()):
+            for j in range(self.numOfColumns.get()):
+                try:
+                    self.SubPlotList[i][j].graph.settings_window.destroy()
+                except:
+                    pass
+        # set it to a 3x2 subplots
+        if self.numOfRows.get() != 3:
+            self.numOfRows.set(3)
+        if self.numOfColumns.get() != 2:
+            self.numOfColumns.set(2)
+
+        # Now set the plots back to defaults
+        #[0][0] is p_ix vs x phase plotChangeGraph(self, str_arg, redraw = True)
+        self.SubPlotList[0][0].SetGraph('PhasePlot')
+        self.SubPlotList[0][0].RestoreDefaultPlotParams()
+
+        self.SubPlotList[1][0].SetGraph('PhasePlot')
+        self.SubPlotList[1][0].RestoreDefaultPlotParams()
+        self.SubPlotList[1][0].PlotParamsDict['PhasePlot']['mom_dim'] = 1
+
+        self.SubPlotList[2][0].SetGraph('PhasePlot')
+        self.SubPlotList[2][0].RestoreDefaultPlotParams()
+        self.SubPlotList[2][0].PlotParamsDict['PhasePlot']['mom_dim'] = 2
+
+        # electron phase diagram
+        self.SubPlotList[0][1].SetGraph('PhasePlot')
+        self.SubPlotList[0][1].RestoreDefaultPlotParams()
+        self.SubPlotList[0][1].PlotParamsDict['PhasePlot']['prtl_type'] = 1
+
+        self.SubPlotList[1][1].SetGraph('PhasePlot')
+        self.SubPlotList[1][1].RestoreDefaultPlotParams()
+        self.SubPlotList[1][1].PlotParamsDict['PhasePlot']['prtl_type'] = 1
+        self.SubPlotList[1][1].PlotParamsDict['PhasePlot']['mom_dim'] = 1
+
+        self.SubPlotList[2][1].SetGraph('PhasePlot')
+        self.SubPlotList[2][1].RestoreDefaultPlotParams()
+        self.SubPlotList[2][1].PlotParamsDict['PhasePlot']['prtl_type'] = 1
+        self.SubPlotList[2][1].PlotParamsDict['PhasePlot']['mom_dim'] = 2
+
+
+        self.RenewCanvas(ForceRedraw = True)
 
     def UpdateGridSpec(self, *args):
         '''A function that handles updates the gridspec that divides up of the
         plot into X x Y subplots'''
+        # To prevent orphaned windows, we have to kill all of the windows of the
+        # subplots that are no longer shown.
+
+        for i in range(self.maxRows):
+            for j in range(self.maxCols):
+                if i < self.numOfRows.get() and j < self.numOfColumns.get():
+                    pass
+                elif self.SubPlotList[i][j].graph.settings_window is not None:
+                    self.SubPlotList[i][j].graph.settings_window.destroy()
+
         self.gs0 = gridspec.GridSpec(self.numOfRows.get(),self.numOfColumns.get())
         self.RenewCanvas(keep_view = False, ForceRedraw = True)
 
@@ -1505,7 +1627,7 @@ class MainApp(Tk.Tk):
             self.timestep_queue.append(self.TimeStep.value)
 
         else:
-            # The time has changed so we have to reload everything
+            # The time has not alread been visited so we have to reload everything
             self.DataDict = {}
             for pkey in self.ToLoad.keys():
                 tmplist = list(set(self.ToLoad[pkey])) # get rid of duplicate keys
@@ -1603,6 +1725,7 @@ class MainApp(Tk.Tk):
                 tmp_old_view = list(self.old_views.pop(0))
                 tmp_new_view = list(next_view[k])
                 if self.prev_ctype_list[i][j] == self.SubPlotList[i][j].chartType:
+                    # see if the view has changed from the home view
                     is_changed = self.is_changed_list[m]
                     if self.SubPlotList[i][j].Changedto2D or self.SubPlotList[i][j].Changedto1D:
                         # only keep the x values if they have changed
@@ -1706,7 +1829,7 @@ class MainApp(Tk.Tk):
                 self.SubPlotList[i][j].DrawGraph()
         if self.show_title:
             tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].split('.')[-1]
-            self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+' at time t = %d $\omega_{pe}$'  % round(self.DataDict['time'][0]), size = 15)
+            self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time'][0]), size = 15)
 
         if keep_view:
             self.LoadView()
@@ -1852,7 +1975,6 @@ class MainApp(Tk.Tk):
         ishock_final = np.where(dens_arr[dens_arr.shape[0]/2,jstart:]>=dens_half_max)[0][-1]
         xshock_final = xaxis_final[ishock_final]
         self.shock_speed = xshock_final/final_time
-
 
     def setKnob(self, value):
         # If the time parameter changes update the plots
