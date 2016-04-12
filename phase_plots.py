@@ -31,6 +31,10 @@ class PhasePanel:
                        'set_v_max': False,
                        'p_min': -2.0,
                        'p_max' : 2,
+                       'set_E_min' : False,
+                       'E_min': 1.0,
+                       'set_E_max': False,
+                       'E_max': 200.0,
                        'set_p_min': False,
                        'set_p_max': False,
                        'spatial_x': True,
@@ -70,16 +74,21 @@ class PhasePanel:
     def set_plot_keys(self):
         '''A helper function that will insure that each hdf5 file will only be
         opened once per time step'''
-        self.arrs_needed = ['c_omp', 'bx', 'istep']
+        self.arrs_needed = ['c_omp', 'bx', 'istep', 'me', 'mi']
+        # First see if we will need to know the energy of the particle
+        # (requied for lorentz boosts and setting e_min and e_max)
+        Need_Energy = self.parent.DoLorentzBoost and np.abs(self.parent.GammaBoost)>1E-8
+        Need_Energy = Need_Energy or self.GetPlotParam('set_E_min')
+        Need_Energy = Need_Energy or self.GetPlotParam('set_E_max')
+
         if self.GetPlotParam('prtl_type') == 0:
             self.arrs_needed.append('xi')
             if self.GetPlotParam('weighted'):
                 self.arrs_needed.append('chi')
-            if self.parent.DoLorentzBoost and np.abs(self.parent.GammaBoost)>1E-8:
+            if Need_Energy:
                 self.arrs_needed.append('ui')
                 self.arrs_needed.append('vi')
                 self.arrs_needed.append('wi')
-
             elif self.GetPlotParam('mom_dim') == 0:
                 self.arrs_needed.append('ui')
             elif self.GetPlotParam('mom_dim') == 1:
@@ -91,7 +100,7 @@ class PhasePanel:
             self.arrs_needed.append('xe')
             if self.GetPlotParam('weighted'):
                 self.arrs_needed.append('che')
-            if self.parent.DoLorentzBoost and np.abs(self.parent.GammaBoost)>1E-8:
+            if Need_Energy:
                 self.arrs_needed.append('ue')
                 self.arrs_needed.append('ve')
                 self.arrs_needed.append('we')
@@ -113,6 +122,12 @@ class PhasePanel:
 
         if self.GetPlotParam('weighted'):
             self.key_name += 'weighted_'
+
+        if self.GetPlotParam('set_E_min'):
+            self.key_name += 'Emin_'+str(self.GetPlotParam('E_min')) + '_'
+
+        if self.GetPlotParam('set_E_max'):
+            self.key_name += 'Emax_'+str(self.GetPlotParam('E_max')) + '_'
 
         if self.parent.DoLorentzBoost and np.abs(self.parent.GammaBoost)>1E-8:
             self.key_name += 'boosted_'+ str(self.parent.GammaBoost)+'_'
@@ -175,6 +190,9 @@ class PhasePanel:
 
             # Now calculate gamma of the particles in downstream restframe
             gamma_ds = np.sqrt(u**2+v**2+w**2+1)
+
+
+
             # calculate the velocities from the momenta
             vx = u/gamma_ds
             vy = v/gamma_ds
@@ -198,11 +216,31 @@ class PhasePanel:
             self.pmin = min(self.y_values)
             self.pmax = max(self.y_values)
 
-            self.hist2d = np.histogram2d(self.y_values, self.x_values,
+
+            if self.GetPlotParam('set_E_min') or self.GetPlotParam('set_E_max'):
+                # We need to calculate the total energy in units m_e c^2
+                if self.GetPlotParam('prtl_type')==0:
+                    energy = gamma_ds*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
+                else:
+                    energy = np.copy(gamma_ds)
+
+                # Now find the particles that fall in our range
+                if self.GetPlotParam('set_E_min'):
+                    inRange = energy >= self.FigWrap.GetPlotParam('E_min')
+                    if self.GetPlotParam('set_E_max'):
+                        inRange *= energy <= self.GetPlotParam('E_max')
+                elif self.GetPlotParam('set_E_max'):
+                    inRange = energy <= self.GetPlotParam('E_max')
+
+                self.hist2d = np.histogram2d(self.y_values[inRange], self.x_values[inRange],
                         bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
                         range = [[self.pmin,self.pmax],[self.xmin,self.xmax]],
                         weights = self.weights)
-
+            else:
+                self.hist2d = np.histogram2d(self.y_values, self.x_values,
+                        bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
+                        range = [[self.pmin,self.pmax],[self.xmin,self.xmax]],
+                        weights = self.weights)
 
 
             if self.GetPlotParam('masked'):
@@ -258,20 +296,48 @@ class PhasePanel:
 
             self.xmin = 0
             self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.istep
-            self.hist2d = np.histogram2d(self.y_values, self.x_values,
-                        bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
-                        range = [[self.pmin,self.pmax],[0,self.xmax]],
-                        weights = self.weights)
 
-#            IQR_y = np.subtract(*np.percentile(self.y_values, [75, 25]))
-#            num_of_ybins = int((self.pmax-self.pmin)/(2*IQR_y*len(self.y_values)**(-1.0/3)))
-#            num_of_ybins  = max(200, num_of_ybins)
-#            IQR_x = np.subtract(*np.percentile(self.x_values, [75, 25]))
-#            num_of_xbins = int((self.xmax-self.xmin)/(2*IQR_x*len(self.x_values)**(-1.0/3)))
-#            num_of_xbins  = max(200, num_of_xbins)
-#            self.hist2d = np.histogram2d(self.y_values, self.x_values, bins =
-# [num_of_ybins, num_of_xbins], range = [[self.pmin,self.pmax],[0,self.xmax]], weights = self.weights)
+            if self.GetPlotParam('set_E_min') or self.GetPlotParam('set_E_max'):
+                # We need to calculate the total energy of each particle in
+                # units m_e c^2
 
+                # First load the data. We require all 3 dimensions of momentum
+                # to determine the energy in the downstream frame
+                if self.GetPlotParam('prtl_type') == 0:
+                    u = self.FigWrap.LoadKey('ui')
+                    v = self.FigWrap.LoadKey('vi')
+                    w = self.FigWrap.LoadKey('wi')
+
+                if self.GetPlotParam('prtl_type') == 1: #electons
+                    self.x_values = self.FigWrap.LoadKey('xe')/self.c_omp
+                    u = self.FigWrap.LoadKey('ue')
+                    v = self.FigWrap.LoadKey('ve')
+                    w = self.FigWrap.LoadKey('we')
+
+                # Now calculate LF of the particles in downstream restframe
+                energy = np.sqrt(u**2+v**2+w**2+1)
+                # If they are electrons this already the energy in units m_e c^2.
+                # Otherwise...
+                if self.GetPlotParam('prtl_type')==0:
+                    energy *= self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
+
+                # Now find the particles that fall in our range
+                if self.GetPlotParam('set_E_min'):
+                    inRange = energy >= self.FigWrap.GetPlotParam('E_min')
+                    if self.GetPlotParam('set_E_max'):
+                        inRange *= energy <= self.GetPlotParam('E_max')
+                elif self.GetPlotParam('set_E_max'):
+                    inRange = energy <= self.GetPlotParam('E_max')
+
+                self.hist2d = np.histogram2d(self.y_values[inRange], self.x_values[inRange],
+                            bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
+                            range = [[self.pmin,self.pmax],[self.xmin,self.xmax]],
+                            weights = self.weights)
+            else:
+                self.hist2d = np.histogram2d(self.y_values, self.x_values,
+                            bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
+                            range = [[self.pmin,self.pmax],[0,self.xmax]],
+                            weights = self.weights)
 
             if self.GetPlotParam('masked'):
                 zval = ma.masked_array(self.hist2d[0])
@@ -657,7 +723,7 @@ class PhaseSettings(Tk.Toplevel):
         self.VmaxEnter = ttk.Entry(frm, textvariable=self.Vmax, width=7)
         self.VmaxEnter.grid(row = 4, column = 3)
 
-        # Now the field lim
+        # Now the y lim
         self.setPminVar = Tk.IntVar()
         self.setPminVar.set(self.parent.GetPlotParam('set_p_min'))
         self.setPminVar.trace('w', self.setPminChanged)
@@ -675,18 +741,49 @@ class PhaseSettings(Tk.Toplevel):
         self.Pmax.set(str(self.parent.GetPlotParam('p_max')))
 
 
-        cb = ttk.Checkbutton(frm, text ='Set p min',
+        cb = ttk.Checkbutton(frm, text ='Set y_axis min',
                         variable = self.setPminVar)
         cb.grid(row = 5, column = 2, sticky = Tk.W)
         self.PminEnter = ttk.Entry(frm, textvariable=self.Pmin, width=7)
         self.PminEnter.grid(row = 5, column = 3)
 
-        cb = ttk.Checkbutton(frm, text ='Set p max',
+        cb = ttk.Checkbutton(frm, text ='Set y_axis max',
                         variable = self.setPmaxVar)
         cb.grid(row = 6, column = 2, sticky = Tk.W)
 
         self.PmaxEnter = ttk.Entry(frm, textvariable=self.Pmax, width=7)
         self.PmaxEnter.grid(row = 6, column = 3)
+
+        # Now the E lim
+        self.setEminVar = Tk.IntVar()
+        self.setEminVar.set(self.parent.GetPlotParam('set_E_min'))
+        self.setEminVar.trace('w', self.setEminChanged)
+
+        self.setEmaxVar = Tk.IntVar()
+        self.setEmaxVar.set(self.parent.GetPlotParam('set_E_max'))
+        self.setEmaxVar.trace('w', self.setEmaxChanged)
+
+
+        self.Emin = Tk.StringVar()
+        self.Emin.set(str(self.parent.GetPlotParam('E_min')))
+
+        self.Emax = Tk.StringVar()
+        self.Emax.set(str(self.parent.GetPlotParam('E_max')))
+
+
+        cb = ttk.Checkbutton(frm, text ='Set E_min (m_e c^2)',
+                        variable = self.setEminVar)
+        cb.grid(row = 7, column = 2, sticky = Tk.W)
+        self.EminEnter = ttk.Entry(frm, textvariable=self.Emin, width=7)
+        self.EminEnter.grid(row = 7, column = 3)
+
+        cb = ttk.Checkbutton(frm, text ='Set E_max (m_e c^2)',
+                        variable = self.setEmaxVar)
+        cb.grid(row = 8, column = 2, sticky = Tk.W)
+
+        self.EmaxEnter = ttk.Entry(frm, textvariable=self.Emax, width=7)
+        self.EmaxEnter.grid(row = 8, column = 3)
+
 
     def ShockVarHandler(self, *args):
         if self.parent.GetPlotParam('show_shock')== self.ShockVar.get():
@@ -777,18 +874,30 @@ class PhaseSettings(Tk.Toplevel):
         else:
             self.parent.SetPlotParam('set_p_max', self.setPmaxVar.get())
 
+    def setEminChanged(self, *args):
+        if self.setEminVar.get() == self.parent.GetPlotParam('set_E_min'):
+            pass
+        else:
+            self.parent.SetPlotParam('set_E_min', self.setEminVar.get())
+
+    def setEmaxChanged(self, *args):
+        if self.setEmaxVar.get() == self.parent.GetPlotParam('set_E_max'):
+            pass
+        else:
+            self.parent.SetPlotParam('set_E_max', self.setEmaxVar.get())
+
 
     def TxtEnter(self, e):
         self.FieldsCallback()
 
     def FieldsCallback(self):
-        tkvarLimList = [self.Vmin, self.Vmax, self.Pmin, self.Pmax]
-        plot_param_List = ['v_min', 'v_max', 'p_min', 'p_max']
-        tkvarSetList = [self.setVminVar, self.setVmaxVar, self.setPminVar, self.setPmaxVar]
+        tkvarLimList = [self.Vmin, self.Vmax, self.Pmin, self.Pmax, self.Emin, self.Emax]
+        plot_param_List = ['v_min', 'v_max', 'p_min', 'p_max', 'E_min', 'E_max']
+        tkvarSetList = [self.setVminVar, self.setVmaxVar, self.setPminVar, self.setPmaxVar, self.setEminVar, self.setEmaxVar]
         to_reload = False
         for j in range(len(tkvarLimList)):
             try:
-            #make sure the user types in a int
+            #make sure the user types in a float
                 if np.abs(float(tkvarLimList[j].get()) - self.parent.GetPlotParam(plot_param_List[j])) > 1E-4:
                     self.parent.SetPlotParam(plot_param_List[j], float(tkvarLimList[j].get()), update_plot = False)
                     to_reload += True*tkvarSetList[j].get()
