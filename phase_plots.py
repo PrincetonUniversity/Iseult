@@ -155,9 +155,14 @@ class PhasePanel:
             if self.parent.GammaBoost >=1:
                 self.gammaBoost = self.parent.GammaBoost
                 self.betaBoost = np.sqrt(1-1/self.gammaBoost**2)
-            else:
+            elif self.parent.GammaBoost >-1:
                 self.betaBoost = self.parent.GammaBoost
                 self.gammaBoost = np.sqrt(1-self.betaBoost**2)**(-1)
+
+            else:
+                self.gammaBoost = -self.parent.GammaBoost
+                self.betaBoost = -np.sqrt(1-1/self.gammaBoost**2)
+
 
             # Now calculate the transformation of xmin & xmax
             self.xmin = self.gammaBoost*(self.xmin+self.betaBoost*self.FigWrap.LoadKey('time')[0])

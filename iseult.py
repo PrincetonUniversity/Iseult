@@ -510,7 +510,7 @@ class SettingsFrame(Tk.Toplevel):
         self.LorentzBoostVar.set(self.parent.DoLorentzBoost)
         self.LorentzBoostVar.trace('w', self.LorentzBoostChanged)
         cb = ttk.Checkbutton(frm, text='Boost PhasePlots', variable =  self.LorentzBoostVar).grid(row = 11, sticky = Tk.W)
-        ttk.Label(frm, text='Gamma/Beta =').grid(row= 11, column =1, sticky = Tk.E)
+        ttk.Label(frm, text='Gamma/Beta (- for left boost)=').grid(row= 11, column =1, sticky = Tk.E)
         self.GammaVar = Tk.StringVar()
         self.GammaVar.set(str(self.parent.GammaBoost))
         ttk.Entry(frm, textvariable=self.GammaVar, width = 7).grid(row = 11, column = 2, sticky = Tk.N)
