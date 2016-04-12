@@ -165,8 +165,8 @@ class PhasePanel:
 
 
             # Now calculate the transformation of xmin & xmax
-            self.xmin = self.gammaBoost*(self.xmin+self.betaBoost*self.FigWrap.LoadKey('time')[0])
-            self.xmax = self.gammaBoost*(self.xmax+self.betaBoost*self.FigWrap.LoadKey('time')[0])
+            self.xmin = self.gammaBoost*(self.xmin-self.betaBoost*self.FigWrap.LoadKey('time')[0])
+            self.xmax = self.gammaBoost*(self.xmax-self.betaBoost*self.FigWrap.LoadKey('time')[0])
 
 
             # Now load the data. We require all 3 dimensions to determine
@@ -191,7 +191,7 @@ class PhasePanel:
                     self.weights = self.FigWrap.LoadKey('che')
 
             # Transformation of x_values of the particles
-            self.x_values = self.gammaBoost*(self.x_values+self.betaBoost*self.FigWrap.LoadKey('time')[0])
+            self.x_values = self.gammaBoost*(self.x_values-self.betaBoost*self.FigWrap.LoadKey('time')[0])
 
             # Now calculate gamma of the particles in downstream restframe
             gamma_ds = np.sqrt(u**2+v**2+w**2+1)
@@ -204,8 +204,8 @@ class PhasePanel:
             vz = w/gamma_ds
 
             # Now calulate the velocities in the boosted frames
-            tmp_helper = 1+vx*self.betaBoost
-            vx_prime = (vx+self.betaBoost)/tmp_helper
+            tmp_helper = 1-vx*self.betaBoost
+            vx_prime = (vx-self.betaBoost)/tmp_helper
             vy_prime = vy/self.gammaBoost/tmp_helper
             vz_prime = vz/self.gammaBoost/tmp_helper
 
