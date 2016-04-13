@@ -85,7 +85,7 @@ class FieldsPanel:
         self.ycolor = new_cmaps.cmaps[self.parent.cmap](0.5)
         self.zcolor = new_cmaps.cmaps[self.parent.cmap](0.8)
 
-        if np.isnan('btheta'):
+        if np.isnan(self.parent.btheta):
             self.SetPlotParam('normalize_fields', 0, update_plot = False)
         # see if the axis values are saved in the data dict
         if 'xaxis_values' in self.parent.DataDict.keys():
