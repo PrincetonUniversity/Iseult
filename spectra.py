@@ -493,7 +493,7 @@ class SpectralPanel:
                         if np.isnan(self.pslope) == False and np.isnan(self.pintercept) == False:
                             self.PowerlawPworked = True
                             self.PLP[0].set_data(self.gamma, np.exp(self.pintercept)*self.gamma**self.pslope)
-                            self.PLP[0].set_visible(False)
+                            self.PLP[0].set_visible(True)
 
                 self.axes.set_xlim(self.GetPlotParam('x_min'), self.GetPlotParam('x_max'))
                 self.axes.set_ylim(10**self.GetPlotParam('y_min'), 10**self.GetPlotParam('y_max'))
@@ -587,11 +587,22 @@ class SpectralPanel:
         legend_labels = []
         if self.GetPlotParam('show_electrons') and self.PowerlawEworked:
             legend_handles.append(self.PLE[0])
-            tmpstr = '%.1f' % self.eslope
+            if self.GetPlotParam('spectral_type') == 0:
+                tmpnum = 4.0-self.eslope
+                tmpstr = '%.1f' % tmpnum
+            else:
+                tmpnum = 1-self.eslope
+                tmpstr = '%.1f' % tmpnum
             legend_labels.append(r'$\delta_e\ = $' +  ' ' + tmpstr)
         if self.GetPlotParam('show_ions') and self.PowerlawPworked:
             legend_handles.append(self.PLP[0])
-            tmpstr = '%.1f' % self.pslope
+            if self.GetPlotParam('spectral_type') == 0:
+                tmpnum = 4.0 - self.pslope
+                tmpstr = '%.1f' % tmpnum
+            else:
+                tmpnum = 1-self.pslope
+                tmpstr = '%.1f' % tmpnum
+
             legend_labels.append(r'$\delta_p\ = $' +  ' ' + tmpstr)
 
 
