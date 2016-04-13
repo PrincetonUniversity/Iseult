@@ -26,6 +26,7 @@ class FieldsPanel:
                        'OutlineText': True,
                        'spatial_x': True,
                        'spatial_y': None,
+                       'normalize_fields': True,
                        'interpolation': 'nearest'}
 
 
@@ -71,7 +72,7 @@ class FieldsPanel:
             if self.GetPlotParam('show_z'):
                 self.arrs_needed.append('ez')
         '''
-        self.arrs_needed = ['c_omp', 'istep', 'bx', 'by', 'bz', 'ex', 'ey', 'ez', 'btheta']
+        self.arrs_needed = ['c_omp', 'istep', 'bx', 'by', 'bz', 'ex', 'ey', 'ez']
         return self.arrs_needed
 
     def LoadData(self):
@@ -109,37 +110,41 @@ class FieldsPanel:
             self.fy = self.FigWrap.LoadKey('by')[0,:,:]
             self.fz = self.FigWrap.LoadKey('bz')[0,:,:]
 
+            kxwarg = 'bxmin_max'
+            kywarg = 'bymin_max'
+            kzwarg = 'bzmin_max'
 
-            # Normalize by b0
-            btheta = self.FigWrap.LoadKey('btheta')[0]
-            b0 = self.fy[-1,-10]/np.sin(btheta)
-
-            self.fx = self.fx/b0
-            self.fy = self.fy/b0
-            self.fz = self.fz/b0
-
+            if self.GetPlotParam('normalize_fields'):
+                self.fx = self.fx/self.parent.b0
+                self.fy = self.fy/self.parent.b0
+                self.fz = self.fz/self.parent.b0
+                kxwarg += '_normalized'
+                kywarg += '_normalized'
+                kzwarg += '_normalized'
             self.oneDslice = self.fx.shape[0]/2
+
             # Have we already calculated min/max?
-            if 'bxmin_max' in self.parent.DataDict.keys():
-                self.bxmin_max = self.parent.DataDict['bxmin_max']
+
+            if kxwarg in self.parent.DataDict.keys():
+                self.bxmin_max = self.parent.DataDict[kxwarg]
 
             else:
                 self.bxmin_max =  self.min_max_finder(self.fx)
-                self.parent.DataDict['bxmin_max'] = list(self.bxmin_max)
+                self.parent.DataDict[kxwarg] = list(self.bxmin_max)
 
-            if 'bymin_max' in self.parent.DataDict.keys():
-                self.bymin_max = self.parent.DataDict['bymin_max']
+            if kywarg in self.parent.DataDict.keys():
+                self.bymin_max = self.parent.DataDict[kywarg]
 
             else:
                 self.bymin_max = self.min_max_finder(self.fy)
-                self.parent.DataDict['bymin_max'] = list(self.bymin_max)
+                self.parent.DataDict[kywarg] = list(self.bymin_max)
 
-            if 'bzmin_max' in self.parent.DataDict.keys():
-                self.bzmin_max = self.parent.DataDict['bzmin_max']
+            if kzwarg in self.parent.DataDict.keys():
+                self.bzmin_max = self.parent.DataDict[kzwarg]
 
             else:
                 self.bzmin_max = self.min_max_finder(self.fz)
-                self.parent.DataDict['bzmin_max'] = list(self.bzmin_max)
+                self.parent.DataDict[kzwarg] = list(self.bzmin_max)
 
 
         if self.GetPlotParam('field_type') == 1: # Load the e-Field
@@ -147,45 +152,54 @@ class FieldsPanel:
             self.fy = self.FigWrap.LoadKey('ey')[0,:,:]
             self.fz = self.FigWrap.LoadKey('ez')[0,:,:]
 
-            e0 = self.fz[-1,-10]
-            self.fx = self.fx/e0
-            self.fy = self.fy/e0
-            self.fz = self.fz/e0
+            kxwarg = 'exmin_max'
+            kywarg = 'eymin_max'
+            kzwarg = 'ezmin_max'
+
+            if self.GetPlotParam('normalize_fields'):
+                self.fx = self.fx/self.parent.e0
+                self.fy = self.fy/self.parent.e0
+                self.fz = self.fz/self.parent.e0
+                kxwarg += '_normalized'
+                kywarg += '_normalized'
+                kzwarg += '_normalized'
 
             self.oneDslice = self.fx.shape[0]/2
 
 
+
             # Have we already calculated min/max?
-            if 'exmin_max' in self.parent.DataDict.keys():
-                self.exmin_max = self.parent.DataDict['exmin_max']
+            if kxwarg in self.parent.DataDict.keys():
+                self.exmin_max = self.parent.DataDict[kxwarg]
 
             else:
                 self.exmin_max = self.min_max_finder(self.fx)
-                self.parent.DataDict['exmin_max'] = list(self.exmin_max)
+                self.parent.DataDict[kxwarg] = list(self.exmin_max)
 
-            if 'eymin_max' in self.parent.DataDict.keys():
-                self.eymin_max = self.parent.DataDict['eymin_max']
+            if kywarg in self.parent.DataDict.keys():
+                self.eymin_max = self.parent.DataDict[kywarg]
 
             else:
                 self.eymin_max = self.min_max_finder(self.fy)
-                self.parent.DataDict['eymin_max'] = list(self.eymin_max)
+                self.parent.DataDict[kywarg] = list(self.eymin_max)
 
-            if 'ezmin_max' in self.parent.DataDict.keys():
-                self.ezmin_max = self.parent.DataDict['ezmin_max']
+            if kzwarg in self.parent.DataDict.keys():
+                self.ezmin_max = self.parent.DataDict[kzwarg]
 
             else:
                 self.ezmin_max = self.min_max_finder(self.fz)
-                self.parent.DataDict['ezmin_max'] = list(self.ezmin_max)
+                self.parent.DataDict[kzwarg] = list(self.ezmin_max)
 
     def min_max_finder(self, arr):
         # find 1d lims
         oneD_lims = [arr[self.oneDslice,:].min(), arr[self.oneDslice,:].max()]
-        # now give it a bit of spacing, a 2% percent difference of the distance
+        # now give it a bit of spacing, a 4% percent difference of the distance
         dist = oneD_lims[1]-oneD_lims[0]
         oneD_lims[0] -= 0.04*dist
         oneD_lims[1] += 0.04*dist
         twoD_lims = [arr.min(), arr.max()]
         return [oneD_lims, twoD_lims]
+
     def draw(self):
 
         ''' A function that draws the data. In the interest in speeding up the
@@ -234,15 +248,21 @@ class FieldsPanel:
             # First choose the 'zval' to plot, we can only do one because it is 2-d.
             if self.GetPlotParam('show_x'):
                 self.zval = self.fx
-                self.two_d_labels = (r'$B_x/B_0$', r'$E_x/E_0$')
-
+                if self.GetPlotParam('normalize_fields'):
+                    self.two_d_labels = (r'$B_x/B_0$', r'$E_x/E_0$')
+                else:
+                    self.two_d_labels = (r'$B_x$', r'$E_x$')
                 # set the other plot values to zero in the PlotParams
                 self.SetPlotParam('show_y', 0, update_plot = False)
                 self.SetPlotParam('show_z', 0, update_plot = False)
 
             elif self.GetPlotParam('show_y'):
                 self.zval = self.fy
-                self.two_d_labels = (r'$B_y/B_0$', r'$E_y/E_0$')
+                if self.GetPlotParam('normalize_fields'):
+                    self.two_d_labels = (r'$B_y/B_0$', r'$E_y/E_0$')
+                else:
+                    self.two_d_labels = (r'$B_y$', r'$E_y$')
+
 
                 # set the other plot values to zero in the PlotParams
                 self.SetPlotParam('show_x', 0, update_plot = False)
@@ -258,7 +278,10 @@ class FieldsPanel:
                 self.SetPlotParam('show_z', 1, update_plot = False)
 
                 self.zval = self.fz
-                self.two_d_labels = (r'$B_z/B_0$', r'$E_z/E_0$')
+                if self.GetPlotParam('normalize_fields'):
+                    self.two_d_labels = (r'$B_z/B_0$', r'$E_z/E_0$')
+                else:
+                    self.two_d_labels = (r'$B_z$', r'$E_z$')
 
 
             self.ymin = 0
@@ -406,9 +429,15 @@ class FieldsPanel:
 
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
             if self.GetPlotParam('field_type') == 0:
-                self.axes.set_ylabel(r'$B/B_0$', labelpad = self.parent.ylabel_pad, color = 'black')
+                if self.GetPlotParam('normalize_fields'):
+                    self.axes.set_ylabel(r'$B/B_0$', labelpad = self.parent.ylabel_pad, color = 'black')
+                else:
+                    self.axes.set_ylabel(r'$B$', labelpad = self.parent.ylabel_pad, color = 'black')
             else:
-                self.axes.set_ylabel(r'$E/E_0$', labelpad = self.parent.ylabel_pad, color = 'black')
+                if self.GetPlotParam('normalize_fields'):
+                    self.axes.set_ylabel(r'$E/E_0$', labelpad = self.parent.ylabel_pad, color = 'black')
+                else:
+                    self.axes.set_ylabel(r'$E$', labelpad = self.parent.ylabel_pad, color = 'black')
 
     def refresh(self):
 
@@ -486,10 +515,16 @@ class FieldsPanel:
                 self.xmax = self.xaxis_values[-1]
                 if self.GetPlotParam('field_type') == 0:
                     self.clims = self.bxmin_max[1]
-                    self.TwoDan.set_text(r'$B_x/B_0$')
+                    if self.GetPlotParam('normalize_fields'):
+                        self.TwoDan.set_text(r'$B_x/B_0$')
+                    else:
+                        self.TwoDan.set_text(r'$B_x$')
                 else:
                     self.clims = self.exmin_max[1]
-                    self.TwoDan.set_text(r'$E_x/E_0$')
+                    if self.GetPlotParam('normalize_fields'):
+                        self.TwoDan.set_text(r'$E_x/E_0$')
+                    else:
+                        self.TwoDan.set_text(r'$E_x$')
 
             if self.GetPlotParam('show_y'):
                 self.cax.set_data(self.fy)
@@ -499,11 +534,16 @@ class FieldsPanel:
                 self.xmax = self.xaxis_values[-1]
                 if self.GetPlotParam('field_type') == 0:
                     self.clims = self.bymin_max[1]
-                    self.TwoDan.set_text(r'$B_y/B_0$')
+                    if self.GetPlotParam('normalize_fields'):
+                        self.TwoDan.set_text(r'$B_y/B_0$')
+                    else:
+                        self.TwoDan.set_text(r'$B_y$')
                 else:
                     self.clims = self.eymin_max[1]
-                    self.TwoDan.set_text(r'$E_y/E_0$')
-
+                    if self.GetPlotParam('normalize_fields'):
+                        self.TwoDan.set_text(r'$E_y/E_0$')
+                    else:
+                        self.TwoDan.set_text(r'$E_y$')
             if self.GetPlotParam('show_z'):
                 self.cax.set_data(self.fz)
                 self.ymin = 0
@@ -512,11 +552,16 @@ class FieldsPanel:
                 self.xmax =  self.xaxis_values[-1]
                 if self.GetPlotParam('field_type') == 0:
                     self.clims = self.bzmin_max[1]
-                    self.TwoDan.set_text(r'$B_z/B_0$')
+                    if self.GetPlotParam('normalize_fields'):
+                        self.TwoDan.set_text(r'$B_z/B_0$')
+                    else:
+                        self.TwoDan.set_text(r'$B_z$')
                 else:
                     self.clims = self.ezmin_max[1]
-                    self.TwoDan.set_text(r'$E_z/E_0$')
-
+                    if self.GetPlotParam('normalize_fields'):
+                        self.TwoDan.set_text(r'$E_z/E_0$')
+                    else:
+                        self.TwoDan.set_text(r'$E_z$')
             if self.parent.xlim[0]:
                 self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
             else:
@@ -541,6 +586,7 @@ class FieldsPanel:
 
             if self.GetPlotParam('show_shock'):
                 self.shockline_2d.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
+            self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.ylabel_pad, color = 'black')
             #self.axes.draw_artist(self.axes.patch)
             #self.axes.draw_artist(self.cax)
             #self.axes.draw_artist(self.axes.xaxis)
@@ -683,6 +729,14 @@ class FieldSettings(Tk.Toplevel):
                         command = self.ShockVarHandler)
         cb.grid(row = 6, column = 1, sticky = Tk.W)
 
+        self.NormFieldVar = Tk.IntVar()
+        self.NormFieldVar.set(self.parent.GetPlotParam('normalize_fields'))
+        cb = ttk.Checkbutton(frm, text = "Normalize Fields",
+                        variable = self.NormFieldVar,
+                        command = self.NormFieldHandler)
+        cb.grid(row = 6, column = 1, sticky = Tk.W)
+
+
     def CbarHandler(self, *args):
         if self.parent.GetPlotParam('show_cbar')== self.CbarVar.get():
             pass
@@ -702,6 +756,25 @@ class FieldSettings(Tk.Toplevel):
                 self.parent.shock_line.set_visible(self.ShockVar.get())
 
             self.parent.SetPlotParam('show_shock', self.ShockVar.get())
+
+    def NormFieldHandler(self, *args):
+        if self.parent.GetPlotParam('normalize_fields') == self.NormFieldVar.get():
+            pass
+        else:
+            if ~self.parent.GetPlotParam('twoD'):
+                if self.parent.GetPlotParam('field_type') == 0:
+                    if self.NormFieldVar.get():
+                        self.parent.axes.set_ylabel(r'$B/B_0$', labelpad = self.parent.parent.ylabel_pad, color = 'black')
+                    else:
+                        self.parent.axes.set_ylabel(r'$B$', labelpad = self.parent.parent.ylabel_pad, color = 'black')
+                else:
+                    if self.NormFieldVar.get():
+                        self.parent.axes.set_ylabel(r'$E/E_0$', labelpad = self.parent.parent.ylabel_pad, color = 'black')
+                    else:
+                        self.parent.axes.set_ylabel(r'$E$', labelpad = self.parent.parent.ylabel_pad, color = 'black')
+
+            self.parent.SetPlotParam('normalize_fields', self.NormFieldVar.get())
+
 
     def Change2d(self):
 
@@ -756,12 +829,18 @@ class FieldSettings(Tk.Toplevel):
             pass
         else:
             if self.FieldTypeVar.get() == 0:
-                self.parent.axes.set_ylabel(r'$B/B_0$', labelpad = self.parent.parent.ylabel_pad, color = 'black')
+                if self.parent.GetPlotParam('normalize_fields'):
+                    self.parent.axes.set_ylabel(r'$B/B_0$', labelpad = self.parent.parent.ylabel_pad, color = 'black')
+                else:
+                    self.parent.axes.set_ylabel(r'$B$', labelpad = self.parent.parent.ylabel_pad, color = 'black')
                 self.parent.anx.set_text(r'$B_x$')
                 self.parent.any.set_text(r'$B_y$')
                 self.parent.anz.set_text(r'$B_z$')
             else:
-                self.parent.axes.set_ylabel(r'$E/E_0$', labelpad = self.parent.parent.ylabel_pad, color = 'black')
+                if self.parent.GetPlotParam('normalize_fields'):
+                    self.parent.axes.set_ylabel(r'$E/E_0$', labelpad = self.parent.parent.ylabel_pad, color = 'black')
+                else:
+                    self.parent.axes.set_ylabel(r'$E$', labelpad = self.parent.parent.ylabel_pad, color = 'black')
                 self.parent.anx.set_text(r'$E_x$')
                 self.parent.any.set_text(r'$E_y$')
                 self.parent.anz.set_text(r'$E_z$')

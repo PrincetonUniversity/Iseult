@@ -421,7 +421,7 @@ class FieldSettings(Tk.Toplevel):
         cb.grid(row = 1, sticky = Tk.W)
 
         # the Radiobox Control to choose the Field Type
-        self.MagList = ['Theta B', 'Delta B']
+        self.MagList = ['Theta B', 'Delta B/B_0']
         self.MagTypeVar  = Tk.IntVar()
         self.MagTypeVar.set(self.parent.GetPlotParam('mag_plot_type'))
 

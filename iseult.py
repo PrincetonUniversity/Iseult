@@ -1305,6 +1305,8 @@ class MainApp(Tk.Tk):
         sys.exit(0)
 
     def GenH5Dict(self):
+        '''Loads all of the files and then finds all of the keys in
+        the file to load data. Deprecated'''
         for pkey in self.PathDict.keys():
             with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][0]), 'r') as f:
                 # Because dens is in both spect* files and flds* files,
@@ -1612,9 +1614,9 @@ class MainApp(Tk.Tk):
                             try:
                                 # Load all the keys
                                 if elm == 'spect_dens':
-                                    self.DataDict[elm] = f['dens'][:]
+                                    self.DataDict[elm] = np.copy(f['dens'][:])
                                 else:
-                                    self.DataDict[elm] = f[elm][:]
+                                    self.DataDict[elm] = np.copy(f[elm][:])
 
                             except KeyError:
                                 if elm == 'sizex':
@@ -1638,12 +1640,14 @@ class MainApp(Tk.Tk):
                         # Load all the keys
                             try:
                                 if elm == 'spect_dens':
-                                    self.DataDict[elm] = f['dens'][:]
+                                    self.DataDict[elm] = np.copy(f['dens'][:])
                                 else:
-                                    self.DataDict[elm] = f[elm][:]
+                                    self.DataDict[elm] = np.copy(f[elm][:])
                             except KeyError:
                                 if elm == 'sizex':
                                     self.DataDict[elm] = 1
+                                if elm == 'c':
+                                    self.DataDict[elm] = 0.45
                                 else:
                                     raise
             # don't keep more than 15 time steps in memory because of RAM issues
@@ -1939,16 +1943,69 @@ class MainApp(Tk.Tk):
         '''The main idea of the shock finder, is we go to the last timestep
         in the simulation and find where the density is half it's max value.
         We then calculate the speed of the of the shock assuming it is
-        traveling at constant velocity. The function returns an array that contains
-        the shock position at every time step.'''
+        traveling at constant velocity. We also calculate the initial B & E fields.'''
 
         # First load the first field file to find the initial size of the
-        # box in the x direction
+        # box in the x direction, and find the initial field values
+        with h5py.File(os.path.join(self.dirname,self.PathDict['Param'][0]), 'r') as f:
+            # Find out what sigma is
+            try:
+                ''' Obviously the most correct way to do this to to calculate b0 from sigma.
+                This is proving more difficult that I thought it would be, so I am calculating it
+                as Jaehong did.
 
-#        print os.path.join(self.dirname,self.PathDict['Flds'][0])
+                sigma = f['sigma'][0]
+                gamma0 = f['gamma0'][0]
+                c = f['c'][0]
+                btheta = f['btheta'][0]
+                bphi = f['bphi'][0]
+
+                ppc0 = f['ppc0'][0]
+                mi = f['mi'][0]
+                me = f['me'][0]
+                print mi, c, ppc0
+                if gamma0 <1:
+                    beta0 = gamma0
+                    gamma0 = 1/np.sqrt(1-gamma0**2)
+                else:
+                    beta0=np.sqrt(1-gamma0**(-2))
+
+
+                if sigma <= 1E-10:
+                    self.b0 = 1.0
+                    self.e0 = 1.0
+                else:
+                    # b0 in the upstream frame
+                    self.b0 = np.sqrt(gamma0*ppc0*.5*c**2*(mi+me)*sigma)
+                    # Translate to the downstream frame
+                    b_x = self.b0*np.cos(btheta)*np.cos(bphi)
+                    b_y = self.b0*np.sin(btheta)*np.cos(bphi)
+                    b_z = self.b0*np.sin(btheta)*np.cos(bphi)
+                    print 'sigma b0', self.b0
+                    '''
+                    # Normalize by b0
+                if np.abs(f['sigma'][0])<1E-8:
+                    self.btheta = np.NaN
+                else:
+                    self.btheta = f['btheta'][0]
+            except KeyError:
+                self.btheta = np.NaN
+
+
+
+
+
+
         with h5py.File(os.path.join(self.dirname,self.PathDict['Flds'][0]), 'r') as f:
-            nxf0 = f['by'][:].shape[1]
-
+            by = f['by'][:]
+            nxf0 = by.shape[1]
+            if np.isnan(self.btheta):
+                self.b0 = 1.0
+                self.e0 = 1.0
+            else:
+                # Normalize by b0
+                self.b0 = by[0,-1,-10]/np.sin(self.btheta)
+                self.e0 = f['ez'][0,-1,-10]
         # Load the final time step to find the shock's location at the end.
         with h5py.File(os.path.join(self.dirname,self.PathDict['Flds'][-1]), 'r') as f:
             dens_arr =np.copy(f['dens'][0,:,:])
