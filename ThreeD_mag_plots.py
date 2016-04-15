@@ -82,8 +82,8 @@ class ThreeDBPanel:
         #            print self.xaxis_values
             self.parent.DataDict['xaxis_values'] = np.copy(self.xaxis_values)
 
-        if 'delta_b_perp' in self.parent.DataDict.keys():
-            self.fy = self.parent.DataDict['delta_b_perp']
+        if 'delta_b_perp_in_plane' in self.parent.DataDict.keys():
+            self.fy = self.parent.DataDict['delta_b_perp_in_plane']
         elif np.isnan(self.parent.btheta):
             print 'hi'
             self.fy = 1.0
@@ -95,11 +95,11 @@ class ThreeDBPanel:
                 # one is bz, the other is the in plane components
 
                 sign = np.sign(self.FigWrap.LoadKey('bx')[0,:,:]*np.tan(self.parent.btheta)-self.FigWrap.LoadKey('by')[0,:,:])
-                delta_bx_perp = (self.FigWrap.LoadKey('by')[0,:,:]-self.parent.bx0)*np.sin(self.parent.btheta)
+                delta_bx_perp = (self.FigWrap.LoadKey('bx')[0,:,:]-self.parent.bx0)*np.sin(self.parent.btheta)
                 delta_by_perp = (self.FigWrap.LoadKey('by')[0,:,:]-self.parent.by0)*np.cos(self.parent.btheta)
 
-                self.fy = sign*np.sqrt(delta_bx_perp**2+delta_by_perp**2)
-                self.parent.DataDict['delta_b_perp'] = self.fy
+                self.fy = sign*np.sqrt(delta_bx_perp**2+delta_by_perp**2)/self.parent.b0
+                self.parent.DataDict['delta_b_perp_in_plane'] = self.fy
         self.fz = self.FigWrap.LoadKey('bz')[0,:,:]/self.parent.b0
         self.oneDslice = self.fz.shape[0]/2
 
