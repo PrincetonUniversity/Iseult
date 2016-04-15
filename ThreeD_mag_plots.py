@@ -8,20 +8,14 @@ import new_cmaps
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
+from mpl_toolkits.mplot3d import Axes3D
 
-class BPanel:
+class ThreeDBPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
 
     plot_param_dict = {'twoD': 0,
-                       'mag_plot_type':0, # 0 = theta_b, 1= |deltaB|/B0, 2 = |deltaB_perp|/B0, 3 = |deltaB_para|/b0
-                       'show_cbar': True,
-                       'z_min': 0,
-                       'z_max' : 10,
-                       'set_z_min': False,
-                       'set_z_max': False,
                        'show_shock' : False,
-                       'OutlineText': True,
-                       'spatial_x': True,
+                       'spatial_x': None,
                        'spatial_y': None,
                        'interpolation': 'nearest'}
 
@@ -88,54 +82,26 @@ class BPanel:
         #            print self.xaxis_values
             self.parent.DataDict['xaxis_values'] = np.copy(self.xaxis_values)
 
-        if self.GetPlotParam('mag_plot_type') == 0: # set f to thetaB
-            bx = self.FigWrap.LoadKey('bx')[0,:,:]
-            by = self.FigWrap.LoadKey('by')[0,:,:]
-            self.f = np.rad2deg(np.arctan2(by,bx))
-            self.f[bx == 0] = 90.0
+        if 'delta_b_perp' in self.parent.DataDict.keys():
+            self.fy = self.parent.DataDict['delta_b_perp']
+        elif np.isnan(self.parent.btheta):
+            print 'hi'
+            self.fy = 1.0
+            self.fz = 1.0
+        else:
+            print self.parent.bx0
+            if np.abs(self.parent.bz0) <= 1E-6:
+                # Decompose the perpendicular components of the magnetic fields into two parts
+                # one is bz, the other is the in plane components
 
-            self.oneDslice = self.f.shape[0]/2
-            # Have we already calculated min/max?
-            if 'thetamin_max' in self.parent.DataDict.keys():
-                self.thetamin_max = self.parent.DataDict['thetamin_max']
+                sign = np.sign(self.FigWrap.LoadKey('bx')[0,:,:]*np.tan(self.parent.btheta)-self.FigWrap.LoadKey('by')[0,:,:])
+                delta_bx_perp = (self.FigWrap.LoadKey('by')[0,:,:]-self.parent.bx0)*np.sin(self.parent.btheta)
+                delta_by_perp = (self.FigWrap.LoadKey('by')[0,:,:]-self.parent.by0)*np.cos(self.parent.btheta)
 
-            else:
-                self.thetamin_max =  self.min_max_finder(self.f)
-                self.parent.DataDict['thetamin_max'] = list(self.thetamin_max)
-
-
-        if self.GetPlotParam('mag_plot_type') == 1: # Set f to deltaB/B0
-            bx = self.FigWrap.LoadKey('bx')[0,:,:]
-            by = self.FigWrap.LoadKey('by')[0,:,:]
-            bz = self.FigWrap.LoadKey('bz')[0,:,:]
-
-            deltaB = (bx-self.parent.bx0)**2
-            deltaB += (by-self.parent.by0)**2
-            deltaB += (bz-self.parent.bz0)**2
-            self.f = np.sqrt(deltaB)/self.parent.b0
-
-
-            self.oneDslice = self.f.shape[0]/2
-
-            # Have we already calculated min/max?
-            if 'deltaBmin_max' in self.parent.DataDict.keys():
-                self.deltaBmin_max = self.parent.DataDict['deltaBmin_max']
-
-            else:
-                self.deltaBmin_max = self.min_max_finder(self.f)
-                self.parent.DataDict['deltaBmin_max'] = list(self.deltaBmin_max)
-
-
-
-    def min_max_finder(self, arr):
-        # find 1d lims
-        oneD_lims = [arr[self.oneDslice,:].min(), arr[self.oneDslice,:].max()]
-        # now give it a bit of spacing, a 2% percent difference of the distance
-        dist = oneD_lims[1]-oneD_lims[0]
-        oneD_lims[0] -= 0.04*dist
-        oneD_lims[1] += 0.04*dist
-        twoD_lims = [arr.min(), arr.max()]
-        return [oneD_lims, twoD_lims]
+                self.fy = sign*np.sqrt(delta_bx_perp**2+delta_by_perp**2)
+                self.parent.DataDict['delta_b_perp'] = self.fy
+        self.fz = self.FigWrap.LoadKey('bz')[0,:,:]/self.parent.b0
+        self.oneDslice = self.fz.shape[0]/2
 
     def draw(self):
 
@@ -145,18 +111,6 @@ class BPanel:
         what has changed in the figure. This will be done in a function called
         refresh, that should be much much faster.'''
 
-        if self.GetPlotParam('OutlineText'):
-            self.annotate_kwargs = {'horizontalalignment': 'right',
-            'verticalalignment': 'top',
-            'size' : 18,
-            'path_effects' : [PathEffects.withStroke(linewidth=1.5,foreground="k")]
-            }
-        else:
-            self.annotate_kwargs = {'horizontalalignment' : 'right',
-            'verticalalignment' : 'top',
-            'size' : 18}
-
-
         # Set the tick color
         tick_color = 'black'
 
@@ -164,136 +118,12 @@ class BPanel:
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])
 
         # Now that the data is loaded, start making the plots
-        if self.GetPlotParam('twoD'):
-            if self.parent.LinkSpatial != 0:
-                if self.FigWrap.pos == self.parent.first_x and self.FigWrap.pos == self.parent.first_y:
-                    self.axes = self.figure.add_subplot(self.gs[18:92,:])
-                elif self.FigWrap.pos == self.parent.first_x:
-                    self.axes = self.figure.add_subplot(self.gs[18:92,:],
-                    sharey = self.parent.SubPlotList[self.parent.first_y[0]][self.parent.first_y[1]].graph.axes)
-                elif self.FigWrap.pos == self.parent.first_y:
-                    self.axes = self.figure.add_subplot(self.gs[18:92,:],
-                    sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
-                else:
-                    self.axes = self.figure.add_subplot(self.gs[18:92,:],
-                    sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes,
-                    sharey = self.parent.SubPlotList[self.parent.first_y[0]][self.parent.first_y[1]].graph.axes)
+        self.axes = self.figure.add_subplot(self.gs[18:92,:], projection = '3d')
 
-            else:
-                self.axes = self.figure.add_subplot(self.gs[18:92,:])
+        shock_ind = self.xaxis_values.searchsorted(self.parent.shock_loc)
 
-            # First choose the 'zval' to plot, we can only do one because it is 2-d.
-            if ~np.isnan(self.parent.btheta):
-                self.two_d_labels = (r'$\theta_B$', r'$|\delta B|/B_0$')
-            else:
-                self.two_d_labels = (r'$\theta_B$', r'$|\delta B|$')
-            self.ymin = 0
-            self.ymax =  self.f.shape[0]/self.c_omp*self.istep
-            self.xmin = 0
-            self.xmax =  self.f.shape[1]/self.c_omp*self.istep
-
-            self.vmin = None
-            if self.GetPlotParam('set_z_min'):
-                self.vmin = self.GetPlotParam('z_min')
-            self.vmax = None
-            if self.GetPlotParam('set_z_max'):
-                self.vmax = self.GetPlotParam('z_max')
-
-            if self.parent.plot_aspect:
-                self.cax = self.axes.imshow(self.f, origin = 'lower')
-            else:
-                self.cax = self.axes.imshow(self.f, origin = 'lower',
-                                            aspect= 'auto')
-            self.cax.set_cmap(new_cmaps.cmaps[self.parent.cmap])
-            self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
-            self.cax.norm.vmin = self.vmin
-            self.cax.norm.vmax = self.vmax
-            self.axes.add_artist(self.cax)
-
-
-            self.TwoDan = self.axes.annotate(self.two_d_labels[self.GetPlotParam('mag_plot_type')],
-                            xy = (0.9,.9),
-                            xycoords= 'axes fraction',
-                            color = 'white',
-                            **self.annotate_kwargs)
-
-            self.axes.set_axis_bgcolor('lightgrey')
-
-            self.axC = self.figure.add_subplot(self.gs[:4,:])
-            self.cbar = self.figure.colorbar(self.cax, ax = self.axes, cax = self.axC, orientation = 'horizontal')
-
-            cmin = self.f.min()
-            if self.vmin:
-                cmin = self.vmin
-            cmax = self.f.max()
-            if self.vmax:
-                cmax = self.vmax
-            self.cbar.set_ticks(np.linspace(cmin, cmax, 5))
-            self.cbar.ax.tick_params(labelsize=self.parent.num_font_size)
-
-            if self.GetPlotParam('show_cbar') == 0:
-                self.axC.set_visible = False
-
-
-
-            self.shockline_2d = self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
-                                    PathEffects.Normal()])
-            self.shockline_2d.set_visible(self.GetPlotParam('show_shock'))
-
-            self.axes.set_axis_bgcolor('lightgrey')
-            self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
-
-            if self.parent.xlim[0]:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
-            else:
-                self.axes.set_xlim(self.xmin, self.xmax)
-            if self.parent.ylim[0]:
-                self.axes.set_ylim(self.parent.ylim[1],self.parent.ylim[2])
-            else:
-                self.axes.set_ylim(self.ymin, self.ymax)
-            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
-            self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.ylabel_pad, color = 'black')
-
-        else:
-            if self.parent.LinkSpatial != 0 and self.parent.LinkSpatial != 3:
-                if self.FigWrap.pos == self.parent.first_x:
-                    self.axes = self.figure.add_subplot(self.gs[18:92,:])
-                else:
-                    self.axes = self.figure.add_subplot(self.gs[18:92,:],
-                    sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
-            else:
-                self.axes = self.figure.add_subplot(self.gs[18:92,:])
-
-            self.annotate_pos = [0.8,0.9]
-            self.line = self.axes.plot(self.xaxis_values, self.f[self.oneDslice,:], color = self.mag_color)
-
-            self.shock_line = self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
-                        PathEffects.Normal()])
-
-            self.shock_line.set_visible(self.GetPlotParam('show_shock'))
-
-            self.axes.set_axis_bgcolor('lightgrey')
-            self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)#, tick1On= False, tick2On= False)
-
-            if self.parent.xlim[0]:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
-            else:
-                self.axes.set_xlim(self.xaxis_values[0],self.xaxis_values[-1])
-
-
-            if self.GetPlotParam('set_z_min'):
-                self.axes.set_ylim(ymin = self.GetPlotParam('z_min'))
-            if self.GetPlotParam('set_z_max'):
-                self.axes.set_ylim(ymax = self.GetPlotParam('z_max'))
-
-            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
-            if self.GetPlotParam('mag_plot_type') == 0:
-                self.axes.set_ylabel(r'$\theta_B $', labelpad = self.parent.ylabel_pad, color = 'black')
-            else:
-                if ~np.isnan(self.parent.btheta):
-                    self.axes.set_ylabel(r'$|\delta B|/B_0$', labelpad = self.parent.ylabel_pad, color = 'black')
-                else:
-                    self.axes.set_ylabel(r'$|\delta B|$', labelpad = self.parent.ylabel_pad, color = 'black')
+        self.line = self.axes.plot(self.xaxis_values[shock_ind:], self.fy[self.oneDslice,shock_ind:], self.fz[self.oneDslice,shock_ind:], color = self.mag_color)
+        self.axes.set_xlim(self.parent.shock_loc, None)
     def refresh(self):
 
         '''This is a function that will be called only if self.axes already
@@ -305,66 +135,11 @@ class BPanel:
 
         # Main goal, only change what is showing..
         # First do the 1D plots, because it is simpler
-        if self.GetPlotParam('twoD') == 0:
-            self.line[0].set_data(self.xaxis_values, self.f[self.oneDslice,:])
+        shock_ind = self.xaxis_values.searchsorted(self.parent.shock_loc)
+        self.line[0].set_data(self.xaxis_values[shock_ind:], self.fy[self.oneDslice,shock_ind:])
+        self.line[0].set_3d_properties(self.fz[self.oneDslice,shock_ind:])
+        self.axes.set_xlim(self.parent.shock_loc, None)
 
-            if self.GetPlotParam('mag_plot_type')==0:
-                self.line_ymin_max = self.thetamin_max[0]
-            else:
-                self.line_ymin_max = self.deltaBmin_max[0]
-
-            self.axes.set_ylim(self.line_ymin_max)
-            if self.GetPlotParam('show_shock'):
-                self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
-
-            if self.parent.xlim[0]:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
-            else:
-                self.axes.set_xlim(self.xaxis_values[0], self.xaxis_values[-1])
-
-            if self.GetPlotParam('set_z_min'):
-                self.axes.set_ylim(ymin = self.GetPlotParam('z_min'))
-            if self.GetPlotParam('set_z_max'):
-                self.axes.set_ylim(ymax = self.GetPlotParam('z_max'))
-
-
-        else: # Now refresh the plot if it is 2D
-            self.cax.set_data(self.f)
-            self.ymin = 0
-            self.ymax =  self.f.shape[0]/self.c_omp*self.istep
-            self.xmin = 0
-            self.xmax = self.xaxis_values[-1]
-            if self.GetPlotParam('mag_plot_type') == 0:
-                self.clims = self.thetamin_max[1]
-                self.TwoDan.set_text(r'$\theta_B$')
-            else:
-                self.clims = self.deltaBmin_max[1]
-                if ~np.isnan(self.parent.btheta):
-                    self.TwoDan.set_text(r'$|\delta B|/B_0$')
-                else:
-                    self.TwoDan.set_text(r'$|\delta B|$')
-            if self.parent.xlim[0]:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
-            else:
-                self.axes.set_xlim(self.xmin,self.xmax)
-            if self.parent.ylim[0]:
-                self.axes.set_ylim(self.parent.ylim[1],self.parent.ylim[2])
-            else:
-                self.axes.set_ylim(self.ymin,self.ymax)
-
-            self.cax.set_extent([self.xmin, self.xmax, self.ymin, self.ymax])
-
-            self.climArgs = {'vmin': self.clims[0], 'vmax': self.clims[1]}
-            if self.GetPlotParam('set_z_min'):
-                self.climArgs['vmin'] =  self.GetPlotParam('z_min')
-            if self.GetPlotParam('set_z_max'):
-                self.climArgs['vmax'] =  self.GetPlotParam('z_max')
-            self.cax.set_clim(**self.climArgs)
-
-            self.cbar.set_ticks(np.linspace(self.cax.get_clim()[0],self.cax.get_clim()[1], 5))
-
-            if self.GetPlotParam('show_shock'):
-                self.shockline_2d.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
             #self.axes.draw_artist(self.axes.patch)
             #self.axes.draw_artist(self.cax)
             #self.axes.draw_artist(self.axes.xaxis)

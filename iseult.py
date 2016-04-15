@@ -18,6 +18,7 @@ from fields_plots import FieldsPanel
 from density_plots import DensPanel
 from spectra import SpectralPanel
 from mag_plots import BPanel
+from ThreeD_mag_plots import ThreeDBPanel
 import multiprocessing
 
 # I don't think that matplotlib allows multi-threading, in the interactive mode.
@@ -64,7 +65,8 @@ class SubPlotWrapper:
                              'FieldsPlot': FieldsPanel,
                              'DensityPlot': DensPanel,
                              'SpectraPlot': SpectralPanel,
-                             'MagPlots': BPanel}
+                             'MagPlots': BPanel,
+                             '3dMagPlots': ThreeDBPanel}
         # A dictionary that will store where everything is in Hdf5 Files
         self.GenParamDict()
         self.figure = figure
@@ -1992,10 +1994,6 @@ class MainApp(Tk.Tk):
                 self.btheta = np.NaN
 
 
-
-
-
-
         with h5py.File(os.path.join(self.dirname,self.PathDict['Flds'][0]), 'r') as f:
             by = f['by'][:]
             nxf0 = by.shape[1]
@@ -2004,8 +2002,15 @@ class MainApp(Tk.Tk):
                 self.e0 = 1.0
             else:
                 # Normalize by b0
-                self.b0 = by[0,-1,-10]/np.sin(self.btheta)
-                self.e0 = f['ez'][0,-1,-10]
+                self.bx0 = f['bx'][0,-1,-10]
+                self.by0 = by[0,-1,-10]
+                self.bz0 = f['bz'][0,-1,-10]
+                self.b0 = np.sqrt(self.bx0**2+self.by0**2+self.bz0**2)
+                self.ex0 = f['ex'][0,-1,-10]
+                self.ey0 = f['ey'][0,-1,-10]
+                self.ez0 = f['ez'][0,-1,-10]
+                self.e0 = np.sqrt(self.ex0**2+self.ey0**2+self.ez0**2)
+
         # Load the final time step to find the shock's location at the end.
         with h5py.File(os.path.join(self.dirname,self.PathDict['Flds'][-1]), 'r') as f:
             dens_arr =np.copy(f['dens'][0,:,:])
