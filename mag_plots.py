@@ -299,7 +299,11 @@ class BPanel:
             else:
                 self.cax = self.axes.imshow(self.f, origin = 'lower',
                                             aspect= 'auto')
-            self.cax.set_cmap(new_cmaps.cmaps[self.parent.cmap])
+            if self.GetPlotParam('mag_plot_type') == 1:
+                self.cax.set_cmap(new_cmaps.cmaps['phase'])
+            else:
+                self.cax.set_cmap(new_cmaps.cmaps[self.parent.cmap])
+
             self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
             self.cax.norm.vmin = self.vmin
             self.cax.norm.vmax = self.vmax
@@ -620,6 +624,12 @@ class FieldSettings(Tk.Toplevel):
         if self.MagTypeVar.get() == self.parent.GetPlotParam('mag_plot_type'):
             pass
         else:
+            if self.parent.GetPlotParam('twoD'):
+                if self.parent.GetPlotParam('mag_plot_type') == 1:
+                    self.parent.cax.set_cmap(new_cmaps.cmaps[self.parent.parent.cmap])
+                elif self.MagTypeVar.get() == 1:
+                    self.parent.cax.set_cmap(new_cmaps.cmaps['phase'])
+
             self.parent.SetPlotParam('mag_plot_type', self.MagTypeVar.get())
 
 

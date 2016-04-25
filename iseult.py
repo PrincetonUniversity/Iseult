@@ -18,6 +18,7 @@ from fields_plots import FieldsPanel
 from density_plots import DensPanel
 from spectra import SpectralPanel
 from mag_plots import BPanel
+from energy_plots import EnergyPanel
 from ThreeD_mag_plots import ThreeDBPanel
 import multiprocessing
 
@@ -62,6 +63,7 @@ class SubPlotWrapper:
         self.chartType = 'PhasePlot'
         # A dictionary that contains all of the plot types.
         self.PlotTypeDict = {'PhasePlot': PhasePanel,
+                             'EnergyPlot': EnergyPanel,
                              'FieldsPlot': FieldsPanel,
                              'DensityPlot': DensPanel,
                              'SpectraPlot': SpectralPanel,
