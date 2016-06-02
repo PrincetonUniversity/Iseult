@@ -5,6 +5,7 @@ import matplotlib
 import numpy as np
 import numpy.ma as ma
 import new_cmaps
+from new_cnorms import PowerNormWithNeg
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
@@ -18,17 +19,23 @@ class FieldsPanel:
                        'show_y' : 1,
                        'show_z' : 1,
                        'show_cbar': True,
-                       'z_min': 0,
-                       'z_max' : 10,
-                       'set_z_min': False,
-                       'set_z_max': False,
+                       'v_min': 0,
+                       'v_max' : 10,
+                       'set_v_min': False,
+                       'set_v_max': False,
                        'show_shock' : False,
                        'OutlineText': True,
                        'spatial_x': True,
                        'spatial_y': None,
-                       'normalize_fields': True,
-                       'interpolation': 'nearest'}
+                       'normalize_fields': True, # Normalize fields to their upstream values
+                       'cnorm_type': 'Linear', # Colormap norm;  options are Log, Pow or Linear
+                       'cpow_num': 0.6, # Used in the PowerNorm
+                       'interpolation': 'nearest',
+                       'cmap': None # If cmap is none, the plot will inherit the parent's cmap
+                       }
 
+    gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
+    gradient = np.vstack((gradient, gradient))
 
     def __init__(self, parent, figwrapper):
         self.settings_window = None
@@ -45,15 +52,21 @@ class FieldsPanel:
     def ChangePlotType(self, str_arg):
         self.FigWrap.ChangeGraph(str_arg)
 
+    def norm(self, vmin=None, vmax=None):
+        if self.GetPlotParam('cnorm_type') =="Linear":
+            return mcolors.Normalize(vmin, vmax)
+        elif self.GetPlotParam('cnorm_type') == "Log":
+            return  mcolors.LogNorm(vmin, vmax)
+        else:
+            return  PowerNormWithNeg(self.FigWrap.GetPlotParam('cpow_num'), vmin, vmax)
+
     def set_plot_keys(self):
         '''A helper function that will insure that each hdf5 file will only be
         opened once per time step'''
         # First make sure that omega_plasma & xi is loaded so we can fix the
         # x & y distances.
 
-        ### Commenting out this because loading the HDF5 file is more expensive
-        ### than just storing it in RAM. Therefore I should just load everything
-        '''
+
         self.arrs_needed = ['c_omp', 'istep']
         # Then see if we are plotting E-field or B-Field
         if self.GetPlotParam('field_type') == 0: # Load the B-Field
@@ -71,8 +84,7 @@ class FieldsPanel:
                 self.arrs_needed.append('ey')
             if self.GetPlotParam('show_z'):
                 self.arrs_needed.append('ez')
-        '''
-        self.arrs_needed = ['c_omp', 'istep', 'bx', 'by', 'bz', 'ex', 'ey', 'ez']
+
         return self.arrs_needed
 
     def LoadData(self):
@@ -81,6 +93,10 @@ class FieldsPanel:
         # and stored in the DataDict for this time step
         self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
         self.istep = self.FigWrap.LoadKey('istep')[0]
+        if self.GetPlotParam('cmap') is None:
+            self.cmap = self.parent.cmap
+        else:
+            self.cmap = self.GetPlotParam('cmap')
         self.xcolor = new_cmaps.cmaps[self.parent.cmap](0.2)
         self.ycolor = new_cmaps.cmaps[self.parent.cmap](0.5)
         self.zcolor = new_cmaps.cmaps[self.parent.cmap](0.8)
@@ -291,22 +307,23 @@ class FieldsPanel:
             self.xmin = 0
             self.xmax =  self.zval.shape[1]/self.c_omp*self.istep
 
-            self.vmin = None
-            if self.GetPlotParam('set_z_min'):
-                self.vmin = self.GetPlotParam('z_min')
-            self.vmax = None
-            if self.GetPlotParam('set_z_max'):
-                self.vmax = self.GetPlotParam('z_max')
+            self.vmin = self.zval.min()
+            if self.GetPlotParam('set_v_min'):
+                self.vmin = self.GetPlotParam('v_min')
+            self.vmax = self.zval.max()
+            if self.GetPlotParam('set_v_max'):
+                self.vmax = self.GetPlotParam('v_max')
 
             if self.parent.plot_aspect:
-                self.cax = self.axes.imshow(self.zval, origin = 'lower')
+                self.cax = self.axes.imshow(self.zval, norm = self.norm(), origin = 'lower')
             else:
-                self.cax = self.axes.imshow(self.zval, origin = 'lower',
+                self.cax = self.axes.imshow(self.zval, origin = 'lower', norm = self.norm(),
                                             aspect= 'auto')
-            self.cax.set_cmap(new_cmaps.cmaps[self.parent.cmap])
+            self.cax.set_cmap(new_cmaps.cmaps[self.cmap])
             self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
             self.cax.norm.vmin = self.vmin
             self.cax.norm.vmax = self.vmax
+
             self.axes.add_artist(self.cax)
 
 
@@ -319,20 +336,26 @@ class FieldsPanel:
             self.axes.set_axis_bgcolor('lightgrey')
 
             self.axC = self.figure.add_subplot(self.gs[:4,:])
-            self.cbar = self.figure.colorbar(self.cax, ax = self.axes, cax = self.axC, orientation = 'horizontal')
+            self.cbar = self.axC.imshow(self.gradient, aspect='auto',
+                                        cmap=new_cmaps.cmaps[self.cmap])
 
-            cmin = self.zval.min()
-            if self.vmin:
-                cmin = self.vmin
-            cmax = self.zval.max()
-            if self.vmax:
-                cmax = self.vmax
-            self.cbar.set_ticks(np.linspace(cmin, cmax, 5))
-            self.cbar.ax.tick_params(labelsize=self.parent.num_font_size)
+            # Make the colobar axis more like the real colorbar
+            self.cbar.set_extent([0, 1.0, 0, 1.0])
+            self.axC.tick_params(axis='x',
+                            which = 'both', # bothe major and minor ticks
+                            top = 'off', # turn off top ticks
+                            labelsize=self.parent.num_font_size)
+
+            self.axC.tick_params(axis='y',          # changes apply to the y-axis
+                            which='both',      # both major and minor ticks are affected
+                            left='off',      # ticks along the bottom edge are off
+                            right='off',         # ticks along the top edge are off
+                            labelleft='off')
 
             if self.GetPlotParam('show_cbar') == 0:
                 self.axC.set_visible = False
-
+            else:
+                self.CbarTickFormatter()
 
 
             self.shockline_2d = self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
@@ -424,10 +447,10 @@ class FieldsPanel:
                 self.axes.set_xlim(self.xaxis_values[0],self.xaxis_values[-1])
 
 
-            if self.GetPlotParam('set_z_min'):
-                self.axes.set_ylim(ymin = self.GetPlotParam('z_min'))
-            if self.GetPlotParam('set_z_max'):
-                self.axes.set_ylim(ymax = self.GetPlotParam('z_max'))
+            if self.GetPlotParam('set_v_min'):
+                self.axes.set_ylim(ymin = self.GetPlotParam('v_min'))
+            if self.GetPlotParam('set_v_max'):
+                self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
 
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
             if self.GetPlotParam('field_type') == 0:
@@ -494,10 +517,10 @@ class FieldsPanel:
             else:
                 self.axes.set_xlim(self.xaxis_values[0], self.xaxis_values[-1])
 
-            if self.GetPlotParam('set_z_min'):
-                self.axes.set_ylim(ymin = self.GetPlotParam('z_min'))
-            if self.GetPlotParam('set_z_max'):
-                self.axes.set_ylim(ymax = self.GetPlotParam('z_max'))
+            if self.GetPlotParam('set_v_min'):
+                self.axes.set_ylim(ymin = self.GetPlotParam('v_min'))
+            if self.GetPlotParam('set_v_max'):
+                self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
 
             # Code for trying blitting, not worth it.
 #            self.axes.draw_artist(self.axes.patch)
@@ -516,13 +539,13 @@ class FieldsPanel:
                 self.xmin = 0
                 self.xmax = self.xaxis_values[-1]
                 if self.GetPlotParam('field_type') == 0:
-                    self.clims = self.bxmin_max[1]
+                    self.clims = np.copy(self.bxmin_max[1])
                     if self.GetPlotParam('normalize_fields'):
                         self.TwoDan.set_text(r'$B_x/B_0$')
                     else:
                         self.TwoDan.set_text(r'$B_x$')
                 else:
-                    self.clims = self.exmin_max[1]
+                    self.clims = np.copy(self.exmin_max[1])
                     if self.GetPlotParam('normalize_fields'):
                         self.TwoDan.set_text(r'$E_x/E_0$')
                     else:
@@ -535,13 +558,13 @@ class FieldsPanel:
                 self.xmin = 0
                 self.xmax = self.xaxis_values[-1]
                 if self.GetPlotParam('field_type') == 0:
-                    self.clims = self.bymin_max[1]
+                    self.clims = np.copy(self.bymin_max[1])
                     if self.GetPlotParam('normalize_fields'):
                         self.TwoDan.set_text(r'$B_y/B_0$')
                     else:
                         self.TwoDan.set_text(r'$B_y$')
                 else:
-                    self.clims = self.eymin_max[1]
+                    self.clims = np.copy(self.eymin_max[1])
                     if self.GetPlotParam('normalize_fields'):
                         self.TwoDan.set_text(r'$E_y/E_0$')
                     else:
@@ -553,13 +576,13 @@ class FieldsPanel:
                 self.xmin = 0
                 self.xmax =  self.xaxis_values[-1]
                 if self.GetPlotParam('field_type') == 0:
-                    self.clims = self.bzmin_max[1]
+                    self.clims = np.copy(self.bzmin_max[1])
                     if self.GetPlotParam('normalize_fields'):
                         self.TwoDan.set_text(r'$B_z/B_0$')
                     else:
                         self.TwoDan.set_text(r'$B_z$')
                 else:
-                    self.clims = self.ezmin_max[1]
+                    self.clims = np.copy(self.ezmin_max[1])
                     if self.GetPlotParam('normalize_fields'):
                         self.TwoDan.set_text(r'$E_z/E_0$')
                     else:
@@ -574,17 +597,15 @@ class FieldsPanel:
                 self.axes.set_ylim(self.ymin,self.ymax)
 
             self.cax.set_extent([self.xmin, self.xmax, self.ymin, self.ymax])
+
+
+            if self.GetPlotParam('set_v_min'):
+                self.clims[0] =  self.GetPlotParam('v_min')
+            if self.GetPlotParam('set_v_max'):
+                self.clims[1] =  self.GetPlotParam('v_max')
             self.cax.set_clim(self.clims)
 
-            self.climArgs = {}
-            if self.GetPlotParam('set_z_min'):
-                self.climArgs['vmin'] =  self.GetPlotParam('z_min')
-            if self.GetPlotParam('set_z_max'):
-                self.climArgs['vmax'] =  self.GetPlotParam('z_max')
-            if len(self.climArgs)>0:
-                self.cax.set_clim(**self.climArgs)
-
-            self.cbar.set_ticks(np.linspace(self.cax.get_clim()[0],self.cax.get_clim()[1], 5))
+            self.CbarTickFormatter()
 
             if self.GetPlotParam('show_shock'):
                 self.shockline_2d.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
@@ -593,6 +614,51 @@ class FieldsPanel:
             #self.axes.draw_artist(self.cax)
             #self.axes.draw_artist(self.axes.xaxis)
 
+    def CbarTickFormatter(self):
+        ''' A helper function that sets the cbar ticks & labels. This used to be
+        easier, but because I am no longer using the colorbar class i have to do
+        stuff manually.'''
+        self.axC.set_xlim(0,1)
+        self.axC.set_ylim(0,1)
+        clim = np.copy(self.cax.get_clim())
+        if self.GetPlotParam('show_cbar'):
+            if self.GetPlotParam('cnorm_type') == "Log":
+                ctick_range = np.linspace(0, 1, 6)
+                data_val = np.logspace(np.log10(clim[0]),np.log10(clim[1]), 6)
+                self.axC.set_xticks(ctick_range)
+                ctick_labels = []
+                for elm in data_val:
+                    tmp_s = '%.2f' % elm
+                    ctick_labels.append(tmp_s)
+#                print ctick_labels
+                self.axC.set_xticklabels(ctick_labels)
+
+            if self.GetPlotParam('cnorm_type') == "Pow":
+                ctick_range = np.linspace(0, 1, 6)
+                pow_min = np.sign(clim[0])*np.abs(clim[0])**self.FigWrap.GetPlotParam('cpow_num')
+                pow_max = np.sign(clim[1])*np.abs(clim[1])**self.FigWrap.GetPlotParam('cpow_num')
+                data_val = np.sign(np.linspace(pow_min, pow_max, 6))*np.abs(np.linspace(pow_min, pow_max, 6))**(1.0/self.FigWrap.GetPlotParam('cpow_num'))
+                self.axC.set_xticks(ctick_range)
+
+                ctick_labels = []
+                for elm in data_val:
+                    tmp_s = '%.2f' % elm
+                    ctick_labels.append(tmp_s)
+                self.axC.set_xticklabels(ctick_labels)
+
+            if self.GetPlotParam('cnorm_type') == "Linear":
+                ctick_range = np.linspace(0, 1, 6)
+                data_val = np.linspace(clim[0],clim[1], 6)
+                self.axC.set_xticks(ctick_range)
+
+                ctick_labels = []
+                for elm in data_val:
+                    if np.abs(elm)<1E-2:
+                        tmp_s = '0'
+                    else:
+                        tmp_s = '%.2f' % elm
+                    ctick_labels.append(tmp_s)
+                self.axC.set_xticklabels(ctick_labels)
 
     def GetPlotParam(self, keyname):
         return self.FigWrap.GetPlotParam(keyname)
@@ -635,8 +701,8 @@ class FieldSettings(Tk.Toplevel):
         self.ctypevar.trace('w', self.ctypeChanged)
 
         ttk.Label(frm, text="Choose Chart Type:").grid(row=0, column = 0)
-        cmapChooser = apply(ttk.OptionMenu, (frm, self.ctypevar, self.parent.chartType) + tuple(self.parent.ChartTypes))
-        cmapChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
+        ctypeChooser = apply(ttk.OptionMenu, (frm, self.ctypevar, self.parent.chartType) + tuple(self.parent.ChartTypes))
+        ctypeChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
 
 
         self.TwoDVar = Tk.IntVar(self) # Create a var to track whether or not to plot in 2-D
@@ -695,20 +761,20 @@ class FieldSettings(Tk.Toplevel):
 
         # Now the field lim
         self.setZminVar = Tk.IntVar()
-        self.setZminVar.set(self.parent.GetPlotParam('set_z_min'))
+        self.setZminVar.set(self.parent.GetPlotParam('set_v_min'))
         self.setZminVar.trace('w', self.setZminChanged)
 
         self.setZmaxVar = Tk.IntVar()
-        self.setZmaxVar.set(self.parent.GetPlotParam('set_z_max'))
+        self.setZmaxVar.set(self.parent.GetPlotParam('set_v_max'))
         self.setZmaxVar.trace('w', self.setZmaxChanged)
 
 
 
         self.Zmin = Tk.StringVar()
-        self.Zmin.set(str(self.parent.GetPlotParam('z_min')))
+        self.Zmin.set(str(self.parent.GetPlotParam('v_min')))
 
         self.Zmax = Tk.StringVar()
-        self.Zmax.set(str(self.parent.GetPlotParam('z_max')))
+        self.Zmax.set(str(self.parent.GetPlotParam('v_max')))
 
 
         cb = ttk.Checkbutton(frm, text ='Set B or E min',
@@ -746,7 +812,7 @@ class FieldSettings(Tk.Toplevel):
             if self.parent.GetPlotParam('twoD'):
                 self.parent.axC.set_visible(self.CbarVar.get())
 
-            self.parent.SetPlotParam('show_cbar', self.CbarVar.get(), update_plot =self.parent.GetPlotParam('twoD'))
+            self.parent.SetPlotParam('show_cbar', self.CbarVar.get(), update_plot = self.parent.GetPlotParam('twoD'))
 
     def ShockVarHandler(self, *args):
         if self.parent.GetPlotParam('show_shock')== self.ShockVar.get():
@@ -815,16 +881,16 @@ class FieldSettings(Tk.Toplevel):
             self.parent.SetPlotParam('interpolation', self.InterpolVar.get())
 
     def setZminChanged(self, *args):
-        if self.setZminVar.get() == self.parent.GetPlotParam('set_z_min'):
+        if self.setZminVar.get() == self.parent.GetPlotParam('set_v_min'):
             pass
         else:
-            self.parent.SetPlotParam('set_z_min', self.setZminVar.get())
+            self.parent.SetPlotParam('set_v_min', self.setZminVar.get())
 
     def setZmaxChanged(self, *args):
-        if self.setZmaxVar.get() == self.parent.GetPlotParam('set_z_max'):
+        if self.setZmaxVar.get() == self.parent.GetPlotParam('set_v_max'):
             pass
         else:
-            self.parent.SetPlotParam('set_z_max', self.setZmaxVar.get())
+            self.parent.SetPlotParam('set_v_max', self.setZmaxVar.get())
 
     def RadioField(self):
         if self.FieldTypeVar.get() == self.parent.GetPlotParam('field_type'):
@@ -918,7 +984,7 @@ class FieldSettings(Tk.Toplevel):
 
     def FieldsCallback(self):
         tkvarLimList = [self.Zmin, self.Zmax]
-        plot_param_List = ['z_min', 'z_max']
+        plot_param_List = ['v_min', 'v_max']
         tkvarSetList = [self.setZminVar, self.setZmaxVar]
         to_reload = False
         for j in range(len(tkvarLimList)):
@@ -932,7 +998,7 @@ class FieldSettings(Tk.Toplevel):
                 #if they type in random stuff, just set it ot the param value
                 tkvarLimList[j].set(str(self.parent.GetPlotParam(plot_param_List[j])))
         if to_reload:
-            self.parent.SetPlotParam('z_min', self.parent.GetPlotParam('z_min'))
+            self.parent.SetPlotParam('v_min', self.parent.GetPlotParam('v_min'))
 
 
     def OnClosing(self):

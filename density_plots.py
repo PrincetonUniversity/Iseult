@@ -5,6 +5,7 @@ import matplotlib
 import numpy as np
 import numpy.ma as ma
 import new_cmaps
+from new_cnorms import PowerNormWithNeg
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
@@ -18,16 +19,24 @@ class DensPanel:
                        'dens_type': 0, #0 = n, 1 = rho
                        'show_cbar': True,
                        'set_color_limits': False,
-                       'z_min': 0,
-                       'z_max' : 10,
-                       'set_z_min': False,
-                       'set_z_max': False,
+                       'v_min': 0,
+                       'v_max' : 10,
+                       'set_v_min': False,
+                       'set_v_max': False,
                        'show_labels' : True,
                        'show_shock' : False,
                        'OutlineText': True,
                        'spatial_x': True,
                        'spatial_y': None,
-                       'interpolation': 'nearest'}
+                       'interpolation': 'nearest',
+                       'normalize_density': True, # Normalize density to it's upstream values
+                       'cnorm_type': 'Linear', # Colormap norm;  options are Log, Pow or Linear
+                       'cpow_num': 0.6, # Used in the PowerNorm
+                       'interpolation': 'nearest',
+                       'cmap': None # If cmap is none, the plot will inherit the parent's cmap
+                       }
+    gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
+    gradient = np.vstack((gradient, gradient))
 
     def __init__(self, parent, figwrapper):
         self.settings_window = None
@@ -41,6 +50,13 @@ class DensPanel:
             'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
 
+    def norm(self, vmin=None, vmax=None):
+        if self.GetPlotParam('cnorm_type') =="Linear":
+            return mcolors.Normalize(vmin, vmax)
+        elif self.GetPlotParam('cnorm_type') == "Log":
+            return  mcolors.LogNorm(vmin, vmax)
+        else:
+            return  PowerNormWithNeg(self.FigWrap.GetPlotParam('cpow_num'), vmin, vmax)
 
     def ChangePlotType(self, str_arg):
         self.FigWrap.ChangeGraph(str_arg)
@@ -51,14 +67,30 @@ class DensPanel:
         # First make sure that omega_plasma & xi is loaded so we can fix the
         # x & y distances.
 
-        self.arrs_needed = ['c_omp', 'istep', 'dens', 'densi']
+        self.arrs_needed = ['c_omp', 'istep', 'dens']
+
+        # Load ppc if we are normalizing the density
+        if self.GetPlotParam('normalize_density'):
+            self.arrs_needed.append('ppc0')
         # To plot rho we need both dens and densi
-#        if self.GetPlotParam('dens_type') == 1: # Load the ion density
-#            self.arrs_needed.append('densi')
+        if self.GetPlotParam('dens_type') == 1: # Load the ion density
+            self.arrs_needed.append('densi')
 
         return self.arrs_needed
     def LoadData(self):
         ''' A Helper function that loads the data for the plot'''
+        if self.GetPlotParam('cmap') is None:
+            self.cmap = self.parent.cmap
+        else:
+            self.cmap = self.GetPlotParam('cmap')
+
+
+        if self.GetPlotParam('normalize_density'):
+            self.ppc0 = self.FigWrap.LoadKey('ppc0')[0]
+        elif not np.isnan(self.FigWrap.LoadKey('ppc0')[0]):
+            self.ppc0 = 1.0
+        else:
+            self.SetPlotParam('normalize_density', False, update_plot = False)
 
         self.dens_color = new_cmaps.cmaps[self.parent.cmap](0.5)
         # get c_omp and istep to convert cells to physical units
@@ -68,13 +100,6 @@ class DensPanel:
         self.dens = self.FigWrap.LoadKey('dens')[0,:,:]
         self.oneDslice = self.dens.shape[0]/2
 
-        # see if this time has already been checked
-        if 'my_rho' in self.parent.DataDict.keys():
-            self.rho = self.parent.DataDict['my_rho']
-        else:
-            self.rho = 2*self.FigWrap.LoadKey('densi')[0,:,:] -self.FigWrap.LoadKey('dens')[0,:,:]
-            self.parent.DataDict['my_rho'] = self.rho
-
         # see if the min/max of all the arrays has aready been calculated.
         if 'dens_min_max' in self.parent.DataDict.keys():
             self.dens_min_max = self.parent.DataDict['dens_min_max']
@@ -82,11 +107,25 @@ class DensPanel:
             self.dens_min_max = self.min_max_finder(self.dens)
             self.parent.DataDict['dens_min_max'] = self.dens_min_max
 
-        if 'rho_min_max' in self.parent.DataDict.keys():
-            self.rho_min_max = self.parent.DataDict['rho_min_max']
-        else:
-            self.rho_min_max = self.min_max_finder(self.rho)
-            self.parent.DataDict['rho_min_max'] = self.rho_min_max
+
+        # Now calculate rho if needed.
+        if self.GetPlotParam('dens_type') == 1:
+
+            if 'rho' in self.parent.DataDict.keys():
+                self.rho = self.parent.DataDict['rho']
+            else:
+                self.rho = 2*self.FigWrap.LoadKey('densi')[0,:,:] - self.FigWrap.LoadKey('dens')[0,:,:]
+                self.parent.DataDict['rho'] = self.rho
+
+            # Handle the min/max
+            if 'rho_min_max' in self.parent.DataDict.keys():
+                self.rho_min_max = self.parent.DataDict['rho_min_max']
+            else:
+                self.rho_min_max = self.min_max_finder(self.rho)
+                self.parent.DataDict['rho_min_max'] = self.rho_min_max
+
+
+
 
         if 'xaxis_values' in self.parent.DataDict.keys():
             # Generate the x and y axes
@@ -152,8 +191,13 @@ class DensPanel:
 
             # First choose the 'zval' to plot, we can only do one because it is 2-d.
             if self.FigWrap.GetPlotParam('dens_type') == 0:
-                self.zval = self.dens
-                self.two_d_label = r'$n_e$'
+                if self.FigWrap.GetPlotParam('normalize_density'):
+                    self.zval = self.dens*self.ppc0**(-1.0)
+                    self.two_d_label = r'$n_e/n_0$'
+                else:
+                    self.zval = self.dens
+                    self.two_d_label = r'$n_e$'
+
             if self.FigWrap.GetPlotParam('dens_type') == 1:
                 self.zval = self.rho
                 self.two_d_label = r'$\rho$'
@@ -163,21 +207,21 @@ class DensPanel:
             self.xmin = 0
             self.xmax =  self.zval.shape[1]/self.c_omp*self.istep
 
-            self.vmin = None
-            if self.GetPlotParam('set_z_min'):
-                self.vmin = self.GetPlotParam('z_min')
-            self.vmax = None
-            if self.GetPlotParam('set_z_max'):
-                self.vmax = self.GetPlotParam('z_max')
+            self.vmin = self.zval.min()
+            if self.GetPlotParam('set_v_min'):
+                self.vmin = self.GetPlotParam('v_min')
+            self.vmax = self.zval.max()
+            if self.GetPlotParam('set_v_max'):
+                self.vmax = self.GetPlotParam('v_max')
 
 
             if self.parent.plot_aspect:
-                self.cax = self.axes.imshow(self.zval, origin = 'lower')
+                self.cax = self.axes.imshow(self.zval, norm = self.norm(), origin = 'lower')
             else:
-                self.cax = self.axes.imshow(self.zval, origin = 'lower',
+                self.cax = self.axes.imshow(self.zval, norm = self.norm(), origin = 'lower',
                                             aspect = 'auto')
 
-            self.cax.set_cmap(new_cmaps.cmaps[self.parent.cmap])
+            self.cax.set_cmap(new_cmaps.cmaps[self.cmap])
             self.cax.set_extent([self.xmin, self.xmax, self.ymin, self.ymax])
             self.cax.norm.vmin = self.vmin
             self.cax.norm.vmax = self.vmax
@@ -200,18 +244,25 @@ class DensPanel:
             self.axes.set_axis_bgcolor('lightgrey')
 
             self.axC = self.figure.add_subplot(self.gs[:4,:])
-            self.cbar = self.figure.colorbar(self.cax, ax = self.axes, cax = self.axC, orientation = 'horizontal')
-            if self.GetPlotParam('show_cbar'):
-                cmin = self.zval.min()
-                if self.vmin:
-                    cmin = self.vmin
-                cmax = self.zval.max()
-                if self.vmax:
-                    cmax = self.vmax
-                self.cbar.set_ticks(np.linspace(cmin, cmax, 5))
-                self.cbar.ax.tick_params(labelsize=self.parent.num_font_size)
-            else:
+            self.cbar = self.axC.imshow(self.gradient, aspect='auto',
+                                        cmap=new_cmaps.cmaps[self.cmap])
+            # Make the colobar axis more like the real colorbar
+            self.cbar.set_extent([0, 1.0, 0, 1.0])
+            self.axC.tick_params(axis='x',
+                            which = 'both', # bothe major and minor ticks
+                            top = 'off', # turn off top ticks
+                            labelsize=self.parent.num_font_size)
+
+            self.axC.tick_params(axis='y',          # changes apply to the y-axis
+                            which='both',      # both major and minor ticks are affected
+                            left='off',      # ticks along the bottom edge are off
+                            right='off',         # ticks along the top edge are off
+                            labelleft='off')
+
+            if not self.GetPlotParam('show_cbar'):
                 self.axC.set_visible(False)
+            else:
+                self.CbarTickFormatter()
 
             self.axes.set_axis_bgcolor('lightgrey')
             self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
@@ -240,11 +291,30 @@ class DensPanel:
                 self.axes = self.figure.add_subplot(self.gs[18:92,:])
 
             # Make the 1-D plots
-            self.linedens = self.axes.plot(self.xaxis_values, self.dens[self.oneDslice,:], color = self.dens_color)
-            self.linedens[0].set_visible(not self.GetPlotParam('dens_type')) #visible if dens_type == 0
+            if self.GetPlotParam('normalize_density'):
+                self.linedens = self.axes.plot(self.xaxis_values, self.dens[self.oneDslice,:]/self.ppc0, color = self.dens_color)
+            else:
+                self.linedens = self.axes.plot(self.xaxis_values, self.dens[self.oneDslice,:], color = self.dens_color)
+
+            self.linedens[0].set_visible(self.GetPlotParam('dens_type')==0) #visible if dens_type == 0
 
             self.linerho = self.axes.plot(self.xaxis_values, self.dens[self.oneDslice,:], color = self.dens_color)
-            self.linerho[0].set_visible(self.GetPlotParam('dens_type'))
+            if self.GetPlotParam('dens_type')==1:
+                self.linerho[0].set_data(self.xaxis_values, self.rho[self.oneDslice,:])
+                self.axes.set_ylim(self.rho_min_max[0])
+                self.linerho[0].set_visible(True)
+            else:
+                self.linerho[0].set_visible(False)
+
+            #### Set the ylims... there is a problem where it scales the ylims for the invisible lines:
+            if self.GetPlotParam('dens_type') == 0:
+                if self.GetPlotParam('normalize_density'):
+                    self.axes.set_ylim(self.dens_min_max[0]/self.ppc0)
+                else:
+                    self.axes.set_ylim(self.dens_min_max[0])
+            else:
+                self.axes.set_ylim(self.rho_min_max[0])
+
 
 
             self.shock_line =self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
@@ -259,13 +329,15 @@ class DensPanel:
             else:
                 self.axes.set_xlim(self.xaxis_values[0],self.xaxis_values[-1])
 
-            if self.GetPlotParam('set_z_min'):
-                self.axes.set_ylim(ymin = self.GetPlotParam('z_min'))
-            if self.GetPlotParam('set_z_max'):
-                self.axes.set_ylim(ymax = self.GetPlotParam('z_max'))
+            if self.GetPlotParam('set_v_min'):
+                self.axes.set_ylim(ymin = self.GetPlotParam('v_min'))
+            if self.GetPlotParam('set_v_max'):
+                self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
 
             # Handle the axes labeling
             tmp_str = r'$\rm density$'
+            if self.GetPlotParam('normalize_density'):
+                tmp_str = r'${\rm density} \ [n_0]$'
             if self.GetPlotParam('dens_type') == 1:
                 tmp_str = r'$\rho$'
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
@@ -283,8 +355,13 @@ class DensPanel:
         # First do the 1D plots, because it is simpler
         if self.GetPlotParam('twoD') == 0:
             if self.GetPlotParam('dens_type') == 0:
-                self.linedens[0].set_data(self.xaxis_values, self.dens[self.oneDslice,:])
-                self.axes.set_ylim(self.dens_min_max[0])
+                if self.GetPlotParam('normalize_density'):
+                    self.linedens[0].set_data(self.xaxis_values, self.dens[self.oneDslice,:]/self.ppc0)
+                    self.axes.set_ylim(self.dens_min_max[0]/self.ppc0)
+                else:
+                    self.linedens[0].set_data(self.xaxis_values, self.dens[self.oneDslice,:])
+                    self.axes.set_ylim(self.dens_min_max[0])
+
             else:
                 self.linerho[0].set_data(self.xaxis_values, self.rho[self.oneDslice,:])
                 self.axes.set_ylim(self.rho_min_max[0])
@@ -299,19 +376,24 @@ class DensPanel:
                 self.axes.set_xlim(self.xaxis_values[0], self.xaxis_values[-1])
 
 
-            if self.GetPlotParam('set_z_min'):
-                self.axes.set_ylim(ymin = self.GetPlotParam('z_min'))
-            if self.GetPlotParam('set_z_max'):
-                self.axes.set_ylim(ymax = self.GetPlotParam('z_max'))
+            if self.GetPlotParam('set_v_min'):
+                self.axes.set_ylim(ymin = self.GetPlotParam('v_min'))
+            if self.GetPlotParam('set_v_max'):
+                self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
 
         else: # Now refresh the plot if it is 2D
             if self.GetPlotParam('dens_type')==0:
-                self.cax.set_data(self.dens)
+                if self.GetPlotParam('normalize_density'):
+                    self.cax.set_data(self.dens/self.ppc0)
+                    self.clims = np.copy(self.dens_min_max[1])/self.ppc0
+                else:
+                    self.cax.set_data(self.dens)
+                    self.clims = np.copy(self.dens_min_max[1])
                 self.ymin = 0
                 self.ymax =  self.dens.shape[0]/self.c_omp*self.istep
                 self.xmin = 0
                 self.xmax =  self.xaxis_values[-1]
-                self.clims = self.dens_min_max[1]
+
 
             else:
                 self.cax.set_data(self.rho)
@@ -319,7 +401,7 @@ class DensPanel:
                 self.ymax =  self.rho.shape[0]/self.c_omp*self.istep
                 self.xmin = 0
                 self.xmax =  self.xaxis_values[-1]
-                self.clims = self.rho_min_max[1]
+                self.clims = np.copy(self.rho_min_max[1])
 
             self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
             if self.parent.xlim[0]:
@@ -334,21 +416,62 @@ class DensPanel:
 
 
 
+            if self.GetPlotParam('set_v_min'):
+                self.clims[0] =  self.GetPlotParam('v_min')
+            if self.GetPlotParam('set_v_max'):
+                self.clims[1] =  self.GetPlotParam('v_max')
             self.cax.set_clim(self.clims)
 
-            self.climArgs = {}
-            if self.GetPlotParam('set_z_min'):
-                self.climArgs['vmin'] =  self.GetPlotParam('z_min')
-            if self.GetPlotParam('set_z_max'):
-                self.climArgs['vmax'] =  self.GetPlotParam('z_max')
-            if len(self.climArgs)>0:
-                self.cax.set_clim(**self.climArgs)
             if self.GetPlotParam('show_cbar'):
-                self.cbar.set_ticks(np.linspace(self.cax.get_clim()[0],self.cax.get_clim()[1], 5))
-
+                self.CbarTickFormatter()
             if self.GetPlotParam('show_shock'):
                 self.shockline_2d.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
 
+    def CbarTickFormatter(self):
+        ''' A helper function that sets the cbar ticks & labels. This used to be
+        easier, but because I am no longer using the colorbar class i have to do
+        stuff manually.'''
+        self.axC.set_xlim(0,1)
+        self.axC.set_ylim(0,1)
+        clim = np.copy(self.cax.get_clim())
+        if self.GetPlotParam('show_cbar'):
+            if self.GetPlotParam('cnorm_type') == "Log":
+                ctick_range = np.linspace(0, 1, 6)
+                data_val = np.logspace(np.log10(clim[0]),np.log10(clim[1]), 6)
+                self.axC.set_xticks(ctick_range)
+                ctick_labels = []
+                for elm in data_val:
+                    tmp_s = '%.2f' % elm
+                    ctick_labels.append(tmp_s)
+#                print ctick_labels
+                self.axC.set_xticklabels(ctick_labels)
+
+            if self.GetPlotParam('cnorm_type') == "Pow":
+                ctick_range = np.linspace(0, 1, 6)
+                pow_min = np.sign(clim[0])*np.abs(clim[0])**self.FigWrap.GetPlotParam('cpow_num')
+                pow_max = np.sign(clim[1])*np.abs(clim[1])**self.FigWrap.GetPlotParam('cpow_num')
+                data_val = np.sign(np.linspace(pow_min, pow_max, 6))*np.abs(np.linspace(pow_min, pow_max, 6))**(1.0/self.FigWrap.GetPlotParam('cpow_num'))
+                self.axC.set_xticks(ctick_range)
+
+                ctick_labels = []
+                for elm in data_val:
+                    tmp_s = '%.2f' % elm
+                    ctick_labels.append(tmp_s)
+                self.axC.set_xticklabels(ctick_labels)
+
+            if self.GetPlotParam('cnorm_type') == "Linear":
+                ctick_range = np.linspace(0, 1, 6)
+                data_val = np.linspace(clim[0],clim[1], 6)
+                self.axC.set_xticks(ctick_range)
+
+                ctick_labels = []
+                for elm in data_val:
+                    if np.abs(elm)<1E-2:
+                        tmp_s = '0'
+                    else:
+                        tmp_s = '%.2f' % elm
+                    ctick_labels.append(tmp_s)
+                self.axC.set_xticklabels(ctick_labels)
 
     def GetPlotParam(self, keyname):
         return self.FigWrap.GetPlotParam(keyname)
@@ -392,8 +515,8 @@ class DensSettings(Tk.Toplevel):
         self.ctypevar.trace('w', self.ctypeChanged)
 
         ttk.Label(frm, text="Choose Chart Type:").grid(row=0, column = 0)
-        cmapChooser = apply(ttk.OptionMenu, (frm, self.ctypevar, self.parent.chartType) + tuple(self.parent.ChartTypes))
-        cmapChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
+        ctypeChooser = apply(ttk.OptionMenu, (frm, self.ctypevar, self.parent.chartType) + tuple(self.parent.ChartTypes))
+        ctypeChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
 
 
         self.TwoDVar = Tk.IntVar(self) # Create a var to track whether or not to plot in 2-D
@@ -434,22 +557,39 @@ class DensSettings(Tk.Toplevel):
                         command = self.ShockVarHandler)
         cb.grid(row = 6, column = 1, sticky = Tk.W)
 
+        # Normalize Density Var
+        self.NormDVar = Tk.IntVar()
+        self.NormDVar.set(self.parent.GetPlotParam('normalize_density'))
+        cb = ttk.Checkbutton(frm, text = "Normalize to ppc0",
+                        variable = self.NormDVar,
+                        command = self.NormPPCHandler)
+        cb.grid(row = 7, sticky = Tk.W)
+
+        # show labels
+        self.ShowLabels = Tk.IntVar()
+        self.ShowLabels.set(self.parent.GetPlotParam('show_labels'))
+        cb = ttk.Checkbutton(frm, text = "Show Labels 2D",
+                        variable = self.ShowLabels,
+                        command = self.LabelHandler)
+        cb.grid(row = 7, column = 1, sticky = Tk.W)
+
+
         # Now the field lim
         self.setZminVar = Tk.IntVar()
-        self.setZminVar.set(self.parent.GetPlotParam('set_z_min'))
+        self.setZminVar.set(self.parent.GetPlotParam('set_v_min'))
         self.setZminVar.trace('w', self.setZminChanged)
 
         self.setZmaxVar = Tk.IntVar()
-        self.setZmaxVar.set(self.parent.GetPlotParam('set_z_max'))
+        self.setZmaxVar.set(self.parent.GetPlotParam('set_v_max'))
         self.setZmaxVar.trace('w', self.setZmaxChanged)
 
 
 
         self.Zmin = Tk.StringVar()
-        self.Zmin.set(str(self.parent.GetPlotParam('z_min')))
+        self.Zmin.set(str(self.parent.GetPlotParam('v_min')))
 
         self.Zmax = Tk.StringVar()
-        self.Zmax.set(str(self.parent.GetPlotParam('z_max')))
+        self.Zmax.set(str(self.parent.GetPlotParam('v_max')))
 
 
         cb = ttk.Checkbutton(frm, text ='Set dens min',
@@ -485,6 +625,39 @@ class DensSettings(Tk.Toplevel):
 
             self.parent.SetPlotParam('show_cbar', self.CbarVar.get(), update_plot =self.parent.GetPlotParam('twoD'))
 
+    def NormPPCHandler(self, *args):
+        if self.parent.GetPlotParam('normalize_density')== self.NormDVar.get():
+            pass
+        elif np.isnan(self.parent.ppc0):
+            print 'hi'
+            self.NormDVar.set(self.parent.GetPlotParam('normalize_density'))
+        else:
+            # First see if the plot is 2d and change the labels if necessary
+            if self.parent.GetPlotParam('twoD')==1:
+                if self.parent.GetPlotParam('dens_type') == 0:
+                    if self.NormDVar.get():
+                        self.parent.an_2d.set_text(r'$n_e/n_0$')
+                    else:
+                        self.parent.an_2d.set_text(r'$n_e$')
+            # Now for the 1d label
+            else:
+                if self.parent.GetPlotParam('dens_type') == 0:
+                    if self.NormDVar.get():
+                        self.parent.axes.set_ylabel(r'${\rm density}\ [n_0]$')
+                    else:
+                        self.parent.axes.set_ylabel('density')
+
+            self.parent.SetPlotParam('normalize_density', self.NormDVar.get(), update_plot = self.parent.GetPlotParam('dens_type')==0)
+
+    def LabelHandler(self, *args):
+        if self.parent.GetPlotParam('show_labels')== self.ShowLabels.get():
+            pass
+        else:
+            if self.parent.GetPlotParam('twoD'):
+                self.parent.an_2d.set_visible(self.ShowLabels.get())
+
+            self.parent.SetPlotParam('show_labels', self.ShowLabels.get(), update_plot =self.parent.GetPlotParam('twoD'))
+
 
     def Change2d(self):
         if self.TwoDVar.get() == self.parent.GetPlotParam('twoD'):
@@ -509,23 +682,23 @@ class DensSettings(Tk.Toplevel):
             self.parent.SetPlotParam('interpolation', self.InterpolVar.get())
 
     def setZminChanged(self, *args):
-        if self.setZminVar.get() == self.parent.GetPlotParam('set_z_min'):
+        if self.setZminVar.get() == self.parent.GetPlotParam('set_v_min'):
             pass
         else:
-            self.parent.SetPlotParam('set_z_min', self.setZminVar.get())
+            self.parent.SetPlotParam('set_v_min', self.setZminVar.get())
 
     def setZmaxChanged(self, *args):
-        if self.setZmaxVar.get() == self.parent.GetPlotParam('set_z_max'):
+        if self.setZmaxVar.get() == self.parent.GetPlotParam('set_v_max'):
             pass
         else:
-            self.parent.SetPlotParam('set_z_max', self.setZmaxVar.get())
+            self.parent.SetPlotParam('set_v_max', self.setZmaxVar.get())
 
     def TxtEnter(self, e):
         self.FieldsCallback()
 
     def FieldsCallback(self):
         tkvarLimList = [self.Zmin, self.Zmax]
-        plot_param_List = ['z_min', 'z_max']
+        plot_param_List = ['v_min', 'v_max']
         tkvarSetList = [self.setZminVar, self.setZmaxVar]
         to_reload = False
         for j in range(len(tkvarLimList)):
@@ -539,7 +712,7 @@ class DensSettings(Tk.Toplevel):
                 #if they type in random stuff, just set it ot the param value
                 tkvarLimList[j].set(str(self.parent.GetPlotParam(plot_param_List[j])))
         if to_reload:
-            self.parent.SetPlotParam('z_min', self.parent.GetPlotParam('z_min'))
+            self.parent.SetPlotParam('v_min', self.parent.GetPlotParam('v_min'))
 
 
     def RadioField(self):
@@ -548,14 +721,23 @@ class DensSettings(Tk.Toplevel):
         else:
             if self.parent.GetPlotParam('twoD'):
                 if self.DensTypeVar.get() == 0:
-                    self.parent.an_2d.set_text(r'$n_e$')
+                    if self.parent.GetPlotParam('normalize_density'):
+                        self.parent.an_2d.set_text(r'$n_e/n_0$')
+                    else:
+                        self.parent.an_2d.set_text(r'$n_e$')
+
                 else:
                     self.parent.an_2d.set_text(r'$\rho$')
             else:
                 if self.DensTypeVar.get() == 0:
                     self.parent.linerho[0].set_visible(False)
                     self.parent.linedens[0].set_visible(True)
-                    self.parent.axes.set_ylabel('density')
+                    if self.parent.GetPlotParam('normalize_density'):
+                        self.parent.axes.set_ylabel(r'${\rm density}\ [n_0]$')
+                    else:
+                        self.parent.axes.set_ylabel(r'$\rm density$')
+
+
                 else:
                     self.parent.linerho[0].set_visible(True)
                     self.parent.linedens[0].set_visible(False)

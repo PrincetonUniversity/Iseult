@@ -1135,6 +1135,9 @@ class MainApp(Tk.Tk):
         self.re_list = [f_re, prtl_re, s_re, param_re]
 
 
+        # A list that will keep track of whether a given axes is a colorbar or not:
+        self.IsCbarList = []
+
         # The dictionary that holdsd the paths
         self.PathDict = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
 
@@ -1491,7 +1494,7 @@ class MainApp(Tk.Tk):
         self.SubPlotList[2][1].RestoreDefaultPlotParams()
 
 
-        self.RenewCanvas(ForceRedraw = True)
+        self.RenewCanvas(ForceRedraw = True, keep_view = False)
 
     def MakeAllPhase(self):
         # Make a 3x2 plot with the first column being pi-x v x, pi-y v x, pi-z v x
@@ -1543,7 +1546,7 @@ class MainApp(Tk.Tk):
         self.SubPlotList[2][1].PlotParamsDict['PhasePlot']['mom_dim'] = 2
 
 
-        self.RenewCanvas(ForceRedraw = True)
+        self.RenewCanvas(ForceRedraw = True, keep_view = False)
 
     def UpdateGridSpec(self, *args):
         '''A function that handles updates the gridspec that divides up of the
@@ -1627,6 +1630,8 @@ class MainApp(Tk.Tk):
                                     self.DataDict[elm] = 1
                                 if elm == 'c':
                                     self.DataDict[elm]= 0.45
+                                if elm == 'ppc0':
+                                    self.DataDict[elm] = np.NaN
                                 else:
                                     raise
 
@@ -1682,6 +1687,18 @@ class MainApp(Tk.Tk):
                 tmp_ctype_l.append(str(self.SubPlotList[i][j].chartType))
             self.prev_ctype_list.append(tmp_ctype_l)
 
+    def FindCbars(self):
+        ''' A function that will find where all the cbars are in the current view '''
+        self.IsCbarList = []
+        for i in range(self.numOfRows.get()):
+            for j in range(self.numOfColumns.get()):
+                self.IsCbarList.append(False)
+                if self.SubPlotList[i][j].GetPlotParam('twoD') == 1 and not self.SubPlotList[i][j].Changedto2D:
+                    #Note the axes still show up in the view if they are set to zero so we have to do it this way.
+#                    if self.SubPlotList[i][j].GetPlotParam('show_cbar') == 1:
+                    self.IsCbarList.append(True)
+
+
     def SaveView(self):
         # A function that will make sure our view will stay the same as the
         # plot updates.
@@ -1691,21 +1708,13 @@ class MainApp(Tk.Tk):
         self.toolbar._positions.home()
         home_view =  list(self.toolbar._views.__call__())
 
-        # Filter out the colorbar axes
-        cbar_loc = []
-        # find the axes they are tuples that are like (0, 1, 0, 1) (but floats)
-        for k in range(len(cur_view)):
-            first_zero = np.abs(cur_view[k][0])<1E-10
-            second_one = np.abs(cur_view[k][1]-1)<1E-10
-            third_zero = np.abs(cur_view[k][2])<1E-10
-            forth_one = np.abs(cur_view[k][3]-1)<1E-10
-            if first_zero and second_one and third_zero and forth_one:
-                cbar_loc.append(k)
+        # Find cbars
+        self.FindCbars()
 
-        # remove all of them
-        for j in range(len(cbar_loc))[::-1]:
-            cur_view.pop(cbar_loc[j])
-            home_view.pop(cbar_loc[j])
+        # Filter out the colorbar axes
+        for elm in np.where(self.IsCbarList)[0][::-1]:
+            cur_view.pop(elm)
+            home_view.pop(elm)
 
         self.is_changed_list = []
         self.old_views = []
@@ -1721,17 +1730,22 @@ class MainApp(Tk.Tk):
 
         self.toolbar._views.clear()
         self.toolbar.push_current()
-        next_view = list(self.toolbar._views.__call__())
+        cur_view = list(self.toolbar._views.__call__())
 
+        # Find the cbars in the current plot
+        self.FindCbars()
 
         # put the parts that have changed from the old view
         # into the proper place in the next view
         m = 0 # a counter that allows us to go from labeling the plots in [i][j] to 1d
-        k = 0 # A counter that skips over the cbar axes in next_view
+        k = 0 # a counter that skips over the colorbars
         for i in range(self.numOfRows.get()):
             for j in range(self.numOfColumns.get()):
                 tmp_old_view = list(self.old_views.pop(0))
-                tmp_new_view = list(next_view[k])
+
+                if self.IsCbarList[k]:
+                    k += 1
+                tmp_new_view = list(cur_view[k])
                 if self.prev_ctype_list[i][j] == self.SubPlotList[i][j].chartType:
                     # see if the view has changed from the home view
                     is_changed = self.is_changed_list[m]
@@ -1745,24 +1759,17 @@ class MainApp(Tk.Tk):
                         for n in range(4):
                             if is_changed[n]:
                                 tmp_new_view[n] = tmp_old_view[n]
-                next_view[k] = tmp_new_view
+                cur_view[k] = tmp_new_view
                 # Handle the counting of the 'views' array in matplotlib
-                if self.SubPlotList[i][j].GetPlotParam('twoD') == 1:
-                    if self.SubPlotList[i][j].GetPlotParam('show_cbar') == 1:
-                        k += 2
-                    else:
-                        k += 1
-                else:
-                    k += 1
+                #skip over colorbar axes
                 m += 1
+                k += 1
                 self.SubPlotList[i][j].Changedto1D = False
                 self.SubPlotList[i][j].Changedto2D = False
 
-        self.toolbar._views.push(next_view)
+        self.toolbar._views.push(cur_view)
         self.toolbar.set_history_buttons()
         self.toolbar._update_view()
-
-        # We must now figure out the pos of the charts that changed in the earlier view.
 
 
     def RenewCanvas(self, keep_view = True, ForceRedraw = False):
@@ -1781,6 +1788,10 @@ class MainApp(Tk.Tk):
             self.ReDrawCanvas(keep_view = keep_view)
         else:
             self.RefreshCanvas(keep_view = keep_view)
+        # Record the current ctypes for later
+        self.MakePrevCtypeList()
+
+
 #        toc = time.time()
 #        print toc-tic
     def ReDrawCanvas(self, keep_view = True):
@@ -1842,7 +1853,7 @@ class MainApp(Tk.Tk):
         if keep_view:
             self.LoadView()
 
-        self.MakePrevCtypeList()
+
         self.canvas.show()
         self.canvas.get_tk_widget().update_idletasks()
 
@@ -1872,7 +1883,6 @@ class MainApp(Tk.Tk):
 
         # By design, the first_x and first_y cannot change if the graph is
         # being refreshed. Any call that would require this needs a redraw
-        # Find the first position with a physical x and y direction:
 
         if Use_MultiProcess:
             jobs = []
@@ -1901,7 +1911,6 @@ class MainApp(Tk.Tk):
         if keep_view:
             self.LoadView()
 
-        self.MakePrevCtypeList()
         self.canvas.draw()
         self.canvas.get_tk_widget().update_idletasks()
         if self.recording:
