@@ -1687,17 +1687,21 @@ class MainApp(Tk.Tk):
                 tmp_ctype_l.append(str(self.SubPlotList[i][j].chartType))
             self.prev_ctype_list.append(tmp_ctype_l)
 
-    def FindCbars(self):
+    def FindCbars(self, prev = False):
         ''' A function that will find where all the cbars are in the current view '''
         self.IsCbarList = []
         for i in range(self.numOfRows.get()):
             for j in range(self.numOfColumns.get()):
                 self.IsCbarList.append(False)
-                if self.SubPlotList[i][j].GetPlotParam('twoD') == 1 and not self.SubPlotList[i][j].Changedto2D:
+                if prev ==True:
+                    if self.SubPlotList[i][j].GetPlotParam('twoD') == 1 and not self.SubPlotList[i][j].Changedto2D:
                     #Note the axes still show up in the view if they are set to zero so we have to do it this way.
 #                    if self.SubPlotList[i][j].GetPlotParam('show_cbar') == 1:
+                        self.IsCbarList.append(True)
+                    elif self.SubPlotList[i][j].Changedto1D:
+                        self.IsCbarList.append(True)
+                elif self.SubPlotList[i][j].GetPlotParam('twoD') == 1:
                     self.IsCbarList.append(True)
-
 
     def SaveView(self):
         # A function that will make sure our view will stay the same as the
@@ -1709,8 +1713,7 @@ class MainApp(Tk.Tk):
         home_view =  list(self.toolbar._views.__call__())
 
         # Find cbars
-        self.FindCbars()
-
+        self.FindCbars(prev=True)
         # Filter out the colorbar axes
         for elm in np.where(self.IsCbarList)[0][::-1]:
             cur_view.pop(elm)
