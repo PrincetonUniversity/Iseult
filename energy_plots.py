@@ -14,9 +14,8 @@ class EnergyPanel:
 
     plot_param_dict = {'twoD' : 1,
                        'masked': 1,
-                       'norm_type': 'LogNorm',
+                       'cnorm_type': 'Log',
                        'prtl_type': 0,
-                       'pow_num': 0.4,
                        'show_cbar': True,
                        'weighted': False,
                        'show_shock': False,
@@ -36,6 +35,9 @@ class EnergyPanel:
                        'spatial_y': False,
                        'interpolation': 'hermite'}
     prtl_opts = ['proton', 'electron']
+    gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
+    gradient = np.vstack((gradient, gradient))
+
     def __init__(self, parent, figwrapper):
 
         self.settings_window = None
@@ -49,21 +51,15 @@ class EnergyPanel:
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
 
 
-    def UpdatePowNum(self, value):
-        self.SetPlotParam('pow_num', value)
-        if self.GetPlotParam('norm_type') == "PowerNorm":
-            self.draw()
-
     def ChangePlotType(self, str_arg):
         self.FigWrap.ChangeGraph(str_arg)
 
     def norm(self, vmin=None,vmax=None):
-        if self.GetPlotParam('norm_type') =="Linear":
-            return mcolors.Normalize(vmin, vmax)
-        elif self.GetPlotParam('norm_type') == "LogNorm":
+        if self.GetPlotParam('cnorm_type') == 'Log':
             return  mcolors.LogNorm(vmin, vmax)
         else:
-            return  mcolors.PowerNorm(self.FigWrap.GetPlotParam('pow_num'), vmin, vmax)
+            return mcolors.Normalize(vmin, vmax)
+
 
     def set_plot_keys(self):
         '''A helper function that will insure that each hdf5 file will only be
@@ -219,7 +215,7 @@ class EnergyPanel:
 
 
         self.clim = list(self.hist2d[3])
-
+        print self.clim
         if self.GetPlotParam('set_v_min'):
             self.clim[0] = 10**self.GetPlotParam('v_min')
         if self.GetPlotParam('set_v_max'):
@@ -230,11 +226,11 @@ class EnergyPanel:
 
         if self.parent.LinkSpatial == 1:
             if self.FigWrap.pos == self.parent.first_x:
-                self.axes = self.figure.add_subplot(self.gs[18:92,:])
+                self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
             else:
-                self.axes = self.figure.add_subplot(self.gs[18:92,:], sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
+                self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]], sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
         else:
-            self.axes = self.figure.add_subplot(self.gs[18:92,:])
+            self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
         self.cax = self.axes.imshow(self.hist2d[0],
                                     cmap = new_cmaps.cmaps[self.parent.cmap],
                                     norm = self.norm(), origin = 'lower',
@@ -259,8 +255,43 @@ class EnergyPanel:
             self.lineright.set_visible(False)
 
 
-        self.axC = self.figure.add_subplot(self.gs[:4,:])
-        self.cbar = self.figure.colorbar(self.cax, ax = self.axes, cax = self.axC, orientation = 'horizontal')
+        self.axC = self.figure.add_subplot(self.gs[self.parent.cbar_extent[0]:self.parent.cbar_extent[1], self.parent.cbar_extent[2]:self.parent.cbar_extent[3]])
+        # Technically I should use the colorbar class here,
+        # but I found it annoying in some of it's limitations.
+        if self.parent.HorizontalCbars:
+            self.cbar = self.axC.imshow(self.gradient, aspect='auto',
+                                    cmap=new_cmaps.cmaps[self.parent.cmap])
+            # Make the colobar axis more like the real colorbar
+            self.axC.tick_params(axis='x',
+                                which = 'both', # bothe major and minor ticks
+                                top = 'off', # turn off top ticks
+                                labelsize=self.parent.num_font_size)
+
+            self.axC.tick_params(axis='y',          # changes apply to the y-axis
+                                which='both',      # both major and minor ticks are affected
+                                left='off',      # ticks along the bottom edge are off
+                                right='off',         # ticks along the top edge are off
+                                labelleft='off')
+
+        else:
+            self.cbar = self.axC.imshow(np.transpose(self.gradient)[::-1], aspect='auto',
+                                    cmap=new_cmaps.cmaps[self.parent.cmap])
+            # Make the colobar axis more like the real colorbar
+            self.axC.tick_params(axis='x',
+                                which = 'both', # bothe major and minor ticks
+                                top = 'off', # turn off top ticks
+                                bottom = 'off',
+                                labelbottom = 'off',
+                                labelsize=self.parent.num_font_size)
+
+            self.axC.tick_params(axis='y',          # changes apply to the y-axis
+                                which='both',      # both major and minor ticks are affected
+                                left='off',      # ticks along the bottom edge are off
+                                right='on',         # ticks along the top edge are off
+                                labelleft='off',
+                                labelright='on',
+                                labelsize=self.parent.num_font_size)
+
 
         if not self.GetPlotParam('show_cbar'):
             self.axC.set_visible(False)
@@ -268,7 +299,6 @@ class EnergyPanel:
 
         self.axes.set_axis_bgcolor('lightgrey')
         self.axes.tick_params(labelsize = self.parent.num_font_size, color=self.tick_color)
-        self.cbar.ax.tick_params(labelsize=self.parent.num_font_size)
 
         self.axes.set_xlabel(self.x_label, labelpad = self.parent.xlabel_pad, color = 'black')
         self.axes.set_ylabel(self.y_label, labelpad = self.parent.ylabel_pad, color = 'black')
@@ -307,17 +337,7 @@ class EnergyPanel:
         self.cax.set_clim(self.clim)
 
         if self.GetPlotParam('show_cbar'):
-            ctick_range = np.logspace(np.log10(self.clim[0]),np.log10(self.clim[1]), 5)
-            self.cbar.set_ticks(ctick_range)
-            ctick_labels = []
-            for elm in ctick_range:
-                if np.abs(np.log10(elm))<1E-2:
-                    tmp_s = '0'
-                else:
-                    tmp_s = '%.2f' % np.log10(elm)
-                ctick_labels.append(tmp_s)
-            self.cbar.set_ticklabels(ctick_labels)
-
+            self.CbarTickFormatter()
         if self.GetPlotParam('show_shock'):
             self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
 
@@ -358,6 +378,30 @@ class EnergyPanel:
             self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
         else:
             self.axes.set_xlim(self.xmin,self.xmax)
+
+    def CbarTickFormatter(self):
+        ''' A helper function that sets the cbar ticks & labels. This used to be
+        easier, but because I am no longer using the colorbar class i have to do
+        stuff manually.'''
+        clim = np.copy(self.cax.get_clim())
+        print clim
+        if self.GetPlotParam('show_cbar'):
+            if self.GetPlotParam('cnorm_type') == "Log":
+                if self.parent.HorizontalCbars:
+                    self.cbar.set_extent([np.log10(clim[0]),np.log10(clim[1]),0,1])
+                    self.axC.set_xlim(np.log10(clim[0]),np.log10(clim[1]))
+                else:
+                    self.cbar.set_extent([0,1,np.log10(clim[0]),np.log10(clim[1])])
+                    self.axC.set_ylim(np.log10(clim[0]),np.log10(clim[1]))
+                    self.axC.locator_params(axis='y',nbins=6)
+            else:# self.GetPlotParam('cnorm_type') == "Linear":
+                if self.parent.HorizontalCbars:
+                    self.cbar.set_extent([clim[0], clim[1], 0, 1])
+                    self.axC.set_xlim(clim[0], clim[1])
+                else:
+                    self.cbar.set_extent([0, 1, clim[0], clim[1]])
+                    self.axC.set_ylim(clim[0], clim[1])
+                    self.axC.locator_params(axis='y', nbins=6)
 
     def GetPlotParam(self, keyname):
         return self.FigWrap.GetPlotParam(keyname)
@@ -432,22 +476,7 @@ class EnergySettings(Tk.Toplevel):
                 command = self.RadioDim,
                 value=i).grid(row = 2+i, column = 1, sticky = Tk.W)
 
-        ''' Commenting out some lines that allows you to change the color norm,
-        No longer needed
-        self.cnormList = ['Linear', 'LogNorm', 'PowerNorm']
-        self.normvar = Tk.IntVar()
-        self.normvar.set(self.cnormList.index(self.parent.GetPlotParam('norm_type')))
 
-        ttk.Label(frm, text = 'Cmap Norm:').grid(row = 6, sticky = Tk.W)
-
-        for i in range(3):
-            ttk.Radiobutton(frm,
-                            text = self.cnormList[i],
-                            variable = self.normvar,
-                            command = self.RadioNorm,
-                            value = i).grid(row = 7+i, sticky = Tk.W)
-
-        '''
         # Control whether or not Cbar is shown
         self.CbarVar = Tk.IntVar()
         self.CbarVar.set(self.parent.GetPlotParam('show_cbar'))
@@ -646,11 +675,6 @@ class EnergySettings(Tk.Toplevel):
             self.parent.SetPlotParam('mom_dim', self.dimvar.get())
 
 
-    def RadioNorm(self):
-        if self.cnormList[self.normvar.get()] == self.parent.GetPlotParam('norm_type'):
-            pass
-        else:
-            self.parent.SetPlotParam('norm_type', self.cnormList[self.normvar.get()])
 
     def setVminChanged(self, *args):
         if self.setVminVar.get() == self.parent.GetPlotParam('set_v_min'):

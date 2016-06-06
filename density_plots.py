@@ -5,7 +5,7 @@ import matplotlib
 import numpy as np
 import numpy.ma as ma
 import new_cmaps
-from new_cnorms import PowerNormWithNeg
+from new_cnorms import PowerNormWithNeg, PowerNormFunc
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
@@ -30,9 +30,12 @@ class DensPanel:
                        'spatial_y': None,
                        'interpolation': 'nearest',
                        'normalize_density': True, # Normalize density to it's upstream values
-                       'cnorm_type': 'Linear', # Colormap norm;  options are Log, Pow or Linear
+                       'cnorm_type': 'Linear', # Colormap norm;  options are Pow or Linear
                        'cpow_num': 0.6, # Used in the PowerNorm
                        'interpolation': 'nearest',
+                       'UseDivCmap': False,
+                       'div_midpoint': 0.0,
+                       'stretch_colors': False,
                        'cmap': None # If cmap is none, the plot will inherit the parent's cmap
                        }
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
@@ -52,11 +55,14 @@ class DensPanel:
 
     def norm(self, vmin=None, vmax=None):
         if self.GetPlotParam('cnorm_type') =="Linear":
-            return mcolors.Normalize(vmin, vmax)
+            if self.GetPlotParam('UseDivCmap'):
+                return PowerNormWithNeg(1.0, vmin, vmax, midpoint = self.GetPlotParam('div_midpoint'), stretch_colors = self.GetPlotParam('stretch_colors'))
+            else:
+                return mcolors.Normalize(vmin, vmax)
         elif self.GetPlotParam('cnorm_type') == "Log":
             return  mcolors.LogNorm(vmin, vmax)
         else:
-            return  PowerNormWithNeg(self.FigWrap.GetPlotParam('cpow_num'), vmin, vmax)
+            return PowerNormWithNeg(self.GetPlotParam('cpow_num'), vmin, vmax, div_cmap = self.GetPlotParam('UseDivCmap'),midpoint = self.GetPlotParam('div_midpoint'), stretch_colors = self.GetPlotParam('stretch_colors'))
 
     def ChangePlotType(self, str_arg):
         self.FigWrap.ChangeGraph(str_arg)
@@ -80,7 +86,11 @@ class DensPanel:
     def LoadData(self):
         ''' A Helper function that loads the data for the plot'''
         if self.GetPlotParam('cmap') is None:
-            self.cmap = self.parent.cmap
+            if self.GetPlotParam('UseDivCmap'):
+                self.cmap = self.parent.div_cmap
+            else:
+                self.cmap = self.parent.cmap
+
         else:
             self.cmap = self.GetPlotParam('cmap')
 
@@ -173,21 +183,21 @@ class DensPanel:
             # Link up the spatial axes if desired
             if self.parent.LinkSpatial != 0:
                 if self.FigWrap.pos == self.parent.first_x and self.FigWrap.pos == self.parent.first_y:
-                    self.axes = self.figure.add_subplot(self.gs[18:92,:])
+                    self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
                 elif self.FigWrap.pos == self.parent.first_x:
-                    self.axes = self.figure.add_subplot(self.gs[18:92,:],
+                    self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]],
                     sharey = self.parent.SubPlotList[self.parent.first_y[0]][self.parent.first_y[1]].graph.axes)
                 elif self.FigWrap.pos == self.parent.first_y:
-                    self.axes = self.figure.add_subplot(self.gs[18:92,:],
+                    self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]],
                     sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
                 else:
-                    self.axes = self.figure.add_subplot(self.gs[18:92,:],
+                    self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]],
                     sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes,
                     sharey = self.parent.SubPlotList[self.parent.first_y[0]][self.parent.first_y[1]].graph.axes)
 
 
             else:
-                self.axes = self.figure.add_subplot(self.gs[18:92,:])
+                self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
 
             # First choose the 'zval' to plot, we can only do one because it is 2-d.
             if self.FigWrap.GetPlotParam('dens_type') == 0:
@@ -243,21 +253,41 @@ class DensPanel:
 
             self.axes.set_axis_bgcolor('lightgrey')
 
-            self.axC = self.figure.add_subplot(self.gs[:4,:])
-            self.cbar = self.axC.imshow(self.gradient, aspect='auto',
-                                        cmap=new_cmaps.cmaps[self.cmap])
-            # Make the colobar axis more like the real colorbar
-            self.cbar.set_extent([0, 1.0, 0, 1.0])
-            self.axC.tick_params(axis='x',
-                            which = 'both', # bothe major and minor ticks
-                            top = 'off', # turn off top ticks
-                            labelsize=self.parent.num_font_size)
+            self.axC = self.figure.add_subplot(self.gs[self.parent.cbar_extent[0]:self.parent.cbar_extent[1], self.parent.cbar_extent[2]:self.parent.cbar_extent[3]])
+            if self.parent.HorizontalCbars:
+                self.cbar = self.axC.imshow(self.gradient, aspect='auto',
+                                            cmap=new_cmaps.cmaps[self.cmap])
+                # Make the colobar axis more like the real colorbar
+                self.cbar.set_extent([0, 1.0, 0, 1.0])
+                self.axC.tick_params(axis='x',
+                                which = 'both', # bothe major and minor ticks
+                                top = 'off', # turn off top ticks
+                                labelsize=self.parent.num_font_size)
 
-            self.axC.tick_params(axis='y',          # changes apply to the y-axis
-                            which='both',      # both major and minor ticks are affected
-                            left='off',      # ticks along the bottom edge are off
-                            right='off',         # ticks along the top edge are off
-                            labelleft='off')
+                self.axC.tick_params(axis='y',          # changes apply to the y-axis
+                                which='both',      # both major and minor ticks are affected
+                                left='off',      # ticks along the bottom edge are off
+                                right='off',         # ticks along the top edge are off
+                                labelleft='off')
+            else: #Cbar is on the vertical
+                self.cbar = self.axC.imshow(np.transpose(self.gradient)[::-1], aspect='auto',
+                                            cmap=new_cmaps.cmaps[self.cmap])
+                # Make the colobar axis more like the real colorbar
+                self.cbar.set_extent([0, 1.0, 0, 1.0])
+                self.axC.tick_params(axis='x',
+                                which = 'both', # bothe major and minor ticks
+                                top = 'off', # turn off top ticks
+                                bottom = 'off', # turn off top ticks
+                                labelbottom = 'off', # turn off top ticks
+                                labelsize=self.parent.num_font_size)
+
+                self.axC.tick_params(axis='y',          # changes apply to the y-axis
+                                which='both',      # both major and minor ticks are affected
+                                left='off',      # ticks along the bottom edge are off
+                                right='on',         # ticks along the top edge are off
+                                labelleft='off',
+                                labelright = 'on',
+                                labelsize = self.parent.num_font_size)
 
             if not self.GetPlotParam('show_cbar'):
                 self.axC.set_visible(False)
@@ -283,12 +313,12 @@ class DensPanel:
             # Do the 1D Plots
             if self.parent.LinkSpatial != 0 and self.parent.LinkSpatial != 3:
                 if self.FigWrap.pos == self.parent.first_x:
-                    self.axes = self.figure.add_subplot(self.gs[18:92,:])
+                    self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
                 else:
-                    self.axes = self.figure.add_subplot(self.gs[18:92,:],
+                    self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]],
                     sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
             else:
-                self.axes = self.figure.add_subplot(self.gs[18:92,:])
+                self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
 
             # Make the 1-D plots
             if self.GetPlotParam('normalize_density'):
@@ -431,53 +461,62 @@ class DensPanel:
         ''' A helper function that sets the cbar ticks & labels. This used to be
         easier, but because I am no longer using the colorbar class i have to do
         stuff manually.'''
-        self.axC.set_xlim(0,1)
-        self.axC.set_ylim(0,1)
         clim = np.copy(self.cax.get_clim())
         if self.GetPlotParam('show_cbar'):
             if self.GetPlotParam('cnorm_type') == "Log":
-                ctick_range = np.linspace(0, 1, 6)
-                data_val = np.logspace(np.log10(clim[0]),np.log10(clim[1]), 6)
-                self.axC.set_xticks(ctick_range)
-                ctick_labels = []
-                for elm in data_val:
-                    tmp_s = '%.2f' % elm
-                    ctick_labels.append(tmp_s)
-#                print ctick_labels
-                self.axC.set_xticklabels(ctick_labels)
+                self.cbar.set_extent([np.log10(clim[0]),np.log10(clim[1]),0,1])
+                self.axC.set_xlim(np.log10(clim[0]),np.log10(clim[1]))
 
-            if self.GetPlotParam('cnorm_type') == "Pow":
-                ctick_range = np.linspace(0, 1, 6)
-                pow_min = np.sign(clim[0])*np.abs(clim[0])**self.FigWrap.GetPlotParam('cpow_num')
-                pow_max = np.sign(clim[1])*np.abs(clim[1])**self.FigWrap.GetPlotParam('cpow_num')
-                data_val = np.sign(np.linspace(pow_min, pow_max, 6))*np.abs(np.linspace(pow_min, pow_max, 6))**(1.0/self.FigWrap.GetPlotParam('cpow_num'))
-                self.axC.set_xticks(ctick_range)
+            elif self.GetPlotParam('cnorm_type') == "Pow":
+                # re-create the gradient with the data values
+                # First make a colorbar in the negative region that is linear in the pow_space
+                data_range = np.linspace(clim[0],clim[1],512)
 
-                ctick_labels = []
-                for elm in data_val:
-                    tmp_s = '%.2f' % elm
-                    ctick_labels.append(tmp_s)
-                self.axC.set_xticklabels(ctick_labels)
+                cbardata = PowerNormFunc(data_range, vmin = data_range[0], vmax = data_range[-1], gamma = self.GetPlotParam('cpow_num'), midpoint = self.GetPlotParam('div_midpoint'), div_cmap = self.GetPlotParam('UseDivCmap'), stretch_colors = self.GetPlotParam('stretch_colors'))
+                cbardata = np.vstack((cbardata,cbardata))
+                if self.parent.HorizontalCbars:
+                    self.cbar.set_data(cbardata)
+                    self.cbar.set_extent([clim[0],clim[1],0,1])
+                    self.axC.set_xlim(clim[0],clim[1])
+                else:
+                    self.cbar.set_data(np.transpose(cbardata)[::-1])
+                    self.cbar.set_extent([0,1,clim[0],clim[1]])
+                    self.axC.set_ylim(clim[0],clim[1])
+                    self.axC.locator_params(axis='y',nbins=6)
 
-            if self.GetPlotParam('cnorm_type') == "Linear":
-                ctick_range = np.linspace(0, 1, 6)
-                data_val = np.linspace(clim[0],clim[1], 6)
-                self.axC.set_xticks(ctick_range)
+            elif self.GetPlotParam('cnorm_type') == "Linear" and self.GetPlotParam('UseDivCmap'):
+                # re-create the gradient with the data values
+                # First make a colorbar in the negative region that is linear in the pow_space
+                data_range = np.linspace(clim[0],clim[1],512)
 
-                ctick_labels = []
-                for elm in data_val:
-                    if np.abs(elm)<1E-2:
-                        tmp_s = '0'
-                    else:
-                        tmp_s = '%.2f' % elm
-                    ctick_labels.append(tmp_s)
-                self.axC.set_xticklabels(ctick_labels)
+                cbardata = PowerNormFunc(data_range, vmin = data_range[0], vmax = data_range[-1], gamma = 1.0, div_cmap = self.GetPlotParam('UseDivCmap'), midpoint = self.GetPlotParam('div_midpoint'), stretch_colors = self.GetPlotParam('stretch_colors'))
+                cbardata = np.vstack((cbardata,cbardata))
+                if self.parent.HorizontalCbars:
+                    self.cbar.set_data(cbardata)
+                    self.cbar.set_extent([clim[0],clim[1],0,1])
+                    self.axC.set_xlim(clim[0],clim[1])
+                else:
+                    self.cbar.set_data(np.transpose(cbardata)[::-1])
+                    self.cbar.set_extent([0,1,clim[0],clim[1]])
+                    self.axC.set_ylim(clim[0],clim[1])
+                    self.axC.locator_params(axis='y',nbins=6)
+
+            else:# self.GetPlotParam('cnorm_type') == "Linear":
+                if self.parent.HorizontalCbars:
+#                    self.cbar.set_data(self.gradient)
+                    self.cbar.set_extent([clim[0],clim[1],0,1])
+                    self.axC.set_xlim(clim[0],clim[1])
+                else:
+#                    self.cbar.set_data(np.transpose(self.gradient)[::-1])
+                    self.cbar.set_extent([0,1,clim[0],clim[1]])
+                    self.axC.set_ylim(clim[0],clim[1])
+                    self.axC.locator_params(axis='y',nbins=6)
 
     def GetPlotParam(self, keyname):
         return self.FigWrap.GetPlotParam(keyname)
 
-    def SetPlotParam(self, keyname, value, update_plot = True):
-        self.FigWrap.SetPlotParam(keyname, value, update_plot = update_plot)
+    def SetPlotParam(self, keyname, value, update_plot = True, NeedsRedraw = False):
+        self.FigWrap.SetPlotParam(keyname, value, update_plot = update_plot, NeedsRedraw = NeedsRedraw)
 
     def OpenSettings(self):
         if self.settings_window is None:
@@ -572,6 +611,40 @@ class DensSettings(Tk.Toplevel):
                         variable = self.ShowLabels,
                         command = self.LabelHandler)
         cb.grid(row = 7, column = 1, sticky = Tk.W)
+        # Control whether or not diverging cmap is used
+        self.DivVar = Tk.IntVar()
+        self.DivVar.set(self.parent.GetPlotParam('UseDivCmap'))
+        cb = ttk.Checkbutton(frm, text = "Use Diverging Cmap",
+                        variable = self.DivVar,
+                        command = self.DivHandler)
+        cb.grid(row = 8, sticky = Tk.W)
+
+        # Use full div cmap
+        self.StretchVar = Tk.IntVar()
+        self.StretchVar.set(self.parent.GetPlotParam('stretch_colors'))
+        cb = ttk.Checkbutton(frm, text = "Asymmetric Color Space",
+                        variable = self.StretchVar,
+                        command = self.StretchHandler)
+        cb.grid(row = 9, column = 0, columnspan =2, sticky = Tk.W)
+
+        # Create the OptionMenu to chooses the cnorm_type:
+        self.cnormvar = Tk.StringVar(self)
+        self.cnormvar.set(self.parent.chartType) # default value
+        self.cnormvar.trace('w', self.cnormChanged)
+
+        ttk.Label(frm, text="Choose Color Norm:").grid(row=6, column = 2)
+        cnormChooser = apply(ttk.OptionMenu, (frm, self.cnormvar, self.parent.GetPlotParam('cnorm_type')) + tuple(['Pow', 'Linear']))
+        cnormChooser.grid(row =6, column = 3, sticky = Tk.W + Tk.E)
+
+        # Now the gamma of the pow norm
+        self.powGamma = Tk.StringVar()
+        self.powGamma.set(str(self.parent.GetPlotParam('cpow_num')))
+        ttk.Label(frm, text ='gamma =').grid(row = 7, column = 2, sticky =Tk.E)
+        ttk.Label(frm, text ='If cnorm is Pow =>').grid(row = 8, column = 2,columnspan = 2, sticky =Tk.W)
+        ttk.Label(frm, text ='sign(data)*|data|**gamma').grid(row = 9, column = 2,columnspan = 2, sticky =Tk.E)
+
+        self.GammaEnter = ttk.Entry(frm, textvariable=self.powGamma, width=7)
+        self.GammaEnter.grid(row = 7, column = 3)
 
 
         # Now the field lim
@@ -624,6 +697,32 @@ class DensSettings(Tk.Toplevel):
                 self.parent.axC.set_visible(self.CbarVar.get())
 
             self.parent.SetPlotParam('show_cbar', self.CbarVar.get(), update_plot =self.parent.GetPlotParam('twoD'))
+
+    def DivHandler(self, *args):
+        if self.parent.GetPlotParam('UseDivCmap')== self.DivVar.get():
+            pass
+        elif self.parent.GetPlotParam('twoD'):
+            self.parent.SetPlotParam('UseDivCmap', self.DivVar.get(),  NeedsRedraw = True)
+        else:
+            self.parent.SetPlotParam('UseDivCmap', self.DivVar.get(),  update_plot = False)
+
+
+    def StretchHandler(self, *args):
+        if self.parent.GetPlotParam('stretch_colors')== self.StretchVar.get():
+            pass
+        elif self.parent.GetPlotParam('twoD'):
+            self.parent.SetPlotParam('stretch_colors', self.StretchVar.get(), NeedsRedraw = True)
+        else:
+            self.parent.SetPlotParam('stretch_colors', self.StretchVar.get(), update_plot = False)
+
+    def cnormChanged(self, *args):
+        if self.parent.GetPlotParam('cnorm_type')== self.cnormvar.get():
+            pass
+        elif self.parent.GetPlotParam('twoD'):
+            self.parent.SetPlotParam('cnorm_type', self.cnormvar.get(), NeedsRedraw = True)
+        else:
+            self.parent.SetPlotParam('cnorm_type', self.cnormvar.get(), update_plot = False)
+
 
     def NormPPCHandler(self, *args):
         if self.parent.GetPlotParam('normalize_density')== self.NormDVar.get():
@@ -695,6 +794,22 @@ class DensSettings(Tk.Toplevel):
 
     def TxtEnter(self, e):
         self.FieldsCallback()
+        self.GammaCallback()
+
+    def GammaCallback(self):
+        try:
+        #make sure the user types in a float
+            if np.abs(float(self.powGamma.get()) - self.parent.GetPlotParam('cpow_num')) > 1E-4:
+                if self.parent.GetPlotParam('twoD') and self.parent.GetPlotParam('cnorm_type')=='Pow':
+                    self.parent.SetPlotParam('cpow_num', float(self.powGamma.get()), NeedsRedraw = True)
+
+                else:
+                    self.parent.SetPlotParam('cpow_num', float(self.powGamma.get()), update_plot = False)
+
+        except ValueError:
+            #if they type in random stuff, just set it ot the param value
+            self.powGamma.set(str(self.parent.GetPlotParam('cpow_num')))
+
 
     def FieldsCallback(self):
         tkvarLimList = [self.Zmin, self.Zmax]

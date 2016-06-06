@@ -186,7 +186,7 @@ class SpectralPanel:
         # Create a gridspec to handle spacing better
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])#, bottom=0.2,left=0.1,right=0.95, top = 0.95)
 
-        self.axes = self.figure.add_subplot(self.gs[18:92,:])
+        self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
 
         self.ion_spect = self.axes.plot(self.momentum, self.mompdist, color = self.parent.ion_color)
         if not self.GetPlotParam('show_ions'):

@@ -3607,7 +3607,7 @@ for (name, data) in (('magma', _magma_data),
                      ('Rainbow + White', _rainbow_and_white_data),
                      ('Cube YF', _cube_YF_data),
                      ('vort', _vort_data),
-                     ('blue-green diverging', _bluegreen_div_data),
+                     ('BlGr', _bluegreen_div_data),
                      ('Linear_L', _Linear_L_data)):
 
     cmaps[name] = ListedColormap(data, name=name)
@@ -3616,5 +3616,18 @@ for (name, data) in (('magma', _magma_data),
 cmaps['gnuplot'] = get_cmap('gnuplot')
 cmaps['gnuplot2'] = get_cmap('gnuplot2')
 cmaps['coolwarm'] = get_cmap('coolwarm')
+cmaps['BuYlRd'] = get_cmap('RdYlBu_r')
+cmaps['PuOr'] = get_cmap('PuOr')
+cmaps['Spectral'] = get_cmap('Spectral_r')
+cmaps['RdYlGn'] = get_cmap('RdYlGn')
+cmaps['PiYG'] = get_cmap('PiYG')
+cmaps['PRGn'] = get_cmap('PRGn')
+cmaps['RdBu'] = get_cmap('RdBu')
 #cmaps['winter'] = get_cmap('winter')
 #cmaps['nipy_spectral'] = get_cmap('nipy_spectral')
+
+sequential = ['magma', 'inferno', 'plasma', 'viridis', 'temperature',
+                'Linear_L', 'Blue/Green/Red/Yellow', 'Rainbow + White',
+                'Cube YF', 'gnuplot', 'gnuplot2']
+
+diverging = ['vort', 'BlGr', 'coolwarm', 'BuYlRd', 'Spectral', 'PiYG', 'RdBu', 'PRGn', 'PuOr','RdYlGn']

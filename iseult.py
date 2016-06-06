@@ -107,8 +107,7 @@ class SubPlotWrapper:
         else:
             self.PlotParamsDict[ctype] = {key: self.PlotTypeDict[ctype].plot_param_dict[key] for key in self.PlotTypeDict[ctype].plot_param_dict.keys()}
 
-    def SetPlotParam(self, pname, val, ctype = None, update_plot = True):
-        NeedsRedraw = False
+    def SetPlotParam(self, pname, val, ctype = None, update_plot = True, NeedsRedraw = False):
         if ctype is None:
             ctype = self.chartType
         # Check to see if a plot is changed from 1d to 2d
@@ -411,30 +410,40 @@ class SettingsFrame(Tk.Toplevel):
         self.waitEnter.grid(row =1, column = 1, sticky = Tk.W + Tk.E)
 
         # Have a list of the color maps
-        self.cmapList = new_cmaps.cmaps.keys()
         self.cmapvar = Tk.StringVar(self)
         self.cmapvar.set(self.parent.cmap) # default value
         self.cmapvar.trace('w', self.CmapChanged)
 
         ttk.Label(frm, text="Color map:").grid(row=2)
-        cmapChooser = apply(ttk.OptionMenu, (frm, self.cmapvar, self.parent.cmap) + tuple(self.cmapList))
+        cmapChooser = apply(ttk.OptionMenu, (frm, self.cmapvar, self.parent.cmap) + tuple(new_cmaps.sequential))
         cmapChooser.grid(row =2, column = 1, sticky = Tk.W + Tk.E)
+
+        # Have a list of the color maps
+        self.divcmapList = new_cmaps.cmaps.keys()
+        self.div_cmapvar = Tk.StringVar(self)
+        self.div_cmapvar.set(self.parent.div_cmap) # default value
+        self.div_cmapvar.trace('w', self.DivCmapChanged)
+
+        ttk.Label(frm, text="Diverging Cmap:").grid(row=3)
+        cmapChooser = apply(ttk.OptionMenu, (frm, self.div_cmapvar, self.parent.div_cmap) + tuple(new_cmaps.diverging))
+        cmapChooser.grid(row =3, column = 1, sticky = Tk.W + Tk.E)
+
 
         # Make an entry to change the number of columns
         self.columnNum = Tk.StringVar(self)
         self.columnNum.set(self.parent.numOfColumns.get()) # default value
         self.columnNum.trace('w', self.ColumnNumChanged)
-        ttk.Label(frm, text="# of columns:").grid(row=3)
+        ttk.Label(frm, text="# of columns:").grid(row=4)
         self.ColumnSpin = Spinbox(frm,  from_=1, to=self.parent.maxCols, textvariable=self.columnNum, width = 6)
-        self.ColumnSpin.grid(row =3, column = 1, sticky = Tk.W + Tk.E)
+        self.ColumnSpin.grid(row =4, column = 1, sticky = Tk.W + Tk.E)
 
         # Make an entry to change the number of columns
         self.rowNum = Tk.StringVar(self)
         self.rowNum.set(self.parent.numOfRows.get()) # default value
         self.rowNum.trace('w', self.RowNumChanged)
-        ttk.Label(frm, text="# of rows:").grid(row=4)
+        ttk.Label(frm, text="# of rows:").grid(row=5)
         self.RowSpin = Spinbox(frm, from_=1, to=self.parent.maxRows, textvariable=self.rowNum, width = 6)
-        self.RowSpin.grid(row =4, column = 1, sticky = Tk.W + Tk.E)
+        self.RowSpin.grid(row =5, column = 1, sticky = Tk.W + Tk.E)
 
         # Control whether or not Title is shown
         self.TitleVar = Tk.IntVar()
@@ -486,8 +495,7 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Show Title",
                         variable = self.TitleVar)
-        cb.grid(row = 10, sticky = Tk.N)
-
+        cb.grid(row = 10, sticky = Tk.W)
         # Control whether or not axes are shared with a radio box:
         self.toLinkList = ['None', 'All spatial', 'All non p-x', 'All 2-D spatial']
         self.LinkedVar = Tk.IntVar()
@@ -508,16 +516,25 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Aspect = 1",
                                 variable = self.AspectVar)
-        cb.grid(row = 10, column = 1, sticky = Tk.N)
+        cb.grid(row = 11, sticky = Tk.W)
+
+        self.CbarOrientation = Tk.IntVar()
+        self.CbarOrientation.set(self.parent.HorizontalCbars)
+        self.CbarOrientation.trace('w', self.OrientationChanged)
+
+        cb = ttk.Checkbutton(frm, text = "Horizontal Colorbars",
+                                variable = self.CbarOrientation)
+        cb.grid(row = 12, sticky = Tk.W)
+
 
         self.LorentzBoostVar = Tk.IntVar()
         self.LorentzBoostVar.set(self.parent.DoLorentzBoost)
         self.LorentzBoostVar.trace('w', self.LorentzBoostChanged)
-        cb = ttk.Checkbutton(frm, text='Boost PhasePlots', variable =  self.LorentzBoostVar).grid(row = 11, sticky = Tk.W)
-        ttk.Label(frm, text='Gamma/Beta (- for left boost)=').grid(row= 11, column =1, sticky = Tk.E)
+        cb = ttk.Checkbutton(frm, text='Boost PhasePlots', variable =  self.LorentzBoostVar).grid(row = 13, sticky = Tk.W)
+        ttk.Label(frm, text='Gamma/Beta (- for left boost)=').grid(row= 13, column =1, sticky = Tk.E)
         self.GammaVar = Tk.StringVar()
         self.GammaVar.set(str(self.parent.GammaBoost))
-        ttk.Entry(frm, textvariable=self.GammaVar, width = 7).grid(row = 11, column = 2, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.GammaVar, width = 7).grid(row = 13, column = 2, sticky = Tk.N)
 
     def AspectVarChanged(self, *args):
         if self.AspectVar.get() == self.parent.plot_aspect:
@@ -525,6 +542,23 @@ class SettingsFrame(Tk.Toplevel):
 
         else:
             self.parent.plot_aspect = self.AspectVar.get()
+            self.parent.RenewCanvas(ForceRedraw = True)
+
+    def OrientationChanged(self, *args):
+        if self.CbarOrientation.get() == self.parent.HorizontalCbars:
+            pass
+
+        else:
+            if self.CbarOrientation.get():
+                self.parent.axes_extent = [18,92,0,-1]
+                self.parent.cbar_extent = [0,4,0,-1]
+                self.parent.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.93, 'bottom':0.06, 'wspace':0.15, 'hspace':0.15}
+
+            else:
+                self.parent.axes_extent = [4,90,0,92]
+                self.parent.cbar_extent = [4,90,95,98]
+                self.parent.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.93, 'bottom':0.06, 'wspace':0.2, 'hspace':0.15}
+            self.parent.HorizontalCbars = self.CbarOrientation.get()
             self.parent.RenewCanvas(ForceRedraw = True)
 
 
@@ -571,6 +605,14 @@ class SettingsFrame(Tk.Toplevel):
                 self.parent.electron_fit_color = 'lime'
 
 
+            self.parent.RenewCanvas(ForceRedraw = True)
+
+    def DivCmapChanged(self, *args):
+    # Note here that Tkinter passes an event object to onselect()
+        if self.div_cmapvar.get() == self.parent.div_cmap:
+            pass
+        else:
+            self.parent.div_cmap = self.div_cmapvar.get()
             self.parent.RenewCanvas(ForceRedraw = True)
 
 
@@ -1064,6 +1106,7 @@ class MainApp(Tk.Tk):
 
         # a list of cmaps with orange prtl colors
         self.cmaps_with_green = ['viridis', 'Rainbow + White', 'Blue/Green/Red/Yellow', 'Cube YF', 'Linear_L']
+
         # A param to define whether to share axes
         # 0 : No axes are shared
         # 1 : All axes are shared
@@ -1071,6 +1114,19 @@ class MainApp(Tk.Tk):
         # 3 : All 2-D, non p-x plots are shared
         self.LinkSpatial = 2
 
+        # Should cbars be horizontal?
+        self.HorizontalCbars = False
+        # A param that will hold the the main axes extent
+        if self.HorizontalCbars:
+            self.axes_extent = [18,92,0,-1]
+            self.cbar_extent = [0,4,0,-1]
+            self.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.93, 'bottom':0.06, 'wspace':0.15, 'hspace':0.15}
+
+        else:
+            self.axes_extent = [4,90,0,92]
+            self.cbar_extent = [4,90,95,98]
+            self.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.93, 'bottom':0.06, 'wspace':0.2, 'hspace':0.15}
+        matplotlib.rc('figure.subplot', **self.SubPlotParams)
         # A param that sets the aspect ratio for the spatial, 2d plots
         self.plot_aspect = 0
 
@@ -1106,8 +1162,6 @@ class MainApp(Tk.Tk):
         self.numOfColumns.set(2)
         self.numOfColumns.trace('w', self.UpdateGridSpec)
 
-        self.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.93, 'bottom':0.06, 'wspace':0.15, 'hspace':0.15}
-        matplotlib.rc('figure.subplot', **self.SubPlotParams)
 
         self.show_title = True
         self.xlabel_pad = 0
@@ -1236,6 +1290,7 @@ class MainApp(Tk.Tk):
         # Set the default color map
 
         self.cmap = 'viridis'
+        self.div_cmap = 'BuYlRd'
 
         # Create the figure
         self.f = Figure(figsize = (2,2), dpi = 100)

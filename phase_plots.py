@@ -16,7 +16,7 @@ class PhasePanel:
     plot_param_dict = {'twoD' : 1,
                        'mom_dim': 0,
                        'masked': 1,
-                       'cnorm_type': 'Log', #Colormap normalization. Opts are Log, Pow or Linear
+                       'cnorm_type': 'Log', #Colormap normalization. Opts are Log or Linear
                        'prtl_type': 0,
                        'cpow_num': 0.6,
                        'show_cbar': True,
@@ -60,21 +60,16 @@ class PhasePanel:
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
 
 
-    def UpdatePowNum(self, value):
-        self.SetPlotParam('pow_num', value)
-        if self.GetPlotParam('cnorm_type') == "Pow":
-            self.draw()
-
     def ChangePlotType(self, str_arg):
         self.FigWrap.ChangeGraph(str_arg)
 
     def norm(self, vmin=None, vmax=None):
-        if self.GetPlotParam('cnorm_type') =="Linear":
-            return mcolors.Normalize(vmin, vmax)
-        elif self.GetPlotParam('cnorm_type') == "Log":
+        if self.GetPlotParam('cnorm_type') == "Log":
             return  mcolors.LogNorm(vmin, vmax)
-        elif self.GetPlotParam('cnorm_type') == "Pow":
-            return  PowerNormWithNeg(self.FigWrap.GetPlotParam('cpow_num'), vmin, vmax)
+
+        else:
+            return mcolors.Normalize(vmin, vmax)
+
 
     def set_plot_keys(self):
         '''A helper function that will insure that each hdf5 file will only be
@@ -438,11 +433,11 @@ class PhasePanel:
 
         if self.parent.LinkSpatial == 1:
             if self.FigWrap.pos == self.parent.first_x:
-                self.axes = self.figure.add_subplot(self.gs[18:92,:])
+                self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
             else:
-                self.axes = self.figure.add_subplot(self.gs[18:92,:], sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
+                self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]], sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
         else:
-            self.axes = self.figure.add_subplot(self.gs[18:92,:])
+            self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
 
         self.cax = self.axes.imshow(self.hist2d[0],
                                     cmap = new_cmaps.cmaps[self.parent.cmap],
@@ -468,11 +463,43 @@ class PhasePanel:
             self.lineright.set_visible(False)
 
 
-        self.axC = self.figure.add_subplot(self.gs[:4,:])
+        self.axC = self.figure.add_subplot(self.gs[self.parent.cbar_extent[0]:self.parent.cbar_extent[1], self.parent.cbar_extent[2]:self.parent.cbar_extent[3]])
         # Technically I should use the colorbar class here,
         # but I found it annoying in some of it's limitations.
-        self.cbar = self.axC.imshow(self.gradient, aspect='auto',
+        if self.parent.HorizontalCbars:
+            self.cbar = self.axC.imshow(self.gradient, aspect='auto',
                                     cmap=new_cmaps.cmaps[self.parent.cmap])
+            # Make the colobar axis more like the real colorbar
+            self.axC.tick_params(axis='x',
+                                which = 'both', # bothe major and minor ticks
+                                top = 'off', # turn off top ticks
+                                labelsize=self.parent.num_font_size)
+
+            self.axC.tick_params(axis='y',          # changes apply to the y-axis
+                                which='both',      # both major and minor ticks are affected
+                                left='off',      # ticks along the bottom edge are off
+                                right='off',         # ticks along the top edge are off
+                                labelleft='off')
+
+        else:
+            self.cbar = self.axC.imshow(np.transpose(self.gradient)[::-1], aspect='auto',
+                                    cmap=new_cmaps.cmaps[self.parent.cmap])
+            # Make the colobar axis more like the real colorbar
+            self.axC.tick_params(axis='x',
+                                which = 'both', # bothe major and minor ticks
+                                top = 'off', # turn off top ticks
+                                bottom = 'off',
+                                labelbottom = 'off',
+                                labelsize=self.parent.num_font_size)
+
+            self.axC.tick_params(axis='y',          # changes apply to the y-axis
+                                which='both',      # both major and minor ticks are affected
+                                left='off',      # ticks along the bottom edge are off
+                                right='on',         # ticks along the top edge are off
+                                labelleft='off',
+                                labelright='on',
+                                labelsize=self.parent.num_font_size)
+
         self.cbar.set_extent([0, 1.0, 0, 1.0])
 
         if not self.GetPlotParam('show_cbar'):
@@ -481,17 +508,6 @@ class PhasePanel:
 
         self.axes.set_axis_bgcolor('lightgrey')
         self.axes.tick_params(labelsize = self.parent.num_font_size, color=self.tick_color)
-        # Make the colobar axis more like the real colorbar
-        self.axC.tick_params(axis='x',
-                            which = 'both', # bothe major and minor ticks
-                            top = 'off', # turn off top ticks
-                            labelsize=self.parent.num_font_size)
-
-        self.axC.tick_params(axis='y',          # changes apply to the y-axis
-                            which='both',      # both major and minor ticks are affected
-                            left='off',      # ticks along the bottom edge are off
-                            right='off',         # ticks along the top edge are off
-                            labelleft='off')
         self.axes.set_xlabel(self.x_label, labelpad = self.parent.xlabel_pad, color = 'black')
         self.axes.set_ylabel(self.y_label, labelpad = self.parent.ylabel_pad, color = 'black')
 
@@ -574,52 +590,25 @@ class PhasePanel:
         ''' A helper function that sets the cbar ticks & labels. This used to be
         easier, but because I am no longer using the colorbar class i have to do
         stuff manually.'''
-        self.axC.set_xlim(0,1)
-        self.axC.set_ylim(0,1)
+        clim = np.copy(self.cax.get_clim())
         if self.GetPlotParam('show_cbar'):
             if self.GetPlotParam('cnorm_type') == "Log":
-                ctick_range = np.linspace(0, 1, 6)
-                data_val = np.logspace(np.log10(self.clim[0]),np.log10(self.clim[1]), 6)
-                self.axC.set_xticks(ctick_range)
-                ctick_labels = []
-                for elm in data_val:
-                    if np.abs(np.log10(elm))<1E-2:
-                        tmp_s = '0'
-                    else:
-                        tmp_s = '%.2f' % np.log10(elm)
-                    ctick_labels.append(tmp_s)
-#                print ctick_labels
-                self.axC.set_xticklabels(ctick_labels)
+                if self.parent.HorizontalCbars:
+                    self.cbar.set_extent([np.log10(clim[0]),np.log10(clim[1]),0,1])
+                    self.axC.set_xlim(np.log10(clim[0]),np.log10(clim[1]))
+                else:
+                    self.cbar.set_extent([0,1,np.log10(clim[0]),np.log10(clim[1])])
+                    self.axC.set_ylim(np.log10(clim[0]),np.log10(clim[1]))
+                    self.axC.locator_params(axis='y',nbins=6)
+            else:# self.GetPlotParam('cnorm_type') == "Linear":
+                if self.parent.HorizontalCbars:
+                    self.cbar.set_extent([clim[0], clim[1], 0, 1])
+                    self.axC.set_xlim(clim[0], clim[1])
+                else:
+                    self.cbar.set_extent([0, 1, clim[0], clim[1]])
+                    self.axC.set_ylim(clim[0], clim[1])
+                    self.axC.locator_params(axis='y', nbins=6)
 
-            if self.GetPlotParam('cnorm_type') == "Pow":
-                ctick_range = np.linspace(0, 1, 6)
-                pow_min = np.sign(self.clim[0])*np.abs(self.clim[0])**self.FigWrap.GetPlotParam('cpow_num')
-                pow_max = np.sign(self.clim[1])*np.abs(self.clim[1])**self.FigWrap.GetPlotParam('cpow_num')
-                data_val = np.sign(np.linspace(pow_min, pow_max, 6))*np.abs(np.linspace(pow_min, pow_max, 6))**(1.0/self.FigWrap.GetPlotParam('cpow_num'))
-                self.axC.set_xticks(ctick_range)
-
-                ctick_labels = []
-                for elm in data_val:
-                    if np.abs(np.log10(elm))<1E-2:
-                        tmp_s = '0'
-                    else:
-                        tmp_s = '%.2f' % np.log10(elm)
-                    ctick_labels.append(tmp_s)
-                self.axC.set_xticklabels(ctick_labels)
-
-            if self.GetPlotParam('cnorm_type') == "Linear":
-                ctick_range = np.linspace(0, 1, 6)
-                data_val = np.linspace(self.clim[0],self.clim[1], 6)
-                self.axC.set_xticks(ctick_range)
-
-                ctick_labels = []
-                for elm in data_val:
-                    if np.abs(np.log10(elm))<1E-2:
-                        tmp_s = '0'
-                    else:
-                        tmp_s = '%.2f' % np.log10(elm)
-                    ctick_labels.append(tmp_s)
-                self.axC.set_xticklabels(ctick_labels)
 
 
     def GetPlotParam(self, keyname):
@@ -695,22 +684,7 @@ class PhaseSettings(Tk.Toplevel):
                 command = self.RadioDim,
                 value=i).grid(row = 2+i, column = 1, sticky = Tk.W)
 
-        ''' Commenting out some lines that allows you to change the color norm,
-        No longer needed
-        self.cnormList = ['Linear', 'LogNorm', 'PowerNorm']
-        self.normvar = Tk.IntVar()
-        self.normvar.set(self.cnormList.index(self.parent.GetPlotParam('cnorm_type')))
 
-        ttk.Label(frm, text = 'Cmap Norm:').grid(row = 6, sticky = Tk.W)
-
-        for i in range(3):
-            ttk.Radiobutton(frm,
-                            text = self.cnormList[i],
-                            variable = self.normvar,
-                            command = self.RadioNorm,
-                            value = i).grid(row = 7+i, sticky = Tk.W)
-
-        '''
         # Control whether or not Cbar is shown
         self.CbarVar = Tk.IntVar()
         self.CbarVar.set(self.parent.GetPlotParam('show_cbar'))
@@ -907,13 +881,6 @@ class PhaseSettings(Tk.Toplevel):
             self.parent.UpdateLabelsandColors()
             self.parent.axes.set_ylabel(self.parent.y_label, labelpad = self.parent.parent.ylabel_pad, color = 'black')
             self.parent.SetPlotParam('mom_dim', self.dimvar.get())
-
-
-    def RadioNorm(self):
-        if self.cnormList[self.normvar.get()] == self.parent.GetPlotParam('cnorm_type'):
-            pass
-        else:
-            self.parent.SetPlotParam('cnorm_type', self.cnormList[self.normvar.get()])
 
     def setVminChanged(self, *args):
         if self.setVminVar.get() == self.parent.GetPlotParam('set_v_min'):
