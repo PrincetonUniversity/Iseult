@@ -8,7 +8,9 @@ import h5py
 import os, sys
 import re
 import Tkinter, tkFileDialog
-
+from scipy.stats import linregress
+mpl.rcParams['mathtext.fontset'] = 'stix'
+mpl.rcParams['font.family'] = 'STIXGeneral'
 def pathOK(dirname):
     """ Test to see if the current path contains tristan files
     using regular expressions, then generate the lists of files
@@ -131,9 +133,10 @@ gs.update(**gsArgs)
 
 fig = pyplot.figure()
 ax1 = fig.add_subplot(gs[:2,:])
-ion_axes = fig.add_subplot(gs[10:45,:])
-e_axes = fig.add_subplot(gs[60:95,:])
+ion_axes = fig.add_subplot(gs[10:52,:])
+e_axes = fig.add_subplot(gs[52:94,:], sharex = ion_axes)
 
+pyplot.setp(ion_axes.get_xticklabels(), visible=False)
 cmap = new_cmaps.cmaps['viridis']
 #for i in range(len(PathDict['Spect'])):
 for i in range(len(PathDict['Spect'])):
@@ -230,11 +233,14 @@ for i in range(len(PathDict['Spect'])):
 
 
     # Create a gridspec to handle spacing better
+    exdata = momentum/16.0
+    eydata = momedist
+    e_axes.plot(momentum/16.0, momedist, color = t_step_color, linewidth = 0.5)
 
-    e_axes.plot(momentum, momedist, color = t_step_color, linewidth = 0.5)
-
-
-    ion_axes.plot(momentum, mompdist, color = t_step_color, linewidth = 0.5)
+    if DataDict['time']<=11500:
+        ixdata = momentum
+        iydata = mompdist
+        ion_axes.plot(momentum, mompdist, color = t_step_color, linewidth = 0.5)
 
 
 # Make the colorbar up top:
@@ -248,22 +254,61 @@ norm = mcolors.Normalize(vmin=initial_time, vmax=final_time)
 cb1 = mpl.colorbar.ColorbarBase(ax1, cmap=cmap,
                                 norm=norm,
                                 orientation='horizontal')
-cb1.ax.tick_params(labelsize = 8)
+#ticklabels = cb1.ax.xaxis.get_ticklabels()
+#print ticklabels
+#for elm in ticklabels:
+#    elm.set_text( elm.get_text()+ r'$\omega_{pe}^{-1}$')
+#print ticklabels
+cb1.set_label('time '+r'$[\omega_{pe}^{-1}]$')
+cb1.ax.xaxis.set_label_position('top')
+#cb1.ax.xaxis.set_ticklabels(ticklabels)
+cb1.ax.tick_params(labelsize = 11)
+
 #cb1.set_label(r'$\omega_p$',labelpad =25, size =18 )
+
+### Do some PL fitting:
+# Find the part of the spectrum chosen by the fitting
+#first convert to
+pL = 2.0
+pR = 10.
+impLeft = ixdata.searchsorted(pL)
+impRight = ixdata.searchsorted(pR, side = 'Right')
+
+
+linex = np.logspace(np.log10(2.0), np.log10(30.0), 3)
+pslope, pintercept, pr_value, pp_value, pstderr = linregress(np.log(ixdata[impLeft:impRight]), np.log(iydata[impLeft:impRight]))
+ion_axes.plot(linex, np.exp(pintercept)*linex**pslope, 'k--', linewidth=2.0)
+
+tmpnum = 4.0-pslope
+tmpstr = '%.1f' % tmpnum
+
+ion_axes.annotate(r'$\delta_i = $' + ' ' + tmpstr, xy=(linex[1], 2*np.exp(pintercept)*linex[1]**pslope), xycoords='data')
+
+empLeft = exdata.searchsorted(pL)
+empRight = exdata.searchsorted(pR, side = 'Right')
+
+
+eslope, eintercept, er_value, ep_value, estderr = linregress(np.log(exdata[empLeft:empRight]), np.log(eydata[empLeft:empRight]))
+e_axes.plot(linex, np.exp(eintercept)*linex**eslope, 'k--', linewidth=2.0)
+
+tmpnum = 4.0-eslope
+tmpstr = '%.1f' % tmpnum
+
+e_axes.annotate(r'$\delta_e = $' + ' ' + tmpstr, xy=(linex[1], 2*np.exp(eintercept)*linex[1]**eslope), xycoords='data')
 
 e_axes.set_xscale("log")
 e_axes.set_yscale("log")
-e_axes.set_xlim(-0.05,500)
-#e_axes.set_ylim(1E-6,1)
-e_axes.tick_params(labelsize = 10)
-e_axes.set_xlabel(r'$p(m_e c)$', color = 'black')
+e_axes.set_ylim(2E-6,.8)
+e_axes.tick_params(labelsize = 11)
+#e_axes.set_xlabel(r'$p\ [m_e c]$', color = 'black')
+e_axes.set_xlabel(r'$\gamma_i\beta_i;\quad\gamma_e\beta_e m_e/m_i$', color = 'black')
 e_axes.set_ylabel(r'$p^4f_e (p)$')
 
 ion_axes.set_xscale("log")
 ion_axes.set_yscale("log")
-ion_axes.set_xlim(-0.05,500)
-#ion_axes.set_ylim(1E-6,1)
-ion_axes.tick_params(labelsize = 10)
-ion_axes.set_xlabel(r'$p(m_i c)$', color = 'black')
-ion_axes.set_ylabel(r'$p^4 f_p (p)$')
+ion_axes.set_xlim(0.02,50)
+ion_axes.set_ylim(2E-6,0.8)
+ion_axes.tick_params(labelsize = 11)
+#ion_axes.set_xlabel(r'$p\ [m_i c]$', color = 'black')
+ion_axes.set_ylabel(r'$p^4 f_i (p)$')
 pyplot.show()
