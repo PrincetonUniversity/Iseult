@@ -127,14 +127,14 @@ e_e_region = (-1E5,0)
 
 # Create figure where the lines will be plotted
 # First make the gridspec
-gs = gridspec.GridSpec(100,100)
+gs = gridspec.GridSpec(1000,1000)
 gsArgs = {'left':0.15, 'right':0.9, 'top':.95, 'bottom':0.06, 'wspace':0.2, 'hspace':0.2}
 gs.update(**gsArgs)
 
 fig = pyplot.figure()
-ax1 = fig.add_subplot(gs[:2,:])
-ion_axes = fig.add_subplot(gs[10:52,:])
-e_axes = fig.add_subplot(gs[52:94,:], sharex = ion_axes)
+ax1 = fig.add_subplot(gs[2:20,:])
+ion_axes = fig.add_subplot(gs[100:520,:])
+e_axes = fig.add_subplot(gs[520:940,:], sharex = ion_axes)
 
 pyplot.setp(ion_axes.get_xticklabels(), visible=False)
 cmap = new_cmaps.cmaps['viridis']
@@ -244,25 +244,34 @@ for i in range(len(PathDict['Spect'])):
 
 
 # Make the colorbar up top:
+
 norm = mcolors.Normalize(vmin=initial_time, vmax=final_time)
 
-# ColorbarBase derives from ScalarMappable and puts a colorbar
-# in a specified axes, so it has everything needed for a
-# standalone colorbar.  There are many more kwargs, but the
-# following gives a basic continuous colorbar with ticks
-# and labels.
-cb1 = mpl.colorbar.ColorbarBase(ax1, cmap=cmap,
-                                norm=norm,
-                                orientation='horizontal')
+gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
+gradient = np.vstack((gradient, gradient))
+
+cb1 = ax1.imshow(gradient, cmap=cmap, aspect = 'auto')
+cb1.set_extent([initial_time, final_time, 0, 1.0])
+ax1.tick_params(axis='x',
+                which = 'both', # bothe major and minor ticks
+                top = 'off', # turn off top ticks
+                labelsize=11)
+
+ax1.tick_params(axis='y',          # changes apply to the y-axis
+                which='both',      # both major and minor ticks are affected
+                left='off',      # ticks along the bottom edge are off
+                right='off',         # ticks along the top edge are off
+                labelleft='off')
+
 #ticklabels = cb1.ax.xaxis.get_ticklabels()
 #print ticklabels
 #for elm in ticklabels:
 #    elm.set_text( elm.get_text()+ r'$\omega_{pe}^{-1}$')
 #print ticklabels
-cb1.set_label('time '+r'$[\omega_{pe}^{-1}]$')
-cb1.ax.xaxis.set_label_position('top')
+ax1.set_title('time '+r'$[\omega_{pe}^{-1}]$', size = 11)
+#cb1.ax.xaxis.set_label_position('top')
 #cb1.ax.xaxis.set_ticklabels(ticklabels)
-cb1.ax.tick_params(labelsize = 11)
+#cb1.ax.tick_params(labelsize = 11)
 
 #cb1.set_label(r'$\omega_p$',labelpad =25, size =18 )
 
@@ -311,4 +320,5 @@ ion_axes.set_ylim(2E-6,0.8)
 ion_axes.tick_params(labelsize = 11)
 #ion_axes.set_xlabel(r'$p\ [m_i c]$', color = 'black')
 ion_axes.set_ylabel(r'$p^4 f_i (p)$')
+pyplot.savefig('test.pdf')
 pyplot.show()

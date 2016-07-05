@@ -24,6 +24,7 @@ class FieldsPanel:
                        'set_v_min': False,
                        'set_v_max': False,
                        'show_shock' : False,
+                       'show_FFT_region': False,
                        'OutlineText': True,
                        'spatial_x': True,
                        'spatial_y': None,
@@ -406,6 +407,7 @@ class FieldsPanel:
                 self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
 
             self.annotate_pos = [0.8,0.9]
+            self.xmin, self.xmax = self.xaxis_values[0], self.xaxis_values[-1]
             self.linex = self.axes.plot(self.xaxis_values, self.fx[self.oneDslice,:], color = self.xcolor)
             self.linex[0].set_visible(self.GetPlotParam('show_x'))
             if self.GetPlotParam('field_type') == 0:
@@ -483,6 +485,23 @@ class FieldsPanel:
                 else:
                     self.axes.set_ylabel(r'$E$', labelpad = self.parent.ylabel_pad, color = 'black')
 
+        ####
+        # FFT REGION PLOTTING CODE
+        ####
+        self.lineleft = self.axes.axvline(0, linewidth = 1.5, linestyle = ':', color = self.parent.FFT_color)
+        self.lineright = self.axes.axvline(0, linewidth = 1.5, linestyle = ':', color = self.parent.FFT_color)
+        self.lineleft.set_visible(self.GetPlotParam('show_FFT_region'))
+        self.lineright.set_visible(self.GetPlotParam('show_FFT_region'))
+
+        if self.GetPlotParam('show_FFT_region'):
+            self.left_loc = self.parent.FFT_L.get() + self.parent.shock_loc*self.parent.FFT_relative
+            self.left_loc = max(self.left_loc, self.xmin)
+            self.lineleft.set_xdata([self.left_loc,self.left_loc])
+
+            self.right_loc = self.parent.FFT_R.get() + self.parent.shock_loc*self.parent.FFT_relative
+            self.right_loc = min(self.right_loc, self.xmax)
+            self.lineright.set_xdata([self.right_loc,self.right_loc])
+
     def refresh(self):
 
         '''This is a function that will be called only if self.axes already
@@ -493,7 +512,22 @@ class FieldsPanel:
 
 
         # Main goal, only change what is showing..
-        # First do the 1D plots, because it is simpler
+
+        self.xmin, self.xmax = self.xaxis_values[0], self.xaxis_values[-1]
+        self.lineleft.set_visible(self.GetPlotParam('show_FFT_region'))
+        self.lineright.set_visible(self.GetPlotParam('show_FFT_region'))
+
+        if self.GetPlotParam('show_FFT_region'):
+            # Update the position of the FFT region
+            self.left_loc = self.parent.FFT_L.get() + self.parent.shock_loc*self.parent.FFT_relative
+            self.left_loc = max(self.left_loc, self.xmin)
+            self.lineleft.set_xdata([self.left_loc,self.left_loc])
+
+            self.right_loc = self.parent.FFT_R.get() + self.parent.shock_loc*self.parent.FFT_relative
+            self.right_loc = min(self.right_loc, self.xmax)
+            self.lineright.set_xdata([self.right_loc,self.right_loc])
+
+        # Now do the 1D plots, because it is simpler
         if self.GetPlotParam('twoD') == 0:
             self.line_ymin_max = [np.inf, -np.inf]
             if self.GetPlotParam('show_x'):
@@ -862,7 +896,15 @@ class FieldSettings(Tk.Toplevel):
         cb = ttk.Checkbutton(frm, text = "Show Shock",
                         variable = self.ShockVar,
                         command = self.ShockVarHandler)
-        cb.grid(row = 6, column = 1, sticky = Tk.W)
+        cb.grid(row = 8, column = 1, sticky = Tk.W)
+
+        self.FFTVar = Tk.IntVar()
+        self.FFTVar.set(self.parent.GetPlotParam('show_FFT_region'))
+        cb = ttk.Checkbutton(frm, text = "Show FFT Region",
+                        variable = self.FFTVar,
+                        command = self.FFTVarHandler)
+        cb.grid(row = 8, column = 0, sticky = Tk.W)
+
 
         self.NormFieldVar = Tk.IntVar()
         self.NormFieldVar.set(self.parent.GetPlotParam('normalize_fields'))
@@ -917,6 +959,13 @@ class FieldSettings(Tk.Toplevel):
                 self.parent.shock_line.set_visible(self.ShockVar.get())
 
             self.parent.SetPlotParam('show_shock', self.ShockVar.get())
+
+    def FFTVarHandler(self, *args):
+        if self.parent.GetPlotParam('show_FFT_region')== self.FFTVar.get():
+            pass
+        else:
+            self.parent.SetPlotParam('show_FFT_region', self.FFTVar.get())
+
 
     def NormFieldHandler(self, *args):
         if self.parent.GetPlotParam('normalize_fields') == self.NormFieldVar.get():

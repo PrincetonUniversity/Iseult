@@ -19,6 +19,7 @@ from density_plots import DensPanel
 from spectra import SpectralPanel
 from mag_plots import BPanel
 from energy_plots import EnergyPanel
+from fft_plots import FFTPanel
 from ThreeD_mag_plots import ThreeDBPanel
 import multiprocessing
 
@@ -68,6 +69,7 @@ class SubPlotWrapper:
                              'DensityPlot': DensPanel,
                              'SpectraPlot': SpectralPanel,
                              'MagPlots': BPanel,
+                             'FFTPlots': FFTPanel,
                              '3dMagPlots': ThreeDBPanel}
         # A dictionary that will store where everything is in Hdf5 Files
         self.GenParamDict()
@@ -493,9 +495,30 @@ class SettingsFrame(Tk.Toplevel):
         self.eREnter = ttk.Entry(frm, textvariable=self.yright, width =8 )
         self.eREnter.grid(row = 8, column =2, sticky = Tk.N)
 
+        self.kLimVar = Tk.IntVar()
+        self.kLimVar.set(self.parent.klim[0])
+        self.kLimVar.trace('w', self.kLimChanged)
+
+
+
+        self.kleft = Tk.StringVar()
+        self.kleft.set(str(self.parent.klim[1]))
+        self.kright = Tk.StringVar()
+        self.kright.set(str(self.parent.klim[2]))
+
+
+        cb = ttk.Checkbutton(frm, text ='Set klim',
+                        variable = self.kLimVar)
+        cb.grid(row = 9, sticky = Tk.N)
+        self.eLEnter = ttk.Entry(frm, textvariable=self.kleft, width = 8 )
+        self.eLEnter.grid(row = 9, column =1, sticky = Tk.N)
+        self.eREnter = ttk.Entry(frm, textvariable=self.kright, width =8 )
+        self.eREnter.grid(row = 9, column =2, sticky = Tk.N)
+
+
         cb = ttk.Checkbutton(frm, text = "Show Title",
                         variable = self.TitleVar)
-        cb.grid(row = 10, sticky = Tk.W)
+        cb.grid(row = 11, sticky = Tk.W)
         # Control whether or not axes are shared with a radio box:
         self.toLinkList = ['None', 'All spatial', 'All non p-x', 'All 2-D spatial']
         self.LinkedVar = Tk.IntVar()
@@ -516,15 +539,24 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Aspect = 1",
                                 variable = self.AspectVar)
-        cb.grid(row = 11, sticky = Tk.W)
+        cb.grid(row = 11, column = 1, sticky = Tk.W)
 
         self.CbarOrientation = Tk.IntVar()
         self.CbarOrientation.set(self.parent.HorizontalCbars)
         self.CbarOrientation.trace('w', self.OrientationChanged)
 
-        cb = ttk.Checkbutton(frm, text = "Horizontal Colorbars",
+        cb = ttk.Checkbutton(frm, text = "Horizontal Cbars",
                                 variable = self.CbarOrientation)
         cb.grid(row = 12, sticky = Tk.W)
+
+
+        self.LinkKVar = Tk.IntVar()
+        self.LinkKVar.set(self.parent.Linkk)
+        self.CbarOrientation.trace('w', self.LinkKChanged)
+
+        cb = ttk.Checkbutton(frm, text = "Share k-axes",
+                                variable = self.LinkKVar)
+        cb.grid(row = 12, column =1, sticky = Tk.W)
 
 
         self.LorentzBoostVar = Tk.IntVar()
@@ -575,6 +607,9 @@ class SettingsFrame(Tk.Toplevel):
             pass
         else:
             self.parent.show_title = self.TitleVar.get()
+            if self.TitleVar.get() == False:
+                self.parent.f.suptitle('')
+
             self.parent.RenewCanvas()
 
     def RadioLinked(self, *args):
@@ -583,6 +618,15 @@ class SettingsFrame(Tk.Toplevel):
             pass
         else:
             self.parent.LinkSpatial = self.LinkedVar.get()
+            self.parent.RenewCanvas(ForceRedraw = True)
+
+
+    def LinkKChanged(self, *args):
+        # If the shared axes are changed, the whole plot must be redrawn
+        if self.LinkKVar.get() == self.parent.Linkk:
+            pass
+        else:
+            self.parent.Linkk = self.LinkKVar.get()
             self.parent.RenewCanvas(ForceRedraw = True)
 
 
@@ -696,6 +740,23 @@ class SettingsFrame(Tk.Toplevel):
                 tmplist[j].set(str(self.parent.ylim[j+1]))
         return to_reload*self.parent.ylim[0]
 
+    def CheckIfkLimChanged(self):
+        to_reload = False
+        tmplist = [self.kleft, self.kright]
+        for j in range(2):
+
+            try:
+            #make sure the user types in a int
+                if np.abs(float(tmplist[j].get()) - self.parent.klim[j+1]) > 1E-4:
+                    self.parent.klim[j+1] = float(tmplist[j].get())
+                    to_reload += True
+
+            except ValueError:
+                #if they type in random stuff, just set it ot the param value
+                tmplist[j].set(str(self.parent.klim[j+1]))
+        return to_reload*self.parent.klim[0]
+
+
     def CheckIfGammaChanged(self):
         to_reload = False
         try:
@@ -724,9 +785,19 @@ class SettingsFrame(Tk.Toplevel):
             self.parent.ylim[0] = self.yLimVar.get()
             self.parent.RenewCanvas()
 
+    def kLimChanged(self, *args):
+        if self.kLimVar.get()==self.parent.klim[0]:
+            pass
+        else:
+            self.parent.klim[0] = self.kLimVar.get()
+            self.parent.RenewCanvas()
+
+
     def SettingsCallback(self, e):
         to_reload = self.CheckIfXLimChanged()
         to_reload += self.CheckIfYLimChanged()
+        to_reload += self.CheckIfkLimChanged()
+
         to_reload += self.CheckIfGammaChanged()
         if to_reload:
             self.parent.RenewCanvas()
@@ -879,6 +950,34 @@ class MeasureFrame(Tk.Toplevel):
 
 
         ttk.Label(frm, text='NOTE: You must have one \'spectra\' plot' +'\r' + 'showing to measure eps_e or eps_p').grid(row = 14, rowspan = 2,columnspan = 3, sticky = Tk.W)
+
+
+
+        # Make an entry to change the integration region
+        # A StringVar for a box to type in a value for the left ion region
+        self.FFTLVar = Tk.StringVar()
+        # set it to the left value
+        self.FFTLVar.set(str(self.parent.FFT_L.get()))
+
+        # A StringVar for a box to type in a value for the right ion region
+        self.FFTRVar = Tk.StringVar()
+        # set it to the right value
+        self.FFTRVar.set(str(self.parent.FFT_R.get()))
+
+        ttk.Label(frm, text='left').grid(row = 16, column = 1, sticky = Tk.N)
+        ttk.Label(frm, text='right').grid(row = 16, column = 2, sticky = Tk.N)
+
+        ttk.Label(frm, text='FFT region:').grid(row = 17, sticky = Tk.W)
+        ttk.Entry(frm, textvariable=self.FFTLVar, width=7).grid(row =17, column = 1, sticky = Tk.W + Tk.E)
+
+        ttk.Entry(frm, textvariable=self.FFTRVar, width=7).grid(row = 17, column =2, sticky = Tk.W + Tk.E)
+
+        self.FFTRelVar = Tk.IntVar()
+        self.FFTRelVar.set(self.parent.FFT_relative)
+        self.FFTRelVar.trace('w', self.FFTRelChanged)
+        cb = ttk.Checkbutton(frm, text = "FFT Region relative to shock?",
+                        variable = self.FFTRelVar)
+        cb.grid(row = 18, columnspan = 3, sticky = Tk.W)
 
 
 
@@ -1046,11 +1145,18 @@ class MeasureFrame(Tk.Toplevel):
             self.parent.e_relative = self.RelVar.get()
             self.parent.RenewCanvas()
 
+    def FFTRelChanged(self, *args):
+        if self.FFTRelVar.get()==self.parent.FFT_relative:
+            pass
+        else:
+            self.parent.FFT_relative = self.FFTRelVar.get()
+            self.parent.RenewCanvas()
+
 
 
     def MeasuresCallback(self):
-        tkvarIntList = [self.ileft, self.iright, self.eleft, self.eright]
-        IntValList = [self.parent.i_L, self.parent.i_R, self.parent.e_L, self.parent.e_R]
+        tkvarIntList = [self.ileft, self.iright, self.eleft, self.eright, self.FFTLVar, self.FFTRVar]
+        IntValList = [self.parent.i_L, self.parent.i_R, self.parent.e_L, self.parent.e_R, self.parent.FFT_L, self.parent.FFT_R]
 
         to_reload = False
 
@@ -1114,6 +1220,8 @@ class MainApp(Tk.Tk):
         # 3 : All 2-D, non p-x plots are shared
         self.LinkSpatial = 2
 
+        # A param to decide whether to link k_axis
+        self.Linkk = True
         # Should cbars be horizontal?
         self.HorizontalCbars = False
         # A param that will hold the the main axes extent
@@ -1124,7 +1232,7 @@ class MainApp(Tk.Tk):
 
         else:
             self.axes_extent = [4,90,0,92]
-            self.cbar_extent = [4,90,95,98]
+            self.cbar_extent = [4,90,95,97]
             self.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.93, 'bottom':0.06, 'wspace':0.2, 'hspace':0.15}
         matplotlib.rc('figure.subplot', **self.SubPlotParams)
         # A param that sets the aspect ratio for the spatial, 2d plots
@@ -1324,9 +1432,18 @@ class MainApp(Tk.Tk):
         self.e_R = Tk.IntVar()
         self.e_R.set(0)
 
-        # Whether or not to set a xlim or ylim
+        # Choose the region for the FFT
+        self.FFT_relative = True #relative to the shock?
+        self.FFT_L = Tk.IntVar()
+        self.FFT_L.set(0)
+        self.FFT_R = Tk.IntVar()
+        self.FFT_R.set(200)
+
+
+        # Whether or not to set a xlim, ylim, or klim
         self.xlim = [False, 0, 100]
         self.ylim = [False, 0, 100]
+        self.klim = [False, 0.01, 0.1]
 
         self.PowerLawFitElectron = [False, 1.0, 10.0]
         self.PowerLawFitIon = [False, 1.0, 10.0]
@@ -1337,6 +1454,7 @@ class MainApp(Tk.Tk):
             self.electron_color = new_cmaps.cmaps['plasma'](0.8)
             self.ion_fit_color = 'r'
             self.electron_fit_color = 'yellow'
+            self.FFT_color = 'k'
 
         else:
             self.shock_color = 'w'
@@ -1344,7 +1462,7 @@ class MainApp(Tk.Tk):
             self.electron_color = new_cmaps.cmaps['viridis'](0.75)
             self.ion_fit_color = 'mediumturquoise'
             self.electron_fit_color = 'limegreen'
-
+            self.FFT_color = 'k'
 
 
         self.TimeStep.attach(self)
@@ -1714,7 +1832,7 @@ class MainApp(Tk.Tk):
                                     self.DataDict[elm] = 0.45
                                 else:
                                     raise
-            # don't keep more than 15 time steps in memory because of RAM issues
+            # don't keep more than 30 time steps in memory because of RAM issues
             if len(self.timestep_visited)>30:
                 oldest_time = self.timestep_queue.popleft()
                 oldest_ind = self.timestep_visited.index(oldest_time)
@@ -1873,15 +1991,20 @@ class MainApp(Tk.Tk):
 
         # Calculate the new xmin, and xmax
 
-        # Find the first position with a physical x and y direction:
+        # Find the first position with a physical x,y & k axis:
         self.first_x = None
         self.first_y = None
+        self.first_k = None
         k = 0
         for i in range(self.numOfRows.get()):
             for j in range(self.numOfColumns.get()):
 
                 # First handle the axes sharing
-                if self.SubPlotList[i][j].chartType == 'SpectraPlot':
+                if self.SubPlotList[i][j].chartType == 'FFTPlots':
+                    # The plot type is a spectral plot, which has no spatial dim
+                    if self.first_k is None:
+                        self.first_k = (i,j)
+                elif self.SubPlotList[i][j].chartType == 'SpectraPlot':
                     # The plot type is a spectral plot, which has no spatial dim
                     pass
                 elif self.LinkSpatial != 1 and self.SubPlotList[i][j].chartType == 'PhasePlot':
@@ -1907,7 +2030,6 @@ class MainApp(Tk.Tk):
         if self.show_title:
             tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].split('.')[-1]
             self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time'][0]), size = 15)
-
         if keep_view:
             self.LoadView()
 

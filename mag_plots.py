@@ -24,6 +24,7 @@ class BPanel:
                        'OutlineText': True,
                        'spatial_x': True,
                        'spatial_y': None,
+                       'show_FFT_region': True,
                        'interpolation': 'nearest',
                        'cnorm_type': 'Linear', # Colormap norm;  options are Log, Pow or Linear
                        'cpow_num': 0.6, # Used in the PowerNorm,                       'div_midpoint': 0.0, # The cpow color norm normalizes data to [0,1] using np.sign(x-midpoint)*np.abs(x-midpoint)**(-cpow_num) -> [0,midpoint,1] if it is a divering cmap or [0,1] if it is not a divering cmap
@@ -89,7 +90,6 @@ class BPanel:
         else:
             # x-values haven't been calculated yet, generate them then save them to the dictionary for later.
             self.xaxis_values = np.arange(self.FigWrap.LoadKey('bx')[0,:,:].shape[1])/self.c_omp*self.istep
-        #            print self.xaxis_values
             self.parent.DataDict['xaxis_values'] = np.copy(self.xaxis_values)
 
         if self.GetPlotParam('mag_plot_type') == 0: # set f to thetaB
@@ -415,6 +415,25 @@ class BPanel:
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
             self.axes.set_ylabel(self.ylabel, labelpad = self.parent.ylabel_pad, color = 'black')
 
+        ####
+        # FFT REGION PLOTTING CODE
+        ####
+
+
+        self.lineleft = self.axes.axvline(0, linewidth = 1.5, linestyle = ':', color = self.parent.FFT_color)
+        self.lineright = self.axes.axvline(0, linewidth = 1.5, linestyle = ':', color = self.parent.FFT_color)
+        self.lineleft.set_visible(self.GetPlotParam('show_FFT_region'))
+        self.lineright.set_visible(self.GetPlotParam('show_FFT_region'))
+
+        if self.GetPlotParam('show_FFT_region'):
+            self.left_loc = self.parent.FFT_L.get() + self.parent.shock_loc*self.parent.FFT_relative
+            self.left_loc = max(self.left_loc, self.xaxis_values[0])
+            self.lineleft.set_xdata([self.left_loc,self.left_loc])
+
+            self.right_loc = self.parent.FFT_R.get() + self.parent.shock_loc*self.parent.FFT_relative
+            self.right_loc = min(self.right_loc, self.xaxis_values[-1])
+            self.lineright.set_xdata([self.right_loc,self.right_loc])
+
     def refresh(self):
 
         '''This is a function that will be called only if self.axes already
@@ -425,6 +444,20 @@ class BPanel:
 
 
         # Main goal, only change what is showing..
+
+        self.lineleft.set_visible(self.GetPlotParam('show_FFT_region'))
+        self.lineright.set_visible(self.GetPlotParam('show_FFT_region'))
+
+        if self.GetPlotParam('show_FFT_region'):
+            self.left_loc = self.parent.FFT_L.get() + self.parent.shock_loc*self.parent.FFT_relative
+            self.left_loc = max(self.left_loc, self.xaxis_values[0])
+            self.lineleft.set_xdata([self.left_loc,self.left_loc])
+
+            self.right_loc = self.parent.FFT_R.get() + self.parent.shock_loc*self.parent.FFT_relative
+            self.right_loc = min(self.right_loc, self.xaxis_values[-1])
+            self.lineright.set_xdata([self.right_loc,self.right_loc])
+
+
         # First do the 1D plots, because it is simpler
         if self.GetPlotParam('twoD') == 0:
             self.line[0].set_data(self.xaxis_values, self.f[self.oneDslice,:])
@@ -645,6 +678,14 @@ class FieldSettings(Tk.Toplevel):
                         command = self.ShockVarHandler)
         cb.grid(row = 6, column = 3, sticky = Tk.W)
 
+
+        self.FFTVar = Tk.IntVar()
+        self.FFTVar.set(self.parent.GetPlotParam('show_FFT_region'))
+        cb = ttk.Checkbutton(frm, text = "Show FFT Region",
+                        variable = self.FFTVar,
+                        command = self.FFTVarHandler)
+        cb.grid(row = 5, column =2, sticky = Tk.W)
+
         # Control whether or not diverging cmap is used
         self.DivVar = Tk.IntVar()
         self.DivVar.set(self.parent.GetPlotParam('UseDivCmap'))
@@ -669,6 +710,8 @@ class FieldSettings(Tk.Toplevel):
         ttk.Label(frm, text="Choose Color Norm:").grid(row=8, column = 2)
         cnormChooser = apply(ttk.OptionMenu, (frm, self.cnormvar, self.parent.GetPlotParam('cnorm_type')) + tuple(['Pow', 'Linear']))
         cnormChooser.grid(row =8, column = 3, sticky = Tk.W + Tk.E)
+
+
 
         # Now the gamma of the pow norm
         self.powGamma = Tk.StringVar()
@@ -744,6 +787,12 @@ class FieldSettings(Tk.Toplevel):
         else:
             self.parent.ChangePlotType(self.ctypevar.get())
             self.destroy()
+
+    def FFTVarHandler(self, *args):
+        if self.parent.GetPlotParam('show_FFT_region')== self.FFTVar.get():
+            pass
+        else:
+            self.parent.SetPlotParam('show_FFT_region', self.FFTVar.get())
 
     def InterpolChanged(self, *args):
         if self.InterpolVar.get() == self.parent.GetPlotParam('interpolation'):

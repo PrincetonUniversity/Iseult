@@ -76,19 +76,18 @@ class SpectralPanel:
         if self.GetPlotParam('rest_frame'):
             self.keyname +='in_rest_frame'
 
-        # A string that will make sure that the data has the int region
-        self.int_reg_str = ''
-        if self.parent.e_relative:
-            self.int_reg_str += 'Relative_'
-        self.int_reg_str += 'e_reg_'+str(self.parent.e_L.get())+'_'+ str(self.parent.e_R.get())
-        self.int_reg_str += 'i_reg_'+str(self.parent.i_L.get())+'_'+ str(self.parent.i_R.get())
+        # A list that will make sure that the data has the same int region
+        self.region_args = [self.parent.e_relative, self.parent.e_L.get(), self.parent.e_R.get(), self.parent.i_L.get(), self.parent.i_R.get()]
+
         is_loaded = False
         if self.keyname in self.parent.DataDict.keys():
+
             # make sure it is integrating over the correct region.
-            if self.int_reg_str == self.parent.DataDict[self.keyname][-1] :
+            if np.all(self.region_args == self.parent.DataDict[self.keyname][-1]):
                 is_loaded = True
+
                 #unpack the values
-                self.gamma, self.edist, self.pdist, self.momentum, self.momedist, self.mompdist, int_reg_str = self.parent.DataDict[self.keyname]
+                self.gamma, self.edist, self.pdist, self.momentum, self.momedist, self.mompdist, region_args = self.parent.DataDict[self.keyname]
 
         if not is_loaded:
             if self.GetPlotParam('rest_frame'):
@@ -177,7 +176,7 @@ class SpectralPanel:
             self.momedist=self.femom*self.momentum**4
             self.fpmom=self.fp/(4*np.pi*self.momentum)/(self.gamma+1)
             self.mompdist=self.fpmom*self.momentum**4
-            self.parent.DataDict[self.keyname] = self.gamma, self.edist, self.pdist, self.momentum, self.momedist, self.mompdist, self.int_reg_str
+            self.parent.DataDict[self.keyname] = self.gamma, self.edist, self.pdist, self.momentum, self.momedist, self.mompdist, self.region_args
 
     def draw(self):
 
@@ -510,7 +509,7 @@ class SpectralPanel:
         else:
             '''
             HERE is a trapezoidal integration in logspace not using anymore
-            because it is when energy_dist is zero, leaving it in case it is
+            because it goes when energy_dist is zero. I'm leaving it in, commented out in case it is
             valuable later.
             # do a cummulative
             LogY = np.log(energy_dist[e_injloc-1:])
