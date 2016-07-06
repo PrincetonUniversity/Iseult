@@ -112,7 +112,7 @@ class FFTPanel:
             # Calculate Stokes V
             V = self.BperpFFT*np.conjugate(self.BzFFT)
             V += -self.BzFFT*np.conjugate(self.BperpFFT)
-            V *= 1j
+            V *= -1j
 
             # Calculate StokesChi
             self.StokesChi = 0.5 * np.rad2deg(np.arcsin(V.real/I.real))
