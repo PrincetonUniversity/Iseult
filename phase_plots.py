@@ -43,6 +43,19 @@ class PhasePanel:
                        'interpolation': 'hermite'}
     prtl_opts = ['proton_p', 'electron_p']
     direction_opts = ['x-x', 'y-x', 'z-x']
+    # Old labels:
+    #ylabel_list =[
+    #              [[r'$P_{px}\ [m_i c]$', r'$P_{py}\ [m_i c]$',r'$P_{pz}\ [m_i c]$'],
+    #              [r'$P_{ex}\ [m_e c]$', r'$P_{ey}\ [m_e c]$',r'$P_{ez}\ [m_e c]$']],
+    #              [[r'$P\prime_{px}\ [m_i c]$', r'$P\prime_{py}\ [m_i c]$',r'$P\prime_{pz}\ [m_i c]$'],
+    #              [r'$P\prime_{ex}\ [m_e c]$', r'$P\prime_{ey}\ [m_e c]$',r'$P\prime_{ez}\ [m_e c]$']]
+    #             ]
+    ylabel_list =[
+                 [[r'$\gamma_i\beta_{x,i}$',r'$\gamma_i\beta_{y,i}$',r'$\gamma_i\beta_{z,i}$'],
+                  [r'$\gamma_e\beta_{x,e}$',r'$\gamma_e\beta_{y,e}$',r'$\gamma_e\beta_{z,e}$']],
+                 [[r'$\gamma\prime_i\beta\prime_{x,i}$',r'$\gamma\prime_i\beta\prime_{y,i}$',r'$\gamma\prime_i\beta\prime_{z,i}$'],
+                  [r'$\gamma\prime_e\beta\prime_{x,e}$',r'$\gamma\prime_e\beta\prime_{y,e}$',r'$\gamma\prime_e\beta\prime_{z,e}$']]
+                 ]
 
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))
@@ -359,46 +372,19 @@ class PhasePanel:
             self.parent.DataDict[self.key_name] = self.hist2d
 
     def UpdateLabelsandColors(self):
+        # set the colors
+        if self.GetPlotParam('prtl_type') == 0: #protons
+            self.energy_color = self.parent.ion_color
+        if self.GetPlotParam('prtl_type') == 1: #electons
+            self.energy_color = self.parent.electron_color
+
+        #set the xlabels
         if self.parent.DoLorentzBoost and np.abs(self.parent.GammaBoost)>1E-8:
             self.x_label = r'$x\prime\ [c/\omega_{\rm pe}]$'
-            if self.GetPlotParam('prtl_type') == 0: #protons
-                self.energy_color = self.parent.ion_color
-                if self.GetPlotParam('mom_dim') == 0:
-                    self.y_label  = r'$P\prime_{px}\ [m_i c]$'
-                if self.GetPlotParam('mom_dim') == 1:
-                    self.y_label  = r'$P\prime_{py}\ [m_i c]$'
-                if self.GetPlotParam('mom_dim') == 2:
-                    self.y_label  = r'$P\prime_{pz}\ [m_i c]$'
-
-            if self.GetPlotParam('prtl_type') == 1: #electons
-                self.energy_color = self.parent.electron_color
-                if self.GetPlotParam('mom_dim') == 0:
-                    self.y_label  = r'$P\prime_{ex}\ [m_e c]$'
-                if self.GetPlotParam('mom_dim') == 1:
-                    self.y_label  = r'$P\prime_{ey}\ [m_e c]$'
-                if self.GetPlotParam('mom_dim') == 2:
-                    self.y_label  = r'$P\prime_{ez}\ [m_e c]$'
-
         else:
             self.x_label = r'$x\ [c/\omega_{\rm pe}]$'
-
-            if self.GetPlotParam('prtl_type') == 0: #protons
-                self.energy_color = self.parent.ion_color
-                if self.GetPlotParam('mom_dim') == 0:
-                    self.y_label  = r'$P_{px}\ [m_i c]$'
-                if self.GetPlotParam('mom_dim') == 1:
-                    self.y_label  = r'$P_{py}\ [m_i c]$'
-                if self.GetPlotParam('mom_dim') == 2:
-                    self.y_label  = r'$P_{pz}\ [m_i c]$'
-
-            if self.GetPlotParam('prtl_type') == 1: #electons
-                self.energy_color = self.parent.electron_color
-                if self.GetPlotParam('mom_dim') == 0:
-                    self.y_label  = r'$P_{ex}\ [m_e c]$'
-                if self.GetPlotParam('mom_dim') == 1:
-                    self.y_label  = r'$P_{ey}\ [m_e c]$'
-                if self.GetPlotParam('mom_dim') == 2:
-                    self.y_label  = r'$P_{ez}\ [m_e c]$'
+        #set the ylabel
+        self.y_label  = self.ylabel_list[self.parent.DoLorentzBoost][self.GetPlotParam('prtl_type')][self.GetPlotParam('mom_dim')]
 
     def draw(self):
         # In order to speed up the plotting, we only recalculate everything
@@ -582,7 +568,12 @@ class PhasePanel:
         self.axes.set_ylim(self.ymin, self.ymax)
 
         if self.parent.xlim[0] and self.parent.LinkSpatial == 1:
-            self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+            if self.parent.xLimsRelative:
+                self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
+                                   self.parent.xlim[2] + self.parent.shock_loc)
+            else:
+                self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
+
         else:
             self.axes.set_xlim(self.xmin,self.xmax)
 
@@ -596,10 +587,23 @@ class PhasePanel:
                 if self.parent.HorizontalCbars:
                     self.cbar.set_extent([np.log10(clim[0]),np.log10(clim[1]),0,1])
                     self.axC.set_xlim(np.log10(clim[0]),np.log10(clim[1]))
+                    self.axC.xaxis.set_label_position("top")
+#                    self.axC.xaxis.set_label_coords(.15, +0.025)
+                    if self.GetPlotParam('prtl_type') ==0:
+                        self.axC.set_xlabel(r'$\log{\ \ f_i(p)}$')#, labelpad =15, rotation = -90)
+                    else:
+                        self.axC.set_xlabel(r'$\log{\ \ f_e(p)}$')#, size = 12,labelpad =15, rotation = -90)
+
                 else:
                     self.cbar.set_extent([0,1,np.log10(clim[0]),np.log10(clim[1])])
                     self.axC.set_ylim(np.log10(clim[0]),np.log10(clim[1]))
                     self.axC.locator_params(axis='y',nbins=6)
+                    self.axC.yaxis.set_label_position("right")
+                    if self.GetPlotParam('prtl_type') ==0:
+                        self.axC.set_ylabel(r'$\log{\ \ f_i(p)}$', labelpad =15, rotation = -90)
+                    else:
+                        self.axC.set_ylabel(r'$\log{\ \ f_e(p)}$', size = 12,labelpad =15, rotation = -90)
+
             else:# self.GetPlotParam('cnorm_type') == "Linear":
                 if self.parent.HorizontalCbars:
                     self.cbar.set_extent([clim[0], clim[1], 0, 1])
@@ -608,6 +612,11 @@ class PhasePanel:
                     self.cbar.set_extent([0, 1, clim[0], clim[1]])
                     self.axC.set_ylim(clim[0], clim[1])
                     self.axC.locator_params(axis='y', nbins=6)
+                    self.axC.yaxis.set_label_position("right")
+                    if self.GetPlotParam('prtl_type') ==0:
+                        self.axC.set_ylabel(r'$f_i(p)$', labelpad =15, rotation = -90)
+                    else:
+                        self.axC.set_ylabel(r'$f_e(p)$', size = 12,labelpad =15, rotation = -90)
 
 
 

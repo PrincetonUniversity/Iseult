@@ -386,9 +386,14 @@ class FieldsPanel:
             self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
 
             if self.parent.xlim[0]:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+                if self.parent.xLimsRelative:
+                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
+                                       self.parent.xlim[2] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
             else:
                 self.axes.set_xlim(self.xmin, self.xmax)
+
             if self.parent.ylim[0]:
                 self.axes.set_ylim(self.parent.ylim[1],self.parent.ylim[2])
             else:
@@ -463,7 +468,11 @@ class FieldsPanel:
             self.axes.autoscale_view(scaley = True)
 
             if self.parent.xlim[0]:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+                if self.parent.xLimsRelative:
+                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
+                                       self.parent.xlim[2] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
             else:
                 self.axes.set_xlim(self.xaxis_values[0],self.xaxis_values[-1])
 
@@ -564,9 +573,12 @@ class FieldsPanel:
             self.axes.set_ylim(self.line_ymin_max)
             if self.GetPlotParam('show_shock'):
                 self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
-
             if self.parent.xlim[0]:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+                if self.parent.xLimsRelative:
+                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
+                                       self.parent.xlim[2] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
             else:
                 self.axes.set_xlim(self.xaxis_values[0], self.xaxis_values[-1])
 
@@ -640,8 +652,14 @@ class FieldsPanel:
                         self.TwoDan.set_text(r'$E_z/E_0$')
                     else:
                         self.TwoDan.set_text(r'$E_z$')
+
             if self.parent.xlim[0]:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+                if self.parent.xLimsRelative:
+                    print 'hi'
+                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
+                                       self.parent.xlim[2] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
             else:
                 self.axes.set_xlim(self.xmin,self.xmax)
             if self.parent.ylim[0]:

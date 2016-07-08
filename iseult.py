@@ -20,7 +20,7 @@ from spectra import SpectralPanel
 from mag_plots import BPanel
 from energy_plots import EnergyPanel
 from fft_plots import FFTPanel
-from ThreeD_mag_plots import ThreeDBPanel
+#from ThreeD_mag_plots import ThreeDBPanel STILL TESTING
 import multiprocessing
 
 # I don't think that matplotlib allows multi-threading, in the interactive mode.
@@ -69,8 +69,9 @@ class SubPlotWrapper:
                              'DensityPlot': DensPanel,
                              'SpectraPlot': SpectralPanel,
                              'MagPlots': BPanel,
-                             'FFTPlots': FFTPanel,
-                             '3dMagPlots': ThreeDBPanel}
+#                             '3dMagPlots': ThreeDBPanel,
+                             'FFTPlots': FFTPanel
+                             }
         # A dictionary that will store where everything is in Hdf5 Files
         self.GenParamDict()
         self.figure = figure
@@ -469,10 +470,9 @@ class SettingsFrame(Tk.Toplevel):
         cb = ttk.Checkbutton(frm, text ='Set xlim',
                         variable = self.LimVar)
         cb.grid(row = 7, sticky = Tk.N)
-        self.eLEnter = ttk.Entry(frm, textvariable=self.xleft, width = 8)
-        self.eLEnter.grid(row = 7, column =1, sticky = Tk.N)
-        self.eREnter = ttk.Entry(frm, textvariable=self.xright, width = 8)
-        self.eREnter.grid(row = 7, column =2, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.xleft, width = 8).grid(row = 7, column =1, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.xright, width = 8).grid(row = 7, column =2, sticky = Tk.N)
+
 
 
         self.yLimVar = Tk.IntVar()
@@ -487,13 +487,10 @@ class SettingsFrame(Tk.Toplevel):
         self.yright.set(str(self.parent.ylim[2]))
 
 
-        cb = ttk.Checkbutton(frm, text ='Set ylim',
-                        variable = self.yLimVar)
-        cb.grid(row = 8, sticky = Tk.N)
-        self.eLEnter = ttk.Entry(frm, textvariable=self.yleft, width = 8 )
-        self.eLEnter.grid(row = 8, column =1, sticky = Tk.N)
-        self.eREnter = ttk.Entry(frm, textvariable=self.yright, width =8 )
-        self.eREnter.grid(row = 8, column =2, sticky = Tk.N)
+        ttk.Checkbutton(frm, text ='Set ylim',
+                        variable = self.yLimVar).grid(row = 8, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.yleft, width = 8 ).grid(row = 8, column =1, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.yright, width =8 ).grid(row = 8, column =2, sticky = Tk.N)
 
         self.kLimVar = Tk.IntVar()
         self.kLimVar.set(self.parent.klim[0])
@@ -507,14 +504,15 @@ class SettingsFrame(Tk.Toplevel):
         self.kright.set(str(self.parent.klim[2]))
 
 
-        cb = ttk.Checkbutton(frm, text ='Set klim',
-                        variable = self.kLimVar)
-        cb.grid(row = 9, sticky = Tk.N)
-        self.eLEnter = ttk.Entry(frm, textvariable=self.kleft, width = 8 )
-        self.eLEnter.grid(row = 9, column =1, sticky = Tk.N)
-        self.eREnter = ttk.Entry(frm, textvariable=self.kright, width =8 )
-        self.eREnter.grid(row = 9, column =2, sticky = Tk.N)
+        ttk.Checkbutton(frm, text ='Set klim', variable = self.kLimVar).grid(row = 9, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.kleft, width = 8 ).grid(row = 9, column =1, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.kright, width =8 ).grid(row = 9, column =2, sticky = Tk.N)
 
+        self.xRelVar = Tk.IntVar()
+        self.xRelVar.set(self.parent.xLimsRelative)
+        self.xRelVar.trace('w', self.xRelChanged)
+        ttk.Checkbutton(frm, text = "x limits & zooms relative to shock",
+                        variable = self.xRelVar).grid(row = 10, columnspan = 3, sticky = Tk.W)
 
         cb = ttk.Checkbutton(frm, text = "Show Title",
                         variable = self.TitleVar)
@@ -563,7 +561,7 @@ class SettingsFrame(Tk.Toplevel):
         self.LorentzBoostVar.set(self.parent.DoLorentzBoost)
         self.LorentzBoostVar.trace('w', self.LorentzBoostChanged)
         cb = ttk.Checkbutton(frm, text='Boost PhasePlots', variable =  self.LorentzBoostVar).grid(row = 13, sticky = Tk.W)
-        ttk.Label(frm, text='Gamma/Beta (- for left boost)=').grid(row= 13, column =1, sticky = Tk.E)
+        ttk.Label(frm, text='Gamma/Beta = \r (- for left boost)').grid(row= 13, rowspan = 2,column =1, sticky = Tk.E)
         self.GammaVar = Tk.StringVar()
         self.GammaVar.set(str(self.parent.GammaBoost))
         ttk.Entry(frm, textvariable=self.GammaVar, width = 7).grid(row = 13, column = 2, sticky = Tk.N)
@@ -584,15 +582,15 @@ class SettingsFrame(Tk.Toplevel):
             if self.CbarOrientation.get():
                 self.parent.axes_extent = [18,92,0,-1]
                 self.parent.cbar_extent = [0,4,0,-1]
-                self.parent.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.93, 'bottom':0.06, 'wspace':0.15, 'hspace':0.15}
+                self.parent.SubPlotParams = {'left':0.06, 'right':0.92, 'top':.91, 'bottom':0.06, 'wspace':0.15, 'hspace':0.3}
 
             else:
                 self.parent.axes_extent = [4,90,0,92]
                 self.parent.cbar_extent = [4,90,95,98]
-                self.parent.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.93, 'bottom':0.06, 'wspace':0.2, 'hspace':0.15}
+                self.parent.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.93, 'bottom':0.06, 'wspace':0.23, 'hspace':0.15}
             self.parent.HorizontalCbars = self.CbarOrientation.get()
-            self.parent.RenewCanvas(ForceRedraw = True)
-
+            self.parent.f.subplots_adjust( **self.parent.SubPlotParams)
+            self.parent.RenewCanvas(ForceRedraw=True)
 
     def LorentzBoostChanged(self, *args):
         if self.LorentzBoostVar.get() == self.parent.DoLorentzBoost:
@@ -628,6 +626,14 @@ class SettingsFrame(Tk.Toplevel):
         else:
             self.parent.Linkk = self.LinkKVar.get()
             self.parent.RenewCanvas(ForceRedraw = True)
+
+    def xRelChanged(self, *args):
+        # If the shared axes are changed, the whole plot must be redrawn
+        if self.xRelVar.get() == self.parent.xLimsRelative:
+            pass
+        else:
+            self.parent.xLimsRelative = self.xRelVar.get()
+            self.parent.RenewCanvas()
 
 
     def CmapChanged(self, *args):
@@ -1228,12 +1234,12 @@ class MainApp(Tk.Tk):
         if self.HorizontalCbars:
             self.axes_extent = [18,92,0,-1]
             self.cbar_extent = [0,4,0,-1]
-            self.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.93, 'bottom':0.06, 'wspace':0.15, 'hspace':0.15}
+            self.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.91, 'bottom':0.06, 'wspace':0.15, 'hspace':0.3}
 
         else:
             self.axes_extent = [4,90,0,92]
             self.cbar_extent = [4,90,95,97]
-            self.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.93, 'bottom':0.06, 'wspace':0.2, 'hspace':0.15}
+            self.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.93, 'bottom':0.06, 'wspace':0.23, 'hspace':0.15}
         matplotlib.rc('figure.subplot', **self.SubPlotParams)
         # A param that sets the aspect ratio for the spatial, 2d plots
         self.plot_aspect = 0
@@ -1261,6 +1267,9 @@ class MainApp(Tk.Tk):
         self.DoLorentzBoost = False
         # A parameter that is interpreted as beta if it is <1 and gamma if it is >=1
         self.GammaBoost = 0.0
+
+        # A Param the will set the xlims relative to the shock location
+        self.xLimsRelative = True
 
         self.numOfRows = Tk.IntVar(self)
         self.numOfRows.set(3)
@@ -1842,8 +1851,21 @@ class MainApp(Tk.Tk):
             self.ListOfDataDict.append(self.DataDict)
             self.timestep_queue.append(self.TimeStep.value)
 
-        # Calculate the new shock location
-        self.shock_loc = self.DataDict['time'][0]*self.shock_speed
+        if np.isnan(self.prev_shock_loc):
+            # If self.prev_shock_loc is NaN, that means this is the first time
+            # the shock has been found, and the previous and current shock_loc
+            # should be the same.
+
+            # First calculate the new shock location
+            self.shock_loc = self.DataDict['time'][0]*self.shock_speed
+            # Set previous shock loc to current location
+            self.prev_shock_loc = np.copy(self.shock_loc)
+        else:
+            # First save the previous shock location,
+            self.prev_shock_loc = np.copy(self.shock_loc)
+            # Now calculate the new shock location
+            self.shock_loc = self.DataDict['time'][0]*self.shock_speed
+
 
         # Now that the DataDict is created, iterate over all the subplots and
         # load the data into them:
@@ -1929,12 +1951,15 @@ class MainApp(Tk.Tk):
                         # only keep the x values if they have changed
                         for n in range(2):
                             if is_changed[n]:
-                                tmp_new_view[n] = tmp_old_view[n]
+                                tmp_new_view[n] = tmp_old_view[n]+self.xLimsRelative*(self.shock_loc-self.prev_shock_loc)
                     else:
                         # Keep any y or x that is changed
                         for n in range(4):
                             if is_changed[n]:
                                 tmp_new_view[n] = tmp_old_view[n]
+                                if n < 2:
+                                    tmp_new_view[n]+=self.xLimsRelative*(self.shock_loc-self.prev_shock_loc)
+
                 cur_view[k] = tmp_new_view
                 # Handle the counting of the 'views' array in matplotlib
                 #skip over colorbar axes
@@ -2058,7 +2083,7 @@ class MainApp(Tk.Tk):
         self.LoadAllKeys()
 
         # Calculate the new shock location
-        self.shock_loc = self.DataDict['time'][0]*self.shock_speed
+#        self.shock_loc = self.DataDict['time'][0]*self.shock_speed
 
 
         # By design, the first_x and first_y cannot change if the graph is
@@ -2228,6 +2253,7 @@ class MainApp(Tk.Tk):
         ishock_final = np.where(dens_arr[dens_arr.shape[0]/2,jstart:]>=dens_half_max)[0][-1]
         xshock_final = xaxis_final[ishock_final]
         self.shock_speed = xshock_final/final_time
+        self.prev_shock_loc = np.NaN
 
     def setKnob(self, value):
         # If the time parameter changes update the plots

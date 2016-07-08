@@ -297,10 +297,14 @@ class DensPanel:
             self.axes.set_axis_bgcolor('lightgrey')
             self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
 
-            if self.parent.xlim[0] and self.parent.LinkSpatial != 0:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
-#            else:
-#                self.axes.set_xlim(self.xmin,self.xmax)
+            if self.parent.xlim[0]:
+                if self.parent.xLimsRelative:
+                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
+                                       self.parent.xlim[2] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
+            else:
+                self.axes.set_xlim(self.xmin,self.xmax)
 
             if self.parent.ylim[0]:
                 self.axes.set_ylim(self.parent.ylim[1]*self.c_omp/self.istep, self.parent.ylim[2]*self.c_omp/self.istep)
@@ -355,7 +359,11 @@ class DensPanel:
             self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
 
             if self.parent.xlim[0]:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+                if self.parent.xLimsRelative:
+                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
+                                       self.parent.xlim[2] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
             else:
                 self.axes.set_xlim(self.xaxis_values[0],self.xaxis_values[-1])
 
@@ -401,7 +409,11 @@ class DensPanel:
 
 
             if self.parent.xlim[0]:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+                if self.parent.xLimsRelative:
+                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
+                                       self.parent.xlim[2] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
             else:
                 self.axes.set_xlim(self.xaxis_values[0], self.xaxis_values[-1])
 
@@ -435,7 +447,11 @@ class DensPanel:
 
             self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
             if self.parent.xlim[0]:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+                if self.parent.xLimsRelative:
+                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
+                                       self.parent.xlim[2] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
             else:
                 self.axes.set_xlim(self.xmin,self.xmax)
 

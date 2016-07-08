@@ -27,10 +27,10 @@ class EnergyPanel:
                        'v_max' : 0,
                        'set_v_min': False,
                        'set_v_max': False,
-                       'set_E_min' : False,
-                       'E_min': 1.0,
-                       'set_E_max': False,
-                       'E_max': 200.0,
+                       'set_y_min' : False,
+                       'y_min': 1.0,
+                       'set_y_max': False,
+                       'y_max': 200.0,
                        'spatial_x': True,
                        'spatial_y': False,
                        'interpolation': 'hermite'}
@@ -133,8 +133,8 @@ class EnergyPanel:
             self.y_values = np.sqrt(u**2+v**2+w**2+1)
             if self.GetPlotParam('prtl_type') == 1:
                 self.y_values *= self.FigWrap.LoadKey('me')[0]/self.FigWrap.LoadKey('mi')[0]
-            self.pmin = min(self.y_values)
-            self.pmax = max(self.y_values)
+            self.Ymin = min(self.y_values)
+            self.Ymax = max(self.y_values)
 
 
             self.xmin = 0
@@ -142,7 +142,7 @@ class EnergyPanel:
 
             self.hist2d = np.histogram2d(self.y_values, self.x_values,
                             bins = [self.GetPlotParam('ebins'), self.GetPlotParam('xbins')],
-                            range = [[self.pmin,self.pmax],[0,self.xmax]],
+                            range = [[self.Ymin,self.Ymax],[0,self.xmax]],
                             weights = self.weights)
 
             if self.GetPlotParam('masked'):
@@ -215,7 +215,6 @@ class EnergyPanel:
 
 
         self.clim = list(self.hist2d[3])
-        print self.clim
         if self.GetPlotParam('set_v_min'):
             self.clim[0] = 10**self.GetPlotParam('v_min')
         if self.GetPlotParam('set_v_max'):
@@ -368,14 +367,18 @@ class EnergyPanel:
         self.axes.set_xlabel(self.x_label, labelpad = self.parent.xlabel_pad, color = 'black')
         self.axes.set_ylabel(self.y_label, labelpad = self.parent.ylabel_pad, color = 'black')
 
-#        if self.GetPlotParam('set_p_min'):
-#            self.ymin = self.GetPlotParam('p_min')
-#        if self.GetPlotParam('set_p_max'):
-#            self.ymax = self.GetPlotParam('p_max')
-#        self.axes.set_ylim(self.ymin, self.ymax)
+        if self.GetPlotParam('set_y_min'):
+            self.ymin = self.GetPlotParam('y_min')
+        if self.GetPlotParam('set_y_max'):
+            self.ymax = self.GetPlotParam('y_max')
+        self.axes.set_ylim(self.ymin, self.ymax)
 
         if self.parent.xlim[0] and self.parent.LinkSpatial == 1:
-            self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+            if self.parent.xLimsRelative:
+                self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc, 
+                                   self.parent.xlim[2] + self.parent.shock_loc)
+            else:
+                self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
         else:
             self.axes.set_xlim(self.xmin,self.xmax)
 
@@ -384,7 +387,6 @@ class EnergyPanel:
         easier, but because I am no longer using the colorbar class i have to do
         stuff manually.'''
         clim = np.copy(self.cax.get_clim())
-        print clim
         if self.GetPlotParam('show_cbar'):
             if self.GetPlotParam('cnorm_type') == "Log":
                 if self.parent.HorizontalCbars:
@@ -462,20 +464,6 @@ class EnergySettings(Tk.Toplevel):
                 command = self.RadioPrtl,
                 value=i).grid(row = 2+i, sticky =Tk.W)
 
-        # the Radiobox Control to choose the momentum dim
-        self.dimList = ['x-px', 'x-py', 'x-pz']
-        self.dimvar = Tk.IntVar()
-        self.dimvar.set(self.parent.GetPlotParam('mom_dim'))
-
-        ttk.Label(frm, text='Dimenison:').grid(row = 1, column = 1, sticky = Tk.W)
-
-        for i in range(len(self.dimList)):
-            ttk.Radiobutton(frm,
-                text=self.dimList[i],
-                variable=self.dimvar,
-                command = self.RadioDim,
-                value=i).grid(row = 2+i, column = 1, sticky = Tk.W)
-
 
         # Control whether or not Cbar is shown
         self.CbarVar = Tk.IntVar()
@@ -494,7 +482,7 @@ class EnergySettings(Tk.Toplevel):
         cb.grid(row = 6, column = 1, sticky = Tk.W)
 
 
-        # Control if the plot is weightedd
+        # Control if the plot is weighted
         self.WeightVar = Tk.IntVar()
         self.WeightVar.set(self.parent.GetPlotParam('weighted'))
         cb = ttk.Checkbutton(frm, text = "Weight by charge",
@@ -555,65 +543,35 @@ class EnergySettings(Tk.Toplevel):
         self.VmaxEnter.grid(row = 4, column = 3)
 
         # Now the y lim
-        self.setPminVar = Tk.IntVar()
-        self.setPminVar.set(self.parent.GetPlotParam('set_p_min'))
-        self.setPminVar.trace('w', self.setPminChanged)
+        self.setYminVar = Tk.IntVar()
+        self.setYminVar.set(self.parent.GetPlotParam('set_y_min'))
+        self.setYminVar.trace('w', self.setYminChanged)
 
-        self.setPmaxVar = Tk.IntVar()
-        self.setPmaxVar.set(self.parent.GetPlotParam('set_p_max'))
-        self.setPmaxVar.trace('w', self.setPmaxChanged)
+        self.setYmaxVar = Tk.IntVar()
+        self.setYmaxVar.set(self.parent.GetPlotParam('set_y_max'))
+        self.setYmaxVar.trace('w', self.setYmaxChanged)
 
 
 
-        self.Pmin = Tk.StringVar()
-        self.Pmin.set(str(self.parent.GetPlotParam('p_min')))
+        self.Ymin = Tk.StringVar()
+        self.Ymin.set(str(self.parent.GetPlotParam('y_min')))
 
-        self.Pmax = Tk.StringVar()
-        self.Pmax.set(str(self.parent.GetPlotParam('p_max')))
+        self.Ymax = Tk.StringVar()
+        self.Ymax.set(str(self.parent.GetPlotParam('y_max')))
 
 
         cb = ttk.Checkbutton(frm, text ='Set y_axis min',
-                        variable = self.setPminVar)
+                        variable = self.setYminVar)
         cb.grid(row = 5, column = 2, sticky = Tk.W)
-        self.PminEnter = ttk.Entry(frm, textvariable=self.Pmin, width=7)
-        self.PminEnter.grid(row = 5, column = 3)
+        self.YminEnter = ttk.Entry(frm, textvariable=self.Ymin, width=7)
+        self.YminEnter.grid(row = 5, column = 3)
 
         cb = ttk.Checkbutton(frm, text ='Set y_axis max',
-                        variable = self.setPmaxVar)
+                        variable = self.setYmaxVar)
         cb.grid(row = 6, column = 2, sticky = Tk.W)
 
-        self.PmaxEnter = ttk.Entry(frm, textvariable=self.Pmax, width=7)
-        self.PmaxEnter.grid(row = 6, column = 3)
-
-        # Now the E lim
-        self.setEminVar = Tk.IntVar()
-        self.setEminVar.set(self.parent.GetPlotParam('set_E_min'))
-        self.setEminVar.trace('w', self.setEminChanged)
-
-        self.setEmaxVar = Tk.IntVar()
-        self.setEmaxVar.set(self.parent.GetPlotParam('set_E_max'))
-        self.setEmaxVar.trace('w', self.setEmaxChanged)
-
-
-        self.Emin = Tk.StringVar()
-        self.Emin.set(str(self.parent.GetPlotParam('E_min')))
-
-        self.Emax = Tk.StringVar()
-        self.Emax.set(str(self.parent.GetPlotParam('E_max')))
-
-
-        cb = ttk.Checkbutton(frm, text ='Set E_min (m_e c^2)',
-                        variable = self.setEminVar)
-        cb.grid(row = 7, column = 2, sticky = Tk.W)
-        self.EminEnter = ttk.Entry(frm, textvariable=self.Emin, width=7)
-        self.EminEnter.grid(row = 7, column = 3)
-
-        cb = ttk.Checkbutton(frm, text ='Set E_max (m_e c^2)',
-                        variable = self.setEmaxVar)
-        cb.grid(row = 8, column = 2, sticky = Tk.W)
-
-        self.EmaxEnter = ttk.Entry(frm, textvariable=self.Emax, width=7)
-        self.EmaxEnter.grid(row = 8, column = 3)
+        self.YmaxEnter = ttk.Entry(frm, textvariable=self.Ymax, width=7)
+        self.YmaxEnter.grid(row = 6, column = 3)
 
 
     def ShockVarHandler(self, *args):
@@ -665,16 +623,6 @@ class EnergySettings(Tk.Toplevel):
             self.parent.lineright.set_color(self.parent.energy_color)
             self.parent.SetPlotParam('prtl_type', self.pvar.get())
 
-    def RadioDim(self):
-        if self.dimvar.get() == self.parent.GetPlotParam('mom_dim'):
-            pass
-        else:
-            self.parent.SetPlotParam('mom_dim', self.dimvar.get(), update_plot = False)
-            self.parent.UpdateLabelsandColors()
-            self.parent.axes.set_ylabel(self.parent.y_label, labelpad = self.parent.parent.ylabel_pad, color = 'black')
-            self.parent.SetPlotParam('mom_dim', self.dimvar.get())
-
-
 
     def setVminChanged(self, *args):
         if self.setVminVar.get() == self.parent.GetPlotParam('set_v_min'):
@@ -688,38 +636,27 @@ class EnergySettings(Tk.Toplevel):
         else:
             self.parent.SetPlotParam('set_v_max', self.setVmaxVar.get())
 
-    def setPminChanged(self, *args):
-        if self.setPminVar.get() == self.parent.GetPlotParam('set_p_min'):
+    def setYminChanged(self, *args):
+        if self.setYminVar.get() == self.parent.GetPlotParam('set_y_min'):
             pass
         else:
-            self.parent.SetPlotParam('set_p_min', self.setPminVar.get())
+            self.parent.SetPlotParam('set_y_min', self.setYminVar.get())
 
-    def setPmaxChanged(self, *args):
-        if self.setPmaxVar.get() == self.parent.GetPlotParam('set_p_max'):
+    def setYmaxChanged(self, *args):
+        if self.setYmaxVar.get() == self.parent.GetPlotParam('set_y_max'):
             pass
         else:
-            self.parent.SetPlotParam('set_p_max', self.setPmaxVar.get())
+            self.parent.SetPlotParam('set_y_max', self.setYmaxVar.get())
 
-    def setEminChanged(self, *args):
-        if self.setEminVar.get() == self.parent.GetPlotParam('set_E_min'):
-            pass
-        else:
-            self.parent.SetPlotParam('set_E_min', self.setEminVar.get())
-
-    def setEmaxChanged(self, *args):
-        if self.setEmaxVar.get() == self.parent.GetPlotParam('set_E_max'):
-            pass
-        else:
-            self.parent.SetPlotParam('set_E_max', self.setEmaxVar.get())
 
 
     def TxtEnter(self, e):
         self.FieldsCallback()
 
     def FieldsCallback(self):
-        tkvarLimList = [self.Vmin, self.Vmax, self.Pmin, self.Pmax, self.Emin, self.Emax]
-        plot_param_List = ['v_min', 'v_max', 'p_min', 'p_max', 'E_min', 'E_max']
-        tkvarSetList = [self.setVminVar, self.setVmaxVar, self.setPminVar, self.setPmaxVar, self.setEminVar, self.setEmaxVar]
+        tkvarLimList = [self.Vmin, self.Vmax, self.Ymin, self.Ymax]
+        plot_param_List = ['v_min', 'v_max', 'y_min', 'y_max']
+        tkvarSetList = [self.setVminVar, self.setVmaxVar, self.setYminVar, self.setYmaxVar]
         to_reload = False
         for j in range(len(tkvarLimList)):
             try:

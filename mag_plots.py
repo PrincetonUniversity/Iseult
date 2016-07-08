@@ -24,7 +24,7 @@ class BPanel:
                        'OutlineText': True,
                        'spatial_x': True,
                        'spatial_y': None,
-                       'show_FFT_region': True,
+                       'show_FFT_region': False,
                        'interpolation': 'nearest',
                        'cnorm_type': 'Linear', # Colormap norm;  options are Log, Pow or Linear
                        'cpow_num': 0.6, # Used in the PowerNorm,                       'div_midpoint': 0.0, # The cpow color norm normalizes data to [0,1] using np.sign(x-midpoint)*np.abs(x-midpoint)**(-cpow_num) -> [0,midpoint,1] if it is a divering cmap or [0,1] if it is not a divering cmap
@@ -370,7 +370,11 @@ class BPanel:
             self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
 
             if self.parent.xlim[0]:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+                if self.parent.xLimsRelative:
+                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
+                                       self.parent.xlim[2] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
             else:
                 self.axes.set_xlim(self.xmin, self.xmax)
             if self.parent.ylim[0]:
@@ -402,7 +406,11 @@ class BPanel:
             self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)#, tick1On= False, tick2On= False)
 
             if self.parent.xlim[0]:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+                if self.parent.xLimsRelative:
+                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
+                                       self.parent.xlim[2] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
             else:
                 self.axes.set_xlim(self.xaxis_values[0],self.xaxis_values[-1])
 
@@ -464,9 +472,13 @@ class BPanel:
             self.axes.set_ylim(self.min_max[0])
             if self.GetPlotParam('show_shock'):
                 self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
-
+            # xlims
             if self.parent.xlim[0]:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+                if self.parent.xLimsRelative:
+                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
+                                       self.parent.xlim[2] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
             else:
                 self.axes.set_xlim(self.xaxis_values[0], self.xaxis_values[-1])
 
@@ -486,7 +498,11 @@ class BPanel:
             self.clims = np.copy(self.min_max[1])
 
             if self.parent.xlim[0]:
-                self.axes.set_xlim(self.parent.xlim[1],self.parent.xlim[2])
+                if self.parent.xLimsRelative:
+                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
+                                       self.parent.xlim[2] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
             else:
                 self.axes.set_xlim(self.xmin,self.xmax)
             if self.parent.ylim[0]:

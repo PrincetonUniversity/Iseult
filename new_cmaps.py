@@ -3623,11 +3623,11 @@ cmaps['RdYlGn'] = get_cmap('RdYlGn')
 cmaps['PiYG'] = get_cmap('PiYG')
 cmaps['PRGn'] = get_cmap('PRGn')
 cmaps['RdBu'] = get_cmap('RdBu')
-#cmaps['winter'] = get_cmap('winter')
+cmaps['winter'] = get_cmap('winter')
 #cmaps['nipy_spectral'] = get_cmap('nipy_spectral')
 
 sequential = ['magma', 'inferno', 'plasma', 'viridis', 'temperature',
                 'Linear_L', 'Blue/Green/Red/Yellow', 'Rainbow + White',
-                'Cube YF', 'gnuplot', 'gnuplot2']
+                'Cube YF', 'gnuplot', 'gnuplot2', 'winter']
 
 diverging = ['vort', 'BlGr', 'coolwarm', 'BuYlRd', 'Spectral', 'PiYG', 'RdBu', 'PRGn', 'PuOr','RdYlGn']
