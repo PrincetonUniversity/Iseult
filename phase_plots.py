@@ -588,7 +588,6 @@ class PhasePanel:
                     self.cbar.set_extent([np.log10(clim[0]),np.log10(clim[1]),0,1])
                     self.axC.set_xlim(np.log10(clim[0]),np.log10(clim[1]))
                     self.axC.xaxis.set_label_position("top")
-#                    self.axC.xaxis.set_label_coords(.15, +0.025)
                     if self.GetPlotParam('prtl_type') ==0:
                         self.axC.set_xlabel(r'$\log{\ \ f_i(p)}$')#, labelpad =15, rotation = -90)
                     else:

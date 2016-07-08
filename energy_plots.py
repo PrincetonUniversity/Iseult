@@ -375,7 +375,7 @@ class EnergyPanel:
 
         if self.parent.xlim[0] and self.parent.LinkSpatial == 1:
             if self.parent.xLimsRelative:
-                self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc, 
+                self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
                                    self.parent.xlim[2] + self.parent.shock_loc)
             else:
                 self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
@@ -392,18 +392,42 @@ class EnergyPanel:
                 if self.parent.HorizontalCbars:
                     self.cbar.set_extent([np.log10(clim[0]),np.log10(clim[1]),0,1])
                     self.axC.set_xlim(np.log10(clim[0]),np.log10(clim[1]))
+                    self.axC.xaxis.set_label_position("top")
+                    if self.GetPlotParam('prtl_type') ==0:
+                        self.axC.set_xlabel(r'$\log{\ \ f_i(p)}$')
+                    else:
+                        self.axC.set_xlabel(r'$\log{\ \ f_e(p)}$')
+
                 else:
                     self.cbar.set_extent([0,1,np.log10(clim[0]),np.log10(clim[1])])
                     self.axC.set_ylim(np.log10(clim[0]),np.log10(clim[1]))
                     self.axC.locator_params(axis='y',nbins=6)
+                    self.axC.yaxis.set_label_position("right")
+                    if self.GetPlotParam('prtl_type') ==0:
+                        self.axC.set_ylabel(r'$\log{\ \ f_i(p)}$', labelpad =15, rotation = -90)
+                    else:
+                        self.axC.set_ylabel(r'$\log{\ \ f_e(p)}$', size = 12,labelpad =15, rotation = -90)
+
             else:# self.GetPlotParam('cnorm_type') == "Linear":
                 if self.parent.HorizontalCbars:
                     self.cbar.set_extent([clim[0], clim[1], 0, 1])
                     self.axC.set_xlim(clim[0], clim[1])
+                    self.axC.xaxis.set_label_position("top")
+                    if self.GetPlotParam('prtl_type') ==0:
+                        self.axC.set_xlabel(r'$f_i(p)$')
+                    else:
+                        self.axC.set_xlabel(r'$f_e(p)$')
+
                 else:
                     self.cbar.set_extent([0, 1, clim[0], clim[1]])
                     self.axC.set_ylim(clim[0], clim[1])
                     self.axC.locator_params(axis='y', nbins=6)
+                    self.axC.yaxis.set_label_position("right")
+                    if self.GetPlotParam('prtl_type') ==0:
+                        self.axC.set_ylabel(r'$f_i(p)$', labelpad =15, rotation = -90)
+                    else:
+                        self.axC.set_ylabel(r'$f_e(p)$', size = 12,labelpad =15, rotation = -90)
+
 
     def GetPlotParam(self, keyname):
         return self.FigWrap.GetPlotParam(keyname)
