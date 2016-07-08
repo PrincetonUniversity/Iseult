@@ -1269,7 +1269,7 @@ class MainApp(Tk.Tk):
         self.GammaBoost = 0.0
 
         # A Param the will set the xlims relative to the shock location
-        self.xLimsRelative = True
+        self.xLimsRelative = False
 
         self.numOfRows = Tk.IntVar(self)
         self.numOfRows.set(3)
