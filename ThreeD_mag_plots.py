@@ -70,7 +70,7 @@ class ThreeDBPanel:
         # and stored in the DataDict for this time step
         self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
         self.istep = self.FigWrap.LoadKey('istep')[0]
-        self.mag_color = new_cmaps.cmaps[self.parent.cmap](0.5)
+        self.mag_color = new_cmaps.cmaps[MainParamDict['ColorMap']](0.5)
 
 
         # see if the axis values are saved in the data dict

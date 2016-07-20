@@ -23,16 +23,24 @@ class BPanel:
                        'show_shock' : False,
                        'OutlineText': True,
                        'spatial_x': True,
-                       'spatial_y': None,
+                       'spatial_y': False,
                        'show_FFT_region': False,
                        'interpolation': 'nearest',
                        'cnorm_type': 'Linear', # Colormap norm;  options are Log, Pow or Linear
-                       'cpow_num': 0.6, # Used in the PowerNorm,                       'div_midpoint': 0.0, # The cpow color norm normalizes data to [0,1] using np.sign(x-midpoint)*np.abs(x-midpoint)**(-cpow_num) -> [0,midpoint,1] if it is a divering cmap or [0,1] if it is not a divering cmap
+                       'cpow_num': 0.6, # Used in the PowerNorm,
                        'div_midpoint': 0.0, # The cpow color norm normalizes data to [0,1] using np.sign(x-midpoint)*np.abs(x-midpoint)**(-cpow_num) -> [0,midpoint,1] if it is a divering cmap or [0,1] if it is not a divering cmap
                        'UseDivCmap': True,
                        'stretch_colors': False,
-                       'cmap': None # If cmap is none, the plot will inherit the parent's cmap,
+                       'cmap': 'None' # If cmap is none, the plot will inherit the parent's cmap,
                        }
+    # We need the types of all the parameters for the config file
+    BoolList = ['twoD', 'show_cbar', 'set_v_min', 'set_v_max',
+             'show_shock', 'OutlineText', 'spatial_x', 'spatial_y', 'Show_FFT_region',
+             'UseDivCmap', 'stretch_colors']
+    IntList = ['mag_plot_type']
+    FloatList = ['v_min', 'v_max', 'cpow_num', 'div_midpoint']
+    StrList = ['interpolation', 'cnorm_type', 'cmap']
+
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))
 
@@ -74,14 +82,14 @@ class BPanel:
         # and stored in the DataDict for this time step
         self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
         self.istep = self.FigWrap.LoadKey('istep')[0]
-        self.mag_color = new_cmaps.cmaps[self.parent.cmap](0.5)
-        if self.GetPlotParam('cmap') is None:
+        self.mag_color = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.5)
+        if self.GetPlotParam('cmap') == 'None':
             if self.GetPlotParam('mag_plot_type')==1:
                 self.cmap = 'phase'
             elif self.GetPlotParam('UseDivCmap'):
-                self.cmap = self.parent.div_cmap
+                self.cmap = self.parent.MainParamDict['DivColorMap']
             else:
-                self.cmap = self.parent.cmap
+                self.cmap = self.parent.MainParamDict['ColorMap']
         else:
             self.cmap = self.GetPlotParam('cmap')
         # see if the axis values are saved in the data dict
@@ -269,7 +277,7 @@ class BPanel:
 
         # Now that the data is loaded, start making the plots
         if self.GetPlotParam('twoD'):
-            if self.parent.LinkSpatial != 0:
+            if self.parent.MainParamDict['LinkSpatial'] != 0:
                 if self.FigWrap.pos == self.parent.first_x and self.FigWrap.pos == self.parent.first_y:
                     self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
                 elif self.FigWrap.pos == self.parent.first_x:
@@ -298,7 +306,7 @@ class BPanel:
             if self.GetPlotParam('set_v_max'):
                 self.vmax = self.GetPlotParam('v_max')
 
-            if self.parent.plot_aspect:
+            if self.parent.MainParamDict['ImageAspect']:
                 self.cax = self.axes.imshow(self.f, origin = 'lower', norm = self.norm())
             else:
                 self.cax = self.axes.imshow(self.f, origin = 'lower', norm = self.norm(),
@@ -320,7 +328,7 @@ class BPanel:
             self.axes.set_axis_bgcolor('lightgrey')
 
             self.axC = self.figure.add_subplot(self.gs[self.parent.cbar_extent[0]:self.parent.cbar_extent[1], self.parent.cbar_extent[2]:self.parent.cbar_extent[3]])
-            if self.parent.HorizontalCbars:
+            if self.parent.MainParamDict['HorizontalCbars']:
                 self.cbar = self.axC.imshow(self.gradient, aspect='auto',
                                             cmap=new_cmaps.cmaps[self.cmap])
 
@@ -329,7 +337,7 @@ class BPanel:
                 self.axC.tick_params(axis='x',
                                 which = 'both', # bothe major and minor ticks
                                 top = 'off', # turn off top ticks
-                                labelsize=self.parent.num_font_size)
+                                labelsize=self.parent.MainParamDict['NumFontSize'])
 
                 self.axC.tick_params(axis='y',          # changes apply to the y-axis
                                 which='both',      # both major and minor ticks are affected
@@ -347,7 +355,7 @@ class BPanel:
                                 top = 'off', # turn off top ticks
                                 bottom = 'off',
                                 labelbottom = 'off',
-                                labelsize=self.parent.num_font_size)
+                                labelsize=self.parent.MainParamDict['NumFontSize'])
 
                 self.axC.tick_params(axis='y',          # changes apply to the y-axis
                                 which='both',      # both major and minor ticks are affected
@@ -355,7 +363,7 @@ class BPanel:
                                 right='on',         # ticks along the top edge are off
                                 labelleft = 'off',
                                 labelright  = 'on',
-                                labelsize=self.parent.num_font_size)
+                                labelsize=self.parent.MainParamDict['NumFontSize'])
 
             if self.GetPlotParam('show_cbar') == 0:
                 self.axC.set_visible = False
@@ -367,25 +375,25 @@ class BPanel:
             self.shockline_2d.set_visible(self.GetPlotParam('show_shock'))
 
             self.axes.set_axis_bgcolor('lightgrey')
-            self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
+            self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 
-            if self.parent.xlim[0]:
-                if self.parent.xLimsRelative:
-                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
-                                       self.parent.xlim[2] + self.parent.shock_loc)
+            if self.parent.MainParamDict['SetxLim']:
+                if self.parent.MainParamDict['xLimsRelative']:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
                 else:
-                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
             else:
                 self.axes.set_xlim(self.xmin, self.xmax)
-            if self.parent.ylim[0]:
-                self.axes.set_ylim(self.parent.ylim[1],self.parent.ylim[2])
+            if self.parent.MainParamDict['SetyLim']:
+                self.axes.set_ylim(self.parent.MainParamDict['yBottom'],self.parent.MainParamDict['yTop'])
             else:
                 self.axes.set_ylim(self.ymin, self.ymax)
-            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
-            self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.ylabel_pad, color = 'black')
+            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
+            self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
 
         else:
-            if self.parent.LinkSpatial != 0 and self.parent.LinkSpatial != 3:
+            if self.parent.MainParamDict['LinkSpatial'] != 0 and self.parent.MainParamDict['LinkSpatial'] != 3:
                 if self.FigWrap.pos == self.parent.first_x:
                     self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
                 else:
@@ -403,14 +411,14 @@ class BPanel:
             self.shock_line.set_visible(self.GetPlotParam('show_shock'))
 
             self.axes.set_axis_bgcolor('lightgrey')
-            self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)#, tick1On= False, tick2On= False)
+            self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)#, tick1On= False, tick2On= False)
 
-            if self.parent.xlim[0]:
-                if self.parent.xLimsRelative:
-                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
-                                       self.parent.xlim[2] + self.parent.shock_loc)
+            if self.parent.MainParamDict['SetxLim']:
+                if self.parent.MainParamDict['xLimsRelative']:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
                 else:
-                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
             else:
                 self.axes.set_xlim(self.xaxis_values[0],self.xaxis_values[-1])
 
@@ -420,8 +428,8 @@ class BPanel:
             if self.GetPlotParam('set_v_max'):
                 self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
 
-            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
-            self.axes.set_ylabel(self.ylabel, labelpad = self.parent.ylabel_pad, color = 'black')
+            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
+            self.axes.set_ylabel(self.ylabel, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
 
         ####
         # FFT REGION PLOTTING CODE
@@ -434,11 +442,11 @@ class BPanel:
         self.lineright.set_visible(self.GetPlotParam('show_FFT_region'))
 
         if self.GetPlotParam('show_FFT_region'):
-            self.left_loc = self.parent.FFT_L.get() + self.parent.shock_loc*self.parent.FFT_relative
+            self.left_loc = self.parent.MainParamDict['FFTLeft'] + self.parent.shock_loc*self.parent.MainParamDict['FFTRelative']
             self.left_loc = max(self.left_loc, self.xaxis_values[0])
             self.lineleft.set_xdata([self.left_loc,self.left_loc])
 
-            self.right_loc = self.parent.FFT_R.get() + self.parent.shock_loc*self.parent.FFT_relative
+            self.right_loc = self.parent.MainParamDict['FFTRight'] + self.parent.shock_loc*self.parent.MainParamDict['FFTRelative']
             self.right_loc = min(self.right_loc, self.xaxis_values[-1])
             self.lineright.set_xdata([self.right_loc,self.right_loc])
 
@@ -457,11 +465,11 @@ class BPanel:
         self.lineright.set_visible(self.GetPlotParam('show_FFT_region'))
 
         if self.GetPlotParam('show_FFT_region'):
-            self.left_loc = self.parent.FFT_L.get() + self.parent.shock_loc*self.parent.FFT_relative
+            self.left_loc = self.parent.MainParamDict['FFTLeft'] + self.parent.shock_loc*self.parent.MainParamDict['FFTRelative']
             self.left_loc = max(self.left_loc, self.xaxis_values[0])
             self.lineleft.set_xdata([self.left_loc,self.left_loc])
 
-            self.right_loc = self.parent.FFT_R.get() + self.parent.shock_loc*self.parent.FFT_relative
+            self.right_loc = self.parent.MainParamDict['FFTRight'] + self.parent.shock_loc*self.parent.MainParamDict['FFTRelative']
             self.right_loc = min(self.right_loc, self.xaxis_values[-1])
             self.lineright.set_xdata([self.right_loc,self.right_loc])
 
@@ -473,12 +481,12 @@ class BPanel:
             if self.GetPlotParam('show_shock'):
                 self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
             # xlims
-            if self.parent.xlim[0]:
-                if self.parent.xLimsRelative:
-                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
-                                       self.parent.xlim[2] + self.parent.shock_loc)
+            if self.parent.MainParamDict['SetxLim']:
+                if self.parent.MainParamDict['xLimsRelative']:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
                 else:
-                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
             else:
                 self.axes.set_xlim(self.xaxis_values[0], self.xaxis_values[-1])
 
@@ -497,16 +505,16 @@ class BPanel:
             self.TwoDan.set_text(self.ann_label)
             self.clims = np.copy(self.min_max[1])
 
-            if self.parent.xlim[0]:
-                if self.parent.xLimsRelative:
-                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
-                                       self.parent.xlim[2] + self.parent.shock_loc)
+            if self.parent.MainParamDict['SetxLim']:
+                if self.parent.MainParamDict['xLimsRelative']:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
                 else:
-                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
             else:
                 self.axes.set_xlim(self.xmin,self.xmax)
-            if self.parent.ylim[0]:
-                self.axes.set_ylim(self.parent.ylim[1],self.parent.ylim[2])
+            if self.parent.MainParamDict['SetyLim']:
+                self.axes.set_ylim(self.parent.MainParamDict['yBottom'],self.parent.MainParamDict['yTop'])
             else:
                 self.axes.set_ylim(self.ymin,self.ymax)
 
@@ -543,7 +551,7 @@ class BPanel:
 
                 cbardata = PowerNormFunc(data_range, vmin = data_range[0], vmax = data_range[-1], gamma = self.GetPlotParam('cpow_num'), midpoint = self.GetPlotParam('div_midpoint'), div_cmap = self.GetPlotParam('UseDivCmap'), stretch_colors = self.GetPlotParam('stretch_colors'))
                 cbardata = np.vstack((cbardata,cbardata))
-                if self.parent.HorizontalCbars:
+                if self.parent.MainParamDict['HorizontalCbars']:
                     self.cbar.set_data(cbardata)
                     self.cbar.set_extent([clim[0],clim[1],0,1])
                     self.axC.set_xlim(clim[0],clim[1])
@@ -560,7 +568,7 @@ class BPanel:
 
                 cbardata = PowerNormFunc(data_range, vmin = data_range[0], vmax = data_range[-1], gamma = 1.0, div_cmap = self.GetPlotParam('UseDivCmap'), midpoint = self.GetPlotParam('div_midpoint'), stretch_colors = self.GetPlotParam('stretch_colors'))
                 cbardata = np.vstack((cbardata,cbardata))
-                if self.parent.HorizontalCbars:
+                if self.parent.MainParamDict['HorizontalCbars']:
                     self.cbar.set_data(cbardata)
                     self.cbar.set_extent([clim[0],clim[1],0,1])
                     self.axC.set_xlim(clim[0],clim[1])
@@ -571,7 +579,7 @@ class BPanel:
                     self.axC.locator_params(axis='y',nbins=6)
 
             else:# self.GetPlotParam('cnorm_type') == "Linear":
-                if self.parent.HorizontalCbars:
+                if self.parent.MainParamDict['HorizontalCbars']:
 
                     self.cbar.set_extent([clim[0],clim[1],0,1])
                     self.axC.set_xlim(clim[0],clim[1])
@@ -837,9 +845,9 @@ class FieldSettings(Tk.Toplevel):
                 if self.parent.GetPlotParam('mag_plot_type') == 1:
                     if self.parent.GetPlotParam('cmap') == None:
                         if self.parent.GetPlotParam('UseDivCmap'):
-                            self.parent.cmap = self.parent.parent.div_cmap
+                            self.parent.cmap = self.parent.parent.MainParamDict['DivColorMap']
                         else:
-                            self.parent.cmap = self.parent.parent.cmap
+                            self.parent.cmap = self.parent.parent.MainParamDict['ColorMap']
                         self.parent.cax.set_cmap(new_cmaps.cmaps[self.parent.cmap])
                         self.parent.cbar.set_cmap(new_cmaps.cmaps[self.parent.cmap])
                 elif self.MagTypeVar.get() == 1:

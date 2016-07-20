@@ -27,17 +27,24 @@ class DensPanel:
                        'show_shock' : False,
                        'OutlineText': True,
                        'spatial_x': True,
-                       'spatial_y': None,
+                       'spatial_y': False,
                        'interpolation': 'nearest',
                        'normalize_density': True, # Normalize density to it's upstream values
                        'cnorm_type': 'Linear', # Colormap norm;  options are Pow or Linear
                        'cpow_num': 0.6, # Used in the PowerNorm
-                       'interpolation': 'nearest',
                        'UseDivCmap': False,
                        'div_midpoint': 0.0,
                        'stretch_colors': False,
-                       'cmap': None # If cmap is none, the plot will inherit the parent's cmap
+                       'cmap': 'None' # If cmap is none, the plot will inherit the parent's cmap
                        }
+    # We need the types of all the parameters for the config file
+    BoolList = ['twoD', 'show_cbar', 'set_color_limits', 'set_v_min', 'set_v_max',
+                   'show_labels', 'show_shock', 'OutlineText', 'spatial_x', 'spatial_y',
+                   'normalize_density', 'UseDivCmap', 'stretch_colors']
+    IntList = ['dens_type']
+    FloatList = ['v_min', 'v_max', 'cpow_num', 'div_midpoint']
+    StrList = ['interpolation', 'cnorm_type', 'cmap']
+
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))
 
@@ -85,11 +92,11 @@ class DensPanel:
         return self.arrs_needed
     def LoadData(self):
         ''' A Helper function that loads the data for the plot'''
-        if self.GetPlotParam('cmap') is None:
+        if self.GetPlotParam('cmap') == 'None':
             if self.GetPlotParam('UseDivCmap'):
-                self.cmap = self.parent.div_cmap
+                self.cmap = self.parent.MainParamDict['DivColorMap']
             else:
-                self.cmap = self.parent.cmap
+                self.cmap = self.parent.MainParamDict['ColorMap']
 
         else:
             self.cmap = self.GetPlotParam('cmap')
@@ -102,7 +109,7 @@ class DensPanel:
         else:
             self.SetPlotParam('normalize_density', False, update_plot = False)
 
-        self.dens_color = new_cmaps.cmaps[self.parent.cmap](0.5)
+        self.dens_color = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.5)
         # get c_omp and istep to convert cells to physical units
         self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
         self.istep = self.FigWrap.LoadKey('istep')[0]
@@ -181,7 +188,7 @@ class DensPanel:
         # Now that the data is loaded, start making the plots
         if self.GetPlotParam('twoD'):
             # Link up the spatial axes if desired
-            if self.parent.LinkSpatial != 0:
+            if self.parent.MainParamDict['LinkSpatial'] != 0:
                 if self.FigWrap.pos == self.parent.first_x and self.FigWrap.pos == self.parent.first_y:
                     self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
                 elif self.FigWrap.pos == self.parent.first_x:
@@ -225,7 +232,7 @@ class DensPanel:
                 self.vmax = self.GetPlotParam('v_max')
 
 
-            if self.parent.plot_aspect:
+            if self.parent.MainParamDict['ImageAspect']:
                 self.cax = self.axes.imshow(self.zval, norm = self.norm(), origin = 'lower')
             else:
                 self.cax = self.axes.imshow(self.zval, norm = self.norm(), origin = 'lower',
@@ -254,7 +261,7 @@ class DensPanel:
             self.axes.set_axis_bgcolor('lightgrey')
 
             self.axC = self.figure.add_subplot(self.gs[self.parent.cbar_extent[0]:self.parent.cbar_extent[1], self.parent.cbar_extent[2]:self.parent.cbar_extent[3]])
-            if self.parent.HorizontalCbars:
+            if self.parent.MainParamDict['HorizontalCbars']:
                 self.cbar = self.axC.imshow(self.gradient, aspect='auto',
                                             cmap=new_cmaps.cmaps[self.cmap])
                 # Make the colobar axis more like the real colorbar
@@ -262,7 +269,7 @@ class DensPanel:
                 self.axC.tick_params(axis='x',
                                 which = 'both', # bothe major and minor ticks
                                 top = 'off', # turn off top ticks
-                                labelsize=self.parent.num_font_size)
+                                labelsize=self.parent.MainParamDict['NumFontSize'])
 
                 self.axC.tick_params(axis='y',          # changes apply to the y-axis
                                 which='both',      # both major and minor ticks are affected
@@ -279,7 +286,7 @@ class DensPanel:
                                 top = 'off', # turn off top ticks
                                 bottom = 'off', # turn off top ticks
                                 labelbottom = 'off', # turn off top ticks
-                                labelsize=self.parent.num_font_size)
+                                labelsize=self.parent.MainParamDict['NumFontSize'])
 
                 self.axC.tick_params(axis='y',          # changes apply to the y-axis
                                 which='both',      # both major and minor ticks are affected
@@ -287,7 +294,7 @@ class DensPanel:
                                 right='on',         # ticks along the top edge are off
                                 labelleft='off',
                                 labelright = 'on',
-                                labelsize = self.parent.num_font_size)
+                                labelsize = self.parent.MainParamDict['NumFontSize'])
 
             if not self.GetPlotParam('show_cbar'):
                 self.axC.set_visible(False)
@@ -295,27 +302,27 @@ class DensPanel:
                 self.CbarTickFormatter()
 
             self.axes.set_axis_bgcolor('lightgrey')
-            self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
+            self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 
-            if self.parent.xlim[0]:
-                if self.parent.xLimsRelative:
-                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
-                                       self.parent.xlim[2] + self.parent.shock_loc)
+            if self.parent.MainParamDict['SetxLim']:
+                if self.parent.MainParamDict['xLimsRelative']:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
                 else:
-                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
             else:
                 self.axes.set_xlim(self.xmin,self.xmax)
 
-            if self.parent.ylim[0]:
-                self.axes.set_ylim(self.parent.ylim[1]*self.c_omp/self.istep, self.parent.ylim[2]*self.c_omp/self.istep)
+            if self.parent.MainParamDict['SetyLim']:
+                self.axes.set_ylim(self.parent.MainParamDict['yBottom']*self.c_omp/self.istep, self.parent.MainParamDict['yTop']*self.c_omp/self.istep)
             else:
                 self.axes.set_ylim(self.ymin, self.ymax)
-            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
-            self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.ylabel_pad, color = 'black')
+            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
+            self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
 
         else:
             # Do the 1D Plots
-            if self.parent.LinkSpatial != 0 and self.parent.LinkSpatial != 3:
+            if self.parent.MainParamDict['LinkSpatial'] != 0 and self.parent.MainParamDict['LinkSpatial'] != 3:
                 if self.FigWrap.pos == self.parent.first_x:
                     self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
                 else:
@@ -356,14 +363,14 @@ class DensPanel:
             self.shock_line.set_visible(self.GetPlotParam('show_shock'))
 
             self.axes.set_axis_bgcolor('lightgrey')
-            self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
+            self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 
-            if self.parent.xlim[0]:
-                if self.parent.xLimsRelative:
-                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
-                                       self.parent.xlim[2] + self.parent.shock_loc)
+            if self.parent.MainParamDict['SetxLim']:
+                if self.parent.MainParamDict['xLimsRelative']:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
                 else:
-                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
             else:
                 self.axes.set_xlim(self.xaxis_values[0],self.xaxis_values[-1])
 
@@ -378,8 +385,8 @@ class DensPanel:
                 tmp_str = r'${\rm density} \ [n_0]$'
             if self.GetPlotParam('dens_type') == 1:
                 tmp_str = r'$\rho$'
-            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.xlabel_pad, color = 'black')
-            self.axes.set_ylabel(tmp_str, labelpad = self.parent.ylabel_pad, color = 'black')
+            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
+            self.axes.set_ylabel(tmp_str, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
 
 
     def refresh(self):
@@ -408,12 +415,12 @@ class DensPanel:
 
 
 
-            if self.parent.xlim[0]:
-                if self.parent.xLimsRelative:
-                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
-                                       self.parent.xlim[2] + self.parent.shock_loc)
+            if self.parent.MainParamDict['SetxLim']:
+                if self.parent.MainParamDict['xLimsRelative']:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
                 else:
-                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
             else:
                 self.axes.set_xlim(self.xaxis_values[0], self.xaxis_values[-1])
 
@@ -446,17 +453,17 @@ class DensPanel:
                 self.clims = np.copy(self.rho_min_max[1])
 
             self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
-            if self.parent.xlim[0]:
-                if self.parent.xLimsRelative:
-                    self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
-                                       self.parent.xlim[2] + self.parent.shock_loc)
+            if self.parent.MainParamDict['SetxLim']:
+                if self.parent.MainParamDict['xLimsRelative']:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
                 else:
-                    self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
             else:
                 self.axes.set_xlim(self.xmin,self.xmax)
 
-            if self.parent.ylim[0]:
-                self.axes.set_ylim(self.parent.ylim[1],self.parent.ylim[2])
+            if self.parent.MainParamDict['SetyLim']:
+                self.axes.set_ylim(self.parent.MainParamDict['yBottom'],self.parent.MainParamDict['yTop'])
             else:
                 self.axes.set_ylim(self.ymin,self.ymax)
 
@@ -490,7 +497,7 @@ class DensPanel:
 
                 cbardata = PowerNormFunc(data_range, vmin = data_range[0], vmax = data_range[-1], gamma = self.GetPlotParam('cpow_num'), midpoint = self.GetPlotParam('div_midpoint'), div_cmap = self.GetPlotParam('UseDivCmap'), stretch_colors = self.GetPlotParam('stretch_colors'))
                 cbardata = np.vstack((cbardata,cbardata))
-                if self.parent.HorizontalCbars:
+                if self.parent.MainParamDict['HorizontalCbars']:
                     self.cbar.set_data(cbardata)
                     self.cbar.set_extent([clim[0],clim[1],0,1])
                     self.axC.set_xlim(clim[0],clim[1])
@@ -507,7 +514,7 @@ class DensPanel:
 
                 cbardata = PowerNormFunc(data_range, vmin = data_range[0], vmax = data_range[-1], gamma = 1.0, div_cmap = self.GetPlotParam('UseDivCmap'), midpoint = self.GetPlotParam('div_midpoint'), stretch_colors = self.GetPlotParam('stretch_colors'))
                 cbardata = np.vstack((cbardata,cbardata))
-                if self.parent.HorizontalCbars:
+                if self.parent.MainParamDict['HorizontalCbars']:
                     self.cbar.set_data(cbardata)
                     self.cbar.set_extent([clim[0],clim[1],0,1])
                     self.axC.set_xlim(clim[0],clim[1])
@@ -518,7 +525,7 @@ class DensPanel:
                     self.axC.locator_params(axis='y',nbins=6)
 
             else:# self.GetPlotParam('cnorm_type') == "Linear":
-                if self.parent.HorizontalCbars:
+                if self.parent.MainParamDict['HorizontalCbars']:
 #                    self.cbar.set_data(self.gradient)
                     self.cbar.set_extent([clim[0],clim[1],0,1])
                     self.axC.set_xlim(clim[0],clim[1])

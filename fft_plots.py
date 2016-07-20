@@ -20,9 +20,16 @@ class FFTPanel:
                        'set_y_max': False,
                        'xLog': True,
                        'yLog': True,
-                       'spatial_x': None,
-                       'spatial_y': None}
+                       'spatial_x': False,
+                       'spatial_y': False}
 
+    # We need the types of all the parameters for the config file
+    BoolList = ['twoD', 'set_y_min', 'set_y_max',
+                'xLog', 'yLog', 'spatial_x', 'spatial_y']
+    IntList = ['FFT_type']
+    FloatList = ['y_min', 'y_max']
+    StrList = []
+    
     def __init__(self, parent, figwrapper):
         self.settings_window = None
         self.FigWrap = figwrapper
@@ -52,7 +59,7 @@ class FFTPanel:
         # Load c_omp, istep, and the line color
         self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
         self.istep = self.FigWrap.LoadKey('istep')[0]
-        self.line_color = new_cmaps.cmaps[self.parent.cmap](0.5)
+        self.line_color = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.5)
 
         # Load the x-axis
         if 'xaxis_values' in self.parent.DataDict.keys():
@@ -63,15 +70,15 @@ class FFTPanel:
             self.parent.DataDict['xaxis_values'] = np.copy(self.xaxis_values)
 
         # Load the left & right locations
-        self.left_loc = self.parent.FFT_L.get() + self.parent.shock_loc*self.parent.FFT_relative
+        self.left_loc = self.parent.MainParamDict['FFTLeft'] + self.parent.shock_loc*self.parent.MainParamDict['FFTRelative']
         self.left_loc = max(self.left_loc, self.xaxis_values[0])
 
-        self.right_loc = self.parent.FFT_R.get() + self.parent.shock_loc*self.parent.FFT_relative
+        self.right_loc = self.parent.MainParamDict['FFTRight'] + self.parent.shock_loc*self.parent.MainParamDict['FFTRelative']
         self.right_loc = min(self.right_loc, self.xaxis_values[-1])
 
 
         # A list that will make sure that the data has the same int region
-        self.region_args = [self.parent.FFT_relative, self.parent.FFT_L.get(), self.parent.FFT_R.get()]
+        self.region_args = [self.parent.MainParamDict['FFTRelative'], self.parent.MainParamDict['FFTLeft'], self.parent.MainParamDict['FFTRight']]
         # Check if the region is the same in the DataDict
         is_loaded = False
         if 'FFTs' in self.parent.DataDict.keys():
@@ -166,7 +173,7 @@ class FFTPanel:
 
 
         # See if there are other k-axes, and share with them
-        if self.parent.Linkk and self.FigWrap.pos != self.parent.first_k:
+        if self.parent.MainParamDict['LinkK'] and self.FigWrap.pos != self.parent.first_k:
             self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]],
                     sharex = self.parent.SubPlotList[self.parent.first_k[0]][self.parent.first_k[1]].graph.axes)
         else:
@@ -175,10 +182,10 @@ class FFTPanel:
 
         self.line = self.axes.plot(self.k_axis, self.y, color = self.line_color)
         self.axes.set_axis_bgcolor('lightgrey')
-        self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
+        self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 
-        if self.parent.klim[0]:
-            self.axes.set_xlim(self.parent.klim[1],self.parent.klim[2])
+        if self.parent.MainParamDict['SetkLim']:
+            self.axes.set_xlim(self.parent.MainParamDict['kLeft'],self.parent.MainParamDict['kRight'])
         elif self.GetPlotParam('xLog'):
             self.axes.set_xscale('log')
             self.axes.set_xlim(self.klims[1])
@@ -193,8 +200,8 @@ class FFTPanel:
         if self.GetPlotParam('set_y_max'):
             self.axes.set_ylim(ymax = self.GetPlotParam('y_max'))
 
-        self.axes.set_xlabel(r'$k \ [\omega_{pe}/c]$', labelpad = self.parent.xlabel_pad, color = 'black')
-        self.axes.set_ylabel(self.ylabel, labelpad = self.parent.ylabel_pad, color = 'black')
+        self.axes.set_xlabel(r'$k \ [\omega_{pe}/c]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
+        self.axes.set_ylabel(self.ylabel, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
 
     def refresh(self):
 
@@ -215,8 +222,8 @@ class FFTPanel:
             tmp_lims[1]=self.GetPlotParam('y_max')
 
         self.axes.set_ylim(tmp_lims)
-        if self.parent.klim[0]:
-            self.axes.set_xlim(self.parent.klim[1],self.parent.klim[2])
+        if self.parent.MainParamDict['SetkLim']:
+            self.axes.set_xlim(self.parent.MainParamDict['kLeft'],self.parent.MainParamDict['kRight'])
         elif self.GetPlotParam('xLog'):
             self.axes.set_xlim(self.klims[1])
         else:
@@ -256,8 +263,8 @@ class FFTSettings(Tk.Toplevel):
         self.ctypevar.trace('w', self.ctypeChanged)
 
         ttk.Label(frm, text="Choose Chart Type:").grid(row=0, column = 0)
-        cmapChooser = apply(ttk.OptionMenu, (frm, self.ctypevar, self.parent.chartType) + tuple(self.parent.ChartTypes))
-        cmapChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
+        ctypeChooser = apply(ttk.OptionMenu, (frm, self.ctypevar, self.parent.chartType) + tuple(self.parent.ChartTypes))
+        ctypeChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
 
 
         # the Radiobox Control to choose the Field Type

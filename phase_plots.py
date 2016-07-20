@@ -41,6 +41,13 @@ class PhasePanel:
                        'spatial_x': True,
                        'spatial_y': False,
                        'interpolation': 'hermite'}
+
+    BoolList = ['twoD', 'masked', 'weighted', 'show_cbar', 'show_shock', 'show_int_region', 'set_color_limits',
+                'set_v_min', 'set_v_max', 'set_p_min', 'set_p_max', 'set_E_min', 'Set_E_max', 'spatial_x', 'spatial_y']
+    IntList = ['prtl_type','mom_dim', 'xbins', 'pbins']
+    FloatList = ['v_min', 'v_max', 'p_min', 'p_max', 'cpow_num', 'E_min', 'E_max']
+    StrList = ['interpolation', 'cnorm_type']
+
     prtl_opts = ['proton_p', 'electron_p']
     direction_opts = ['x-x', 'y-x', 'z-x']
     # Old labels:
@@ -90,7 +97,7 @@ class PhasePanel:
         self.arrs_needed = ['c_omp', 'bx', 'istep', 'me', 'mi']
         # First see if we will need to know the energy of the particle
         # (requied for lorentz boosts and setting e_min and e_max)
-        Need_Energy = self.parent.DoLorentzBoost and np.abs(self.parent.GammaBoost)>1E-8
+        Need_Energy = self.parent.MainParamDict['DoLorentzBoost'] and np.abs(self.parent.MainParamDict['GammaBoost'])>1E-8
         Need_Energy = Need_Energy or self.GetPlotParam('set_E_min')
         Need_Energy = Need_Energy or self.GetPlotParam('set_E_max')
 
@@ -142,8 +149,8 @@ class PhasePanel:
         if self.GetPlotParam('set_E_max'):
             self.key_name += 'Emax_'+str(self.GetPlotParam('E_max')) + '_'
 
-        if self.parent.DoLorentzBoost and np.abs(self.parent.GammaBoost)>1E-8:
-            self.key_name += 'boosted_'+ str(self.parent.GammaBoost)+'_'
+        if self.parent.MainParamDict['DoLorentzBoost'] and np.abs(self.parent.MainParamDict['GammaBoost'])>1E-8:
+            self.key_name += 'boosted_'+ str(self.parent.MainParamDict['GammaBoost'])+'_'
 
         self.key_name += self.prtl_opts[self.GetPlotParam('prtl_type')]
         self.key_name += self.direction_opts[self.GetPlotParam('mom_dim')]
@@ -151,7 +158,7 @@ class PhasePanel:
         if self.key_name in self.parent.DataDict.keys():
             self.hist2d = self.parent.DataDict[self.key_name]
 
-        elif self.parent.DoLorentzBoost and np.abs(self.parent.GammaBoost)>1E-8:
+        elif self.parent.MainParamDict['DoLorentzBoost'] and np.abs(self.parent.MainParamDict['GammaBoost'])>1E-8:
             # Gotta boost it
             self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
             self.istep = self.FigWrap.LoadKey('istep')[0]
@@ -165,21 +172,21 @@ class PhasePanel:
 
 
             # First calculate beta and gamma
-            if self.parent.GammaBoost >=1:
-                self.gammaBoost = self.parent.GammaBoost
-                self.betaBoost = np.sqrt(1-1/self.gammaBoost**2)
-            elif self.parent.GammaBoost >-1:
-                self.betaBoost = self.parent.GammaBoost
-                self.gammaBoost = np.sqrt(1-self.betaBoost**2)**(-1)
+            if self.parent.MainParamDict['GammaBoost'] >=1:
+                self.MainParamDict['GammaBoost'] = self.parent.MainParamDict['GammaBoost']
+                self.betaBoost = np.sqrt(1-1/self.MainParamDict['GammaBoost']**2)
+            elif self.parent.MainParamDict['GammaBoost'] >-1:
+                self.betaBoost = self.parent.MainParamDict['GammaBoost']
+                self.MainParamDict['GammaBoost'] = np.sqrt(1-self.betaBoost**2)**(-1)
 
             else:
-                self.gammaBoost = -self.parent.GammaBoost
-                self.betaBoost = -np.sqrt(1-1/self.gammaBoost**2)
+                self.MainParamDict['GammaBoost'] = -self.parent.MainParamDict['GammaBoost']
+                self.betaBoost = -np.sqrt(1-1/self.MainParamDict['GammaBoost']**2)
 
 
             # Now calculate the transformation of xmin & xmax
-            self.xmin = self.gammaBoost*(self.xmin-self.betaBoost*self.FigWrap.LoadKey('time')[0])
-            self.xmax = self.gammaBoost*(self.xmax-self.betaBoost*self.FigWrap.LoadKey('time')[0])
+            self.xmin = self.MainParamDict['GammaBoost']*(self.xmin-self.betaBoost*self.FigWrap.LoadKey('time')[0])
+            self.xmax = self.MainParamDict['GammaBoost']*(self.xmax-self.betaBoost*self.FigWrap.LoadKey('time')[0])
 
 
             # Now load the data. We require all 3 dimensions to determine
@@ -204,7 +211,7 @@ class PhasePanel:
                     self.weights = self.FigWrap.LoadKey('che')
 
             # Transformation of x_values of the particles
-            self.x_values = self.gammaBoost*(self.x_values-self.betaBoost*self.FigWrap.LoadKey('time')[0])
+            self.x_values = self.MainParamDict['GammaBoost']*(self.x_values-self.betaBoost*self.FigWrap.LoadKey('time')[0])
 
             # Now calculate gamma of the particles in downstream restframe
             gamma_ds = np.sqrt(u**2+v**2+w**2+1)
@@ -219,8 +226,8 @@ class PhasePanel:
             # Now calulate the velocities in the boosted frames
             tmp_helper = 1-vx*self.betaBoost
             vx_prime = (vx-self.betaBoost)/tmp_helper
-            vy_prime = vy/self.gammaBoost/tmp_helper
-            vz_prime = vz/self.gammaBoost/tmp_helper
+            vy_prime = vy/self.MainParamDict['GammaBoost']/tmp_helper
+            vz_prime = vz/self.MainParamDict['GammaBoost']/tmp_helper
 
             # Now calculate the LF in the boosted frames
             gamma_prime = 1/np.sqrt(1-vx_prime**2-vy_prime**2-vz_prime**2)
@@ -379,12 +386,12 @@ class PhasePanel:
             self.energy_color = self.parent.electron_color
 
         #set the xlabels
-        if self.parent.DoLorentzBoost and np.abs(self.parent.GammaBoost)>1E-8:
+        if self.parent.MainParamDict['DoLorentzBoost'] and np.abs(self.parent.MainParamDict['GammaBoost'])>1E-8:
             self.x_label = r'$x\prime\ [c/\omega_{\rm pe}]$'
         else:
             self.x_label = r'$x\ [c/\omega_{\rm pe}]$'
         #set the ylabel
-        self.y_label  = self.ylabel_list[self.parent.DoLorentzBoost][self.GetPlotParam('prtl_type')][self.GetPlotParam('mom_dim')]
+        self.y_label  = self.ylabel_list[self.parent.MainParamDict['DoLorentzBoost']][self.GetPlotParam('prtl_type')][self.GetPlotParam('mom_dim')]
 
     def draw(self):
         # In order to speed up the plotting, we only recalculate everything
@@ -417,7 +424,7 @@ class PhasePanel:
 
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])#, bottom=0.2,left=0.1,right=0.95, top = 0.95)
 
-        if self.parent.LinkSpatial == 1:
+        if self.parent.MainParamDict['LinkSpatial'] == 1:
             if self.FigWrap.pos == self.parent.first_x:
                 self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
             else:
@@ -426,7 +433,7 @@ class PhasePanel:
             self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
 
         self.cax = self.axes.imshow(self.hist2d[0],
-                                    cmap = new_cmaps.cmaps[self.parent.cmap],
+                                    cmap = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']],
                                     norm = self.norm(), origin = 'lower',
                                     aspect = 'auto',
                                     interpolation=self.GetPlotParam('interpolation'))
@@ -452,14 +459,14 @@ class PhasePanel:
         self.axC = self.figure.add_subplot(self.gs[self.parent.cbar_extent[0]:self.parent.cbar_extent[1], self.parent.cbar_extent[2]:self.parent.cbar_extent[3]])
         # Technically I should use the colorbar class here,
         # but I found it annoying in some of it's limitations.
-        if self.parent.HorizontalCbars:
+        if self.parent.MainParamDict['HorizontalCbars']:
             self.cbar = self.axC.imshow(self.gradient, aspect='auto',
-                                    cmap=new_cmaps.cmaps[self.parent.cmap])
+                                    cmap=new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']])
             # Make the colobar axis more like the real colorbar
             self.axC.tick_params(axis='x',
                                 which = 'both', # bothe major and minor ticks
                                 top = 'off', # turn off top ticks
-                                labelsize=self.parent.num_font_size)
+                                labelsize=self.parent.MainParamDict['NumFontSize'])
 
             self.axC.tick_params(axis='y',          # changes apply to the y-axis
                                 which='both',      # both major and minor ticks are affected
@@ -469,14 +476,14 @@ class PhasePanel:
 
         else:
             self.cbar = self.axC.imshow(np.transpose(self.gradient)[::-1], aspect='auto',
-                                    cmap=new_cmaps.cmaps[self.parent.cmap])
+                                    cmap=new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']])
             # Make the colobar axis more like the real colorbar
             self.axC.tick_params(axis='x',
                                 which = 'both', # bothe major and minor ticks
                                 top = 'off', # turn off top ticks
                                 bottom = 'off',
                                 labelbottom = 'off',
-                                labelsize=self.parent.num_font_size)
+                                labelsize=self.parent.MainParamDict['NumFontSize'])
 
             self.axC.tick_params(axis='y',          # changes apply to the y-axis
                                 which='both',      # both major and minor ticks are affected
@@ -484,7 +491,7 @@ class PhasePanel:
                                 right='on',         # ticks along the top edge are off
                                 labelleft='off',
                                 labelright='on',
-                                labelsize=self.parent.num_font_size)
+                                labelsize=self.parent.MainParamDict['NumFontSize'])
 
         self.cbar.set_extent([0, 1.0, 0, 1.0])
 
@@ -493,9 +500,9 @@ class PhasePanel:
 
 
         self.axes.set_axis_bgcolor('lightgrey')
-        self.axes.tick_params(labelsize = self.parent.num_font_size, color=self.tick_color)
-        self.axes.set_xlabel(self.x_label, labelpad = self.parent.xlabel_pad, color = 'black')
-        self.axes.set_ylabel(self.y_label, labelpad = self.parent.ylabel_pad, color = 'black')
+        self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=self.tick_color)
+        self.axes.set_xlabel(self.x_label, labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
+        self.axes.set_ylabel(self.y_label, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
 
         self.refresh()
 
@@ -535,21 +542,21 @@ class PhasePanel:
             self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
 
         if self.GetPlotParam('show_int_region'):
-            if self.GetPlotParam('prtl_type') ==0 and self.parent.e_relative:
-                self.left_loc = self.parent.shock_loc+self.parent.i_L.get()
-                self.right_loc = self.parent.shock_loc+self.parent.i_R.get()
+            if self.GetPlotParam('prtl_type') ==0 and self.parent.MainParamDict['PrtlIntegrationRelative']:
+                self.left_loc = self.parent.shock_loc+self.parent.MainParamDict['IonLeft']
+                self.right_loc = self.parent.shock_loc+self.parent.MainParamDict['IonRight']
 
             elif self.GetPlotParam('prtl_type') == 0:
-                self.left_loc = self.parent.i_L.get()
-                self.right_loc = self.parent.i_R.get()
+                self.left_loc = self.parent.MainParamDict['IonLeft']
+                self.right_loc = self.parent.MainParamDict['IonRight']
 
-            elif self.GetPlotParam('prtl_type') == 1 and self.parent.e_relative:
-                self.left_loc = self.parent.shock_loc+self.parent.e_L.get()
-                self.right_loc = self.parent.shock_loc+self.parent.e_R.get()
+            elif self.GetPlotParam('prtl_type') == 1 and self.parent.MainParamDict['PrtlIntegrationRelative']:
+                self.left_loc = self.parent.shock_loc+self.parent.MainParamDict['ElectronLeft']
+                self.right_loc = self.parent.shock_loc+self.parent.MainParamDict['ElectronRight']
 
             else:
-                self.left_loc = self.parent.e_L.get()
-                self.right_loc = self.parent.e_R.get()
+                self.left_loc = self.parent.MainParamDict['ElectronLeft']
+                self.right_loc = self.parent.MainParamDict['ElectronRight']
 
             self.left_loc = max(self.left_loc, self.xmin+1)
             self.lineleft.set_xdata([self.left_loc,self.left_loc])
@@ -558,8 +565,8 @@ class PhasePanel:
             self.lineright.set_xdata([self.right_loc,self.right_loc])
 
         self.UpdateLabelsandColors()
-        self.axes.set_xlabel(self.x_label, labelpad = self.parent.xlabel_pad, color = 'black')
-        self.axes.set_ylabel(self.y_label, labelpad = self.parent.ylabel_pad, color = 'black')
+        self.axes.set_xlabel(self.x_label, labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
+        self.axes.set_ylabel(self.y_label, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
 
         if self.GetPlotParam('set_p_min'):
             self.ymin = self.GetPlotParam('p_min')
@@ -567,12 +574,12 @@ class PhasePanel:
             self.ymax = self.GetPlotParam('p_max')
         self.axes.set_ylim(self.ymin, self.ymax)
 
-        if self.parent.xlim[0] and self.parent.LinkSpatial == 1:
-            if self.parent.xLimsRelative:
-                self.axes.set_xlim(self.parent.xlim[1] + self.parent.shock_loc,
-                                   self.parent.xlim[2] + self.parent.shock_loc)
+        if self.parent.MainParamDict['SetxLim'] and self.parent.MainParamDict['LinkSpatial'] == 1:
+            if self.parent.MainParamDict['xLimsRelative']:
+                self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                   self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
             else:
-                self.axes.set_xlim(self.parent.xlim[1], self.parent.xlim[2])
+                self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
 
         else:
             self.axes.set_xlim(self.xmin,self.xmax)
@@ -584,7 +591,7 @@ class PhasePanel:
         clim = np.copy(self.cax.get_clim())
         if self.GetPlotParam('show_cbar'):
             if self.GetPlotParam('cnorm_type') == "Log":
-                if self.parent.HorizontalCbars:
+                if self.parent.MainParamDict['HorizontalCbars']:
                     self.cbar.set_extent([np.log10(clim[0]),np.log10(clim[1]),0,1])
                     self.axC.set_xlim(np.log10(clim[0]),np.log10(clim[1]))
                     self.axC.xaxis.set_label_position("top")
@@ -604,7 +611,7 @@ class PhasePanel:
                         self.axC.set_ylabel(r'$\log{\ \ f_e(p)}$', size = 12,labelpad =15, rotation = -90)
 
             else:# self.GetPlotParam('cnorm_type') == "Linear":
-                if self.parent.HorizontalCbars:
+                if self.parent.MainParamDict['HorizontalCbars']:
                     self.cbar.set_extent([clim[0], clim[1], 0, 1])
                     self.axC.set_xlim(clim[0], clim[1])
                 else:
@@ -876,7 +883,7 @@ class PhaseSettings(Tk.Toplevel):
 
             self.parent.SetPlotParam('prtl_type', self.pvar.get(), update_plot =  False)
             self.parent.UpdateLabelsandColors()
-            self.parent.axes.set_ylabel(self.parent.y_label, labelpad = self.parent.parent.ylabel_pad, color = 'black')
+            self.parent.axes.set_ylabel(self.parent.y_label, labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
             self.parent.lineleft.set_color(self.parent.energy_color)
             self.parent.lineright.set_color(self.parent.energy_color)
             self.parent.SetPlotParam('prtl_type', self.pvar.get())
@@ -887,7 +894,7 @@ class PhaseSettings(Tk.Toplevel):
         else:
             self.parent.SetPlotParam('mom_dim', self.dimvar.get(), update_plot = False)
             self.parent.UpdateLabelsandColors()
-            self.parent.axes.set_ylabel(self.parent.y_label, labelpad = self.parent.parent.ylabel_pad, color = 'black')
+            self.parent.axes.set_ylabel(self.parent.y_label, labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
             self.parent.SetPlotParam('mom_dim', self.dimvar.get())
 
     def setVminChanged(self, *args):

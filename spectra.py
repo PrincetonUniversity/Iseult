@@ -15,7 +15,7 @@ class SpectralPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
 
     plot_param_dict = {'spectral_type': 0, #0 dn/dp, 1 = dn/dE
-                        'twoD': 0,
+                       'twoD': 0,
                        'show_ions': 1,
                        'show_electrons': 1,
                        'rest_frame': False,
@@ -28,6 +28,14 @@ class SpectralPanel:
                        'show_legend': True,
                        'y_min': -6,
                        'y_max': 0}
+
+    # We need the types of all the parameters for the config file
+    BoolList = ['twoD', 'set_ylim', 'set_xlim',
+                'spatial_x', 'spatial_y',
+                'show_ions', 'show_electrons', 'rest_frame','show_legend']
+    IntList = ['spectral_type']
+    FloatList = ['y_min', 'y_max', 'x_min', 'x_max']
+    StrList = []
 
     def __init__(self, parent, figwrapper):
         self.settings_window = None
@@ -77,7 +85,7 @@ class SpectralPanel:
             self.keyname +='in_rest_frame'
 
         # A list that will make sure that the data has the same int region
-        self.region_args = [self.parent.e_relative, self.parent.e_L.get(), self.parent.e_R.get(), self.parent.i_L.get(), self.parent.i_R.get()]
+        self.region_args = [self.parent.MainParamDict['PrtlIntegrationRelative'], self.parent.MainParamDict['ElectronLeft'], self.parent.MainParamDict['ElectronRight'], self.parent.MainParamDict['IonLeft'], self.parent.MainParamDict['IonRight']]
 
         is_loaded = False
         if self.keyname in self.parent.DataDict.keys():
@@ -114,22 +122,22 @@ class SpectralPanel:
                 self.dgamma[i]=self.gamma[i]*(10**delta-1.)
 
             # Select the x-range from which to take the spectra
-            e_left_loc = self.parent.e_L.get()
-            e_right_loc = self.parent.e_R.get()
+            e_left_loc = self.parent.MainParamDict['ElectronLeft']
+            e_right_loc = self.parent.MainParamDict['ElectronRight']
 
-            if self.parent.e_relative:
-                e_left_loc = self.parent.shock_loc+self.parent.e_L.get()
-                e_right_loc = self.parent.shock_loc+self.parent.e_R.get()
+            if self.parent.MainParamDict['PrtlIntegrationRelative']:
+                e_left_loc = self.parent.shock_loc+self.parent.MainParamDict['ElectronLeft']
+                e_right_loc = self.parent.shock_loc+self.parent.MainParamDict['ElectronRight']
 
             eL = self.xsl.searchsorted(e_left_loc)
             eR = self.xsl.searchsorted(e_right_loc, side='right')
 
-            i_left_loc = self.parent.i_L.get()
-            i_right_loc = self.parent.i_R.get()
+            i_left_loc = self.parent.MainParamDict['IonLeft']
+            i_right_loc = self.parent.MainParamDict['IonRight']
 
-            if self.parent.e_relative:
-                i_left_loc = self.parent.shock_loc+self.parent.i_L.get()
-                i_right_loc = self.parent.shock_loc+self.parent.i_R.get()
+            if self.parent.MainParamDict['PrtlIntegrationRelative']:
+                i_left_loc = self.parent.shock_loc+self.parent.MainParamDict['IonLeft']
+                i_right_loc = self.parent.shock_loc+self.parent.MainParamDict['IonRight']
 
             iL = self.xsl.searchsorted(i_left_loc)
             iR = self.xsl.searchsorted(i_right_loc, side='right')
@@ -194,7 +202,7 @@ class SpectralPanel:
                                        color = self.parent.ion_fit_color,
                                        linestyle = '--', linewidth = 1.5) # a placeholder
         # See if we want to plot the electron temperature
-        if not self.parent.set_Tp:
+        if not self.parent.MainParamDict['SetTi']:
             self.ion_temp[0].set_visible(False)
 
          # a placeholder
@@ -212,20 +220,20 @@ class SpectralPanel:
         self.electron_temp =  self.axes.plot(self.momentum, self.momedist,
                                             color = self.parent.electron_fit_color,
                                             linestyle = '--', linewidth = 1.5)
-        if not self.parent.set_Te:
+        if not self.parent.MainParamDict['SetTe']:
             self.electron_temp[0].set_visible(False)
 
         # a placeholder
         self.electron_Einj =  self.axes.axvline(0, color = self.parent.electron_fit_color,
                                             linestyle = '-.', linewidth = 1.5)
-        if not self.parent.measure_eps_e:
+        if not self.parent.MainParamDict['MeasureEpsE']:
             self.electron_Einj.set_visible(False)
 
 
         # a placeholder
         self.ion_Einj =  self.axes.axvline(0, color = self.parent.ion_fit_color,
                                             linestyle = '-.', linewidth = 1.5)
-        if not self.parent.measure_eps_p:
+        if not self.parent.MainParamDict['MeasureEpsP']:
             self.ion_Einj.set_visible(False)
 
         self.PLE = self.axes.plot(self.momentum, self.momedist,
@@ -241,11 +249,11 @@ class SpectralPanel:
         if self.GetPlotParam('set_ylim'):
             self.axes.set_ylim(10**self.GetPlotParam('y_min'), 10**self.GetPlotParam('y_max'))
 
-        self.axes.tick_params(labelsize = self.parent.num_font_size, color=tick_color)
+        self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 
         if self.GetPlotParam('spectral_type') == 0:
-            self.axes.set_xlabel(r'$p\ [mc]$', labelpad = self.parent.xlabel_pad, color = 'black')
-            self.axes.set_ylabel(r'$p^4f(p)$', labelpad = self.parent.ylabel_pad, color = 'black')
+            self.axes.set_xlabel(r'$p\ [mc]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
+            self.axes.set_ylabel(r'$p^4f(p)$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
         else:
             self.axes.set_xlabel(r'$E\ [mc^2]$', labelpad = -2, color = 'black')
             self.axes.set_ylabel(r'$E(dn/dE)/n$', labelpad = 0, color = 'black')
@@ -259,14 +267,14 @@ class SpectralPanel:
         #
         ############
 
-        if self.parent.measure_eps_p:
-            eps_p = self.measure_eps(self.pdist, self.parent.e_ion_injection, 'protron')
+        if self.parent.MainParamDict['MeasureEpsP']:
+            eps_p = self.measure_eps(self.pdist, self.parent.MainParamDict['GammaIonInjection'], 'protron')
             self.parent.eps_pVar.set('%.6f' % eps_p)
         else:
             self.parent.eps_pVar.set('N/A')
 
-        if self.parent.measure_eps_e:
-            eps_e = self.measure_eps(self.edist, self.parent.e_electron_injection, 'electron')
+        if self.parent.MainParamDict['MeasureEpsE']:
+            eps_e = self.measure_eps(self.edist, self.parent.MainParamDict['GammaElectronInjection'], 'electron')
             self.parent.eps_eVar.set('%.6f' % eps_e)
         else:
             self.parent.eps_eVar.set('N/A')
@@ -274,25 +282,25 @@ class SpectralPanel:
             if self.GetPlotParam('show_ions'):
                 self.ion_spect[0].set_data(self.momentum, self.mompdist)
 
-                if self.parent.measure_eps_p:
+                if self.parent.MainParamDict['MeasureEpsP']:
                     self.ion_Einj.set_visible(True)
-                    self.ion_Einj.set_xdata([np.sqrt((self.parent.e_ion_injection+1)**2-1.),np.sqrt((self.parent.e_ion_injection+1)**2-1.)])
+                    self.ion_Einj.set_xdata([np.sqrt((self.parent.MainParamDict['GammaIonInjection']+1)**2-1.),np.sqrt((self.parent.MainParamDict['GammaIonInjection']+1)**2-1.)])
                 else:
                     self.ion_Einj.set_visible(False)
-                if self.parent.set_Tp:
+                if self.parent.MainParamDict['SetTi']:
                     self.ion_temp[0].set_visible(True)
-                    if self.parent.delgam_p >= 0.013:
-                        aconst = 1/(self.parent.delgam_p*np.exp(1.0/self.parent.delgam_p)*kn(2, 1.0/self.parent.delgam_p))
+                    if self.parent.MainParamDict['DelGami'] >= 0.013:
+                        aconst = 1/(self.parent.MainParamDict['DelGami']*np.exp(1.0/self.parent.MainParamDict['DelGami'])*kn(2, 1.0/self.parent.MainParamDict['DelGami']))
                     else:
-                        aconst = np.sqrt(2/np.pi)/self.parent.delgam_p**1.5
-                        aconst -= 15.0/(4.*np.sqrt(self.parent.delgam_p)*np.sqrt(2*np.pi))
-                        aconst += (345*np.sqrt(self.parent.delgam_p))/(64.*np.sqrt(2*np.pi))
-                        aconst -= (3285*self.parent.delgam_p**1.5)/(512.*np.sqrt(2*np.pi))
-                        aconst += (95355*self.parent.delgam_p**2.5)/(16384.*np.sqrt(2*np.pi))
-                        aconst -= (232065*self.parent.delgam_p**3.5)/(131072.*np.sqrt(2*np.pi))
+                        aconst = np.sqrt(2/np.pi)/self.parent.MainParamDict['DelGami']**1.5
+                        aconst -= 15.0/(4.*np.sqrt(self.parent.MainParamDict['DelGami'])*np.sqrt(2*np.pi))
+                        aconst += (345*np.sqrt(self.parent.MainParamDict['DelGami']))/(64.*np.sqrt(2*np.pi))
+                        aconst -= (3285*self.parent.MainParamDict['DelGami']**1.5)/(512.*np.sqrt(2*np.pi))
+                        aconst += (95355*self.parent.MainParamDict['DelGami']**2.5)/(16384.*np.sqrt(2*np.pi))
+                        aconst -= (232065*self.parent.MainParamDict['DelGami']**3.5)/(131072.*np.sqrt(2*np.pi))
 
                     fpmommax = self.momentum**4*aconst*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
-                    fpmommax *= np.exp(-self.gamma/self.parent.delgam_p)/(4*np.pi*self.momentum)/(self.gamma+1.0)
+                    fpmommax *= np.exp(-self.gamma/self.parent.MainParamDict['DelGami'])/(4*np.pi*self.momentum)/(self.gamma+1.0)
                     self.ion_temp[0].set_data(self.momentum, fpmommax)
 
                 else:
@@ -300,12 +308,12 @@ class SpectralPanel:
 
                 self.PowerlawPworked = False
                 self.PLP[0].set_visible(False)
-                if self.parent.PowerLawFitIon[0]:
+                if self.parent.MainParamDict['DoPowerLawFitIon']:
 
                     # Find the part of the spectrum chosen by the fitting
                     #first convert to
-                    mompleft = np.sqrt((self.parent.PowerLawFitIon[1]+1)**2-1)
-                    mompright = np.sqrt((self.parent.PowerLawFitIon[2]+1.)**2-1.)
+                    mompleft = np.sqrt((self.parent.MainParamDict['PowerLawIonMin']+1)**2-1)
+                    mompright = np.sqrt((self.parent.MainParamDict['PowerLawIonMax']+1.)**2-1.)
                     impLeft = self.momentum.searchsorted(mompleft)
                     impRight = self.momentum.searchsorted(mompright, side='Right')
 
@@ -325,16 +333,16 @@ class SpectralPanel:
 
             if self.GetPlotParam('show_electrons'):
                 self.electron_spect[0].set_data(self.momentum, self.momedist)
-                if self.parent.measure_eps_e:
+                if self.parent.MainParamDict['MeasureEpsE']:
                     self.electron_Einj.set_visible(True)
-                    self.electron_Einj.set_xdata([np.sqrt((self.parent.e_electron_injection+1)**2-1.),np.sqrt((self.parent.e_electron_injection+1)**2-1.)])
+                    self.electron_Einj.set_xdata([np.sqrt((self.parent.MainParamDict['GammaElectronInjection']+1)**2-1.),np.sqrt((self.parent.MainParamDict['GammaElectronInjection']+1)**2-1.)])
                 else:
                     self.electron_Einj.set_visible(False)
 
-                if self.parent.set_Te:
+                if self.parent.MainParamDict['SetTe']:
                     self.electron_temp[0].set_visible(True)
 
-                    self.delgame0=self.parent.delgam_e*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
+                    self.delgame0=self.parent.MainParamDict['DelGame']*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
                     if self.delgame0 >= 0.013:
                         aconst = 1/(self.delgame0*np.exp(1.0/self.delgame0)*kn(2, 1.0/self.delgame0))
                     else:
@@ -356,13 +364,13 @@ class SpectralPanel:
                 # Now the power-law
                 self.PowerlawEworked = False
                 self.PLE[0].set_visible(False)
-                if self.parent.PowerLawFitElectron[0]:
+                if self.parent.MainParamDict['DoPowerLawFitElectron']:
 
 
                     # Find the part of the spectrum chosen by the fitting
                     #first convert to
-                    momeleft = np.sqrt((self.parent.PowerLawFitElectron[1]+1)**2-1)
-                    momeright = np.sqrt((self.parent.PowerLawFitElectron[2]+1.)**2-1.)
+                    momeleft = np.sqrt((self.parent.MainParamDict['PowerLawElectronMin']+1)**2-1)
+                    momeright = np.sqrt((self.parent.MainParamDict['PowerLawElectronMax']+1.)**2-1.)
                     imeLeft = self.momentum.searchsorted(momeleft)
                     imeRight = self.momentum.searchsorted(momeright, side='Right')
 
@@ -389,17 +397,17 @@ class SpectralPanel:
         if self.GetPlotParam('spectral_type') == 1: #Show the energy dist
             if self.GetPlotParam('show_electrons'):
                 self.electron_spect[0].set_data(self.gamma, self.edist)
-                if self.parent.measure_eps_e:
+                if self.parent.MainParamDict['MeasureEpsE']:
                     self.electron_Einj.set_visible(True)
-                    self.electron_Einj.set_xdata([self.parent.e_electron_injection,self.parent.e_electron_injection])
+                    self.electron_Einj.set_xdata([self.parent.MainParamDict['GammaElectronInjection'],self.parent.MainParamDict['GammaElectronInjection']])
                 else:
                     self.electron_Einj.set_visible(False)
 
 
                 # The temperature
-                if self.parent.set_Te:
+                if self.parent.MainParamDict['SetTe']:
                     self.electron_temp[0].set_visible(True)
-                    self.delgame0=self.parent.delgam_e*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
+                    self.delgame0=self.parent.MainParamDict['DelGame']*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
                     if self.delgame0 >= 0.013:
                         aconst = 1/(self.delgame0*np.exp(1.0/self.delgame0)*kn(2, 1.0/self.delgame0))
                     else:
@@ -419,11 +427,11 @@ class SpectralPanel:
                 self.PowerlawEworked = False
                 self.PLE[0].set_visible(False)
 
-                if self.parent.PowerLawFitElectron[0]:
+                if self.parent.MainParamDict['DoPowerLawFitElectron']:
                     # Find the part of the spectrum chosen by the fitting
                     #first convert to
-                    ieLeft = self.gamma.searchsorted(self.parent.PowerLawFitElectron[1])
-                    ieRight = self.gamma.searchsorted(self.parent.PowerLawFitElectron[2], side='Right')
+                    ieLeft = self.gamma.searchsorted(self.parent.MainParamDict['PowerLawElectronMin'])
+                    ieRight = self.gamma.searchsorted(self.parent.MainParamDict['PowerLawElectronMax'], side='Right')
                     if ieLeft == len(self.gamma):
                         ieLeft -= 1
 
@@ -447,35 +455,35 @@ class SpectralPanel:
 
             if self.GetPlotParam('show_ions'):
                 self.ion_spect[0].set_data(self.gamma, self.pdist)
-                if self.parent.measure_eps_p:
+                if self.parent.MainParamDict['MeasureEpsP']:
                     self.ion_Einj.set_visible(True)
-                    self.ion_Einj.set_xdata([self.parent.e_ion_injection,self.parent.e_ion_injection])
+                    self.ion_Einj.set_xdata([self.parent.MainParamDict['GammaIonInjection'],self.parent.MainParamDict['GammaIonInjection']])
                 else:
                     self.ion_Einj.set_visible(False)
 
-                if self.parent.set_Tp:
+                if self.parent.MainParamDict['SetTi']:
                     self.ion_temp[0].set_visible(True)
-                    if self.parent.delgam_p >= 0.013:
-                        aconst = 1/(self.parent.delgam_p*np.exp(1.0/self.parent.delgam_p)*kn(2, 1.0/self.parent.delgam_p))
+                    if self.parent.MainParamDict['DelGami'] >= 0.013:
+                        aconst = 1/(self.parent.MainParamDict['DelGami']*np.exp(1.0/self.parent.MainParamDict['DelGami'])*kn(2, 1.0/self.parent.MainParamDict['DelGami']))
                     else:
-                        aconst = np.sqrt(2/np.pi)/self.parent.delgam_p**1.5
-                        aconst -= 15.0/(4.*np.sqrt(self.parent.delgam_p)*np.sqrt(2*np.pi))
-                        aconst += (345*np.sqrt(self.parent.delgam_p))/(64.*np.sqrt(2*np.pi))
-                        aconst -= (3285*self.parent.delgam_p**1.5)/(512.*np.sqrt(2*np.pi))
-                        aconst += (95355*self.parent.delgam_p**2.5)/(16384.*np.sqrt(2*np.pi))
-                        aconst -= (232065*self.parent.delgam_p**3.5)/(131072.*np.sqrt(2*np.pi))
+                        aconst = np.sqrt(2/np.pi)/self.parent.MainParamDict['DelGami']**1.5
+                        aconst -= 15.0/(4.*np.sqrt(self.parent.MainParamDict['DelGami'])*np.sqrt(2*np.pi))
+                        aconst += (345*np.sqrt(self.parent.MainParamDict['DelGami']))/(64.*np.sqrt(2*np.pi))
+                        aconst -= (3285*self.parent.MainParamDict['DelGami']**1.5)/(512.*np.sqrt(2*np.pi))
+                        aconst += (95355*self.parent.MainParamDict['DelGami']**2.5)/(16384.*np.sqrt(2*np.pi))
+                        aconst -= (232065*self.parent.MainParamDict['DelGami']**3.5)/(131072.*np.sqrt(2*np.pi))
 
                     fpmax = aconst*self.gamma*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
-                    fpmax *= np.exp(-self.gamma/self.parent.delgam_p)
+                    fpmax *= np.exp(-self.gamma/self.parent.MainParamDict['DelGami'])
                     self.ion_temp[0].set_data(self.gamma, fpmax)
 
                 self.PowerlawPworked = False
-                if not self.parent.PowerLawFitIon[0]:
+                if not self.parent.MainParamDict['DoPowerLawFitIon']:
                     self.PLP[0].set_visible(False)
                 else:
                     # Find the part of the spectrum chosen by the fitting
-                    iepLeft = self.gamma.searchsorted(self.parent.PowerLawFitIon[1])
-                    iepRight = self.gamma.searchsorted(self.parent.PowerLawFitIon[2], side='Right')
+                    iepLeft = self.gamma.searchsorted(self.parent.MainParamDict['PowerLawIonMin'])
+                    iepRight = self.gamma.searchsorted(self.parent.MainParamDict['PowerLawIonMax'], side='Right')
 
                     if iepLeft == len(self.gamma):
                         iepLeft -= 1
@@ -570,13 +578,13 @@ class SpectralPanel:
             pass
 
 
-        if self.GetPlotParam('show_electrons') and self.parent.set_Te:
+        if self.GetPlotParam('show_electrons') and self.parent.MainParamDict['SetTe']:
             Tlegend_handles.append(self.electron_temp[0])
             tmpstr = '%.3f' % self.delgame0
             Tlegend_labels.append(r'$T_e\ = $' +  ' ' + tmpstr + ' ' + r'$m_e c^2$')
-        if self.GetPlotParam('show_ions') and self.parent.set_Tp:
+        if self.GetPlotParam('show_ions') and self.parent.MainParamDict['SetTi']:
             Tlegend_handles.append(self.ion_temp[0])
-            tmpcon =self.parent.delgam_p*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
+            tmpcon =self.parent.MainParamDict['DelGami']*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
             tmpstr = '%.3f' % tmpcon
             Tlegend_labels.append(r'$T_p\ = $' +  ' ' + tmpstr + ' ' + r'$m_e c^2$')
 

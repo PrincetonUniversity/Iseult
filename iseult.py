@@ -5,6 +5,7 @@ import os, sys # Used to make the code portable
 import h5py # Allows us the read the data files
 import time,string
 import matplotlib
+import ConfigParser
 matplotlib.use('TkAgg')
 import new_cmaps
 import numpy as np
@@ -20,6 +21,7 @@ from spectra import SpectralPanel
 from mag_plots import BPanel
 from energy_plots import EnergyPanel
 from fft_plots import FFTPanel
+from functools import partial
 #from ThreeD_mag_plots import ThreeDBPanel STILL TESTING
 import multiprocessing
 
@@ -29,7 +31,7 @@ Use_MultiProcess = False # DO NOT SET TO TRUE!
 import time
 import Tkinter as Tk
 import ttk as ttk
-import tkFileDialog
+import tkFileDialog, tkMessageBox
 
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
@@ -101,6 +103,15 @@ class SubPlotWrapper:
         self.PlotParamsDict = {plot_type: '' for plot_type in self.PlotTypeDict.keys()}
         for elm in self.PlotTypeDict.keys():
             self.PlotParamsDict[elm] = {key: self.PlotTypeDict[elm].plot_param_dict[key] for key in self.PlotTypeDict[elm].plot_param_dict.keys()}
+
+        # Now we need a dictionary that stores the types of all the PlotParamsDict, for the config file
+        self.ParamsTypeDict = {plot_type: {} for plot_type in self.PlotTypeDict.keys()}
+        for elm in self.ParamsTypeDict.keys():
+            self.ParamsTypeDict[elm]['BoolList'] = list(self.PlotTypeDict[elm].BoolList)
+            self.ParamsTypeDict[elm]['IntList'] = list(self.PlotTypeDict[elm].IntList)
+            self.ParamsTypeDict[elm]['FloatList'] = list(self.PlotTypeDict[elm].FloatList)
+            self.ParamsTypeDict[elm]['StrList'] = list(self.PlotTypeDict[elm].StrList)
+
 
     def RestoreDefaultPlotParams(self, ctype = None, RestoreAll = False):
         if ctype is None:
@@ -223,9 +234,6 @@ class PlaybackBar(Tk.Frame):
     def __init__(self, parent, param, canvas = None):
         Tk.Frame.__init__(self)
         self.parent = parent
-
-        self.skipSize = 5
-        self.waitTime = .01
         self.playPressed = False
 
         # This param should be the time-step of the simulation
@@ -265,7 +273,7 @@ class PlaybackBar(Tk.Frame):
 
 
         self.LoopVar = Tk.IntVar()
-        self.LoopVar.set(self.parent.LoopPlayback)
+        self.LoopVar.set(self.parent.MainParamDict['LoopPlayback'])
         self.LoopVar.trace('w', self.LoopChanged)
         self.RecordFrames = ttk.Checkbutton(self, text = 'Loop',
                                             variable = self.LoopVar)
@@ -273,7 +281,7 @@ class PlaybackBar(Tk.Frame):
 
 
         self.RecVar = Tk.IntVar()
-        self.RecVar.set(self.parent.recording)
+        self.RecVar.set(self.parent.MainParamDict['Recording'])
         self.RecVar.trace('w', self.RecChanged)
         self.RecordFrames = ttk.Checkbutton(self, text = 'Record',
                                             variable = self.RecVar)
@@ -299,36 +307,36 @@ class PlaybackBar(Tk.Frame):
         self.parent.RenewCanvas()
 
     def RecChanged(self, *args):
-        if self.RecVar.get() == self.parent.recording:
+        if self.RecVar.get() == self.parent.MainParamDict['Recording']:
             pass
         else:
-            self.parent.recording = self.RecVar.get()
-            if self.parent.recording == 1:
+            self.parent.MainParamDict['Recording'] = self.RecVar.get()
+            if self.parent.MainParamDict['Recording'] == 1:
                 self.parent.PrintFig()
     def LoopChanged(self, *args):
-        if self.LoopVar.get() == self.parent.LoopPlayback:
+        if self.LoopVar.get() == self.parent.MainParamDict['LoopPlayback']:
             pass
         else:
-            self.parent.LoopPlayback = self.LoopVar.get()
+            self.parent.MainParamDict['LoopPlayback'] = self.LoopVar.get()
 
     def SkipLeft(self, e = None):
-        self.param.set(self.param.value - self.skipSize)
+        self.param.set(self.param.value - self.parent.MainParamDict['SkipSize'])
 
     def SkipRight(self, e = None):
-        self.param.set(self.param.value + self.skipSize)
+        self.param.set(self.param.value + self.parent.MainParamDict['SkipSize'])
 
     def PlayHandler(self, e = None):
         if not self.playPressed:
             # Set the value of play pressed to true, change the button name to
             # pause, turn off clear_fig, and start the play loop.
             self.playPressed = True
-            self.parent.clear_fig = False
+#            self.parent.MainParamDict['ClearFig'] = False
             self.playB.config(text='Pause')
-            self.after(int(self.waitTime*1E3), self.blink)
+            self.after(int(self.parent.MainParamDict['WaitTime']*1E3), self.blink)
         else:
             # pause the play loop, turn clear fig back on, and set the button name back to play
             self.playPressed = False
-            self.parent.clear_fig = True
+#            self.parent.MainParamDict['ClearFig'] = True
             self.playB.config(text='Play')
 
     def OpenSettings(self):
@@ -349,16 +357,16 @@ class PlaybackBar(Tk.Frame):
     def blink(self):
         if self.playPressed:
             # First check to see if the timestep can get larger
-            if self.param.value == self.param.maximum and not self.parent.LoopPlayback:
+            if self.param.value == self.param.maximum and not self.parent.MainParamDict['LoopPlayback']:
                 # push pause button
                 self.PlayHandler()
 
             # otherwise skip right by size skip size
             else:
-                self.param.set(self.param.value + self.skipSize)
+                self.param.set(self.param.value + self.parent.MainParamDict['SkipSize'])
 
             # start loopin'
-            self.after(int(self.waitTime*1E3), self.blink)
+            self.after(int(self.parent.MainParamDict['WaitTime']*1E3), self.blink)
 
 
     def TextCallback(self):
@@ -383,6 +391,111 @@ class PlaybackBar(Tk.Frame):
         #set the slider
         self.slider.set(value)
 
+
+class SaveDialog(Tk.Toplevel):
+
+    def __init__(self, parent, title = None):
+
+        Tk.Toplevel.__init__(self, parent)
+        self.transient(parent)
+
+        if title:
+            self.title(title)
+
+        self.parent = parent
+
+        self.result = None
+
+        body = ttk.Frame(self)
+        self.initial_focus = self.body(body)
+#        body.pack(fill=Tk.BOTH)#, expand=True)
+        body.pack(fill = Tk.BOTH, anchor = Tk.CENTER, expand=1)
+
+        self.buttonbox()
+
+        self.grab_set()
+
+        if not self.initial_focus:
+            self.initial_focus = self
+
+        self.protocol("WM_DELETE_WINDOW", self.cancel)
+
+        self.geometry("+%d+%d" % (parent.winfo_rootx()+50,
+                                  parent.winfo_rooty()+50))
+
+        self.initial_focus.focus_set()
+
+        self.wait_window(self)
+
+    #
+    # construction hooks
+
+    def body(self, master):
+        # create dialog body.  return widget that should have
+        # initial focus.  this method should be overridden
+        ttk.Label(master, text="Name of View:").grid(row=0)
+        self.e1 = ttk.Entry(master, width=17)
+        self.e1.grid(row=0, column=1, sticky = Tk.E)
+
+    def buttonbox(self):
+        # add standard button box. override if you don't want the
+        # standard buttons
+
+        box = ttk.Frame(self)
+
+        w = ttk.Button(box, text="Save", width=10, command=self.ok, default=Tk.ACTIVE)
+        w.pack(side=Tk.LEFT, padx=5, pady=5)
+        w = ttk.Button(box, text="Cancel", width=10, command=self.cancel)
+        w.pack(side=Tk.LEFT, padx=5, pady=5)
+
+        self.bind("<Return>", self.ok)
+        self.bind("<Escape>", self.cancel)
+
+        box.pack()
+
+    #
+    # standard button semantics
+
+    def ok(self, event=None):
+
+        if not self.validate():
+            self.initial_focus.focus_set() # put focus back
+            return
+
+        self.withdraw()
+        self.update_idletasks()
+
+        self.apply()
+
+        self.cancel()
+
+    def cancel(self, event=None):
+
+        # put focus back to the parent window
+        self.parent.focus_set()
+        self.destroy()
+
+    #
+    # command hooks
+
+    def validate(self):
+        ''' Check to make sure the config file doesn't already exist'''
+        Name = str(self.e1.get())
+#        AlreadyExists = False
+#        os.listdir(os.path.join(self.parent.IseultDir, '.iseult_configs'))
+        if Name == '':
+            tkMessageBox.showwarning(
+                "Bad input",
+                "Field must contain a name, please try again"
+            )
+        else:
+            return 1 # override
+
+    def apply(self):
+        ''' Save the config file'''
+        self.parent.SaveIseultState(os.path.join(self.parent.IseultDir, '.iseult_configs', str(self.e1.get()).strip().replace(' ', '_') +'.cfg'), str(self.e1.get()).strip())
+
+
 class SettingsFrame(Tk.Toplevel):
     def __init__(self, parent):
 
@@ -398,7 +511,7 @@ class SettingsFrame(Tk.Toplevel):
 
         # Make an entry to change the skip size
         self.skipSize = Tk.StringVar(self)
-        self.skipSize.set(self.parent.playbackbar.skipSize) # default value
+        self.skipSize.set(self.parent.MainParamDict['SkipSize']) # default value
         self.skipSize.trace('w', self.SkipSizeChanged)
         ttk.Label(frm, text="Skip Size:").grid(row=0)
         self.skipEnter = ttk.Entry(frm, textvariable=self.skipSize, width = 6)
@@ -406,7 +519,7 @@ class SettingsFrame(Tk.Toplevel):
 
         # Make an button to change the wait time
         self.waitTime = Tk.StringVar(self)
-        self.waitTime.set(self.parent.playbackbar.waitTime) # default value
+        self.waitTime.set(self.parent.MainParamDict['WaitTime']) # default value
         self.waitTime.trace('w', self.WaitTimeChanged)
         ttk.Label(frm, text="Playback Wait Time:").grid(row=1)
         self.waitEnter = ttk.Entry(frm, textvariable=self.waitTime, width = 6)
@@ -414,55 +527,55 @@ class SettingsFrame(Tk.Toplevel):
 
         # Have a list of the color maps
         self.cmapvar = Tk.StringVar(self)
-        self.cmapvar.set(self.parent.cmap) # default value
+        self.cmapvar.set(self.parent.MainParamDict['ColorMap']) # default value
         self.cmapvar.trace('w', self.CmapChanged)
 
         ttk.Label(frm, text="Color map:").grid(row=2)
-        cmapChooser = apply(ttk.OptionMenu, (frm, self.cmapvar, self.parent.cmap) + tuple(new_cmaps.sequential))
+        cmapChooser = apply(ttk.OptionMenu, (frm, self.cmapvar, self.parent.MainParamDict['ColorMap']) + tuple(new_cmaps.sequential))
         cmapChooser.grid(row =2, column = 1, sticky = Tk.W + Tk.E)
 
         # Have a list of the color maps
         self.divcmapList = new_cmaps.cmaps.keys()
         self.div_cmapvar = Tk.StringVar(self)
-        self.div_cmapvar.set(self.parent.div_cmap) # default value
+        self.div_cmapvar.set(self.parent.MainParamDict['DivColorMap']) # default value
         self.div_cmapvar.trace('w', self.DivCmapChanged)
 
         ttk.Label(frm, text="Diverging Cmap:").grid(row=3)
-        cmapChooser = apply(ttk.OptionMenu, (frm, self.div_cmapvar, self.parent.div_cmap) + tuple(new_cmaps.diverging))
+        cmapChooser = apply(ttk.OptionMenu, (frm, self.div_cmapvar, self.parent.MainParamDict['DivColorMap']) + tuple(new_cmaps.diverging))
         cmapChooser.grid(row =3, column = 1, sticky = Tk.W + Tk.E)
 
 
         # Make an entry to change the number of columns
         self.columnNum = Tk.StringVar(self)
-        self.columnNum.set(self.parent.numOfColumns.get()) # default value
+        self.columnNum.set(self.parent.MainParamDict['NumOfCols']) # default value
         self.columnNum.trace('w', self.ColumnNumChanged)
         ttk.Label(frm, text="# of columns:").grid(row=4)
-        self.ColumnSpin = Spinbox(frm,  from_=1, to=self.parent.maxCols, textvariable=self.columnNum, width = 6)
+        self.ColumnSpin = Spinbox(frm,  from_=1, to=self.parent.MainParamDict['MaxCols'], textvariable=self.columnNum, width = 6)
         self.ColumnSpin.grid(row =4, column = 1, sticky = Tk.W + Tk.E)
 
         # Make an entry to change the number of columns
         self.rowNum = Tk.StringVar(self)
-        self.rowNum.set(self.parent.numOfRows.get()) # default value
+        self.rowNum.set(self.parent.MainParamDict['NumOfRows']) # default value
         self.rowNum.trace('w', self.RowNumChanged)
         ttk.Label(frm, text="# of rows:").grid(row=5)
-        self.RowSpin = Spinbox(frm, from_=1, to=self.parent.maxRows, textvariable=self.rowNum, width = 6)
+        self.RowSpin = Spinbox(frm, from_=1, to=self.parent.MainParamDict['MaxRows'], textvariable=self.rowNum, width = 6)
         self.RowSpin.grid(row =5, column = 1, sticky = Tk.W + Tk.E)
 
         # Control whether or not Title is shown
         self.TitleVar = Tk.IntVar()
-        self.TitleVar.set(self.parent.show_title)
+        self.TitleVar.set(self.parent.MainParamDict['ShowTitle'])
         self.TitleVar.trace('w', self.TitleChanged)
 
         self.LimVar = Tk.IntVar()
-        self.LimVar.set(self.parent.xlim[0])
+        self.LimVar.set(self.parent.MainParamDict['SetxLim'])
         self.LimVar.trace('w', self.LimChanged)
 
 
 
         self.xleft = Tk.StringVar()
-        self.xleft.set(str(self.parent.xlim[1]))
+        self.xleft.set(str(self.parent.MainParamDict['xLeft']))
         self.xright = Tk.StringVar()
-        self.xright.set(str(self.parent.xlim[2]))
+        self.xright.set(str(self.parent.MainParamDict['xRight']))
 
 
         ttk.Label(frm, text = 'min').grid(row= 6, column = 1, sticky = Tk.N)
@@ -476,15 +589,15 @@ class SettingsFrame(Tk.Toplevel):
 
 
         self.yLimVar = Tk.IntVar()
-        self.yLimVar.set(self.parent.ylim[0])
+        self.yLimVar.set(self.parent.MainParamDict['SetyLim'])
         self.yLimVar.trace('w', self.yLimChanged)
 
 
 
         self.yleft = Tk.StringVar()
-        self.yleft.set(str(self.parent.ylim[1]))
+        self.yleft.set(str(self.parent.MainParamDict['yBottom']))
         self.yright = Tk.StringVar()
-        self.yright.set(str(self.parent.ylim[2]))
+        self.yright.set(str(self.parent.MainParamDict['yTop']))
 
 
         ttk.Checkbutton(frm, text ='Set ylim',
@@ -493,15 +606,15 @@ class SettingsFrame(Tk.Toplevel):
         ttk.Entry(frm, textvariable=self.yright, width =8 ).grid(row = 8, column =2, sticky = Tk.N)
 
         self.kLimVar = Tk.IntVar()
-        self.kLimVar.set(self.parent.klim[0])
+        self.kLimVar.set(self.parent.MainParamDict['SetkLim'])
         self.kLimVar.trace('w', self.kLimChanged)
 
 
 
         self.kleft = Tk.StringVar()
-        self.kleft.set(str(self.parent.klim[1]))
+        self.kleft.set(str(self.parent.MainParamDict['kLeft']))
         self.kright = Tk.StringVar()
-        self.kright.set(str(self.parent.klim[2]))
+        self.kright.set(str(self.parent.MainParamDict['kRight']))
 
 
         ttk.Checkbutton(frm, text ='Set klim', variable = self.kLimVar).grid(row = 9, sticky = Tk.N)
@@ -509,7 +622,7 @@ class SettingsFrame(Tk.Toplevel):
         ttk.Entry(frm, textvariable=self.kright, width =8 ).grid(row = 9, column =2, sticky = Tk.N)
 
         self.xRelVar = Tk.IntVar()
-        self.xRelVar.set(self.parent.xLimsRelative)
+        self.xRelVar.set(self.parent.MainParamDict['xLimsRelative'])
         self.xRelVar.trace('w', self.xRelChanged)
         ttk.Checkbutton(frm, text = "x limits & zooms relative to shock",
                         variable = self.xRelVar).grid(row = 10, columnspan = 3, sticky = Tk.W)
@@ -520,7 +633,7 @@ class SettingsFrame(Tk.Toplevel):
         # Control whether or not axes are shared with a radio box:
         self.toLinkList = ['None', 'All spatial', 'All non p-x', 'All 2-D spatial']
         self.LinkedVar = Tk.IntVar()
-        self.LinkedVar.set(self.parent.LinkSpatial)
+        self.LinkedVar.set(self.parent.MainParamDict['LinkSpatial'])
 
         ttk.Label(frm, text='Share spatial axes:').grid(row = 0, column = 2, sticky = Tk.W)
 
@@ -532,7 +645,7 @@ class SettingsFrame(Tk.Toplevel):
                     value=i).grid(row = 1+i, column = 2, sticky =Tk.N)
 
         self.AspectVar = Tk.IntVar()
-        self.AspectVar.set(self.parent.plot_aspect)
+        self.AspectVar.set(self.parent.MainParamDict['ImageAspect'])
         self.AspectVar.trace('w', self.AspectVarChanged)
 
         cb = ttk.Checkbutton(frm, text = "Aspect = 1",
@@ -540,7 +653,7 @@ class SettingsFrame(Tk.Toplevel):
         cb.grid(row = 11, column = 1, sticky = Tk.W)
 
         self.CbarOrientation = Tk.IntVar()
-        self.CbarOrientation.set(self.parent.HorizontalCbars)
+        self.CbarOrientation.set(self.parent.MainParamDict['HorizontalCbars'])
         self.CbarOrientation.trace('w', self.OrientationChanged)
 
         cb = ttk.Checkbutton(frm, text = "Horizontal Cbars",
@@ -549,7 +662,7 @@ class SettingsFrame(Tk.Toplevel):
 
 
         self.LinkKVar = Tk.IntVar()
-        self.LinkKVar.set(self.parent.Linkk)
+        self.LinkKVar.set(self.parent.MainParamDict['LinkK'])
         self.CbarOrientation.trace('w', self.LinkKChanged)
 
         cb = ttk.Checkbutton(frm, text = "Share k-axes",
@@ -558,53 +671,53 @@ class SettingsFrame(Tk.Toplevel):
 
 
         self.LorentzBoostVar = Tk.IntVar()
-        self.LorentzBoostVar.set(self.parent.DoLorentzBoost)
+        self.LorentzBoostVar.set(self.parent.MainParamDict['DoLorentzBoost'])
         self.LorentzBoostVar.trace('w', self.LorentzBoostChanged)
         cb = ttk.Checkbutton(frm, text='Boost PhasePlots', variable =  self.LorentzBoostVar).grid(row = 13, sticky = Tk.W)
         ttk.Label(frm, text='Gamma/Beta = \r (- for left boost)').grid(row= 13, rowspan = 2,column =1, sticky = Tk.E)
         self.GammaVar = Tk.StringVar()
-        self.GammaVar.set(str(self.parent.GammaBoost))
+        self.GammaVar.set(str(self.parent.MainParamDict['GammaBoost']))
         ttk.Entry(frm, textvariable=self.GammaVar, width = 7).grid(row = 13, column = 2, sticky = Tk.N)
 
     def AspectVarChanged(self, *args):
-        if self.AspectVar.get() == self.parent.plot_aspect:
+        if self.AspectVar.get() == self.parent.MainParamDict['ImageAspect']:
             pass
 
         else:
-            self.parent.plot_aspect = self.AspectVar.get()
+            self.parent.MainParamDict['ImageAspect'] = self.AspectVar.get()
             self.parent.RenewCanvas(ForceRedraw = True)
 
     def OrientationChanged(self, *args):
-        if self.CbarOrientation.get() == self.parent.HorizontalCbars:
+        if self.CbarOrientation.get() == self.parent.MainParamDict['HorizontalCbars']:
             pass
 
         else:
             if self.CbarOrientation.get():
-                self.parent.axes_extent = [18,92,0,-1]
-                self.parent.cbar_extent = [0,4,0,-1]
-                self.parent.SubPlotParams = {'left':0.06, 'right':0.92, 'top':.91, 'bottom':0.06, 'wspace':0.15, 'hspace':0.3}
+                self.parent.axes_extent = self.parent.MainParamDict['HAxesExtent']
+                self.parent.cbar_extent = self.parent.MainParamDict['HCbarExtent']
+                self.parent.SubPlotParams = self.parent.MainParamDict['HSubPlotParams']
 
             else:
-                self.parent.axes_extent = [4,90,0,92]
-                self.parent.cbar_extent = [4,90,95,98]
-                self.parent.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.93, 'bottom':0.06, 'wspace':0.23, 'hspace':0.15}
-            self.parent.HorizontalCbars = self.CbarOrientation.get()
+                self.parent.axes_extent = self.parent.MainParamDict['VAxesExtent']
+                self.parent.cbar_extent = self.parent.MainParamDict['VCbarExtent']
+                self.parent.SubPlotParams = self.parent.MainParamDict['VSubPlotParams']
+            self.parent.MainParamDict['HorizontalCbars'] = self.CbarOrientation.get()
             self.parent.f.subplots_adjust( **self.parent.SubPlotParams)
             self.parent.RenewCanvas(ForceRedraw=True)
 
     def LorentzBoostChanged(self, *args):
-        if self.LorentzBoostVar.get() == self.parent.DoLorentzBoost:
+        if self.LorentzBoostVar.get() == self.parent.MainParamDict['DoLorentzBoost']:
             pass
 
         else:
-            self.parent.DoLorentzBoost = self.LorentzBoostVar.get()
+            self.parent.MainParamDict['DoLorentzBoost'] = self.LorentzBoostVar.get()
             self.parent.RenewCanvas()
 
     def TitleChanged(self, *args):
-        if self.TitleVar.get()==self.parent.show_title:
+        if self.TitleVar.get()==self.parent.MainParamDict['ShowTitle']:
             pass
         else:
-            self.parent.show_title = self.TitleVar.get()
+            self.parent.MainParamDict['ShowTitle'] = self.TitleVar.get()
             if self.TitleVar.get() == False:
                 self.parent.f.suptitle('')
 
@@ -612,37 +725,37 @@ class SettingsFrame(Tk.Toplevel):
 
     def RadioLinked(self, *args):
         # If the shared axes are changed, the whole plot must be redrawn
-        if self.LinkedVar.get() == self.parent.LinkSpatial:
+        if self.LinkedVar.get() == self.parent.MainParamDict['LinkSpatial']:
             pass
         else:
-            self.parent.LinkSpatial = self.LinkedVar.get()
+            self.parent.MainParamDict['LinkSpatial'] = self.LinkedVar.get()
             self.parent.RenewCanvas(ForceRedraw = True)
 
 
     def LinkKChanged(self, *args):
         # If the shared axes are changed, the whole plot must be redrawn
-        if self.LinkKVar.get() == self.parent.Linkk:
+        if self.LinkKVar.get() == self.parent.MainParamDict['LinkK']:
             pass
         else:
-            self.parent.Linkk = self.LinkKVar.get()
+            self.parent.MainParamDict['LinkK'] = self.LinkKVar.get()
             self.parent.RenewCanvas(ForceRedraw = True)
 
     def xRelChanged(self, *args):
         # If the shared axes are changed, the whole plot must be redrawn
-        if self.xRelVar.get() == self.parent.xLimsRelative:
+        if self.xRelVar.get() == self.parent.MainParamDict['xLimsRelative']:
             pass
         else:
-            self.parent.xLimsRelative = self.xRelVar.get()
+            self.parent.MainParamDict['xLimsRelative'] = self.xRelVar.get()
             self.parent.RenewCanvas()
 
 
     def CmapChanged(self, *args):
     # Note here that Tkinter passes an event object to onselect()
-        if self.cmapvar.get() == self.parent.cmap:
+        if self.cmapvar.get() == self.parent.MainParamDict['ColorMap']:
             pass
         else:
-            self.parent.cmap = self.cmapvar.get()
-            if self.parent.cmap in self.parent.cmaps_with_green:
+            self.parent.MainParamDict['ColorMap'] = self.cmapvar.get()
+            if self.parent.MainParamDict['ColorMap'] in self.parent.cmaps_with_green:
                 self.parent.ion_color =  new_cmaps.cmaps['plasma'](0.55)
                 self.parent.electron_color = new_cmaps.cmaps['plasma'](0.8)
                 self.parent.ion_fit_color = 'r'
@@ -659,10 +772,10 @@ class SettingsFrame(Tk.Toplevel):
 
     def DivCmapChanged(self, *args):
     # Note here that Tkinter passes an event object to onselect()
-        if self.div_cmapvar.get() == self.parent.div_cmap:
+        if self.div_cmapvar.get() == self.parent.MainParamDict['DivColorMap']:
             pass
         else:
-            self.parent.div_cmap = self.div_cmapvar.get()
+            self.parent.MainParamDict['DivColorMap'] = self.div_cmapvar.get()
             self.parent.RenewCanvas(ForceRedraw = True)
 
 
@@ -672,9 +785,9 @@ class SettingsFrame(Tk.Toplevel):
             if self.skipSize.get() == '':
                 pass
             else:
-                self.parent.playbackbar.skipSize = int(self.skipSize.get())
+                self.parent.MainParamDict['SkipSize'] = int(self.skipSize.get())
         except ValueError:
-            self.skipSize.set(self.parent.playbackbar.skipSize)
+            self.skipSize.set(self.parent.MainParamDict['SkipSize'])
 
     def RowNumChanged(self, *args):
         try:
@@ -682,13 +795,13 @@ class SettingsFrame(Tk.Toplevel):
                 pass
             if int(self.rowNum.get())<1:
                 self.rowNum.set(1)
-            if int(self.rowNum.get())>self.parent.maxRows:
-                self.rowNum.set(self.parent.maxRows)
-            if int(self.rowNum.get()) != self.parent.numOfRows:
-                self.parent.numOfRows.set(int(self.rowNum.get()))
-
+            if int(self.rowNum.get())>self.parent.MainParamDict['MaxRows']:
+                self.rowNum.set(self.parent.MainParamDict['MaxRows'])
+            if int(self.rowNum.get()) != self.parent.MainParamDict['NumOfRows']:
+                self.parent.MainParamDict['NumOfRows'] = int(self.rowNum.get())
+                self.parent.UpdateGridSpec()
         except ValueError:
-            self.rowNum.set(self.parent.numOfRows.get())
+            self.rowNum.set(self.parent.MainParamDict['NumOfRows'])
 
     def ColumnNumChanged(self, *args):
         try:
@@ -696,13 +809,14 @@ class SettingsFrame(Tk.Toplevel):
                 pass
             if int(self.columnNum.get())<1:
                 self.columnNum.set(1)
-            if int(self.columnNum.get())>self.parent.maxCols:
-                self.columnNum.set(self.parent.maxCols)
-            if int(self.columnNum.get()) != self.parent.numOfColumns.get():
-                self.parent.numOfColumns.set(int(self.columnNum.get()))
+            if int(self.columnNum.get())>self.parent.MainParamDict['MaxCols']:
+                self.columnNum.set(self.parent.MainParamDict['MaxCols'])
+            if int(self.columnNum.get()) != self.parent.MainParamDict['NumOfCols']:
+                self.parent.MainParamDict['NumOfCols'] = int(self.columnNum.get())
+                self.parent.UpdateGridSpec()
 
         except ValueError:
-            self.columnNum.set(self.parent.numOfColumns.get())
+            self.columnNum.set(self.parent.MainParamDict['NumOfCols'])
 
     def WaitTimeChanged(self, *args):
     # Note here that Tkinter passes an event object to onselect()
@@ -710,100 +824,68 @@ class SettingsFrame(Tk.Toplevel):
             if self.waitTime.get() == '':
                 pass
             else:
-                self.parent.playbackbar.waitTime = float(self.waitTime.get())
+                self.parent.MainParamDict['WaitTime'] = float(self.waitTime.get())
         except ValueError:
-            self.waitTime.set(self.parent.playbackbar.waitTime)
+            self.waitTime.set(self.parent.MainParamDict['WaitTime'])
 
-    def CheckIfXLimChanged(self):
+    def CheckIfLimsChanged(self):
         to_reload = False
-        tmplist = [self.xleft, self.xright]
-        for j in range(2):
+        tmplist = [self.xleft, self.xright, self.yleft, self.yright, self.kleft, self.kright]
+        limkeys = ['xLeft', 'xRight', 'yBottom', 'yTop', 'kLeft', 'kRight']
+        setKeys = ['SetxLim', 'SetyLim', 'SetkLim']
+        for j in range(6):
+            setlims = self.parent.MainParamDict[setKeys[j/2]]
+            tmpkey = limkeys[j]
 
             try:
             #make sure the user types in a a number and that it has changed.
-                if np.abs(float(tmplist[j].get()) - self.parent.xlim[j+1]) > 1E-4:
-                    self.parent.xlim[j+1] = float(tmplist[j].get())
-                    to_reload += True
+                if np.abs(float(tmplist[j].get()) - self.parent.MainParamDict[tmpkey]) > 1E-4:
+                    self.parent.MainParamDict[tmpkey] = float(tmplist[j].get())
+                    to_reload += setlims
 
             except ValueError:
                 #if they type in random stuff, just set it ot the param value
-                tmplist[j].set(str(self.parent.xlim[j+1]))
-        return to_reload*self.parent.xlim[0]
-
-    def CheckIfYLimChanged(self):
-        to_reload = False
-        tmplist = [self.yleft, self.yright]
-        for j in range(2):
-
-            try:
-            #make sure the user types in a int
-                if np.abs(float(tmplist[j].get()) - self.parent.ylim[j+1]) > 1E-4:
-                    self.parent.ylim[j+1] = float(tmplist[j].get())
-                    to_reload += True
-
-            except ValueError:
-                #if they type in random stuff, just set it ot the param value
-                tmplist[j].set(str(self.parent.ylim[j+1]))
-        return to_reload*self.parent.ylim[0]
-
-    def CheckIfkLimChanged(self):
-        to_reload = False
-        tmplist = [self.kleft, self.kright]
-        for j in range(2):
-
-            try:
-            #make sure the user types in a int
-                if np.abs(float(tmplist[j].get()) - self.parent.klim[j+1]) > 1E-4:
-                    self.parent.klim[j+1] = float(tmplist[j].get())
-                    to_reload += True
-
-            except ValueError:
-                #if they type in random stuff, just set it ot the param value
-                tmplist[j].set(str(self.parent.klim[j+1]))
-        return to_reload*self.parent.klim[0]
-
+                tmplist[j].set(str(self.parent.MainParamDict[tmpkey]))
+        return to_reload
 
     def CheckIfGammaChanged(self):
         to_reload = False
         try:
         #make sure the user types in a float
-            if np.abs(float(self.GammaVar.get()) - self.parent.GammaBoost) > 1E-8:
-                self.parent.GammaBoost = float(self.GammaVar.get())
+            if np.abs(float(self.GammaVar.get()) - self.parent.MainParamDict['GammaBoost']) > 1E-8:
+                self.parent.MainParamDict['GammaBoost'] = float(self.GammaVar.get())
                 to_reload += True
 
         except ValueError:
             #if they type in random stuff, just set it to the param value
-            self.GammaVar.set(str(self.parent.GammaBoost))
-        return to_reload*self.parent.DoLorentzBoost
+            self.GammaVar.set(str(self.parent.MainParamDict['GammaBoost']))
+        return to_reload*self.parent.MainParamDict['DoLorentzBoost']
 
 
     def LimChanged(self, *args):
-        if self.LimVar.get()==self.parent.xlim[0]:
+        if self.LimVar.get()==self.parent.MainParamDict['SetxLim']:
             pass
         else:
-            self.parent.xlim[0] = self.LimVar.get()
+            self.parent.MainParamDict['SetxLim'] = self.LimVar.get()
             self.parent.RenewCanvas()
 
     def yLimChanged(self, *args):
-        if self.yLimVar.get()==self.parent.ylim[0]:
+        if self.yLimVar.get()==self.parent.MainParamDict['SetyLim']:
             pass
         else:
-            self.parent.ylim[0] = self.yLimVar.get()
+            self.parent.MainParamDict['SetyLim'] = self.yLimVar.get()
             self.parent.RenewCanvas()
 
     def kLimChanged(self, *args):
-        if self.kLimVar.get()==self.parent.klim[0]:
+        if self.kLimVar.get()==self.parent.MainParamDict['SetkLim']:
             pass
         else:
-            self.parent.klim[0] = self.kLimVar.get()
+            self.parent.MainParamDict['SetkLim'] = self.kLimVar.get()
             self.parent.RenewCanvas()
 
 
     def SettingsCallback(self, e):
-        to_reload = self.CheckIfXLimChanged()
-        to_reload += self.CheckIfYLimChanged()
-        to_reload += self.CheckIfkLimChanged()
-
+        to_reload = self.CheckIfLimsChanged()
         to_reload += self.CheckIfGammaChanged()
         if to_reload:
             self.parent.RenewCanvas()
@@ -832,18 +914,18 @@ class MeasureFrame(Tk.Toplevel):
         # A StringVar for a box to type in a value for the left ion region
         self.ileft = Tk.StringVar()
         # set it to the left value
-        self.ileft.set(str(self.parent.i_L.get()))
+        self.ileft.set(str(self.parent.MainParamDict['IonLeft']))
 
         # A StringVar for a box to type in a value for the right ion region
         self.iright = Tk.StringVar()
         # set it to the right value
-        self.iright.set(str(self.parent.i_R.get()))
+        self.iright.set(str(self.parent.MainParamDict['IonRight']))
 
         # Now the electrons
         self.eleft = Tk.StringVar()
-        self.eleft.set(str(self.parent.e_L.get()))
+        self.eleft.set(str(self.parent.MainParamDict['ElectronLeft']))
         self.eright = Tk.StringVar()
-        self.eright.set(str(self.parent.e_R.get()))
+        self.eright.set(str(self.parent.MainParamDict['ElectronRight']))
 
         ttk.Label(frm, text='Energy Int region:').grid(row = 0, sticky = Tk.W)
         ttk.Label(frm, text='left').grid(row = 0, column = 1, sticky = Tk.N)
@@ -866,14 +948,14 @@ class MeasureFrame(Tk.Toplevel):
         self.eREnter.grid(row = 2, column =2, sticky = Tk.W + Tk.E)
 
         self.RelVar = Tk.IntVar()
-        self.RelVar.set(self.parent.e_relative)
+        self.RelVar.set(self.parent.MainParamDict['PrtlIntegrationRelative'])
         self.RelVar.trace('w', self.RelChanged)
         cb = ttk.Checkbutton(frm, text = "Energy Region relative to shock?",
                         variable = self.RelVar)
         cb.grid(row = 3, columnspan = 3, sticky = Tk.W)
 
         self.SetTeVar = Tk.IntVar()
-        self.SetTeVar.set(self.parent.set_Te)
+        self.SetTeVar.set(self.parent.MainParamDict['SetTe'])
         self.SetTeVar.trace('w', self.SetTeChanged)
         cb = ttk.Checkbutton(frm, text='Show T_e', variable =  self.SetTeVar)
         cb.grid(row = 5, sticky = Tk.W)
@@ -881,7 +963,7 @@ class MeasureFrame(Tk.Toplevel):
         ttk.Label(frm, text=u'\u0394'+u'\u0263' + ' =').grid(row= 5, column =1, sticky = Tk.N)
 
         self.SetTpVar = Tk.IntVar()
-        self.SetTpVar.set(self.parent.set_Tp)
+        self.SetTpVar.set(self.parent.MainParamDict['SetTi'])
         self.SetTpVar.trace('w', self.SetTpChanged)
 
         cb = ttk.Checkbutton(frm, text='Show T_i', variable =  self.SetTpVar)
@@ -889,9 +971,9 @@ class MeasureFrame(Tk.Toplevel):
         ttk.Label(frm, text=u'\u0394'+u'\u0263' + ' =').grid(row= 6, column =1, sticky = Tk.N)
 
         self.delgameVar = Tk.StringVar()
-        self.delgameVar.set(str(self.parent.delgam_e))
+        self.delgameVar.set(str(self.parent.MainParamDict['DelGame']))
         self.delgampVar = Tk.StringVar()
-        self.delgampVar.set(str(self.parent.delgam_p))
+        self.delgampVar.set(str(self.parent.MainParamDict['DelGami']))
 
 
         ttk.Entry(frm, textvariable=self.delgameVar, width = 7).grid(row = 5, column = 2, sticky = Tk.N)
@@ -902,14 +984,14 @@ class MeasureFrame(Tk.Toplevel):
         ttk.Label(frm, text='E_max [mc^2]').grid(row = 8, column = 2, sticky = Tk.N)
 
         self.PLFitEVar = Tk.IntVar()
-        self.PLFitEVar.set(self.parent.PowerLawFitElectron[0])
+        self.PLFitEVar.set(self.parent.MainParamDict['DoPowerLawFitElectron'])
         self.PLFitEVar.trace('w', self.PLFitEChanged)
         ttk.Checkbutton(frm, text='Electrons', variable =  self.PLFitEVar).grid(row = 9, sticky = Tk.W)
 
         self.E1Var = Tk.StringVar()
-        self.E1Var.set(str(self.parent.PowerLawFitElectron[1]))
+        self.E1Var.set(str(self.parent.MainParamDict['PowerLawElectronMin']))
         self.E2Var = Tk.StringVar()
-        self.E2Var.set(str(self.parent.PowerLawFitElectron[2]))
+        self.E2Var.set(str(self.parent.MainParamDict['PowerLawElectronMax']))
 
 
         ttk.Entry(frm, textvariable=self.E1Var, width = 7).grid(row = 9, column = 1, sticky = Tk.N)
@@ -917,14 +999,14 @@ class MeasureFrame(Tk.Toplevel):
 
 
         self.PLFitPVar = Tk.IntVar()
-        self.PLFitPVar.set(self.parent.PowerLawFitIon[0])
+        self.PLFitPVar.set(self.parent.MainParamDict['DoPowerLawFitIon'])
         self.PLFitPVar.trace('w', self.PLFitPChanged)
         ttk.Checkbutton(frm, text='Ions', variable =  self.PLFitPVar).grid(row = 10, sticky = Tk.W)
 
         self.P1Var = Tk.StringVar()
-        self.P1Var.set(str(self.parent.PowerLawFitIon[1]))
+        self.P1Var.set(str(self.parent.MainParamDict['PowerLawIonMin']))
         self.P2Var = Tk.StringVar()
-        self.P2Var.set(str(self.parent.PowerLawFitIon[2]))
+        self.P2Var.set(str(self.parent.MainParamDict['PowerLawIonMax']))
 
         ttk.Entry(frm, textvariable=self.P1Var, width = 7).grid(row = 10, column = 1, sticky = Tk.N)
         ttk.Entry(frm, textvariable=self.P2Var, width = 7).grid(row = 10, column =2, sticky = Tk.N)
@@ -935,22 +1017,22 @@ class MeasureFrame(Tk.Toplevel):
         ttk.Label(frm, text='eps').grid(row = 11, column = 2, sticky = Tk.N)
 
         self.eps_p_fitVar = Tk.IntVar()
-        self.eps_p_fitVar.set(self.parent.measure_eps_p)
+        self.eps_p_fitVar.set(self.parent.MainParamDict['MeasureEpsP'])
         self.eps_p_fitVar.trace('w', self.eps_pFitChanged)
         ttk.Checkbutton(frm, text='protons', variable =  self.eps_p_fitVar).grid(row = 12, sticky = Tk.W)
 
         self.EinjPVar = Tk.StringVar()
-        self.EinjPVar.set(str(self.parent.e_ion_injection))
+        self.EinjPVar.set(str(self.parent.MainParamDict['GammaIonInjection']))
         ttk.Entry(frm, textvariable=self.EinjPVar, width = 7).grid(row = 12, column = 1, sticky = Tk.N)
         ttk.Entry(frm, textvariable=self.parent.eps_pVar, width = 7, state = 'readonly').grid(row = 12, column =2, sticky = Tk.N)
 
         self.eps_e_fitVar = Tk.IntVar()
-        self.eps_e_fitVar.set(self.parent.measure_eps_e)
+        self.eps_e_fitVar.set(self.parent.MainParamDict['MeasureEpsE'])
         self.eps_e_fitVar.trace('w', self.eps_eFitChanged)
         ttk.Checkbutton(frm, text='electrons', variable =  self.eps_e_fitVar).grid(row = 13, sticky = Tk.W)
 
         self.EinjEVar = Tk.StringVar()
-        self.EinjEVar.set(str(self.parent.e_electron_injection))
+        self.EinjEVar.set(str(self.parent.MainParamDict['GammaElectronInjection']))
         ttk.Entry(frm, textvariable=self.EinjEVar, width = 7).grid(row = 13, column = 1, sticky = Tk.N)
         ttk.Entry(frm, textvariable=self.parent.eps_eVar, width = 7, state = 'readonly').grid(row = 13, column =2, sticky = Tk.N)
 
@@ -963,12 +1045,12 @@ class MeasureFrame(Tk.Toplevel):
         # A StringVar for a box to type in a value for the left ion region
         self.FFTLVar = Tk.StringVar()
         # set it to the left value
-        self.FFTLVar.set(str(self.parent.FFT_L.get()))
+        self.FFTLVar.set(str(self.parent.MainParamDict['FFTLeft']))
 
         # A StringVar for a box to type in a value for the right ion region
         self.FFTRVar = Tk.StringVar()
         # set it to the right value
-        self.FFTRVar.set(str(self.parent.FFT_R.get()))
+        self.FFTRVar.set(str(self.parent.MainParamDict['FFTRight']))
 
         ttk.Label(frm, text='left').grid(row = 16, column = 1, sticky = Tk.N)
         ttk.Label(frm, text='right').grid(row = 16, column = 2, sticky = Tk.N)
@@ -979,7 +1061,7 @@ class MeasureFrame(Tk.Toplevel):
         ttk.Entry(frm, textvariable=self.FFTRVar, width=7).grid(row = 17, column =2, sticky = Tk.W + Tk.E)
 
         self.FFTRelVar = Tk.IntVar()
-        self.FFTRelVar.set(self.parent.FFT_relative)
+        self.FFTRelVar.set(self.parent.MainParamDict['FFTRelative'])
         self.FFTRelVar.trace('w', self.FFTRelChanged)
         cb = ttk.Checkbutton(frm, text = "FFT Region relative to shock?",
                         variable = self.FFTRelVar)
@@ -989,58 +1071,58 @@ class MeasureFrame(Tk.Toplevel):
 
 
     def eps_pFitChanged(self, *args):
-        if self.eps_p_fitVar.get() == self.parent.measure_eps_p:
+        if self.eps_p_fitVar.get() == self.parent.MainParamDict['MeasureEpsP']:
             pass
         else:
-            self.parent.measure_eps_p = self.eps_p_fitVar.get()
+            self.parent.MainParamDict['MeasureEpsP'] = self.eps_p_fitVar.get()
             self.parent.RenewCanvas()
 
     def eps_eFitChanged(self, *args):
-        if self.eps_e_fitVar.get() == self.parent.measure_eps_e:
+        if self.eps_e_fitVar.get() == self.parent.MainParamDict['MeasureEpsE']:
             pass
         else:
-            self.parent.measure_eps_e = self.eps_e_fitVar.get()
+            self.parent.MainParamDict['MeasureEpsE'] = self.eps_e_fitVar.get()
             self.parent.RenewCanvas()
 
 
     def PLFitEChanged(self, *args):
-        if self.PLFitEVar.get() == self.parent.PowerLawFitElectron[0]:
+        if self.PLFitEVar.get() == self.parent.MainParamDict['DoPowerLawFitElectron']:
             pass
         else:
-            self.parent.PowerLawFitElectron[0] = self.PLFitEVar.get()
+            self.parent.MainParamDict['DoPowerLawFitElectron'] = self.PLFitEVar.get()
             self.parent.RenewCanvas()
 
     def PLFitPChanged(self, *args):
-        if self.PLFitPVar.get() == self.parent.PowerLawFitIon[0]:
+        if self.PLFitPVar.get() == self.parent.MainParamDict['DoPowerLawFitIon']:
             pass
         else:
-            self.parent.PowerLawFitIon[0] = self.PLFitPVar.get()
+            self.parent.MainParamDict['DoPowerLawFitIon'] = self.PLFitPVar.get()
             self.parent.RenewCanvas()
 
     def CheckIfTeChanged(self):
         to_reload = False
         try:
         #make sure the user types in a int
-            if np.abs(float(self.delgameVar.get()) - self.parent.delgam_e) > 1E-4:
-                self.parent.delgam_e = float(self.delgameVar.get())
-                to_reload += True*self.parent.set_Te
+            if np.abs(float(self.delgameVar.get()) - self.parent.MainParamDict['DelGame']) > 1E-4:
+                self.parent.MainParamDict['DelGame'] = float(self.delgameVar.get())
+                to_reload += self.parent.MainParamDict['SetTe']
 
         except ValueError:
             #if they type in random stuff, just set it ot the param value
-            self.delgameVar.set(str(self.parent.delgam_e))
+            self.delgameVar.set(str(self.parent.MainParamDict['DelGame']))
         return to_reload
 
     def CheckIfTpChanged(self):
         to_reload = False
         try:
         #make sure the user types in a flof
-            if np.abs(float(self.delgampVar.get()) - self.parent.delgam_p) > 1E-4:
-                    self.parent.delgam_p = float(self.delgampVar.get())
-                    to_reload += True*self.parent.set_Tp
+            if np.abs(float(self.delgampVar.get()) - self.parent.MainParamDict['DelGami']) > 1E-4:
+                    self.parent.MainParamDict['DelGami'] = float(self.delgampVar.get())
+                    to_reload += True*self.parent.MainParamDict['SetTi']
 
         except ValueError:
             #if they type in random stuff, just set it ot the param value
-            self.delgampVar.set(str(self.parent.delgam_p))
+            self.delgampVar.set(str(self.parent.MainParamDict['DelGami']))
         return to_reload
 
     def CheckIfEpsChanged(self):
@@ -1049,120 +1131,121 @@ class MeasureFrame(Tk.Toplevel):
         # The protons first
         try:
             # First check if the injection energy changed
-            if np.abs(float(self.EinjPVar.get()) -self.parent.e_ion_injection)>1E-6:
+            if np.abs(float(self.EinjPVar.get()) -self.parent.MainParamDict['GammaIonInjection'])>1E-6:
                 # Set the parent value to the var value
-                self.parent.e_ion_injection = float(self.EinjPVar.get())
-                to_reload += self.parent.measure_eps_p
+                self.parent.MainParamDict['GammaIonInjection'] = float(self.EinjPVar.get())
+                to_reload += self.parent.MainParamDict['MeasureEpsP']
         except ValueError:
             #if they type in random stuff, just set it to the value
-            self.EinjPVar.set(str(self.parent.e_ion_injection))
+            self.EinjPVar.set(str(self.parent.MainParamDict['GammaIonInjection']))
 
         # Now the electrons
         try:
             # First check if the injection energy changed
-            if np.abs(float(self.EinjEVar.get()) -self.parent.e_electron_injection)>1E-6:
+            if np.abs(float(self.EinjEVar.get()) -self.parent.MainParamDict['GammaElectronInjection'])>1E-6:
                 # Set the parent value to the var value
-                self.parent.e_electron_injection = float(self.EinjEVar.get())
-                to_reload += self.parent.measure_eps_e
+                self.parent.MainParamDict['GammaElectronInjection'] = float(self.EinjEVar.get())
+                to_reload += self.parent.MainParamDict['MeasureEpsE']
         except ValueError:
             #if they type in random stuff, just set it to the value
-            self.EinjEVar.set(str(self.parent.e_electron_injection))
+            self.EinjEVar.set(str(self.parent.MainParamDict['GammaElectronInjection']))
 
 
         return to_reload
 
     def CheckIfPLChanged(self):
         to_reload = False
-
-        PLList = [self.parent.PowerLawFitElectron, self.parent.PowerLawFitIon]
         VarList = [[self.E1Var, self.E2Var], [self.P1Var, self.P2Var]]
+        KeyList = [['PowerLawElectronMin', 'PowerLawElectronMax'], ['PowerLawIonMin', 'PowerLawIonMax']]
+        PLList = ['DoPowerLawFitElectron', 'DoPowerLawFitIon']
 
         for j in range(2):
             try:
                 # First check if the left index changed
-                if np.abs(float(VarList[j][0].get())- PLList[j][1])>1E-6:
+                if np.abs(float(VarList[j][0].get())- self.parent.MainParamDict[KeyList[j][0]])>1E-6:
                     # See if the left index is larger than the right index
                     if float(VarList[j][0].get()) > float(VarList[j][1].get()):
                         # it is, so make it larger:
                         VarList[j][1].set(str(float(VarList[j][0].get())*2))
                         #set the parent value to the right var value
-                        PLList[j][2] = float(VarList[j][1].get())
+                        self.parent.MainParamDict[KeyList[j][1]] = float(VarList[j][1].get())
 
                     # Set the parent value to the left var value
-                    PLList[j][1] = float(VarList[j][0].get())
-                    to_reload += True
+                    self.parent.MainParamDict[KeyList[j][0]] = float(VarList[j][0].get())
+                    to_reload += self.parent.MainParamDict[PLList[j]]
             except ValueError:
                 #if they type in random stuff, just set it to the value
-                VarList[j][k].set(str(PLList[j][k+1]))
+                VarList[j][0].set(str(self.parent.MainParamDict[KeyList[j][0]]))
 
             try:
-                # First check if the left index changed
-                if np.abs(float(VarList[j][1].get())- PLList[j][2])>1E-6:
-                    # See if the left index is larger than the right index
+                # Now see if the right index changed
+                if np.abs(float(VarList[j][1].get())- self.parent.MainParamDict[KeyList[j][1]])>1E-6:
+                    # See if the left index is smaller than the right index
                     if float(VarList[j][1].get()) < float(VarList[j][0].get()):
                         # it is, so make it smaller:
                         VarList[j][0].set(str(float(VarList[j][1].get())*.5))
                         #set the parent value to the left var value
-                        PLList[j][1] = float(VarList[j][0].get())
+                        self.parent.MainParamDict[KeyList[j][0]] = float(VarList[j][0].get())
 
                     # Set the parent value to the right var value
-                    PLList[j][2] = float(VarList[j][1].get())
-                    to_reload += True
+                    self.parent.MainParamDict[KeyList[j][1]] = float(VarList[j][1].get())
+                    to_reload += self.parent.MainParamDict[PLList[j]]
 
             except ValueError:
                 #if they type in random stuff, just set it to the value
-                VarList[j][k].set(str(PLList[j][k+1]))
+                VarList[j][1].set(str(self.parent.MainParamDict[KeyList[j][1]]))
         return to_reload
 
-    def CheckIfIntChanged(self, tkVar, valVar):
+    def CheckIfIntChanged(self, tkVar, paramKey):
         to_reload = False
         try:
             #make sure the user types in a int
-            if int(tkVar.get()) != valVar.get():
-                valVar.set(int(tkVar.get()))
+            if int(tkVar.get()) != self.parent.MainParamDict[paramKey]:
+                self.parent.MainParamDict[paramKey] = float(tkVar.get())
                 to_reload = True
             return to_reload
+
         except ValueError:
-            #if they type in random stuff, just set it ot the param value
-            tkVar.set(str(valVar.get()))
+            #if they type in random stuff, just set it to the param value
+            tkVar.set(str(self.parent.MainParamDict[paramKey]))
             return to_reload
 
     def SetTeChanged(self, *args):
-        if self.SetTeVar.get()==self.parent.set_Te:
+        if self.SetTeVar.get()==self.parent.MainParamDict['SetTe']:
             pass
         else:
-            self.parent.set_Te = self.SetTeVar.get()
+            self.parent.MainParamDict['SetTe'] = self.SetTeVar.get()
             self.parent.RenewCanvas()
 
     def SetTpChanged(self, *args):
-        if self.SetTpVar.get()==self.parent.set_Tp:
+        if self.SetTpVar.get()==self.parent.MainParamDict['SetTi']:
             pass
         else:
-            self.parent.set_Tp = self.SetTpVar.get()
+            self.parent.MainParamDict['SetTi'] = self.SetTpVar.get()
             self.parent.RenewCanvas()
 
     def TxtEnter(self, e):
         self.MeasuresCallback()
 
     def RelChanged(self, *args):
-        if self.RelVar.get()==self.parent.e_relative:
+        if self.RelVar.get()==self.parent.MainParamDict['PrtlIntegrationRelative']:
             pass
         else:
-            self.parent.e_relative = self.RelVar.get()
+            self.parent.MainParamDict['PrtlIntegrationRelative'] = self.RelVar.get()
             self.parent.RenewCanvas()
 
     def FFTRelChanged(self, *args):
-        if self.FFTRelVar.get()==self.parent.FFT_relative:
+        if self.FFTRelVar.get()==self.parent.MainParamDict['FFTRelative']:
             pass
         else:
-            self.parent.FFT_relative = self.FFTRelVar.get()
+            self.parent.MainParamDict['FFTRelative'] = self.FFTRelVar.get()
             self.parent.RenewCanvas()
 
 
 
     def MeasuresCallback(self):
         tkvarIntList = [self.ileft, self.iright, self.eleft, self.eright, self.FFTLVar, self.FFTRVar]
-        IntValList = [self.parent.i_L, self.parent.i_R, self.parent.e_L, self.parent.e_R, self.parent.FFT_L, self.parent.FFT_R]
+        IntValList = ['IonLeft', 'IonRight', 'ElectronLeft', 'ElectronRight', 'FFTLeft', 'FFTRight']
 
         to_reload = False
 
@@ -1194,105 +1277,31 @@ class MainApp(Tk.Tk):
         self.settings_window = None
         self.measure_window = None
 
-        # A parameter that pushes the timestep to the last value if reload is pressed.
-        self.Reload2End = True
-
-        # A paramter that causes the play button to go to back to the beginning
-        # after reaching the end
-        self.LoopPlayback = True
-
-        # A parameter that causes the graph to when it is redrawn
-        self.clear_fig = True
-
-        self.num_of_graphs_refreshed = 0
+        # A variable that keeps track of the first graph with spatial x & y axes
         self.first_x = None
         self.first_y = None
 
-        self.num_font_size = 11
-        self.recording = False
-        #
-        # Set the number of rows and columns in the figure
-        # (As well as the max rows)
-        self.maxRows = 5
-        self.maxCols = 3
+        self.IseultDir = os.path.dirname(__file__)
 
         # a list of cmaps with orange prtl colors
         self.cmaps_with_green = ['viridis', 'Rainbow + White', 'Blue/Green/Red/Yellow', 'Cube YF', 'Linear_L']
 
-        # A param to define whether to share axes
-        # 0 : No axes are shared
-        # 1 : All axes are shared
-        # 2 : All non p-x plots are shared
-        # 3 : All 2-D, non p-x plots are shared
-        self.LinkSpatial = 2
 
-        # A param to decide whether to link k_axis
-        self.Linkk = True
-        # Should cbars be horizontal?
-        self.HorizontalCbars = False
-        # A param that will hold the the main axes extent
-        if self.HorizontalCbars:
-            self.axes_extent = [18,92,0,-1]
-            self.cbar_extent = [0,4,0,-1]
-            self.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.91, 'bottom':0.06, 'wspace':0.15, 'hspace':0.3}
-
-        else:
-            self.axes_extent = [4,90,0,92]
-            self.cbar_extent = [4,90,95,97]
-            self.SubPlotParams = {'left':0.06, 'right':0.95, 'top':.93, 'bottom':0.06, 'wspace':0.23, 'hspace':0.15}
-        matplotlib.rc('figure.subplot', **self.SubPlotParams)
-        # A param that sets the aspect ratio for the spatial, 2d plots
-        self.plot_aspect = 0
-
-        # A param that will tell us if we want to set the E_temp
-        self.set_Te = False
-        self.delgam_e = 0.03
-
-        # A param that will tell us if we want to set the p_temp
-        self.set_Tp = False
-        self.delgam_p = 0.06
-
-        # The eps_e & eps_p sections
-        self.measure_eps_p = False
-        self.e_ion_injection = 1.0
+        # The variable that store the eps_p & eps_e values
         self.eps_pVar = Tk.StringVar(self)
         self.eps_pVar.set('N/A')
 
-        self.measure_eps_e = False
-        self.e_electron_injection = 30.0
         self.eps_eVar = Tk.StringVar(self)
         self.eps_eVar.set('N/A')
 
-        # A param that will be capable of Lorenz boosting the phase plots
-        self.DoLorentzBoost = False
-        # A parameter that is interpreted as beta if it is <1 and gamma if it is >=1
-        self.GammaBoost = 0.0
-
-        # A Param the will set the xlims relative to the shock location
-        self.xLimsRelative = False
-
-        self.numOfRows = Tk.IntVar(self)
-        self.numOfRows.set(3)
-#        self.numOfRows.set(2)
-        self.numOfRows.trace('w', self.UpdateGridSpec)
-        self.numOfColumns = Tk.IntVar(self)
-        self.numOfColumns.set(2)
-        self.numOfColumns.trace('w', self.UpdateGridSpec)
-
-
-        self.show_title = True
-        self.xlabel_pad = 0
-        self.ylabel_pad = 0
         fileMenu = Tk.Menu(menubar, tearoff=False)
         presetMenu = Tk.Menu(menubar, tearoff=False)
         menubar.add_cascade(label="File", underline=0, menu=fileMenu)
         fileMenu.add_command(label= 'Open Directory', command = self.OnOpen, accelerator='Command+o')
+
         fileMenu.add_command(label="Exit", underline=1,
                              command=quit, accelerator="Ctrl+Q")
-        menubar.add_cascade(label='Preset Views', underline=0, menu = presetMenu)
-        presetMenu.add_command(label = 'Default View', command = self.MakeDefaultGraphs)
-        presetMenu.add_command(label = 'All Phase Plots', command = self.MakeAllPhase)
-        self.config(menu=menubar)
+        fileMenu.add_command(label= 'Save Current State', command = self.OpenSaveDialog)
 
         self.bind_all("<Control-q>", self.quit)
         self.bind_all("<Command-o>", self.OnOpen)
@@ -1404,17 +1413,22 @@ class MainApp(Tk.Tk):
                           u'indi': 'Prtl',
                           u'ppc0': 'Param'}
 
-        # Set the default color map
-
-        self.cmap = 'viridis'
-        self.div_cmap = 'BuYlRd'
-
         # Create the figure
         self.f = Figure(figsize = (2,2), dpi = 100)
-
         # a tk.DrawingArea
         self.canvas = FigureCanvasTkAgg(self.f, master=self)
 
+        self.GenMainParamDict()
+        if self.MainParamDict['HorizontalCbars']:
+            self.axes_extent = self.MainParamDict['HAxesExtent']
+            self.cbar_extent = self.MainParamDict['HCbarExtent']
+            self.SubPlotParams = self.MainParamDict['HSubPlotParams']
+
+        else:
+            self.axes_extent = self.MainParamDict['VAxesExtent']
+            self.cbar_extent = self.MainParamDict['VCbarExtent']
+            self.SubPlotParams = self.MainParamDict['VSubPlotParams']
+        self.f.subplots_adjust( **self.SubPlotParams)
 
         # Make the object hold the timestep info
         self.TimeStep = Param(1, minimum=1, maximum=1000)
@@ -1430,34 +1444,8 @@ class MainApp(Tk.Tk):
         self.dirname = os.curdir
         self.findDir()
 
-        # Choose the integration region for the particles
-        self.e_relative = True
-        self.i_L = Tk.IntVar()
-        self.i_L.set(-1E4)
-        self.i_R = Tk.IntVar()
-        self.i_R.set(0)
-        self.e_L = Tk.IntVar()
-        self.e_L.set(-1E4)
-        self.e_R = Tk.IntVar()
-        self.e_R.set(0)
-
-        # Choose the region for the FFT
-        self.FFT_relative = True #relative to the shock?
-        self.FFT_L = Tk.IntVar()
-        self.FFT_L.set(0)
-        self.FFT_R = Tk.IntVar()
-        self.FFT_R.set(200)
-
-
-        # Whether or not to set a xlim, ylim, or klim
-        self.xlim = [False, 0, 100]
-        self.ylim = [False, 0, 100]
-        self.klim = [False, 0.01, 0.1]
-
-        self.PowerLawFitElectron = [False, 1.0, 10.0]
-        self.PowerLawFitIon = [False, 1.0, 10.0]
         # Set the particle colors
-        if self.cmap in self.cmaps_with_green:
+        if self.MainParamDict['ColorMap'] in self.cmaps_with_green:
             self.shock_color = 'w'
             self.ion_color =  new_cmaps.cmaps['plasma'](0.55)
             self.electron_color = new_cmaps.cmaps['plasma'](0.8)
@@ -1475,14 +1463,25 @@ class MainApp(Tk.Tk):
 
 
         self.TimeStep.attach(self)
-        self.DrawCanvas()
+        self.InitializeCanvas()
 
 
         self.playbackbar.pack(side=Tk.TOP, fill=Tk.BOTH, expand=0)
         self.update()
         # now root.geometry() returns valid size/placement
         self.minsize(self.winfo_width(), self.winfo_height())
-        self.geometry("1200x700")
+        self.geometry(self.MainParamDict['WindowSize'])
+
+        menubar.add_cascade(label='Preset Views', underline=0, menu = presetMenu)
+        for cfile in os.listdir(os.path.join(self.IseultDir, '.iseult_configs')):
+            if cfile.split('.')[-1]=='cfg':
+                config = ConfigParser.RawConfigParser()
+                config.read(os.path.join(self.IseultDir,'.iseult_configs', cfile))
+                tmpstr = config.get('general', 'ConfigName')
+                presetMenu.add_command(label = tmpstr, command = partial(self.LoadConfig, str(os.path.join(self.IseultDir,'.iseult_configs', cfile))))
+
+        self.config(menu=menubar)
+
         self.bind('<Return>', self.TxtEnter)
         self.bind('<Left>', self.playbackbar.SkipLeft)
         self.bind('<Right>', self.playbackbar.SkipRight)
@@ -1492,6 +1491,203 @@ class MainApp(Tk.Tk):
     def quit(self, event):
         print("quitting...")
         sys.exit(0)
+
+    def GenMainParamDict(self, config_file = None):
+        ''' The function that reads in a config file and then makes MainParamDict to hold all of the main iseult parameters.
+            It also sets all of the plots parameters.'''
+
+        config = ConfigParser.RawConfigParser()
+        if config_file is None:
+            config.read(os.path.join(self.IseultDir, '.iseult_configs', 'Default.cfg'))
+        else:
+            config.read(config_file)
+        # Since configparser reads in strings we have to format the data.
+        # First create MainParamDict with the default parameters,
+        # the dictionary that will hold the parameters for the program.
+        # See ./iseult_configs/Default.cfg for a description of what each parameter does.
+        self.MainParamDict = {'SaveMagEnergy': True,
+                              'SavePrtlEnergy': True,
+                              'MeasureEpsP': False,
+                              'WindowSize': '1200x700',
+                              'yTop': 100.0,
+                              'yBottom': 0.0,
+                              'Reload2End': True,
+                              'ColorMap': 'viridis',
+                              'IonLeft': -10000.0,
+                              'PowerLawIonMax': 10.0,
+                              'FFTLeft': 0.0,
+                              'ShowTitle': True,
+                              'ImageAspect': 0,
+                              'WaitTime': 0.01,
+                              'MaxCols': 3,
+                              'VAxesExtent': [4, 90, 0, 92],
+                              'kRight': 1.0,
+                              'DoLorentzBoost': False,
+                              'NumOfRows': 3,
+                              'MaxRows': 5,
+                              'DoPowerLawFitElectron': False,
+                              'GammaIonInjection': 1.0,
+                              'SetkLim': False,
+                              'VCbarExtent': [4, 90, 95, 98],
+                              'SkipSize': 5,
+                              'DoPowerLawFitIon': False,
+                              'xLeft': 0.0,
+                              'DelGami': 0.06,
+                              'NumFontSize': 11,
+                              'DelGame': 0.03,
+                              'FFTRelative': True,
+                              'NumOfCols': 2,
+                              'SetTi': False,
+                              'VSubPlotParams': {'right': 0.95,
+                                                 'bottom': 0.06,
+                                                 'top': 0.93,
+                                                 'wspace': 0.23,
+                                                 'hspace': 0.15,
+                                                 'left': 0.06},
+                              'HAxesExtent': [18, 92, 0, -1],
+                              'SetyLim': False,
+                              'HSubPlotParams': {'right': 0.95,
+                                                 'bottom': 0.06,
+                                                 'top': 0.91,
+                                                 'wspace': 0.15,
+                                                 'hspace': 0.3,
+                                                 'left': 0.06},
+                              'PowerLawIonMin': 1.0,
+                              'SetTe': False,
+                              'yLabelPad': 0,
+                              'SetxLim': False,
+                              'xLimsRelative': False,
+                              'xRight': 100.0,
+                              'GammaElectronInjection': 30.0,
+                              'LinkSpatial': 2,
+                              'PowerLawElectronMin': 1.0,
+                              'HCbarExtent': [0, 4, 0, -1],
+                              'Recording': False,
+                              'ElectronRight': 0.0,
+                              'xLabelPad': 0,
+                              'FFTRight': 200.0,
+                              'ClearFig': True,
+                              'HorizontalCbars': False,
+                              'DivColorMap': 'BuYlRd',
+                              'LinkK': True,
+                              'PrtlIntegrationRelative': True,
+                              'PowerLawElectronMax': 10.0,
+                              'GammaBoost': 0.0,
+                              'kLeft': 0.1,
+                              'ElectronLeft': -10000.0,
+                              'IonRight': 0.0,
+                              'LoopPlayback': True,
+                              'MeasureEpsE': False}
+
+        # The list of things that should be formatted as booleans.
+        BoolList = ['Reload2End', 'ClearFig', 'ShowTitle', 'DoLorentzBoost',
+                    'HorizontalCbars', 'PrtlIntegrationRelative',
+                    'SetTe', 'SetTi','MeasureEpsP', 'MeasureEpsE',
+                    'DoPowerLawFitElectron', 'DoPowerLawFitIon',
+                    'SetxLim', 'SetyLim', 'SetkLim', 'LinkK',
+                    'LoopPlayback', 'Recording', 'FFTRelative', 'xLimsRelative']
+
+        for elm in BoolList:
+            if elm.lower() in config.options('main'):
+                self.MainParamDict[elm] = config.getboolean('main', elm)
+
+        # The list of things that should be formatted as ints.
+        IntList = ['NumFontSize', 'xLabelPad', 'yLabelPad', 'MaxRows',
+                   'MaxCols', 'NumOfRows', 'NumOfCols', 'ImageAspect',
+                   'LinkSpatial', 'SkipSize']
+
+        for elm in IntList:
+            if elm.lower() in config.options('main'):
+                self.MainParamDict[elm] = config.getint('main', elm)
+
+
+        # The list of things that should be formatted as Floats.
+        FloatList = ['DelGame', 'DelGami', 'GammaIonInjection', 'GammaElectronInjection',
+                    'PowerLawElectronMin', 'PowerLawElectronMax',
+                    'PowerLawIonMin', 'PowerLawIonMax', 'GammaBoost',
+                    'ElectronLeft', 'ElectronRight', 'IonLeft', 'IonRight',
+                    'FFTLeft', 'FFTRight',
+                    'xLeft', 'xRight', 'yBottom', 'yTop', 'kLeft', 'kRight',
+                    'WaitTime']
+
+        for elm in FloatList:
+            if elm.lower() in config.options('main'):
+                self.MainParamDict[elm] = config.getfloat('main', elm)
+
+        StrList = ['ColorMap', 'DivColorMap', 'WindowSize']
+
+        for elm in StrList:
+            if elm.lower() in config.options('main'):
+                self.MainParamDict[elm] = config.get('main', elm)
+
+        # Some special parsing rules. First some lists
+        IntListsList = ['HAxesExtent', 'HCbarExtent', 'VAxesExtent', 'VCbarExtent']
+        for elm in IntListsList:
+            if elm.lower() in config.options('main'):
+                tmplist = config.get('main', elm).split(',')
+                for i in range(len(tmplist)):
+                    tmplist[i] = int(tmplist[i])
+                self.MainParamDict[elm] = list(tmplist)
+
+        # Now some dicts
+        DictList = ['HSubPlotParams', 'VSubPlotParams']
+        for elm in DictList:
+            if elm.lower() in config.options('main'):
+                self.MainParamDict[elm] = {}
+                tmplist = config.get('main', elm).split(',')
+                self.MainParamDict[elm]['left'] = float(tmplist[0])
+                self.MainParamDict[elm]['right'] = float(tmplist[1])
+                self.MainParamDict[elm]['top'] = float(tmplist[2])
+                self.MainParamDict[elm]['bottom'] = float(tmplist[3])
+                self.MainParamDict[elm]['wspace'] = float(tmplist[4])
+                self.MainParamDict[elm]['hspace'] = float(tmplist[5])
+
+    def SaveIseultState(self, cfgfile, cfgname):
+        config = ConfigParser.RawConfigParser()
+
+        # When adding sections or items, add them in the reverse order of
+        # how you want them to be displayed in the actual file.
+        # In addition, please note that using RawConfigParser's and the raw
+        # mode of ConfigParser's respective set functions, you can assign
+        # non-string values to keys internally, but will receive an error
+        # when attempting to write to a file or when you get it in non-raw
+        # mode. SafeConfigParser does not allow such assignments to take place.
+        config.add_section('general')
+        config.set('general', 'ConfigName', cfgname)
+
+        config.add_section('main')
+
+        DictList = ['HSubPlotParams', 'VSubPlotParams']
+        IntListsList = ['HAxesExtent', 'HCbarExtent', 'VAxesExtent', 'VCbarExtent']
+
+        for key in self.MainParamDict.keys():
+
+            if key in DictList:
+                tmp_str = str(self.MainParamDict[key]['left']) + ','
+                tmp_str += str(self.MainParamDict[key]['right']) + ','
+                tmp_str += str(self.MainParamDict[key]['top']) + ','
+                tmp_str += str(self.MainParamDict[key]['bottom']) + ','
+                tmp_str += str(self.MainParamDict[key]['wspace']) + ','
+                tmp_str += str(self.MainParamDict[key]['hspace'])
+                config.set('main', key, tmp_str)
+            elif key in IntListsList:
+                config.set('main', key, str(self.MainParamDict[key])[1:-1])
+            else:
+                config.set('main', key, str(self.MainParamDict[key]))
+        # Grab the current window size:
+        config.set('main', 'WindowSize', str(self.winfo_width())+'x'+str(self.winfo_height()) )
+        for i in range(self.MainParamDict['NumOfRows']):
+            for j in range(self.MainParamDict['NumOfCols']):
+                tmp_str = 'Chart' + str(i) + ',' + str(j)
+                config.add_section(tmp_str)
+                tmp_ctype = self.SubPlotList[i][j].chartType
+                config.set(tmp_str, 'ChartType', tmp_ctype)
+                for key in self.SubPlotList[i][j].PlotParamsDict[tmp_ctype].keys():
+                    config.set(tmp_str, key, str(self.SubPlotList[i][j].PlotParamsDict[tmp_ctype][key]))
+        # Writing our configuration file to 'example.cfg'
+
+        with open(cfgfile, 'wb') as configfile:
+            config.write(configfile)
 
     def GenH5Dict(self):
         '''Loads all of the files and then finds all of the keys in
@@ -1543,7 +1739,7 @@ class MainApp(Tk.Tk):
         if is_okay:
             self.NewDirectory = True
             self.TimeStep.setMax(len(self.PathDict['Flds']))
-            if self.Reload2End:
+            if self.MainParamDict['Reload2End']:
                 self.TimeStep.value = len(self.PathDict['Flds'])
                 self.playbackbar.slider.set(self.TimeStep.value)
             self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
@@ -1587,10 +1783,14 @@ class MainApp(Tk.Tk):
                 self.findDir()
 
 
-    def DrawCanvas(self):
+    def InitializeCanvas(self, config_file = None):
         '''Initializes the figure, and then packs it into the main window.
         Should only be called once.'''
-
+        config = ConfigParser.RawConfigParser()
+        if config_file is None:
+            config.read(os.path.join(self.IseultDir, '.iseult_configs', 'Default.cfg'))
+        else:
+            config.read(config_file)
         # figsize (w,h tuple in inches) dpi (dots per inch)
         #f = Figure(figsize=(5,4), dpi=100)
 
@@ -1598,137 +1798,105 @@ class MainApp(Tk.Tk):
         # where the index [i][j] corresponds to the ith row, jth column
 
         # divy up the figure into a bunch of subplots using GridSpec.
-        self.gs0 = gridspec.GridSpec(self.numOfRows.get(),self.numOfColumns.get())
+        self.gs0 = gridspec.GridSpec(self.MainParamDict['NumOfRows'],self.MainParamDict['NumOfCols'])
 
 
         # Create the list of all of subplot wrappers
         self.SubPlotList = []
-        for i in range(self.maxRows):
-            tmplist = [SubPlotWrapper(self, figure = self.f, pos=(i,j)) for j in range(self.maxCols)]
+        for i in range(self.MainParamDict['MaxRows']):
+            tmplist = [SubPlotWrapper(self, figure = self.f, pos=(i,j)) for j in range(self.MainParamDict['MaxCols'])]
             self.SubPlotList.append(tmplist)
-        for i in range(self.maxRows):
-            for j in range(self.maxCols):
-                self.SubPlotList[i][j].SetGraph('PhasePlot')
+        for i in range(self.MainParamDict['MaxRows']):
+            for j in range(self.MainParamDict['MaxCols']):
+                tmp_str = 'Chart' + str(i) + ',' + str(j)
+                if tmp_str in config.sections():
+                    tmpchart_type = config.get(tmp_str, 'ChartType')
+                    self.SubPlotList[i][j].SetGraph(tmpchart_type)
+                    #Now load in all the parameters from the config file
+                    for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['BoolList']:
+                        if param.lower() in config.options(tmp_str):
+                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.getboolean(tmp_str, param)
 
-        self.SubPlotList[0][1].PlotParamsDict['PhasePlot']['prtl_type'] = 1
+                    for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['IntList']:
+                        if param.lower() in config.options(tmp_str):
+                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.getint(tmp_str, param)
 
-        self.SubPlotList[1][1].SetGraph('FieldsPlot')
-        self.SubPlotList[2][1].SetGraph('MagPlots')
+                    for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['FloatList']:
+                        if param.lower() in config.options(tmp_str):
+                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.getfloat(tmp_str, param)
 
-        self.SubPlotList[1][0].SetGraph('DensityPlot')
-        self.SubPlotList[2][0].SetGraph('SpectraPlot')
+                    for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['StrList']:
+                        if param.lower() in config.options(tmp_str):
+                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.get(tmp_str, param)
+                else:
+                    # The graph isn't specifiedin the config file, just set it equal to phase plots
+                    self.SubPlotList[i][j].SetGraph('PhasePlot')
 
         # Make a list that will hold the previous ctype
         self.MakePrevCtypeList()
         self.canvas.show()
         self.canvas.get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
         self.ReDrawCanvas()
-
-
         self.f.canvas.mpl_connect('button_press_event', self.onclick)
-#        self.canvas._tkcanvas.pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
 
-        #self.label = Label(self.top, text = 'Text',bg='orange')
-        #self.label.grid()
-        # initialize (time index t)
-    def MakeDefaultGraphs(self):
+    def LoadConfig(self, config_file):
         # First get rid of any & all pop up windows:
         if self.settings_window is not None:
             self.settings_window.destroy()
         if self.measure_window is not None:
             self.measure_window.destroy()
-        for i in range(self.numOfRows.get()):
-            for j in range(self.numOfColumns.get()):
+        # Go through each sub-plot destroying any pop-up and
+        # restoring to default params
+        for i in range(self.MainParamDict['NumOfRows']):
+            for j in range(self.MainParamDict['NumOfCols']):
+                self.SubPlotList[i][j].RestoreDefaultPlotParams()
                 try:
                     self.SubPlotList[i][j].graph.settings_window.destroy()
                 except:
                     pass
-        # set it to a 3x2 subplots
-        if self.numOfRows.get() != 3:
-            self.numOfRows.set(3)
-        if self.numOfColumns.get() != 2:
-            self.numOfColumns.set(2)
+        # Read in the config file
+        config = ConfigParser.RawConfigParser()
+        config.read(config_file)
 
-        # Now set the plots back to defaults
-        #[0][0] is p_ix vs x phase plotChangeGraph(self, str_arg, redraw = True)
-        self.SubPlotList[0][0].SetGraph('PhasePlot')
-        self.SubPlotList[0][0].RestoreDefaultPlotParams()
+        # Generate the Main Param Dict
+        self.GenMainParamDict(config_file)
 
-        # electron phase diagram
-        self.SubPlotList[0][1].SetGraph('PhasePlot')
-        self.SubPlotList[0][1].RestoreDefaultPlotParams()
-        self.SubPlotList[0][1].PlotParamsDict['PhasePlot']['prtl_type'] = 1
+        # Load in all the subplot params
+        for i in range(self.MainParamDict['NumOfRows']):
+            for j in range(self.MainParamDict['NumOfCols']):
+                tmp_str = 'Chart' + str(i) + ',' + str(j)
 
-        # Density 1-D
-        self.SubPlotList[1][0].SetGraph('DensityPlot')
-        self.SubPlotList[1][0].RestoreDefaultPlotParams()
+                if tmp_str in config.sections():
 
-        # Mag Fields 1-D
-        self.SubPlotList[1][1].SetGraph('FieldsPlot')
-        self.SubPlotList[1][1].RestoreDefaultPlotParams()
+                    tmpchart_type = config.get(tmp_str, 'ChartType')
+                    self.SubPlotList[i][j].SetGraph(tmpchart_type)
+                    #Now load in all the parameters from the config file
+                    for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['BoolList']:
+                        if param in config.options(tmp_str):
+                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.getboolean(tmp_str, param)
 
-        # Momentum spectrum distribution
-        self.SubPlotList[2][0].SetGraph('SpectraPlot')
-        self.SubPlotList[2][0].RestoreDefaultPlotParams()
+                    for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['IntList']:
+                        if param in config.options(tmp_str):
+                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.getint(tmp_str, param)
 
-        # delta B/B_0
-        self.SubPlotList[2][1].SetGraph('MagPlots')
-        self.SubPlotList[2][1].RestoreDefaultPlotParams()
+                    for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['FloatList']:
+                        if param in config.options(tmp_str):
+                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.getfloat(tmp_str, param)
 
+                    for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['StrList']:
+                        if param in config.options(tmp_str):
+                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.get(tmp_str, param)
+                else:
+                    # The graph isn't specified in the config file, just set it equal to a phase plot
+                    self.SubPlotList[i][j].SetGraph('PhasePlot')
+        # There are a few parameters that need to be loaded separately, mainly in the playbackbar.
+        self.playbackbar.RecVar.set(self.MainParamDict['Recording'])
+        self.playbackbar.LoopVar.set(self.MainParamDict['LoopPlayback'])
 
-        self.RenewCanvas(ForceRedraw = True, keep_view = False)
-
-    def MakeAllPhase(self):
-        # Make a 3x2 plot with the first column being pi-x v x, pi-y v x, pi-z v x
-        # and the second column being the electrons.
-
-        # First get rid of any & all pop up windows:
-        if self.settings_window is not None:
-            self.settings_window.destroy()
-        if self.measure_window is not None:
-            self.measure_window.destroy()
-        for i in range(self.numOfRows.get()):
-            for j in range(self.numOfColumns.get()):
-                try:
-                    self.SubPlotList[i][j].graph.settings_window.destroy()
-                except:
-                    pass
-        # set it to a 3x2 subplots
-        if self.numOfRows.get() != 3:
-            self.numOfRows.set(3)
-        if self.numOfColumns.get() != 2:
-            self.numOfColumns.set(2)
-
-        # Now set the plots back to defaults
-        #[0][0] is p_ix vs x phase plotChangeGraph(self, str_arg, redraw = True)
-        self.SubPlotList[0][0].SetGraph('PhasePlot')
-        self.SubPlotList[0][0].RestoreDefaultPlotParams()
-
-        self.SubPlotList[1][0].SetGraph('PhasePlot')
-        self.SubPlotList[1][0].RestoreDefaultPlotParams()
-        self.SubPlotList[1][0].PlotParamsDict['PhasePlot']['mom_dim'] = 1
-
-        self.SubPlotList[2][0].SetGraph('PhasePlot')
-        self.SubPlotList[2][0].RestoreDefaultPlotParams()
-        self.SubPlotList[2][0].PlotParamsDict['PhasePlot']['mom_dim'] = 2
-
-        # electron phase diagram
-        self.SubPlotList[0][1].SetGraph('PhasePlot')
-        self.SubPlotList[0][1].RestoreDefaultPlotParams()
-        self.SubPlotList[0][1].PlotParamsDict['PhasePlot']['prtl_type'] = 1
-
-        self.SubPlotList[1][1].SetGraph('PhasePlot')
-        self.SubPlotList[1][1].RestoreDefaultPlotParams()
-        self.SubPlotList[1][1].PlotParamsDict['PhasePlot']['prtl_type'] = 1
-        self.SubPlotList[1][1].PlotParamsDict['PhasePlot']['mom_dim'] = 1
-
-        self.SubPlotList[2][1].SetGraph('PhasePlot')
-        self.SubPlotList[2][1].RestoreDefaultPlotParams()
-        self.SubPlotList[2][1].PlotParamsDict['PhasePlot']['prtl_type'] = 1
-        self.SubPlotList[2][1].PlotParamsDict['PhasePlot']['mom_dim'] = 2
-
-
-        self.RenewCanvas(ForceRedraw = True, keep_view = False)
+        # refresh the geometry
+        self.geometry(self.MainParamDict['WindowSize'])
+        # refresh the gridspec and re-draw all of the subplots
+        self.UpdateGridSpec()
 
     def UpdateGridSpec(self, *args):
         '''A function that handles updates the gridspec that divides up of the
@@ -1736,14 +1904,14 @@ class MainApp(Tk.Tk):
         # To prevent orphaned windows, we have to kill all of the windows of the
         # subplots that are no longer shown.
 
-        for i in range(self.maxRows):
-            for j in range(self.maxCols):
-                if i < self.numOfRows.get() and j < self.numOfColumns.get():
+        for i in range(self.MainParamDict['MaxRows']):
+            for j in range(self.MainParamDict['MaxCols']):
+                if i < self.MainParamDict['NumOfRows'] and j < self.MainParamDict['NumOfCols']:
                     pass
                 elif self.SubPlotList[i][j].graph.settings_window is not None:
                     self.SubPlotList[i][j].graph.settings_window.destroy()
 
-        self.gs0 = gridspec.GridSpec(self.numOfRows.get(),self.numOfColumns.get())
+        self.gs0 = gridspec.GridSpec(self.MainParamDict['NumOfRows'],self.MainParamDict['NumOfCols'])
         self.RenewCanvas(keep_view = False, ForceRedraw = True)
 
     def LoadAllKeys(self):
@@ -1752,8 +1920,8 @@ class MainApp(Tk.Tk):
         # Make a dictionary that stores all of the keys we will need to load
         # to draw the graphs.
         self.ToLoad = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
-        for i in range(self.numOfRows.get()):
-            for j in range(self.numOfColumns.get()):
+        for i in range(self.MainParamDict['NumOfRows']):
+            for j in range(self.MainParamDict['NumOfCols']):
                 # for each subplot, see what keys are needed
                 tmpList = self.SubPlotList[i][j].GetKeys()
                 # we always load time because it is needed to calculate the shock location
@@ -1869,24 +2037,24 @@ class MainApp(Tk.Tk):
 
         # Now that the DataDict is created, iterate over all the subplots and
         # load the data into them:
-        for i in range(self.numOfRows.get()):
-            for j in range(self.numOfColumns.get()):
+        for i in range(self.MainParamDict['NumOfRows']):
+            for j in range(self.MainParamDict['NumOfCols']):
                 self.SubPlotList[i][j].LoadData()
 
 
     def MakePrevCtypeList(self):
         self.prev_ctype_list = []
-        for i in range(self.numOfRows.get()):
+        for i in range(self.MainParamDict['NumOfRows']):
             tmp_ctype_l = []
-            for j in range(self.numOfColumns.get()):
+            for j in range(self.MainParamDict['NumOfCols']):
                 tmp_ctype_l.append(str(self.SubPlotList[i][j].chartType))
             self.prev_ctype_list.append(tmp_ctype_l)
 
     def FindCbars(self, prev = False):
         ''' A function that will find where all the cbars are in the current view '''
         self.IsCbarList = []
-        for i in range(self.numOfRows.get()):
-            for j in range(self.numOfColumns.get()):
+        for i in range(self.MainParamDict['NumOfRows']):
+            for j in range(self.MainParamDict['NumOfCols']):
                 self.IsCbarList.append(False)
                 if prev ==True:
                     if self.SubPlotList[i][j].GetPlotParam('twoD') == 1 and not self.SubPlotList[i][j].Changedto2D:
@@ -1937,8 +2105,8 @@ class MainApp(Tk.Tk):
         # into the proper place in the next view
         m = 0 # a counter that allows us to go from labeling the plots in [i][j] to 1d
         k = 0 # a counter that skips over the colorbars
-        for i in range(self.numOfRows.get()):
-            for j in range(self.numOfColumns.get()):
+        for i in range(self.MainParamDict['NumOfRows']):
+            for j in range(self.MainParamDict['NumOfCols']):
                 tmp_old_view = list(self.old_views.pop(0))
 
                 if self.IsCbarList[k]:
@@ -1951,14 +2119,14 @@ class MainApp(Tk.Tk):
                         # only keep the x values if they have changed
                         for n in range(2):
                             if is_changed[n]:
-                                tmp_new_view[n] = tmp_old_view[n]+self.xLimsRelative*(self.shock_loc-self.prev_shock_loc)
+                                tmp_new_view[n] = tmp_old_view[n]+self.MainParamDict['xLimsRelative']*(self.shock_loc-self.prev_shock_loc)
                     else:
                         # Keep any y or x that is changed
                         for n in range(4):
                             if is_changed[n]:
                                 tmp_new_view[n] = tmp_old_view[n]
                                 if n < 2:
-                                    tmp_new_view[n]+=self.xLimsRelative*(self.shock_loc-self.prev_shock_loc)
+                                    tmp_new_view[n]+=self.MainParamDict['xLimsRelative']*(self.shock_loc-self.prev_shock_loc)
 
                 cur_view[k] = tmp_new_view
                 # Handle the counting of the 'views' array in matplotlib
@@ -1991,8 +2159,6 @@ class MainApp(Tk.Tk):
             self.RefreshCanvas(keep_view = keep_view)
         # Record the current ctypes for later
         self.MakePrevCtypeList()
-
-
 #        toc = time.time()
 #        print toc-tic
     def ReDrawCanvas(self, keep_view = True):
@@ -2008,7 +2174,7 @@ class MainApp(Tk.Tk):
             self.SaveView()
         self.f.clf()
         #
-        if self.clear_fig:
+        if self.MainParamDict['ClearFig']:
             self.canvas.show()
 
         self.LoadAllKeys()
@@ -2021,8 +2187,8 @@ class MainApp(Tk.Tk):
         self.first_y = None
         self.first_k = None
         k = 0
-        for i in range(self.numOfRows.get()):
-            for j in range(self.numOfColumns.get()):
+        for i in range(self.MainParamDict['NumOfRows']):
+            for j in range(self.MainParamDict['NumOfCols']):
 
                 # First handle the axes sharing
                 if self.SubPlotList[i][j].chartType == 'FFTPlots':
@@ -2032,11 +2198,11 @@ class MainApp(Tk.Tk):
                 elif self.SubPlotList[i][j].chartType == 'SpectraPlot':
                     # The plot type is a spectral plot, which has no spatial dim
                     pass
-                elif self.LinkSpatial != 1 and self.SubPlotList[i][j].chartType == 'PhasePlot':
+                elif self.MainParamDict['LinkSpatial'] != 1 and self.SubPlotList[i][j].chartType == 'PhasePlot':
                     # If this is the case we don't care about the phase plots
                     # as we don't want to share the axes
                     pass
-                elif self.LinkSpatial == 3 and self.SubPlotList[i][j].GetPlotParam('twoD'):
+                elif self.MainParamDict['LinkSpatial'] == 3 and self.SubPlotList[i][j].GetPlotParam('twoD'):
                     # If the plot is twoD share the axes
                     if self.first_x is None and self.SubPlotList[i][j].GetPlotParam('spatial_x'):
                         self.first_x = (i,j)
@@ -2052,7 +2218,7 @@ class MainApp(Tk.Tk):
 
                 # Now... We can draw the graph.
                 self.SubPlotList[i][j].DrawGraph()
-        if self.show_title:
+        if self.MainParamDict['ShowTitle']:
             tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].split('.')[-1]
             self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time'][0]), size = 15)
         if keep_view:
@@ -2062,7 +2228,8 @@ class MainApp(Tk.Tk):
         self.canvas.show()
         self.canvas.get_tk_widget().update_idletasks()
 
-        if self.recording:
+
+        if self.MainParamDict['Recording']:
             self.PrintFig()
 
 
@@ -2092,8 +2259,8 @@ class MainApp(Tk.Tk):
         if Use_MultiProcess:
             jobs = []
             # Refresh graphs in parallel
-            for i in range(self.numOfRows.get()):
-                for j in range(self.numOfColumns.get()):
+            for i in range(self.MainParamDict['NumOfRows']):
+                for j in range(self.MainParamDict['NumOfCols']):
                     jobs.append(CallAThread(self, i, j))
 
             while len(jobs)>0:
@@ -2104,12 +2271,12 @@ class MainApp(Tk.Tk):
             print 'refreshed'
 
         else:
-            for i in range(self.numOfRows.get()):
-                for j in range(self.numOfColumns.get()):
+            for i in range(self.MainParamDict['NumOfRows']):
+                for j in range(self.MainParamDict['NumOfCols']):
                     # Now we can refresh the graph.
                     self.SubPlotList[i][j].RefreshGraph()
 
-        if self.show_title:
+        if self.MainParamDict['ShowTitle']:
             tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].split('.')[-1]
             self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time'][0]), size = 15)
 
@@ -2118,7 +2285,7 @@ class MainApp(Tk.Tk):
 
         self.canvas.draw()
         self.canvas.get_tk_widget().update_idletasks()
-        if self.recording:
+        if self.MainParamDict['Recording']:
             self.PrintFig()
 
     def PrintFig(self):
@@ -2131,7 +2298,8 @@ class MainApp(Tk.Tk):
 
         fname = 'iseult_img_'+ str(self.TimeStep.value).zfill(3)+'.png'
         self.f.savefig(os.path.join(movie_dir, fname))
-
+    def OpenSaveDialog(self):
+        SaveDialog(self)
     def onclick(self, event):
         '''After being clicked, we should use the x and y of the cursor to
         determine what subplot was clicked'''

@@ -25,7 +25,7 @@ $ module load anaconda/2.5.0
 $ source activate root
 $ cd /path/to/Iseult/
 $ chmod +x ./iseult.py
-$ iseult.py
+$ ./iseult.py
 ```
 
 When Iseult is started, it checks to see if Tristan-MP data is located at the
@@ -36,6 +36,12 @@ colormap, and other general settings by clicking the settings button. The
 measure button allows you to take measurements like T_i, T_e, measure spectra,
 take 1-D FFTs, etc. The matplotlib interactive toolbar is beneath the playbar,
 it allows you to save the figure, use your mouse to zoom around, etc.
+
+If you get a set-up you like, you can go to file menu and choose Save Iseult
+State. It will give you an option to name the 'view.' To replace the default
+state of Iseult, name the view Default. The views are saved as .cfg files in
+.iseult_configs folder. You must restart Iseult to see the saved config in the
+preset views menu.
 
 Enjoy!
 
@@ -50,13 +56,13 @@ Enjoy!
 | shock-finding |
 | figure saving |
 | Ability to take measurements |
+| ability to save Iseult settings in a config file|
 | zooming |
 
 
 | Left to Implement:|
 | ------------------ |
 | gifs/movies |
-| ability to save Iseult settings in a config file|
 | Longer term goals (???)|
 
 Resources:
