@@ -1891,19 +1891,19 @@ class MainApp(Tk.Tk):
                     self.SubPlotList[i][j].SetGraph(tmpchart_type)
                     #Now load in all the parameters from the config file
                     for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['BoolList']:
-                        if param in config.options(tmp_str):
+                        if param.lower() in config.options(tmp_str):
                             self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.getboolean(tmp_str, param)
 
-                    for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['IntList']:
-                        if param in config.options(tmp_str):
+                    for param.lower() in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['IntList']:
+                        if param.lower() in config.options(tmp_str):
                             self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.getint(tmp_str, param)
 
                     for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['FloatList']:
-                        if param in config.options(tmp_str):
+                        if param.lower() in config.options(tmp_str):
                             self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.getfloat(tmp_str, param)
 
                     for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['StrList']:
-                        if param in config.options(tmp_str):
+                        if param.lower() in config.options(tmp_str):
                             self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.get(tmp_str, param)
                 else:
                     # The graph isn't specified in the config file, just set it equal to a phase plot
