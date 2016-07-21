@@ -1197,11 +1197,11 @@ class MeasureFrame(Tk.Toplevel):
                 VarList[j][1].set(str(self.parent.MainParamDict[KeyList[j][1]]))
         return to_reload
 
-    def CheckIfIntChanged(self, tkVar, paramKey):
+    def CheckIfFloatChanged(self, tkVar, paramKey):
         to_reload = False
         try:
             #make sure the user types in a int
-            if int(tkVar.get()) != self.parent.MainParamDict[paramKey]:
+            if np.abs(float(tkVar.get())- self.parent.MainParamDict[paramKey])>1E-6:
                 self.parent.MainParamDict[paramKey] = float(tkVar.get())
                 to_reload = True
             return to_reload
@@ -1253,7 +1253,7 @@ class MeasureFrame(Tk.Toplevel):
 
 
         for j in range(len(tkvarIntList)):
-            to_reload += self.CheckIfIntChanged(tkvarIntList[j], IntValList[j])
+            to_reload += self.CheckIfFloatChanged(tkvarIntList[j], IntValList[j])
 
         to_reload += self.CheckIfTeChanged()
         to_reload += self.CheckIfTpChanged()
