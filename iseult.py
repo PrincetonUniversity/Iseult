@@ -1894,7 +1894,7 @@ class MainApp(Tk.Tk):
                         if param.lower() in config.options(tmp_str):
                             self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.getboolean(tmp_str, param)
 
-                    for param.lower() in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['IntList']:
+                    for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['IntList']:
                         if param.lower() in config.options(tmp_str):
                             self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.getint(tmp_str, param)
 
