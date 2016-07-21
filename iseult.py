@@ -1751,9 +1751,11 @@ class MainApp(Tk.Tk):
             if not(np.isnan(float(self.cmd_args.n))):
                 max_file = int(self.cmd_args.n)
                 for key in self.PathDict.keys():
+                    output_max = len(self.PathDict[key])
                     for tristan_file in self.PathDict[key]:
-                        if int(tristan_file.split('.')[-1]) > max_file:
-                            self.PathDict[key].remove(tristan_file)
+                        if int(tristan_file.split('.')[-1]) >= max_file:
+                            output_max = min( int(tristan_file.split('.')[-1]), output_max)
+                    self.PathDict[key] = self.PathDict[key][0:output_max]
             self.NewDirectory = True
             self.TimeStep.setMax(len(self.PathDict['Flds']))
             if self.MainParamDict['Reload2End']:
