@@ -35,6 +35,7 @@ import tkFileDialog, tkMessageBox
 
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
+import argparse
 
 def destroy(e):
     sys.exit()
@@ -1276,6 +1277,16 @@ class MainApp(Tk.Tk):
         self.wm_title(name)
         self.settings_window = None
         self.measure_window = None
+        parser = argparse.ArgumentParser(description='Plotting program for Tristan-MP files.')
+#        parser.add_argument('integers', metavar='N', type=int, nargs='+',
+#                        help='The maximum file number to consider')
+#        parser.add_argument('--foo', nargs='?', const='c', default='d')
+#        parser.add_argument('bar', nargs='?', default='d')
+        parser.add_argument('-n', nargs = '?',# dest='accumulate', action='store_const',
+                    const=np.NaN, default=np.NaN,
+                    help='Maximum file # to consider')
+
+        self.cmd_args = parser.parse_args()
 
         # A variable that keeps track of the first graph with spatial x & y axes
         self.first_x = None
@@ -1737,6 +1748,12 @@ class MainApp(Tk.Tk):
             is_okay &= len(self.PathDict[key]) > 0
 
         if is_okay:
+            if not(np.isnan(float(self.cmd_args.n))):
+                max_file = int(self.cmd_args.n)
+                for key in self.PathDict.keys():
+                    for tristan_file in self.PathDict[key]:
+                        if int(tristan_file.split('.')[-1]) > max_file:
+                            self.PathDict[key].remove(tristan_file)
             self.NewDirectory = True
             self.TimeStep.setMax(len(self.PathDict['Flds']))
             if self.MainParamDict['Reload2End']:
@@ -2444,6 +2461,7 @@ def worker(iseult,i,j):
     iseult.SubPlotList[i][j].RefreshGraph()
     return
 if __name__ == "__main__":
+
 
     app = MainApp('Iseult')
     app.mainloop()
