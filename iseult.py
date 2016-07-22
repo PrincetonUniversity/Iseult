@@ -1994,7 +1994,7 @@ class MainApp(Tk.Tk):
 
         if not self.TimeStep.value in self.TotalEnergyTimeSteps:
             if self.MainParamDict['SavePrtlandFieldEnergy']:
-                tmp_L = ['ui', 'vi', 'wi', 'ue', 've', 'we', 'mi', 'me', 'stride', 'bx', 'by', 'bz', 'ex', 'ey', 'ez']
+                tmp_L = ['ui', 'vi', 'wi', 'ue', 've', 'we', 'mi', 'me', 'stride', 'bx', 'by', 'bz', 'ex', 'ey', 'ez','qi']
                 for elm in tmp_L:
                     self.ToLoad[self.H5KeyDict[elm]].append(elm)
 
@@ -2075,33 +2075,35 @@ class MainApp(Tk.Tk):
                 TotalElectronKE = self.DataDict['ue']*self.DataDict['ue']
                 TotalElectronKE += self.DataDict['ve']*self.DataDict['ve']
                 TotalElectronKE += self.DataDict['we']*self.DataDict['we']+1
-                TotalElectronKE = np.sum(np.sqrt(TotalElectronKE))
-                TotalElectronKE += -len(self.DataDict['we'])
+                TotalElectronKE = np.sum(np.sqrt(TotalElectronKE)-1)
+                #TotalElectronKE += -len(self.DataDict['we'])
 
-                TotalElectronKE *= self.DataDict['stride'][0]*self.DataDict['me'][0]/self.DataDict['mi'][0]
+                TotalElectronKE *= self.DataDict['stride'][0]*np.abs(self.DataDict['qi'][0]) #mass of particle is its charge, qe/me=1
 
                 TotalIonKE = self.DataDict['ui']*self.DataDict['ui']
                 TotalIonKE += self.DataDict['vi']*self.DataDict['vi']
                 TotalIonKE += self.DataDict['wi']*self.DataDict['wi']+1
-                TotalIonKE = np.sum(np.sqrt(TotalIonKE))
-                TotalIonKE += -len(self.DataDict['we'])
+                TotalIonKE = np.sum(np.sqrt(TotalIonKE)-1)
+                #TotalIonKE += -len(self.DataDict['we'])
 
                 TotalIonKE *= self.DataDict['stride'][0]
+                TotalIonKE *= self.DataDict['stride'][0]*self.DataDict['mi'][0]/self.DataDict['me']*np.abs(self.DataDict['qi'][0]) #mass of particle is its charge, qe/me=1
 
                 TotalKEDensity = (TotalElectronKE +TotalIonKE)
                 # Divide by x size
-                TotalKEDensity *= (self.DataDict['dens'][0,:,:].shape[1]/self.DataDict['c_omp'][0]*self.DataDict['istep'][0])**-1
+#                TotalKEDensity *= (self.DataDict['dens'][0,:,:].shape[1]/self.DataDict['c_omp'][0]*self.DataDict['istep'][0])**-1
                 # Divide by y size
-                TotalKEDensity *= (self.DataDict['dens'][0,:,:].shape[0]/self.DataDict['c_omp'][0]*self.DataDict['istep'][0])**-1
+#                TotalKEDensity *= (self.DataDict['dens'][0,:,:].shape[0]/self.DataDict['c_omp'][0]*self.DataDict['istep'][0])**-1
 
                 self.TotalPrtlEnergy = np.append(np.append(self.TotalPrtlEnergy[0:ind],TotalKEDensity),self.TotalPrtlEnergy[ind:])
-
 
                 TotalBEnergy = self.DataDict['bx'][0,:,:]*self.DataDict['bx'][0,:,:]
                 TotalBEnergy += self.DataDict['by'][0,:,:]*self.DataDict['by'][0,:,:]
                 TotalBEnergy += self.DataDict['bz'][0,:,:]*self.DataDict['bz'][0,:,:]
-                # sum over the array and then divide by the number of points len(x)*len(y)
-                TotalBEnergy = np.sum(TotalBEnergy)/self.DataDict['bx'][0,:,:].shape[1]/self.DataDict['bx'][0,:,:].shape[0]
+                # sum over the array and then multiply by the number of points len(x)*len(y)
+
+                TotalBEnergy = np.sum(TotalBEnergy)*self.DataDict['bx'][0,:,:].shape[1]*self.DataDict['bx'][0,:,:].shape[0]
+                TotalBEnergy *= self.DataDict['istep'][0]**2
 #                TotalBEnergy *= self.DataDict['c_omp'][0]/self.DataDict['istep'][0]
 #                TotalBEnergy *= self.DataDict['c_omp'][0]/self.DataDict['istep'][0]
 
@@ -2110,8 +2112,8 @@ class MainApp(Tk.Tk):
                 TotalEEnergy += self.DataDict['ez'][0,:,:]*self.DataDict['ez'][0,:,:]
 
                 # sum over the array and then divide by the number of points len(x)*len(y)
-                TotalEEnergy = np.sum(TotalEEnergy)/self.DataDict['ex'][0,:,:].shape[1]/self.DataDict['ex'][0,:,:].shape[0]
-
+                TotalEEnergy = np.sum(TotalEEnergy)*self.DataDict['ex'][0,:,:].shape[1]*self.DataDict['ex'][0,:,:].shape[0]
+                TotalEEnergy *= self.DataDict['istep'][0]**2
                 self.TotalMagEnergy = np.append(np.append(self.TotalMagEnergy[0:ind],TotalEEnergy+TotalBEnergy), self.TotalMagEnergy[ind::])
 
         if np.isnan(self.prev_shock_loc):
