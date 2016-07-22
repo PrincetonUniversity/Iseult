@@ -816,21 +816,21 @@ class FieldSettings(Tk.Toplevel):
         # the Check boxes for the dimension
         ttk.Label(frm, text='Dimenison:').grid(row = 1, column = 1, sticky = Tk.W)
 
-        self.ShowXVar = Tk.IntVar(self) # Create a var to track whether or not to plot in 2-D
+        self.ShowXVar = Tk.IntVar(self) # Create a var to track whether or not to show X
         self.ShowXVar.set(self.parent.GetPlotParam('show_x'))
         cb = ttk.Checkbutton(frm, text = "Show x",
             variable = self.ShowXVar,
             command = self.Selector)
         cb.grid(row = 2, column = 1, sticky = Tk.W)
 
-        self.ShowYVar = Tk.IntVar(self) # Create a var to track whether or not to plot in 2-D
+        self.ShowYVar = Tk.IntVar(self) # Create a var to track whether or not to plot Y
         self.ShowYVar.set(self.parent.GetPlotParam('show_y'))
         cb = ttk.Checkbutton(frm, text = "Show y",
             variable = self.ShowYVar,
             command = self.Selector)
         cb.grid(row = 3, column = 1, sticky = Tk.W)
 
-        self.ShowZVar = Tk.IntVar(self) # Create a var to track whether or not to plot in 2-D
+        self.ShowZVar = Tk.IntVar(self) # Create a var to track whether or not to plot Z
         self.ShowZVar.set(self.parent.GetPlotParam('show_z'))
         cb = ttk.Checkbutton(frm, text = "Show z",
             variable = self.ShowZVar,

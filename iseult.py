@@ -21,6 +21,7 @@ from spectra import SpectralPanel
 from mag_plots import BPanel
 from energy_plots import EnergyPanel
 from fft_plots import FFTPanel
+from total_energy_plots import TotEnergyPanel
 from functools import partial
 #from ThreeD_mag_plots import ThreeDBPanel STILL TESTING
 import multiprocessing
@@ -73,7 +74,8 @@ class SubPlotWrapper:
                              'SpectraPlot': SpectralPanel,
                              'MagPlots': BPanel,
 #                             '3dMagPlots': ThreeDBPanel,
-                             'FFTPlots': FFTPanel
+                             'FFTPlots': FFTPanel,
+                             'TotalEnergyPlot': TotEnergyPanel
                              }
         # A dictionary that will store where everything is in Hdf5 Files
         self.GenParamDict()
@@ -1949,7 +1951,14 @@ class MainApp(Tk.Tk):
                 self.ToLoad[self.H5KeyDict['c_omp']].append('c_omp')
                 self.ToLoad[self.H5KeyDict['istep']].append('istep')
                 self.ToLoad[self.H5KeyDict['dens']].append('dens')
-
+                if self.MainParamDict['SaveMagEnergy']:
+                    tmp_L = ['bx', 'by', 'bz', 'ex', 'ey', 'ez']
+                    for elm in tmp_L:
+                        self.ToLoad[self.H5KeyDict[elm]].append(elm)
+                if self.MainParamDict['SavePrtlEnergy']:
+                    tmp_L = ['ui', 'vi', 'wi', 'ue', 've', 'we', 'mi', 'me', 'stride']
+                    for elm in tmp_L:
+                        self.ToLoad[self.H5KeyDict[elm]].append(elm)
 
                 for elm in tmpList:
                     # find out what type of file the key is stored in
@@ -1958,6 +1967,10 @@ class MainApp(Tk.Tk):
                     self.ToLoad[ftype].append(elm)
         # See if we are in a new Directory
         if self.NewDirectory:
+            self.TotalEnergyTimeSteps = []
+            self.TotalEnergyTimes = np.array([])
+            self.TotalPrtlEnergy = np.array([])
+            self.TotalMagEnergy = np.array([])
             # Make a list of timesteps we have already loaded.
             self.timestep_visited = []
 
@@ -2037,6 +2050,50 @@ class MainApp(Tk.Tk):
             self.timestep_visited.append(self.TimeStep.value)
             self.ListOfDataDict.append(self.DataDict)
             self.timestep_queue.append(self.TimeStep.value)
+
+        if not self.TimeStep.value in self.TotalEnergyTimeSteps:
+            self.TotalEnergyTimeSteps.append(self.TimeStep.value)
+            self.TotalEnergyTimeSteps.sort()
+            ind = self.TotalEnergyTimes.searchsorted(self.DataDict['time'][0])
+            self.TotalEnergyTimes = np.append(np.append(self.TotalEnergyTimes[0:ind],self.DataDict['time'][0]),self.TotalEnergyTimes[ind:])
+
+            if self.MainParamDict['SavePrtlEnergy']:
+            ### Calculate the
+                TotalElectronKE = self.DataDict['ue']*self.DataDict['ue']
+                TotalElectronKE += self.DataDict['ve']*self.DataDict['ve']
+                TotalElectronKE += self.DataDict['we']*self.DataDict['we']+1
+                TotalElectronKE = np.sum(np.sqrt(TotalElectronKE))
+                TotalElectronKE += -len(self.DataDict['we'])
+
+                TotalElectronKE *=self.DataDict['stride'][0]*self.DataDict['me'][0]/self.DataDict['mi'][0]
+
+                TotalIonKE = self.DataDict['ui']*self.DataDict['ui']
+                TotalIonKE += self.DataDict['vi']*self.DataDict['vi']
+                TotalIonKE += self.DataDict['wi']*self.DataDict['wi']+1
+                TotalIonKE = np.sum(np.sqrt(TotalIonKE))
+                TotalIonKE += -len(self.DataDict['we'])
+
+                TotalIonKE *= self.DataDict['stride'][0]
+
+                TotalKEDensity = (TotalElectronKE +TotalIonKE)
+                # Divide by x size
+                TotalKEDensity *= (self.DataDict['dens'][0,:,:].shape[1]/self.DataDict['c_omp'][0]*self.DataDict['istep'][0])**-1
+                # Divide by y size
+                TotalKEDensity *= (self.DataDict['dens'][0,:,:].shape[0]/self.DataDict['c_omp'][0]*self.DataDict['istep'][0])**-1
+
+                self.TotalPrtlEnergy = np.append(np.append(self.TotalPrtlEnergy[0:ind],TotalKEDensity),self.TotalPrtlEnergy[ind:])
+
+            if self.MainParamDict['SaveMagEnergy']:
+                TotalBEnergy = self.DataDict['bx'][0,:,:]*self.DataDict['bx'][0,:,:]
+                TotalBEnergy += self.DataDict['by'][0,:,:]*self.DataDict['by'][0,:,:]
+                TotalBEnergy += self.DataDict['bz'][0,:,:]*self.DataDict['bz'][0,:,:]
+                TotalBEnergy = np.sum(TotalBEnergy)/self.DataDict['bx'][0,:,:].shape[1]/self.DataDict['bx'][0,:,:].shape[0]
+
+                TotalEEnergy = self.DataDict['ex'][0,:,:]*self.DataDict['ex'][0,:,:]
+                TotalEEnergy += self.DataDict['ey'][0,:,:]*self.DataDict['ey'][0,:,:]
+                TotalEEnergy += self.DataDict['ez'][0,:,:]*self.DataDict['ez'][0,:,:]
+                TotalEEnergy = np.sum(TotalEEnergy)/self.DataDict['ex'][0,:,:].shape[1]/self.DataDict['ex'][0,:,:].shape[0]
+                self.TotalMagEnergy = np.append(np.append(self.TotalMagEnergy[0:ind],TotalEEnergy+TotalBEnergy), self.TotalMagEnergy[ind::])
 
         if np.isnan(self.prev_shock_loc):
             # If self.prev_shock_loc is NaN, that means this is the first time
