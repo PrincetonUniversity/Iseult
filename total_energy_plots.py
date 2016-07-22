@@ -19,6 +19,7 @@ class TotEnergyPanel:
                        'y_max' : 10,
                        'set_y_min': False,
                        'set_y_max': False,
+                       'show_legend': True,
                        'x_min': 0,
                        'x_max' : 10,
                        'set_x_min': False,
@@ -29,7 +30,7 @@ class TotEnergyPanel:
 
     # We need the types of all the parameters for the config file
     BoolList = ['twoD', 'set_y_min', 'set_y_max','show_prtl_KE', 'show_field_E',
-                'yLog', 'spatial_x', 'spatial_y', 'set_x_min', 'set_x_max']
+                'yLog', 'spatial_x', 'spatial_y', 'set_x_min', 'set_x_max', 'show_legend']
     IntList = ['E_type']
     FloatList = ['y_min', 'y_max','x_min', 'x_max']
     StrList = []
@@ -90,7 +91,12 @@ class TotEnergyPanel:
         self.fieldcolor = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.8)
 
         self.prtl_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalPrtlEnergy, ls= ':', marker = 'd', markeredgecolor = self.prtlcolor, color = self.prtlcolor)
+        if not self.GetPlotParam('show_prtl_KE'):
+            self.prtl_plot[0].set_visible(False)
         self.field_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy, ls= ':', marker = '8', markeredgecolor = self.fieldcolor, color = self.fieldcolor)
+        if not self.GetPlotParam('show_field_E'):
+            self.field_plot[0].set_visible(False)
+
         self.axes.set_axis_bgcolor('lightgrey')
         self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 
@@ -116,14 +122,29 @@ class TotEnergyPanel:
             self.axes.set_xlim(xmin = self.GetPlotParam('x_min'))
         if self.GetPlotParam('set_x_max'):
             self.axes.set_xlim(xmax = self.GetPlotParam('x_max'))
+        if self.GetPlotParam('show_legend'):
+            # now make the total energy legend
+            legend_handles = []
+            legend_labels = []
 
-        self.axes.set_xlabel(r'$t \ [1/\omega_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
+            if self.GetPlotParam('show_prtl_KE'):
+                legend_handles.append(self.prtl_plot[0])
+                legend_labels.append('Particles')
+            if self.GetPlotParam('show_field_E'):
+                legend_handles.append(self.field_plot[0])
+                legend_labels.append('EM Fields')
+            self.legend = self.axes.legend(legend_handles, legend_labels,
+            framealpha = .05, fontsize = 11, loc = 'best')
+            self.legend.get_frame().set_facecolor('k')
+            self.legend.get_frame().set_linewidth(0.0)
+
+        self.axes.set_xlabel(r'$t\ \  [\omega^{-1}_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
         self.axes.set_ylabel('Energy Density', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
 
     def refresh(self):
 
         '''This is a function that will be called only if self.axes already
-        holds a fields type plot. We only update things that have changed & are
+        holds a total energy type plot. We only update things that have changed & are
         shown.  If hasn't changed or isn't shown, don't touch it. The difference
         between this and last time, is that we won't actually do any drawing in
         the plot. The plot will be redrawn after all subplots are refreshed. '''
@@ -154,6 +175,22 @@ class TotEnergyPanel:
         if self.GetPlotParam('set_x_max'):
             self.axes.set_xlim(xmax = self.GetPlotParam('x_max'))
 
+
+        # now make the total energy legend
+        legend_handles = []
+        legend_labels = []
+
+        if self.GetPlotParam('show_prtl_KE'):
+            legend_handles.append(self.prtl_plot[0])
+            legend_labels.append('Particles')
+        if self.GetPlotParam('show_field_E'):
+            legend_handles.append(self.field_plot[0])
+            legend_labels.append('EM Fields')
+        self.legend = self.axes.legend(legend_handles, legend_labels,
+        framealpha = .05, fontsize = 11, loc = 'best')
+        self.legend.get_frame().set_facecolor('k')
+        self.legend.get_frame().set_linewidth(0.0)
+        self.legend.set_visible(self.GetPlotParam('show_legend'))
 
 
     def GetPlotParam(self, keyname):
@@ -210,7 +247,7 @@ class TotEnergySettings(Tk.Toplevel):
 
 
 
-        # Now the field lim
+        # Now the x & y lim
         self.setZminVar = Tk.IntVar()
         self.setZminVar.set(self.parent.GetPlotParam('set_y_min'))
         self.setZminVar.trace('w', self.setZminChanged)
@@ -241,6 +278,37 @@ class TotEnergySettings(Tk.Toplevel):
         self.ZmaxEnter = ttk.Entry(frm, textvariable=self.Zmax, width=7)
         self.ZmaxEnter.grid(row = 3, column = 3)
 
+        self.setXminVar = Tk.IntVar()
+        self.setXminVar.set(self.parent.GetPlotParam('set_x_min'))
+        self.setXminVar.trace('w', self.setXminChanged)
+
+        self.setXmaxVar = Tk.IntVar()
+        self.setXmaxVar.set(self.parent.GetPlotParam('set_x_max'))
+        self.setXmaxVar.trace('w', self.setXmaxChanged)
+
+
+
+        self.Xmin = Tk.StringVar()
+        self.Xmin.set(str(self.parent.GetPlotParam('x_min')))
+
+        self.Xmax = Tk.StringVar()
+        self.Xmax.set(str(self.parent.GetPlotParam('x_max')))
+
+
+        cb = ttk.Checkbutton(frm, text ='Set x min',
+                        variable = self.setXminVar)
+        cb.grid(row = 4, column = 2, sticky = Tk.W)
+        self.XminEnter = ttk.Entry(frm, textvariable=self.Xmin, width=7)
+        self.XminEnter.grid(row = 4, column = 3)
+
+        cb = ttk.Checkbutton(frm, text ='Set x max',
+                        variable = self.setXmaxVar)
+        cb.grid(row = 5, column = 2, sticky = Tk.W)
+
+        self.XmaxEnter = ttk.Entry(frm, textvariable=self.Xmax, width=7)
+        self.XmaxEnter.grid(row = 5, column = 3)
+
+
         # Now whether or not the y axes should be in logspace
 
         self.yLogVar = Tk.IntVar()
@@ -253,6 +321,15 @@ class TotEnergySettings(Tk.Toplevel):
                         variable = self.yLogVar)
         cb.grid(row = 4, column = 0, sticky = Tk.W)
 
+        self.LegendVar = Tk.IntVar()
+        self.LegendVar.set(self.parent.GetPlotParam('show_legend'))
+        self.LegendVar.trace('w', self.showLegendChanged)
+
+
+
+        cb = ttk.Checkbutton(frm, text ='Show legend',
+                        variable = self.LegendVar)
+        cb.grid(row = 4, column = 1, sticky = Tk.W)
 
 
 
@@ -276,17 +353,18 @@ class TotEnergySettings(Tk.Toplevel):
         else:
             self.parent.SetPlotParam('set_y_max', self.setZmaxVar.get())
 
-
-    def xLogChanged(self, *args):
-        if self.xLogVar.get() == self.parent.GetPlotParam('xLog'):
+    def setXminChanged(self, *args):
+        if self.setXminVar.get() == self.parent.GetPlotParam('set_x_min'):
             pass
         else:
-            if self.xLogVar.get():
-                self.parent.axes.set_xscale('log')
-            else:
-                self.parent.axes.set_xscale('linear')
+            self.parent.SetPlotParam('set_x_min', self.setXminVar.get())
 
-            self.parent.SetPlotParam('xLog', self.xLogVar.get())
+    def setXmaxChanged(self, *args):
+        if self.setXmaxVar.get() == self.parent.GetPlotParam('set_x_max'):
+            pass
+        else:
+            self.parent.SetPlotParam('set_x_max', self.setXmaxVar.get())
+
 
     def yLogChanged(self, *args):
         if self.yLogVar.get() == self.parent.GetPlotParam('yLog'):
@@ -298,6 +376,12 @@ class TotEnergySettings(Tk.Toplevel):
                 self.parent.axes.set_yscale('linear')
 
             self.parent.SetPlotParam('yLog', self.yLogVar.get())
+
+    def showLegendChanged(self, *args):
+        if self.LegendVar.get() == self.parent.GetPlotParam('show_legend'):
+            pass
+        else:
+            self.parent.SetPlotParam('show_legend', self.LegendVar.get())
 
     def Selector(self):
         # First check if it is 2-D:
@@ -314,9 +398,9 @@ class TotEnergySettings(Tk.Toplevel):
         self.FieldsCallback()
 
     def FieldsCallback(self):
-        tkvarLimList = [self.Zmin, self.Zmax]
-        plot_param_List = ['y_min', 'y_max']
-        tkvarSetList = [self.setZminVar, self.setZmaxVar]
+        tkvarLimList = [self.Zmin, self.Zmax, self.Xmin, self.Xmax]
+        plot_param_List = ['y_min', 'y_max', 'x_min', 'x_max']
+        tkvarSetList = [self.setZminVar, self.setZmaxVar, self.setXminVar, self.setXmaxVar]
         to_reload = False
         for j in range(len(tkvarLimList)):
             try:

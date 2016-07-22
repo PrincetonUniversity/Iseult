@@ -274,23 +274,30 @@ class PlaybackBar(Tk.Frame):
         # bind releasing the moust button to updating the plots.
         self.slider.bind("<ButtonRelease-1>", self.UpdateValue)
 
-
+        new_frame = ttk.Frame(self)
         self.LoopVar = Tk.IntVar()
         self.LoopVar.set(self.parent.MainParamDict['LoopPlayback'])
         self.LoopVar.trace('w', self.LoopChanged)
-        self.RecordFrames = ttk.Checkbutton(self, text = 'Loop',
+        self.RecordFrames = ttk.Checkbutton(new_frame, text = 'Loop',
                                             variable = self.LoopVar)
-        self.RecordFrames.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+        self.RecordFrames.pack(side=Tk.TOP, fill=Tk.BOTH, expand=0)
 
 
         self.RecVar = Tk.IntVar()
         self.RecVar.set(self.parent.MainParamDict['Recording'])
         self.RecVar.trace('w', self.RecChanged)
-        self.RecordFrames = ttk.Checkbutton(self, text = 'Record',
-                                            variable = self.RecVar)
-        self.RecordFrames.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+        ttk.Checkbutton(new_frame, text = 'Record',
+                        variable = self.RecVar).pack(side=Tk.TOP, fill=Tk.BOTH, expand=0)
+        new_frame.pack(side= Tk.LEFT, fill = Tk.BOTH, expand =0)
 
+        newer_frame = ttk.Frame(self)
+        self.CalcTotalVar = Tk.IntVar()
+        self.CalcTotalVar.set(self.parent.MainParamDict['SavePrtlandFieldEnergy'])
+        self.CalcTotalVar.trace('w', self.PrtlandFieldEnergyChanged)
+        ttk.Checkbutton(newer_frame, text = 'Prtl & Field E',
+                                            variable = self.CalcTotalVar).pack(side=Tk.TOP, fill=Tk.BOTH, expand=0)
 
+        newer_frame.pack(side = Tk.LEFT, fill=Tk.BOTH, expand =0)
         # a measurement button that should lauch a window to take measurements.
         self.MeasuresB= ttk.Button(self, text='Measure', command=self.OpenMeasures)
         self.MeasuresB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
@@ -316,6 +323,12 @@ class PlaybackBar(Tk.Frame):
             self.parent.MainParamDict['Recording'] = self.RecVar.get()
             if self.parent.MainParamDict['Recording'] == 1:
                 self.parent.PrintFig()
+    def PrtlandFieldEnergyChanged(self, *args):
+        if self.CalcTotalVar.get() == self.parent.MainParamDict['SavePrtlandFieldEnergy']:
+            pass
+        else:
+            self.parent.MainParamDict['SavePrtlandFieldEnergy'] = self.CalcTotalVar.get()
+            self.parent.RenewCanvas()
     def LoopChanged(self, *args):
         if self.LoopVar.get() == self.parent.MainParamDict['LoopPlayback']:
             pass
@@ -1518,8 +1531,7 @@ class MainApp(Tk.Tk):
         # First create MainParamDict with the default parameters,
         # the dictionary that will hold the parameters for the program.
         # See ./iseult_configs/Default.cfg for a description of what each parameter does.
-        self.MainParamDict = {'SaveMagEnergy': True,
-                              'SavePrtlEnergy': True,
+        self.MainParamDict = {'SavePrtlandFieldEnergy': True,
                               'MeasureEpsP': False,
                               'WindowSize': '1200x700',
                               'yTop': 100.0,
@@ -1598,7 +1610,9 @@ class MainApp(Tk.Tk):
                     'SetTe', 'SetTi','MeasureEpsP', 'MeasureEpsE',
                     'DoPowerLawFitElectron', 'DoPowerLawFitIon',
                     'SetxLim', 'SetyLim', 'SetkLim', 'LinkK',
-                    'LoopPlayback', 'Recording', 'FFTRelative', 'xLimsRelative']
+                    'LoopPlayback', 'Recording', 'FFTRelative', 'xLimsRelative',
+                    'SavePrtlandFieldEnergy']
+
 
         for elm in BoolList:
             if elm.lower() in config.options('main'):
@@ -1913,6 +1927,8 @@ class MainApp(Tk.Tk):
         # There are a few parameters that need to be loaded separately, mainly in the playbackbar.
         self.playbackbar.RecVar.set(self.MainParamDict['Recording'])
         self.playbackbar.LoopVar.set(self.MainParamDict['LoopPlayback'])
+        self.playbackbar.CalcTotalVar.set(self.MainParamDict['SavePrtlandFieldEnergy'])
+        print self.MainParamDict['SavePrtlandFieldEnergy']
 
         # refresh the geometry
         self.geometry(self.MainParamDict['WindowSize'])
@@ -1941,24 +1957,17 @@ class MainApp(Tk.Tk):
         # Make a dictionary that stores all of the keys we will need to load
         # to draw the graphs.
         self.ToLoad = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
+        # we always load time because it is needed to calculate the shock location
+        self.ToLoad[self.H5KeyDict['time']].append('time')
+        # We always load enough to calculate xmin, xmax, ymin, ymax:
+        self.ToLoad[self.H5KeyDict['c_omp']].append('c_omp')
+        self.ToLoad[self.H5KeyDict['istep']].append('istep')
+        self.ToLoad[self.H5KeyDict['dens']].append('dens')
+        # look at each subplot and see what is needed
         for i in range(self.MainParamDict['NumOfRows']):
             for j in range(self.MainParamDict['NumOfCols']):
                 # for each subplot, see what keys are needed
                 tmpList = self.SubPlotList[i][j].GetKeys()
-                # we always load time because it is needed to calculate the shock location
-                self.ToLoad[self.H5KeyDict['time']].append('time')
-                # We always load enough to calculate xmin, xmax, ymin, ymax:
-                self.ToLoad[self.H5KeyDict['c_omp']].append('c_omp')
-                self.ToLoad[self.H5KeyDict['istep']].append('istep')
-                self.ToLoad[self.H5KeyDict['dens']].append('dens')
-                if self.MainParamDict['SaveMagEnergy']:
-                    tmp_L = ['bx', 'by', 'bz', 'ex', 'ey', 'ez']
-                    for elm in tmp_L:
-                        self.ToLoad[self.H5KeyDict[elm]].append(elm)
-                if self.MainParamDict['SavePrtlEnergy']:
-                    tmp_L = ['ui', 'vi', 'wi', 'ue', 've', 'we', 'mi', 'me', 'stride']
-                    for elm in tmp_L:
-                        self.ToLoad[self.H5KeyDict[elm]].append(elm)
 
                 for elm in tmpList:
                     # find out what type of file the key is stored in
@@ -1983,6 +1992,11 @@ class MainApp(Tk.Tk):
 
             self.NewDirectory = False
 
+        if not self.TimeStep.value in self.TotalEnergyTimeSteps:
+            if self.MainParamDict['SavePrtlandFieldEnergy']:
+                tmp_L = ['ui', 'vi', 'wi', 'ue', 've', 'we', 'mi', 'me', 'stride', 'bx', 'by', 'bz', 'ex', 'ey', 'ez']
+                for elm in tmp_L:
+                    self.ToLoad[self.H5KeyDict[elm]].append(elm)
 
         if self.TimeStep.value in self.timestep_visited:
             cur_ind = self.timestep_visited.index(self.TimeStep.value)
@@ -2052,20 +2066,19 @@ class MainApp(Tk.Tk):
             self.timestep_queue.append(self.TimeStep.value)
 
         if not self.TimeStep.value in self.TotalEnergyTimeSteps:
-            self.TotalEnergyTimeSteps.append(self.TimeStep.value)
-            self.TotalEnergyTimeSteps.sort()
-            ind = self.TotalEnergyTimes.searchsorted(self.DataDict['time'][0])
-            self.TotalEnergyTimes = np.append(np.append(self.TotalEnergyTimes[0:ind],self.DataDict['time'][0]),self.TotalEnergyTimes[ind:])
+            if self.MainParamDict['SavePrtlandFieldEnergy']:
+                self.TotalEnergyTimeSteps.append(self.TimeStep.value)
+                self.TotalEnergyTimeSteps.sort()
+                ind = self.TotalEnergyTimes.searchsorted(self.DataDict['time'][0])
+                self.TotalEnergyTimes = np.append(np.append(self.TotalEnergyTimes[0:ind],self.DataDict['time'][0]),self.TotalEnergyTimes[ind:])
 
-            if self.MainParamDict['SavePrtlEnergy']:
-            ### Calculate the
                 TotalElectronKE = self.DataDict['ue']*self.DataDict['ue']
                 TotalElectronKE += self.DataDict['ve']*self.DataDict['ve']
                 TotalElectronKE += self.DataDict['we']*self.DataDict['we']+1
                 TotalElectronKE = np.sum(np.sqrt(TotalElectronKE))
                 TotalElectronKE += -len(self.DataDict['we'])
 
-                TotalElectronKE *=self.DataDict['stride'][0]*self.DataDict['me'][0]/self.DataDict['mi'][0]
+                TotalElectronKE *= self.DataDict['stride'][0]*self.DataDict['me'][0]/self.DataDict['mi'][0]
 
                 TotalIonKE = self.DataDict['ui']*self.DataDict['ui']
                 TotalIonKE += self.DataDict['vi']*self.DataDict['vi']
@@ -2083,16 +2096,22 @@ class MainApp(Tk.Tk):
 
                 self.TotalPrtlEnergy = np.append(np.append(self.TotalPrtlEnergy[0:ind],TotalKEDensity),self.TotalPrtlEnergy[ind:])
 
-            if self.MainParamDict['SaveMagEnergy']:
+
                 TotalBEnergy = self.DataDict['bx'][0,:,:]*self.DataDict['bx'][0,:,:]
                 TotalBEnergy += self.DataDict['by'][0,:,:]*self.DataDict['by'][0,:,:]
                 TotalBEnergy += self.DataDict['bz'][0,:,:]*self.DataDict['bz'][0,:,:]
+                # sum over the array and then divide by the number of points len(x)*len(y)
                 TotalBEnergy = np.sum(TotalBEnergy)/self.DataDict['bx'][0,:,:].shape[1]/self.DataDict['bx'][0,:,:].shape[0]
+#                TotalBEnergy *= self.DataDict['c_omp'][0]/self.DataDict['istep'][0]
+#                TotalBEnergy *= self.DataDict['c_omp'][0]/self.DataDict['istep'][0]
 
                 TotalEEnergy = self.DataDict['ex'][0,:,:]*self.DataDict['ex'][0,:,:]
                 TotalEEnergy += self.DataDict['ey'][0,:,:]*self.DataDict['ey'][0,:,:]
                 TotalEEnergy += self.DataDict['ez'][0,:,:]*self.DataDict['ez'][0,:,:]
+
+                # sum over the array and then divide by the number of points len(x)*len(y)
                 TotalEEnergy = np.sum(TotalEEnergy)/self.DataDict['ex'][0,:,:].shape[1]/self.DataDict['ex'][0,:,:].shape[0]
+
                 self.TotalMagEnergy = np.append(np.append(self.TotalMagEnergy[0:ind],TotalEEnergy+TotalBEnergy), self.TotalMagEnergy[ind::])
 
         if np.isnan(self.prev_shock_loc):
@@ -2324,9 +2343,6 @@ class MainApp(Tk.Tk):
         self.toolbar._views.clear()
 
         self.LoadAllKeys()
-
-        # Calculate the new shock location
-#        self.shock_loc = self.DataDict['time'][0]*self.shock_speed
 
 
         # By design, the first_x and first_y cannot change if the graph is
