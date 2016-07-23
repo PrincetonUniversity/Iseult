@@ -290,14 +290,6 @@ class PlaybackBar(Tk.Frame):
                         variable = self.RecVar).pack(side=Tk.TOP, fill=Tk.BOTH, expand=0)
         new_frame.pack(side= Tk.LEFT, fill = Tk.BOTH, expand =0)
 
-        newer_frame = ttk.Frame(self)
-        self.CalcTotalVar = Tk.IntVar()
-        self.CalcTotalVar.set(self.parent.MainParamDict['SavePrtlandFieldEnergy'])
-        self.CalcTotalVar.trace('w', self.PrtlandFieldEnergyChanged)
-        ttk.Checkbutton(newer_frame, text = 'Prtl & Field E',
-                                            variable = self.CalcTotalVar).pack(side=Tk.TOP, fill=Tk.BOTH, expand=0)
-
-        newer_frame.pack(side = Tk.LEFT, fill=Tk.BOTH, expand =0)
         # a measurement button that should lauch a window to take measurements.
         self.MeasuresB= ttk.Button(self, text='Measure', command=self.OpenMeasures)
         self.MeasuresB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
@@ -323,12 +315,7 @@ class PlaybackBar(Tk.Frame):
             self.parent.MainParamDict['Recording'] = self.RecVar.get()
             if self.parent.MainParamDict['Recording'] == 1:
                 self.parent.PrintFig()
-    def PrtlandFieldEnergyChanged(self, *args):
-        if self.CalcTotalVar.get() == self.parent.MainParamDict['SavePrtlandFieldEnergy']:
-            pass
-        else:
-            self.parent.MainParamDict['SavePrtlandFieldEnergy'] = self.CalcTotalVar.get()
-            self.parent.RenewCanvas()
+
     def LoopChanged(self, *args):
         if self.LoopVar.get() == self.parent.MainParamDict['LoopPlayback']:
             pass
@@ -1531,8 +1518,7 @@ class MainApp(Tk.Tk):
         # First create MainParamDict with the default parameters,
         # the dictionary that will hold the parameters for the program.
         # See ./iseult_configs/Default.cfg for a description of what each parameter does.
-        self.MainParamDict = {'SavePrtlandFieldEnergy': True,
-                              'MeasureEpsP': False,
+        self.MainParamDict = {'MeasureEpsP': False,
                               'WindowSize': '1200x700',
                               'yTop': 100.0,
                               'yBottom': 0.0,
@@ -1610,8 +1596,7 @@ class MainApp(Tk.Tk):
                     'SetTe', 'SetTi','MeasureEpsP', 'MeasureEpsE',
                     'DoPowerLawFitElectron', 'DoPowerLawFitIon',
                     'SetxLim', 'SetyLim', 'SetkLim', 'LinkK',
-                    'LoopPlayback', 'Recording', 'FFTRelative', 'xLimsRelative',
-                    'SavePrtlandFieldEnergy']
+                    'LoopPlayback', 'Recording', 'FFTRelative', 'xLimsRelative']
 
 
         for elm in BoolList:
@@ -1927,8 +1912,6 @@ class MainApp(Tk.Tk):
         # There are a few parameters that need to be loaded separately, mainly in the playbackbar.
         self.playbackbar.RecVar.set(self.MainParamDict['Recording'])
         self.playbackbar.LoopVar.set(self.MainParamDict['LoopPlayback'])
-        self.playbackbar.CalcTotalVar.set(self.MainParamDict['SavePrtlandFieldEnergy'])
-        print self.MainParamDict['SavePrtlandFieldEnergy']
 
         # refresh the geometry
         self.geometry(self.MainParamDict['WindowSize'])
@@ -1991,9 +1974,14 @@ class MainApp(Tk.Tk):
             self.ListOfDataDict = []
 
             self.NewDirectory = False
+        # see if one of the plots is the total energy panel
+        showing_total_energy_plt = False
+        for i in range(self.MainParamDict['NumOfRows']):
+            for j in range(self.MainParamDict['NumOfCols']):
+                showing_total_energy_plt += str(self.SubPlotList[i][j].chartType) == 'TotalEnergyPlot'
 
         if not self.TimeStep.value in self.TotalEnergyTimeSteps:
-            if self.MainParamDict['SavePrtlandFieldEnergy']:
+            if showing_total_energy_plt:
                 tmp_L = ['ui', 'vi', 'wi', 'ue', 've', 'we', 'mi', 'me', 'stride', 'bx', 'by', 'bz', 'ex', 'ey', 'ez','qi']
                 for elm in tmp_L:
                     self.ToLoad[self.H5KeyDict[elm]].append(elm)
@@ -2066,7 +2054,7 @@ class MainApp(Tk.Tk):
             self.timestep_queue.append(self.TimeStep.value)
 
         if not self.TimeStep.value in self.TotalEnergyTimeSteps:
-            if self.MainParamDict['SavePrtlandFieldEnergy']:
+            if showing_total_energy_plt:
                 self.TotalEnergyTimeSteps.append(self.TimeStep.value)
                 self.TotalEnergyTimeSteps.sort()
                 ind = self.TotalEnergyTimes.searchsorted(self.DataDict['time'][0])
