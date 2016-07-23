@@ -139,7 +139,7 @@ class TotEnergyPanel:
             self.legend.get_frame().set_linewidth(0.0)
 
         self.axes.set_xlabel(r'$t\ \  [\omega^{-1}_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
-        self.axes.set_ylabel('Energy Density', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
+        self.axes.set_ylabel('Energy [arb. unit]', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
 
     def refresh(self):
 

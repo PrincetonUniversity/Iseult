@@ -252,10 +252,10 @@ class SpectralPanel:
         self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 
         if self.GetPlotParam('spectral_type') == 0:
-            self.axes.set_xlabel(r'$p\ [mc]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
+            self.axes.set_xlabel(r'$\gamma\beta$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
             self.axes.set_ylabel(r'$p^4f(p)$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
         else:
-            self.axes.set_xlabel(r'$E\ [mc^2]$', labelpad = -2, color = 'black')
+            self.axes.set_xlabel(r'$\gamma-1$', labelpad = -2, color = 'black')
             self.axes.set_ylabel(r'$E(dn/dE)/n$', labelpad = 0, color = 'black')
 
         self.refresh()
@@ -770,13 +770,13 @@ class SpectraSettings(Tk.Toplevel):
             pass
         else:
             if self.SpectTypeVar.get() == 1:
-                self.parent.axes.set_xlabel(r'$E\ [mc^2]$')
+                self.parent.axes.set_xlabel(r'$\gamma-1$')
                 self.parent.axes.set_ylabel(r'$E(dn/dE)/n$')
                 self.parent.SetPlotParam('x_min', 0.0005, update_plot = False)
                 self.parent.SetPlotParam('x_max', 100, update_plot = False)
 
             else:
-                self.parent.axes.set_xlabel(r'$p\ [mc]$')
+                self.parent.axes.set_xlabel(r'$\gamma\beta$')
                 self.parent.axes.set_ylabel(r'$p^4f(p)$')
                 self.parent.SetPlotParam('x_min', 0.05, update_plot = False)
                 self.parent.SetPlotParam('x_max', 200, update_plot = False)
