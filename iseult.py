@@ -2102,7 +2102,7 @@ class MainApp(Tk.Tk):
                 TotalBEnergy += self.DataDict['bz'][0,:,:]*self.DataDict['bz'][0,:,:]
                 # sum over the array and then multiply by the number of points len(x)*len(y)
 
-            TotalBEnergy = np.sum(TotalBEnergy) #*self.DataDict['bx'][0,:,:].shape[1]*self.DataDict['bx'][0,:,:].shape[0]
+                TotalBEnergy = np.sum(TotalBEnergy) #*self.DataDict['bx'][0,:,:].shape[1]*self.DataDict['bx'][0,:,:].shape[0]
                 TotalBEnergy *= self.DataDict['istep'][0]**2
 #                TotalBEnergy *= self.DataDict['c_omp'][0]/self.DataDict['istep'][0]
 #                TotalBEnergy *= self.DataDict['c_omp'][0]/self.DataDict['istep'][0]
