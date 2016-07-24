@@ -814,7 +814,7 @@ class FieldSettings(Tk.Toplevel):
                 value=i).grid(row = 3+i, sticky =Tk.W)
 
         # the Check boxes for the dimension
-        ttk.Label(frm, text='Dimenison:').grid(row = 1, column = 1, sticky = Tk.W)
+        ttk.Label(frm, text='Dimension:').grid(row = 1, column = 1, sticky = Tk.W)
 
         self.ShowXVar = Tk.IntVar(self) # Create a var to track whether or not to show X
         self.ShowXVar.set(self.parent.GetPlotParam('show_x'))
