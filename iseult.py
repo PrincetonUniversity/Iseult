@@ -1288,6 +1288,18 @@ class MainApp(Tk.Tk):
                     const=np.NaN, default=np.NaN,
                     help='Maximum file # to consider')
 
+        parser.add_argument('-O', nargs = '?',# dest='accumulate', action='store_const',
+                    const='output', default='output',
+                    help='Directory Iseult will open. Default is output')
+
+        parser.add_argument('-p', nargs = '?',# dest='accumulate', action='store_const',
+                    const='Default', default='Default',
+                    help='''Open Iseult with the given saved view.
+                          If the name of view contains whitespace,
+                          either it must be enclosed in quotation marks or given
+                          with whitespace removed. Name is case sensitive.''')
+
+
         self.cmd_args = parser.parse_args()
 
         # A variable that keeps track of the first graph with spatial x & y axes
@@ -1510,8 +1522,16 @@ class MainApp(Tk.Tk):
             It also sets all of the plots parameters.'''
 
         config = ConfigParser.RawConfigParser()
+
         if config_file is None:
-            config.read(os.path.join(self.IseultDir, '.iseult_configs', 'Default.cfg'))
+            try:
+                config.read(os.path.join(self.IseultDir, '.iseult_configs', self.cmd_args.p.strip().replace(' ', '_') +'.cfg'))
+                config.options('main')
+            except ConfigParser.NoSectionError:
+                print 'Cannot find/load ' +  self.cmd_args.p.strip().replace(' ', '_') +'.cfg in .iseult_configs. If the name of view contains whitespace,'
+                print 'either it must be enclosed in quotation marks or given with whitespace removed.'
+                print 'Name is case sensitive. Reverting to Default view'
+                config.read(os.path.join(self.IseultDir, '.iseult_configs', 'Default.cfg'))
         else:
             config.read(config_file)
         # Since configparser reads in strings we have to format the data.
@@ -1720,8 +1740,8 @@ class MainApp(Tk.Tk):
         using regular expressions, then generate the lists of files
         to iterate over"""
         dirlist = os.listdir(self.dirname)
-        if 'output' in dirlist:
-            self.dirname = os.path.join(self.dirname, 'output')
+        if self.cmd_args.O in dirlist:
+            self.dirname = os.path.join(self.dirname, self.cmd_args.O)
 
         is_okay = True
 
@@ -1808,7 +1828,12 @@ class MainApp(Tk.Tk):
         Should only be called once.'''
         config = ConfigParser.RawConfigParser()
         if config_file is None:
-            config.read(os.path.join(self.IseultDir, '.iseult_configs', 'Default.cfg'))
+            try:
+                config.read(os.path.join(self.IseultDir, '.iseult_configs', self.cmd_args.p.strip().replace(' ', '_') +'.cfg'))
+                config.options('main')
+            except ConfigParser.NoSectionError:
+                config.read(os.path.join(self.IseultDir, '.iseult_configs', 'Default.cfg'))
+
         else:
             config.read(config_file)
         # figsize (w,h tuple in inches) dpi (dots per inch)
@@ -1961,8 +1986,13 @@ class MainApp(Tk.Tk):
         if self.NewDirectory:
             self.TotalEnergyTimeSteps = []
             self.TotalEnergyTimes = np.array([])
-            self.TotalPrtlEnergy = np.array([])
+            self.TotalIonEnergy = np.array([])
+            self.TotalElectronEnergy = np.array([])
+
             self.TotalMagEnergy = np.array([])
+            self.TotalElectricEnergy = np.array([])
+
+
             # Make a list of timesteps we have already loaded.
             self.timestep_visited = []
 
@@ -2068,6 +2098,7 @@ class MainApp(Tk.Tk):
 
                 TotalElectronKE *= self.DataDict['stride'][0]*np.abs(self.DataDict['qi'][0]) #mass of particle is its charge, qe/me=1
 
+
                 TotalIonKE = self.DataDict['ui']*self.DataDict['ui']
                 TotalIonKE += self.DataDict['vi']*self.DataDict['vi']
                 TotalIonKE += self.DataDict['wi']*self.DataDict['wi']+1
@@ -2077,13 +2108,14 @@ class MainApp(Tk.Tk):
                 TotalIonKE *= self.DataDict['stride'][0]
                 TotalIonKE *= self.DataDict['stride'][0]*self.DataDict['mi'][0]/self.DataDict['me']*np.abs(self.DataDict['qi'][0]) #mass of particle is its charge, qe/me=1
 
-                TotalKEDensity = (TotalElectronKE +TotalIonKE)
+                TotalKE = (TotalElectronKE +TotalIonKE)
                 # Divide by x size
 #                TotalKEDensity *= (self.DataDict['dens'][0,:,:].shape[1]/self.DataDict['c_omp'][0]*self.DataDict['istep'][0])**-1
                 # Divide by y size
 #                TotalKEDensity *= (self.DataDict['dens'][0,:,:].shape[0]/self.DataDict['c_omp'][0]*self.DataDict['istep'][0])**-1
 
-                self.TotalPrtlEnergy = np.append(np.append(self.TotalPrtlEnergy[0:ind],TotalKEDensity),self.TotalPrtlEnergy[ind:])
+                self.TotalElectronEnergy = np.append(np.append(self.TotalElectronEnergy[0:ind],TotalElectronKE),self.TotalElectronEnergy[ind:])
+                self.TotalIonEnergy = np.append(np.append(self.TotalIonEnergy[0:ind],TotalIonKE),self.TotalIonEnergy[ind:])
 
                 TotalBEnergy = self.DataDict['bx'][0,:,:]*self.DataDict['bx'][0,:,:]
                 TotalBEnergy += self.DataDict['by'][0,:,:]*self.DataDict['by'][0,:,:]
@@ -2102,7 +2134,9 @@ class MainApp(Tk.Tk):
                 # sum over the array and then divide by the number of points len(x)*len(y)
                 TotalEEnergy = np.sum(TotalEEnergy) #*self.DataDict['ex'][0,:,:].shape[1]*self.DataDict['ex'][0,:,:].shape[0]
                 TotalEEnergy *= self.DataDict['istep'][0]**2
-                self.TotalMagEnergy = np.append(np.append(self.TotalMagEnergy[0:ind],TotalEEnergy+TotalBEnergy), self.TotalMagEnergy[ind::])
+                self.TotalMagEnergy = np.append(np.append(self.TotalMagEnergy[0:ind],TotalBEnergy), self.TotalMagEnergy[ind:])
+                self.TotalElectricEnergy = np.append(np.append(self.TotalElectricEnergy[0:ind],TotalEEnergy), self.TotalElectricEnergy[ind:])
+
 
         if np.isnan(self.prev_shock_loc):
             # If self.prev_shock_loc is NaN, that means this is the first time
