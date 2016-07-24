@@ -8,13 +8,17 @@ import new_cmaps
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
+import matplotlib.transforms as mtransforms
 
 class TotEnergyPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
-
     plot_param_dict = {'twoD': 0,
                        'show_prtl_KE': True,
                        'show_field_E': True,
+                       'show_ion_E': False,
+                       'show_electron_E': False,
+                       'show_B_E': False,
+                       'show_E_E': False,
                        'y_min': 0,
                        'y_max' : 10,
                        'set_y_min': False,
@@ -59,18 +63,6 @@ class TotEnergyPanel:
         # We don't need to do anything here, but we still need this function defined
         pass
 
-    def LimFinder(self, arr, isLog = False):
-        oneD_lims = [arr.min(), arr.max()]
-        # now give it a bit of spacing, a 4% percent difference of the distance
-        dist = oneD_lims[1]-oneD_lims[0]
-
-        if isLog:
-            oneD_lims[0] *= .5
-            oneD_lims[1] *= 2
-        else:
-            oneD_lims[0] -= 0.04*dist
-            oneD_lims[1] += 0.04*dist
-        return oneD_lims
 
     def draw(self):
 
@@ -90,12 +82,21 @@ class TotEnergyPanel:
         self.prtlcolor = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.2)
         self.fieldcolor = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.8)
 
-        self.prtl_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalPrtlEnergy, ls= ':', marker = 'd', markeredgecolor = self.prtlcolor, color = self.prtlcolor)
-        if not self.GetPlotParam('show_prtl_KE'):
-            self.prtl_plot[0].set_visible(False)
-        self.field_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy, ls= ':', marker = '8', markeredgecolor = self.fieldcolor, color = self.fieldcolor)
-        if not self.GetPlotParam('show_field_E'):
-            self.field_plot[0].set_visible(False)
+        self.electron_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalElectronEnergy, ls= ':', marker = '^', markeredgecolor = self.prtlcolor, color = self.prtlcolor)
+        self.ion_plot = self.axes.plot(self.parent.TotalEnergyTimes,  self.parent.TotalIonEnergy, ls= ':', marker = 'v', markeredgecolor = self.prtlcolor, color = self.prtlcolor)
+        self.prtl_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalElectronEnergy + self.parent.TotalIonEnergy, ls= ':', marker = 'd', markeredgecolor = self.prtlcolor, color = self.prtlcolor)
+
+        self.mag_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy, ls= ':', marker = '*',  markersize = 10, markeredgecolor = self.fieldcolor, color = self.fieldcolor)
+        self.e_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalElectricEnergy, ls= ':', marker = 's', markeredgecolor = self.fieldcolor, color = self.fieldcolor)
+        self.field_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy + self.parent.TotalElectricEnergy, ls= ':', marker = 'o', markeredgecolor = self.fieldcolor, color = self.fieldcolor)
+
+        self.key_list = ['show_prtl_KE', 'show_ion_E', 'show_electron_E', 'show_field_E', 'show_E_E', 'show_B_E']
+        self.plot_list = [self.prtl_plot[0], self.ion_plot[0], self.electron_plot[0], self.field_plot[0], self.e_plot[0], self.mag_plot[0]]
+        self.label_names = ['Particles', 'Ions', 'Electrons', 'EM Field', 'Electric Field', 'Magnetic Field']
+
+        for i in range(len(self.key_list)):
+            if not self.GetPlotParam(self.key_list[i]):
+                self.plot_list[i].set_visible(False)
 
         self.axes.set_axis_bgcolor('lightgrey')
         self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
@@ -103,16 +104,18 @@ class TotEnergyPanel:
 
         if self.GetPlotParam('yLog'):
             self.axes.set_yscale('log')
-        tmp_y_lims = []
-        if self.GetPlotParam('show_prtl_KE'):
-            tmp_y_lims = self.LimFinder(self.parent.TotalPrtlEnergy, self.GetPlotParam('yLog'))
-        if self.GetPlotParam('show_field_E'):
-            if len(tmp_y_lims) ==0:
-                tmp_y_lims = self.LimFinder(self.parent.TotalMagEnergy, self.GetPlotParam('yLog'))
-            else:
-                tmp_y_lims[0] = min(tmp_y_lims[0],self.LimFinder(self.parent.TotalMagEnergy, self.GetPlotParam('yLog'))[0])
-                tmp_y_lims[1] = max(tmp_y_lims[1],self.LimFinder(self.parent.TotalMagEnergy, self.GetPlotParam('yLog'))[1])
-        self.axes.set_ylim(tmp_y_lims)
+
+        # fancy code to make sure that matplotlib sets its limits
+        # only based on visible lines
+        self.axes.dataLim = mtransforms.Bbox.unit()
+        self.axes.dataLim.update_from_data_xy(xy = np.vstack(self.field_plot[0].get_data()).T, ignore=True)
+        for i in range(len(self.plot_list)):
+            line = self.plot_list[i]
+            if self.GetPlotParam(self.key_list[i]):
+                xy = np.vstack(line.get_data()).T
+                self.axes.dataLim.update_from_data_xy(xy, ignore=False)
+        self.axes.autoscale()
+
         if self.GetPlotParam('set_y_min'):
             self.axes.set_ylim(ymin = self.GetPlotParam('y_min'))
         if self.GetPlotParam('set_y_max'):
@@ -122,21 +125,20 @@ class TotEnergyPanel:
             self.axes.set_xlim(xmin = self.GetPlotParam('x_min'))
         if self.GetPlotParam('set_x_max'):
             self.axes.set_xlim(xmax = self.GetPlotParam('x_max'))
-        if self.GetPlotParam('show_legend'):
-            # now make the total energy legend
-            legend_handles = []
-            legend_labels = []
 
-            if self.GetPlotParam('show_prtl_KE'):
-                legend_handles.append(self.prtl_plot[0])
-                legend_labels.append('Particles')
-            if self.GetPlotParam('show_field_E'):
-                legend_handles.append(self.field_plot[0])
-                legend_labels.append('EM Fields')
-            self.legend = self.axes.legend(legend_handles, legend_labels,
-            framealpha = .05, fontsize = 11, loc = 'best')
-            self.legend.get_frame().set_facecolor('k')
-            self.legend.get_frame().set_linewidth(0.0)
+        # now make the total energy legend
+        legend_handles = []
+        legend_labels = []
+        for i in range(len(self.key_list)):
+            if self.GetPlotParam(self.key_list[i]):
+                legend_handles.append(self.plot_list[i])
+                legend_labels.append(self.label_names[i])
+        self.legend = self.axes.legend(legend_handles, legend_labels,
+        framealpha = .05, fontsize = 11, loc = 'best')
+        self.legend.get_frame().set_facecolor('k')
+        self.legend.get_frame().set_linewidth(0.0)
+        if not self.GetPlotParam('show_legend'):
+            self.legend.set_visible(False)
 
         self.axes.set_xlabel(r'$t\ \  [\omega^{-1}_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
         self.axes.set_ylabel('Energy [arb. unit]', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
@@ -149,49 +151,35 @@ class TotEnergyPanel:
         between this and last time, is that we won't actually do any drawing in
         the plot. The plot will be redrawn after all subplots are refreshed. '''
 
+        self.electron_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalElectronEnergy)
+        self.ion_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalIonEnergy)
+        self.prtl_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalElectronEnergy + self.parent.TotalIonEnergy)
+        self.mag_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy)
+        self.e_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalElectricEnergy)
+        self.field_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy + self.parent.TotalElectricEnergy)
 
-        # Main goal, only change what is showing..
+        # fancy code to make sure that matplotlib sets its limits
+        # based only on the visible lines.
+        self.axes.dataLim = mtransforms.Bbox.unit()
+        self.axes.dataLim.update_from_data_xy(xy = np.vstack(self.field_plot[0].get_data()).T, ignore=True)
+        for i in range(len(self.plot_list)):
+            line = self.plot_list[i]
+            if self.GetPlotParam(self.key_list[i]):
+                xy = np.vstack(line.get_data()).T
+                self.axes.dataLim.update_from_data_xy(xy, ignore=False)
+        self.axes.autoscale()
 
-        self.prtl_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalPrtlEnergy)
-        self.field_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy)
-        tmp_y_lims = []
-        if self.GetPlotParam('show_prtl_KE'):
-            tmp_y_lims = self.LimFinder(self.parent.TotalPrtlEnergy, self.GetPlotParam('yLog'))
-        if self.GetPlotParam('show_field_E'):
-            if len(tmp_y_lims) ==0:
-                tmp_y_lims = self.LimFinder(self.parent.TotalMagEnergy, self.GetPlotParam('yLog'))
-            else:
-                tmp_y_lims[0] = min(tmp_y_lims[0],self.LimFinder(self.parent.TotalMagEnergy, self.GetPlotParam('yLog'))[0])
-                tmp_y_lims[1] = max(tmp_y_lims[1],self.LimFinder(self.parent.TotalMagEnergy, self.GetPlotParam('yLog'))[1])
-        self.axes.set_ylim(tmp_y_lims)
+        # Set a new lims if the user chooses to do so.
         if self.GetPlotParam('set_y_min'):
             self.axes.set_ylim(ymin = self.GetPlotParam('y_min'))
         if self.GetPlotParam('set_y_max'):
             self.axes.set_ylim(ymax = self.GetPlotParam('y_max'))
 
-        self.axes.set_xlim(self.LimFinder(self.parent.TotalEnergyTimes))
+#        self.axes.set_xlim(self.LimFinder(self.parent.TotalEnergyTimes))
         if self.GetPlotParam('set_x_min'):
             self.axes.set_xlim(xmin = self.GetPlotParam('x_min'))
         if self.GetPlotParam('set_x_max'):
             self.axes.set_xlim(xmax = self.GetPlotParam('x_max'))
-
-
-        # now make the total energy legend
-        legend_handles = []
-        legend_labels = []
-
-        if self.GetPlotParam('show_prtl_KE'):
-            legend_handles.append(self.prtl_plot[0])
-            legend_labels.append('Particles')
-        if self.GetPlotParam('show_field_E'):
-            legend_handles.append(self.field_plot[0])
-            legend_labels.append('EM Fields')
-        self.legend = self.axes.legend(legend_handles, legend_labels,
-        framealpha = .05, fontsize = 11, loc = 'best')
-        self.legend.get_frame().set_facecolor('k')
-        self.legend.get_frame().set_linewidth(0.0)
-        self.legend.set_visible(self.GetPlotParam('show_legend'))
-
 
     def GetPlotParam(self, keyname):
         return self.FigWrap.GetPlotParam(keyname)
@@ -229,21 +217,48 @@ class TotEnergySettings(Tk.Toplevel):
         ctypeChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
 
         # the Check boxes for the dimension
-        ttk.Label(frm, text='Dimenison:').grid(row = 1, column = 0, sticky = Tk.W)
+        ttk.Label(frm, text='Show Prtl Energy:').grid(row = 1, column = 0, sticky = Tk.W)
+        ttk.Label(frm, text='Show Field Energy:').grid(row = 1, column = 0, sticky = Tk.W)
 
-        self.ShowPrtlVar = Tk.IntVar(self) # Create a var to track whether or not to show X
+        self.ShowElectronVar = Tk.IntVar(self) # Create a var to track whether or not to show electrons
+        self.ShowElectronVar.set(self.parent.GetPlotParam('show_electron_E'))
+        ttk.Checkbutton(frm, text = "Electrons",
+            variable = self.ShowElectronVar,
+            command = self.Selector).grid(row = 2, column = 0, sticky = Tk.W)
+
+        self.ShowIonVar = Tk.IntVar(self) # Create a var to track whether or not to show ions
+        self.ShowIonVar.set(self.parent.GetPlotParam('show_ion_E'))
+        ttk.Checkbutton(frm, text = "Ions",
+            variable = self.ShowIonVar,
+            command = self.Selector).grid(row = 3, column = 0, sticky = Tk.W)
+
+        self.ShowPrtlVar = Tk.IntVar(self) # Create a var to track whether or not to show tot Prtl
         self.ShowPrtlVar.set(self.parent.GetPlotParam('show_prtl_KE'))
-        cb = ttk.Checkbutton(frm, text = "Show Prtl Energy",
+        ttk.Checkbutton(frm, text = "Total Prtls",
             variable = self.ShowPrtlVar,
-            command = self.Selector)
-        cb.grid(row = 2, column = 0, sticky = Tk.W)
+            command = self.Selector).grid(row = 4, column = 0, sticky = Tk.W)
 
-        self.ShowFieldVar = Tk.IntVar(self) # Create a var to track whether or not to plot Y
+        self.ShowMagVar = Tk.IntVar(self) # Create a var to track whether or not to plot Mag Field
+        self.ShowMagVar.set(self.parent.GetPlotParam('show_B_E'))
+        cb = ttk.Checkbutton(frm, text = "Magnetic Field",
+            variable = self.ShowMagVar,
+            command = self.Selector)
+        cb.grid(row = 2, column = 1, sticky = Tk.W)
+
+        self.ShowEVar = Tk.IntVar(self) # Create a var to track whether or not to plot E field
+        self.ShowEVar.set(self.parent.GetPlotParam('show_E_E'))
+        cb = ttk.Checkbutton(frm, text = "Electric Field",
+            variable = self.ShowEVar,
+            command = self.Selector)
+        cb.grid(row = 3, column = 1, sticky = Tk.W)
+
+
+        self.ShowFieldVar = Tk.IntVar(self) # Create a var to track whether or not to plot poynting energy
         self.ShowFieldVar.set(self.parent.GetPlotParam('show_field_E'))
-        cb = ttk.Checkbutton(frm, text = "Show E&M Energy",
+        cb = ttk.Checkbutton(frm, text = "Total E&M Fields",
             variable = self.ShowFieldVar,
             command = self.Selector)
-        cb.grid(row = 3, column = 0, sticky = Tk.W)
+        cb.grid(row = 4, column = 1, sticky = Tk.W)
 
 
 
@@ -319,7 +334,7 @@ class TotEnergySettings(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text ='y-axis logscale',
                         variable = self.yLogVar)
-        cb.grid(row = 4, column = 0, sticky = Tk.W)
+        cb.grid(row = 5, column = 0, sticky = Tk.W)
 
         self.LegendVar = Tk.IntVar()
         self.LegendVar.set(self.parent.GetPlotParam('show_legend'))
@@ -329,7 +344,7 @@ class TotEnergySettings(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text ='Show legend',
                         variable = self.LegendVar)
-        cb.grid(row = 4, column = 1, sticky = Tk.W)
+        cb.grid(row = 5, column = 1, sticky = Tk.W)
 
 
 
@@ -381,19 +396,42 @@ class TotEnergySettings(Tk.Toplevel):
         if self.LegendVar.get() == self.parent.GetPlotParam('show_legend'):
             pass
         else:
+            if self.parent.GetPlotParam('show_legend'):
+                self.parent.legend.set_visible(False)
+            else:
+                self.parent.legend.set_visible(True)
+
             self.parent.SetPlotParam('show_legend', self.LegendVar.get())
 
     def Selector(self):
-        # First check if it is 2-D:
-        if self.parent.GetPlotParam('show_prtl_KE') != self.ShowPrtlVar.get():
-            self.parent.prtl_plot[0].set_visible(self.ShowPrtlVar.get())
-            self.parent.SetPlotParam('show_prtl_KE', self.ShowPrtlVar.get())
-
-        elif self.parent.GetPlotParam('show_field_E') != self.ShowFieldVar.get():
-            self.parent.field_plot[0].set_visible(self.ShowFieldVar.get())
-            self.parent.SetPlotParam('show_field_E', self.ShowFieldVar.get())
+        # Repeat the lists to remember the order
+        # self.parent.key_list = ['show_prtl_KE', 'show_ion_E', 'show_electron_E', 'show_field_E', 'show_E_E', 'show_B_E']
+        # self.parent.plot_list = [self.prtl_plot[0], self.ion_plot[0], self.electron_plot[0], self.field_plot[0], self.e_plot[0], self.mag_plot[0]]
+        # self.parent.label_names = ['Particles', 'Ions', 'Electrons', 'EM Field', 'Electric Field', 'Magnetic Field']
+        VarList = [self.ShowPrtlVar,  self.ShowIonVar, self.ShowElectronVar, self.ShowFieldVar, self.ShowEVar, self.ShowMagVar]
 
 
+        # First the visibility of the the plot
+        for i in range(len(self.parent.key_list)):
+            if self.parent.GetPlotParam(self.parent.key_list[i]) != VarList[i].get():
+                self.parent.plot_list[i].set_visible(VarList[i].get())
+                self.parent.SetPlotParam(self.parent.key_list[i], VarList[i].get(), update_plot = False)
+
+        # Now fix the legend:
+        legend_handles = []
+        legend_labels = []
+        for i in range(len(self.parent.key_list)):
+            if VarList[i].get():
+                legend_handles.append(self.parent.plot_list[i])
+                legend_labels.append(self.parent.label_names[i])
+        self.parent.legend = self.parent.axes.legend(legend_handles, legend_labels,
+        framealpha = .05, fontsize = 11, loc = 'best')
+        self.parent.legend.get_frame().set_facecolor('k')
+        self.parent.legend.get_frame().set_linewidth(0.0)
+        if not self.parent.GetPlotParam('show_legend'):
+            self.parent.legend.set_visible(False)
+        # Force a plot refresh
+        self.parent.SetPlotParam(self.parent.key_list[0], VarList[0].get())
     def TxtEnter(self, e):
         self.FieldsCallback()
 
