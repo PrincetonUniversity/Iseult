@@ -24,6 +24,7 @@ class TotEnergyPanel:
                        'set_y_min': False,
                        'set_y_max': False,
                        'show_legend': True,
+                       'show_current_time': True,
                        'x_min': 0,
                        'x_max' : 10,
                        'set_x_min': False,
@@ -52,16 +53,13 @@ class TotEnergyPanel:
     def set_plot_keys(self):
         '''A helper function that will insure that each hdf5 file will only be
         opened once per time step'''
-        # First make sure that omega_plasma & xi is loaded so we can fix the
-        # distances. We need all 3 magnetic field directions to calculate the FFT
-        # or Chi
-        self.arrs_needed = []
+        # First make sure that time is loaded so we can show the current time on the plot.
+        self.arrs_needed = ['time']
         return self.arrs_needed
 
     def LoadData(self):
         ''' A Helper function that loads the data for the plot'''
-        # We don't need to do anything here, but we still need this function defined
-        pass
+        self.time = self.FigWrap.LoadKey('time')[0]
 
 
     def draw(self):
@@ -82,21 +80,30 @@ class TotEnergyPanel:
         self.prtlcolor = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.2)
         self.fieldcolor = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.8)
 
-        self.electron_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalElectronEnergy, ls= ':', marker = '^', markeredgecolor = self.prtlcolor, color = self.prtlcolor)
-        self.ion_plot = self.axes.plot(self.parent.TotalEnergyTimes,  self.parent.TotalIonEnergy, ls= ':', marker = 'v', markeredgecolor = self.prtlcolor, color = self.prtlcolor)
-        self.prtl_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalElectronEnergy + self.parent.TotalIonEnergy, ls= ':', marker = 'd', markeredgecolor = self.prtlcolor, color = self.prtlcolor)
+        self.electron_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalElectronEnergy,
+                                            ls= ':', marker = '^', markeredgecolor = self.prtlcolor,
+                                            color = self.prtlcolor, visible = self.GetPlotParam('show_electron_E'))
+        self.ion_plot = self.axes.plot(self.parent.TotalEnergyTimes,  self.parent.TotalIonEnergy,
+                                       ls= ':', marker = 'v', markeredgecolor = self.prtlcolor,
+                                       color = self.prtlcolor, visible = self.GetPlotParam('show_ion_E'))
+        self.prtl_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalElectronEnergy + self.parent.TotalIonEnergy,
+                                        ls= ':', marker = 'd', markeredgecolor = self.prtlcolor,
+                                        color = self.prtlcolor, visible = self.GetPlotParam('show_prtl_KE'))
 
-        self.mag_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy, ls= ':', marker = '*',  markersize = 10, markeredgecolor = self.fieldcolor, color = self.fieldcolor)
-        self.e_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalElectricEnergy, ls= ':', marker = 's', markeredgecolor = self.fieldcolor, color = self.fieldcolor)
-        self.field_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy + self.parent.TotalElectricEnergy, ls= ':', marker = 'o', markeredgecolor = self.fieldcolor, color = self.fieldcolor)
+        self.mag_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy,
+                                       ls= ':', marker = '*',  markersize = 10, markeredgecolor = self.fieldcolor,
+                                       color = self.fieldcolor, visible = self.GetPlotParam('show_B_E'))
+        self.e_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalElectricEnergy,
+                                     ls= ':', marker = 's', markeredgecolor = self.fieldcolor,
+                                     color = self.fieldcolor, visible = self.GetPlotParam('show_E_E'))
+        self.field_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy + self.parent.TotalElectricEnergy,
+                                         ls= ':', marker = 'o', markeredgecolor = self.fieldcolor,
+                                         color = self.fieldcolor, visible = self.GetPlotParam('show_field_E'))
 
-        self.key_list = ['show_prtl_KE', 'show_ion_E', 'show_electron_E', 'show_field_E', 'show_E_E', 'show_B_E']
-        self.plot_list = [self.prtl_plot[0], self.ion_plot[0], self.electron_plot[0], self.field_plot[0], self.e_plot[0], self.mag_plot[0]]
-        self.label_names = ['Particles', 'Ions', 'Electrons', 'EM Field', 'Electric Field', 'Magnetic Field']
+        self.cur_time = self.axes.axvline(self.time, linewidth = 1.5, linestyle = '--',
+                                          color = 'k', alpha = .4,
+                                          visible = self.GetPlotParam('show_current_time'))
 
-        for i in range(len(self.key_list)):
-            if not self.GetPlotParam(self.key_list[i]):
-                self.plot_list[i].set_visible(False)
 
         self.axes.set_axis_bgcolor('lightgrey')
         self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
@@ -107,6 +114,10 @@ class TotEnergyPanel:
 
         # fancy code to make sure that matplotlib sets its limits
         # only based on visible lines
+        self.key_list = ['show_prtl_KE', 'show_ion_E', 'show_electron_E', 'show_field_E', 'show_E_E', 'show_B_E']
+        self.plot_list = [self.prtl_plot[0], self.ion_plot[0], self.electron_plot[0], self.field_plot[0], self.e_plot[0], self.mag_plot[0]]
+        self.label_names = ['Particles', 'Ions', 'Electrons', 'EM Field', 'Electric Field', 'Magnetic Field']
+
         self.axes.dataLim = mtransforms.Bbox.unit()
         self.axes.dataLim.update_from_data_xy(xy = np.vstack(self.field_plot[0].get_data()).T, ignore=True)
         for i in range(len(self.plot_list)):
@@ -157,7 +168,7 @@ class TotEnergyPanel:
         self.mag_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy)
         self.e_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalElectricEnergy)
         self.field_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy + self.parent.TotalElectricEnergy)
-
+        self.cur_time.set_xdata([self.time,self.time])
         # fancy code to make sure that matplotlib sets its limits
         # based only on the visible lines.
         self.axes.dataLim = mtransforms.Bbox.unit()
@@ -334,7 +345,7 @@ class TotEnergySettings(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text ='y-axis logscale',
                         variable = self.yLogVar)
-        cb.grid(row = 5, column = 0, sticky = Tk.W)
+        cb.grid(row = 6, column = 0, sticky = Tk.W)
 
         self.LegendVar = Tk.IntVar()
         self.LegendVar.set(self.parent.GetPlotParam('show_legend'))
@@ -344,8 +355,16 @@ class TotEnergySettings(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text ='Show legend',
                         variable = self.LegendVar)
-        cb.grid(row = 5, column = 1, sticky = Tk.W)
+        cb.grid(row = 6, column = 1, sticky = Tk.W)
 
+
+        self.CurTimeVar = Tk.IntVar()
+        self.CurTimeVar.set(self.parent.GetPlotParam('show_current_time'))
+        self.LegendVar.trace('w', self.showtimeChanged)
+
+        cb = ttk.Checkbutton(frm, text ='Show current time',
+                        variable = self.CurTimeVar)
+        cb.grid(row = 7, column = 0, sticky = Tk.W)
 
 
 
@@ -396,12 +415,16 @@ class TotEnergySettings(Tk.Toplevel):
         if self.LegendVar.get() == self.parent.GetPlotParam('show_legend'):
             pass
         else:
-            if self.parent.GetPlotParam('show_legend'):
-                self.parent.legend.set_visible(False)
-            else:
-                self.parent.legend.set_visible(True)
-
+            self.parent.legend.set_visible(self.LegendVar.get())
             self.parent.SetPlotParam('show_legend', self.LegendVar.get())
+
+    def showtimeChanged(self, *args):
+        if self.CurTimeVar.get() == self.parent.GetPlotParam('show_current_time'):
+            pass
+        else:
+            self.parent.cur_time.set_visible(self.CurTimeVar.get())
+            self.parent.SetPlotParam('show_current_time', self.CurTimeVar.get())
+
 
     def Selector(self):
         # Repeat the lists to remember the order
@@ -411,13 +434,13 @@ class TotEnergySettings(Tk.Toplevel):
         VarList = [self.ShowPrtlVar,  self.ShowIonVar, self.ShowElectronVar, self.ShowFieldVar, self.ShowEVar, self.ShowMagVar]
 
 
-        # First the visibility of the the plot
+        # First set the visibility of the plots to their new value
         for i in range(len(self.parent.key_list)):
             if self.parent.GetPlotParam(self.parent.key_list[i]) != VarList[i].get():
                 self.parent.plot_list[i].set_visible(VarList[i].get())
                 self.parent.SetPlotParam(self.parent.key_list[i], VarList[i].get(), update_plot = False)
 
-        # Now fix the legend:
+        # Now create a new legend with only the visible lines:
         legend_handles = []
         legend_labels = []
         for i in range(len(self.parent.key_list)):
@@ -425,13 +448,14 @@ class TotEnergySettings(Tk.Toplevel):
                 legend_handles.append(self.parent.plot_list[i])
                 legend_labels.append(self.parent.label_names[i])
         self.parent.legend = self.parent.axes.legend(legend_handles, legend_labels,
-        framealpha = .05, fontsize = 11, loc = 'best')
+        framealpha = .05, fontsize = 11, loc = 'best',
+        visible = self.parent.GetPlotParam('show_legend'))
         self.parent.legend.get_frame().set_facecolor('k')
         self.parent.legend.get_frame().set_linewidth(0.0)
-        if not self.parent.GetPlotParam('show_legend'):
-            self.parent.legend.set_visible(False)
+
         # Force a plot refresh
         self.parent.SetPlotParam(self.parent.key_list[0], VarList[0].get())
+
     def TxtEnter(self, e):
         self.FieldsCallback()
 
