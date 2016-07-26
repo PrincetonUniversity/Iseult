@@ -174,7 +174,7 @@ class SpectralPanel:
                     self.fp[k] = 1E-100
 
             self.fe[self.fe <= 0] = 1E-100
-            self.fp[self.fe <= 0] = 1E-100
+            self.fp[self.fp <= 0] = 1E-100
             #  NOTE: self.gamma is actually the real lorentz factor, gamma, minus 1 ***
             self.edist=self.gamma*self.fe
             self.pdist=self.gamma*self.fp
