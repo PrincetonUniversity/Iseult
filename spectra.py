@@ -268,7 +268,7 @@ class SpectralPanel:
         ############
 
         if self.parent.MainParamDict['MeasureEpsP']:
-            eps_p = self.measure_eps(self.pdist, self.parent.MainParamDict['GammaIonInjection'], 'protron')
+            eps_p = self.measure_eps(self.pdist, self.parent.MainParamDict['GammaIonInjection'], 'proton')
             self.parent.eps_pVar.set('%.6f' % eps_p)
         else:
             self.parent.eps_pVar.set('N/A')
