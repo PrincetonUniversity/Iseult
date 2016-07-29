@@ -14,7 +14,7 @@ class FieldsPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
 
     plot_param_dict = {'twoD': 0,
-                       'field_type': 0, #0 = B-Field, 1 = E-field
+                       'field_type': 0, #0 = B-Field, 1 = E-field, 3 Currents
                        'show_x' : 1,
                        'show_y' : 1,
                        'show_z' : 1,
@@ -43,7 +43,9 @@ class FieldsPanel:
     IntList = ['field_type']
     FloatList = ['v_min', 'v_max', 'cpow_num', 'div_midpoint']
     StrList = ['interpolation', 'cnorm_type', 'cmap']
-
+    OneDxTxt = [r'$B_x$', r'$E_x$', r'$J_x$']
+    OneDyTxt = [r'$B_y$', r'$E_y$', r'$J_y$']
+    OneDzTxt = [r'$B_z$', r'$E_z$', r'$J_z$']
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))
 
@@ -87,6 +89,10 @@ class FieldsPanel:
 
         if self.GetPlotParam('field_type') == 1: # Load the E-Field
             self.arrs_needed = ['c_omp', 'istep', 'ex', 'ey', 'ez']
+
+        if self.GetPlotParam('field_type') == 2: # Load the currents
+            self.arrs_needed = ['c_omp', 'istep', 'jx', 'jy', 'jz']
+
         return self.arrs_needed
 
     def LoadData(self):
@@ -116,15 +122,6 @@ class FieldsPanel:
             self.xaxis_values = np.arange(self.FigWrap.LoadKey('bx')[0,:,:].shape[1])/self.c_omp*self.istep
         #            print self.xaxis_values
             self.parent.DataDict['xaxis_values'] = np.copy(self.xaxis_values)
-
-        # Now the y_values Not needed so commenting out
-        '''
-        if 'yaxis_values' in self.parent.DataDict.keys():
-            self.yaxis_values = self.parent.DataDict('y_values')
-        else:
-            self.yaxis_values = np.arange(self.FigWrap.LoadKey('bx')[0,:,:].shape[0])/self.c_omp*self.istep
-            self.parent.DataDict('yaxis_values') = self.yaxis_values
-        '''
 
 
         if self.GetPlotParam('field_type') == 0: # Load the B-Field
@@ -170,7 +167,7 @@ class FieldsPanel:
                 self.parent.DataDict[kzwarg] = list(self.bzmin_max)
 
 
-        if self.GetPlotParam('field_type') == 1: # Load the e-Field
+        elif self.GetPlotParam('field_type') == 1: # Load the e-Field
             self.fx = self.FigWrap.LoadKey('ex')[0,:,:]
             self.fy = self.FigWrap.LoadKey('ey')[0,:,:]
             self.fz = self.FigWrap.LoadKey('ez')[0,:,:]
@@ -212,6 +209,41 @@ class FieldsPanel:
             else:
                 self.ezmin_max = self.min_max_finder(self.fz)
                 self.parent.DataDict[kzwarg] = list(self.ezmin_max)
+
+        elif self.GetPlotParam('field_type') == 2: # Load the currents
+            #
+            self.fx = self.FigWrap.LoadKey('jx')[0,:,:]
+            self.fy = self.FigWrap.LoadKey('jy')[0,:,:]
+            self.fz = self.FigWrap.LoadKey('jz')[0,:,:]
+
+            kxwarg = 'jxmin_max'
+            kywarg = 'jymin_max'
+            kzwarg = 'jzmin_max'
+
+            self.oneDslice = self.fx.shape[0]/2
+
+            # Have we already calculated min/max?
+
+            if kxwarg in self.parent.DataDict.keys():
+                self.jxmin_max = self.parent.DataDict[kxwarg]
+
+            else:
+                self.jxmin_max =  self.min_max_finder(self.fx)
+                self.parent.DataDict[kxwarg] = list(self.jxmin_max)
+
+            if kywarg in self.parent.DataDict.keys():
+                self.jymin_max = self.parent.DataDict[kywarg]
+
+            else:
+                self.jymin_max = self.min_max_finder(self.fy)
+                self.parent.DataDict[kywarg] = list(self.jymin_max)
+
+            if kzwarg in self.parent.DataDict.keys():
+                self.jzmin_max = self.parent.DataDict[kzwarg]
+
+            else:
+                self.jzmin_max = self.min_max_finder(self.fz)
+                self.parent.DataDict[kzwarg] = list(self.jzmin_max)
 
     def min_max_finder(self, arr):
         # find 1d lims
@@ -272,9 +304,9 @@ class FieldsPanel:
             if self.GetPlotParam('show_x'):
                 self.zval = self.fx
                 if self.GetPlotParam('normalize_fields'):
-                    self.two_d_labels = (r'$B_x/B_0$', r'$E_x/E_0$')
+                    self.two_d_labels = (r'$B_x/B_0$', r'$E_x/E_0$', r'$J_x$')
                 else:
-                    self.two_d_labels = (r'$B_x$', r'$E_x$')
+                    self.two_d_labels = (r'$B_x$', r'$E_x$', r'$J_x$')
                 # set the other plot values to zero in the PlotParams
                 self.SetPlotParam('show_y', 0, update_plot = False)
                 self.SetPlotParam('show_z', 0, update_plot = False)
@@ -282,9 +314,9 @@ class FieldsPanel:
             elif self.GetPlotParam('show_y'):
                 self.zval = self.fy
                 if self.GetPlotParam('normalize_fields'):
-                    self.two_d_labels = (r'$B_y/B_0$', r'$E_y/E_0$')
+                    self.two_d_labels = (r'$B_y/B_0$', r'$E_y/E_0$',  r'$J_y$')
                 else:
-                    self.two_d_labels = (r'$B_y$', r'$E_y$')
+                    self.two_d_labels = (r'$B_y$', r'$E_y$', r'$J_y$')
 
 
                 # set the other plot values to zero in the PlotParams
@@ -302,9 +334,9 @@ class FieldsPanel:
 
                 self.zval = self.fz
                 if self.GetPlotParam('normalize_fields'):
-                    self.two_d_labels = (r'$B_z/B_0$', r'$E_z/E_0$')
+                    self.two_d_labels = (r'$B_z/B_0$', r'$E_z/E_0$', r'$J_z$')
                 else:
-                    self.two_d_labels = (r'$B_z$', r'$E_z$')
+                    self.two_d_labels = (r'$B_z$', r'$E_z$', r'$J_z$')
 
 
             self.ymin = 0
@@ -421,11 +453,7 @@ class FieldsPanel:
             self.xmin, self.xmax = self.xaxis_values[0], self.xaxis_values[-1]
             self.linex = self.axes.plot(self.xaxis_values, self.fx[self.oneDslice,:], color = self.xcolor)
             self.linex[0].set_visible(self.GetPlotParam('show_x'))
-            if self.GetPlotParam('field_type') == 0:
-                tmp_str = r'$B_x$'
-            else:
-                tmp_str = r'$E_x$'
-            self.anx = self.axes.annotate(tmp_str, xy = self.annotate_pos,
+            self.anx = self.axes.annotate(self.OneDxTxt[self.GetPlotParam('field_type')], xy = self.annotate_pos,
                             xycoords = 'axes fraction',
                             color = self.xcolor,
                             **self.annotate_kwargs)
@@ -434,11 +462,8 @@ class FieldsPanel:
             self.annotate_pos[0] += .08
             self.liney = self.axes.plot(self.xaxis_values, self.fy[self.oneDslice,:], color = self.ycolor)
             self.liney[0].set_visible(self.GetPlotParam('show_y'))
-            if self.GetPlotParam('field_type') == 0:
-                tmp_str = r'$B_y$'
-            else:
-                tmp_str = r'$E_y$'
-            self.any =self.axes.annotate(tmp_str, xy = self.annotate_pos,
+
+            self.any =self.axes.annotate(self.OneDyTxt[self.GetPlotParam('field_type')], xy = self.annotate_pos,
                             xycoords= 'axes fraction',
                             color = self.ycolor,
                             **self.annotate_kwargs)
@@ -450,11 +475,8 @@ class FieldsPanel:
             self.linez = self.axes.plot(self.xaxis_values, self.fz[self.oneDslice,:], color = self.zcolor)
             self.linez[0].set_visible(self.GetPlotParam('show_z'))
 
-            if self.GetPlotParam('field_type') == 0:
-                tmp_str = r'$B_z$'
-            else:
-                tmp_str = r'$E_z$'
-            self.anz = self.axes.annotate(tmp_str, xy = self.annotate_pos,
+
+            self.anz = self.axes.annotate(self.OneDzTxt[self.GetPlotParam('field_type')], xy = self.annotate_pos,
                                 xycoords= 'axes fraction',
                                 color = self.zcolor,
                                 **self.annotate_kwargs
@@ -494,12 +516,13 @@ class FieldsPanel:
                     self.axes.set_ylabel(r'$B/B_0$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
                 else:
                     self.axes.set_ylabel(r'$B$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
-            else:
+            elif self.GetPlotParam('field_type') == 1:
                 if self.GetPlotParam('normalize_fields'):
                     self.axes.set_ylabel(r'$E/E_0$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
                 else:
                     self.axes.set_ylabel(r'$E$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
-
+            else:
+                self.axes.set_ylabel(r'$J$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
         ####
         # FFT REGION PLOTTING CODE
         ####
@@ -550,18 +573,25 @@ class FieldsPanel:
                 if self.GetPlotParam('field_type') == 0:
                     self.line_ymin_max[0] = min(self.bxmin_max[0][0], self.line_ymin_max[0])
                     self.line_ymin_max[1] = max(self.bxmin_max[0][1], self.line_ymin_max[1])
-                else:
+                elif self.GetPlotParam('field_type') == 1: #E fields
                     self.line_ymin_max[0] = min(self.exmin_max[0][0], self.line_ymin_max[0])
                     self.line_ymin_max[1] = max(self.exmin_max[0][1], self.line_ymin_max[1])
 
+                elif self.GetPlotParam('field_type') == 2: #currents
+                    self.line_ymin_max[0] = min(self.jxmin_max[0][0], self.line_ymin_max[0])
+                    self.line_ymin_max[1] = max(self.jxmin_max[0][1], self.line_ymin_max[1])
+
             if self.GetPlotParam('show_y'):
                 self.liney[0].set_data(self.xaxis_values, self.fy[self.oneDslice,:])
-                if self.GetPlotParam('field_type') == 0:
+                if self.GetPlotParam('field_type') == 0: # B-field
                     self.line_ymin_max[0] = min(self.bymin_max[0][0], self.line_ymin_max[0])
                     self.line_ymin_max[1] = max(self.bymin_max[0][1], self.line_ymin_max[1])
-                else:
+                elif self.GetPlotParam('field_type') == 1: # E-field
                     self.line_ymin_max[0] = min(self.eymin_max[0][0], self.line_ymin_max[0])
                     self.line_ymin_max[1] = max(self.eymin_max[0][1], self.line_ymin_max[1])
+                elif self.GetPlotParam('field_type') == 2: # Curents
+                    self.line_ymin_max[0] = min(self.jymin_max[0][0], self.line_ymin_max[0])
+                    self.line_ymin_max[1] = max(self.jymin_max[0][1], self.line_ymin_max[1])
 
 
             if self.GetPlotParam('show_z'):
@@ -569,9 +599,14 @@ class FieldsPanel:
                 if self.GetPlotParam('field_type') == 0:
                     self.line_ymin_max[0] = min(self.bzmin_max[0][0], self.line_ymin_max[0])
                     self.line_ymin_max[1] = max(self.bzmin_max[0][1], self.line_ymin_max[1])
-                else:
+
+                elif self.GetPlotParam('field_type') == 1:
                     self.line_ymin_max[0] = min(self.ezmin_max[0][0], self.line_ymin_max[0])
                     self.line_ymin_max[1] = max(self.ezmin_max[0][1], self.line_ymin_max[1])
+
+                elif self.GetPlotParam('field_type') == 2: # Curents
+                    self.line_ymin_max[0] = min(self.jzmin_max[0][0], self.line_ymin_max[0])
+                    self.line_ymin_max[1] = max(self.jzmin_max[0][1], self.line_ymin_max[1])
 
             if not self.GetPlotParam('show_x') and not self.GetPlotParam('show_y') and not self.GetPlotParam('show_z'):
                 self.line_ymin_max = [0,1]
@@ -593,14 +628,6 @@ class FieldsPanel:
             if self.GetPlotParam('set_v_max'):
                 self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
 
-            # Code for trying blitting, not worth it.
-#            self.axes.draw_artist(self.axes.patch)
-#            self.axes.draw_artist(self.linex[0])
-#            self.axes.draw_artist(self.liney[0])
-#            self.axes.draw_artist(self.linez[0])
-#            self.axes.draw_artist(self.anx)
-#            self.axes.draw_artist(self.any)
-#            self.axes.draw_artist(self.anz)
 
         else: # Now refresh the plot if it is 2D
             if self.GetPlotParam('show_x'):
@@ -615,12 +642,15 @@ class FieldsPanel:
                         self.TwoDan.set_text(r'$B_x/B_0$')
                     else:
                         self.TwoDan.set_text(r'$B_x$')
-                else:
+                elif self.GetPlotParam('field_type') == 1:
                     self.clims = np.copy(self.exmin_max[1])
                     if self.GetPlotParam('normalize_fields'):
                         self.TwoDan.set_text(r'$E_x/E_0$')
                     else:
                         self.TwoDan.set_text(r'$E_x$')
+                elif self.GetPlotParam('field_type') == 2:
+                    self.clims = np.copy(self.jxmin_max[1])
+                    self.TwoDan.set_text(r'$J_x$')
 
             if self.GetPlotParam('show_y'):
                 self.cax.set_data(self.fy)
@@ -634,12 +664,16 @@ class FieldsPanel:
                         self.TwoDan.set_text(r'$B_y/B_0$')
                     else:
                         self.TwoDan.set_text(r'$B_y$')
-                else:
+                elif self.GetPlotParam('field_type') ==1:
                     self.clims = np.copy(self.eymin_max[1])
                     if self.GetPlotParam('normalize_fields'):
                         self.TwoDan.set_text(r'$E_y/E_0$')
                     else:
                         self.TwoDan.set_text(r'$E_y$')
+                elif self.GetPlotParam('field_type') == 2:
+                    self.clims = np.copy(self.jymin_max[1])
+                    self.TwoDan.set_text(r'$J_y$')
+
             if self.GetPlotParam('show_z'):
                 self.cax.set_data(self.fz)
                 self.ymin = 0
@@ -652,12 +686,17 @@ class FieldsPanel:
                         self.TwoDan.set_text(r'$B_z/B_0$')
                     else:
                         self.TwoDan.set_text(r'$B_z$')
-                else:
+
+                elif self.GetPlotParam('field_type') == 1:
                     self.clims = np.copy(self.ezmin_max[1])
                     if self.GetPlotParam('normalize_fields'):
                         self.TwoDan.set_text(r'$E_z/E_0$')
                     else:
                         self.TwoDan.set_text(r'$E_z$')
+
+                elif self.GetPlotParam('field_type') == 2:
+                    self.clims = np.copy(self.jymin_max[1])
+                    self.TwoDan.set_text(r'$J_y$')
 
             if self.parent.MainParamDict['SetxLim']:
                 if self.parent.MainParamDict['xLimsRelative']:
@@ -765,7 +804,7 @@ class FieldSettings(Tk.Toplevel):
         self.parent = parent
         Tk.Toplevel.__init__(self)
 
-        self.wm_title('Field Plot (%d,%d) Settings' % self.parent.FigWrap.pos)
+        self.wm_title('Fields & Currents Plot (%d,%d) Settings' % self.parent.FigWrap.pos)
         self.parent = parent
         frm = ttk.Frame(self)
         frm.pack(fill=Tk.BOTH, expand=True)
@@ -800,7 +839,7 @@ class FieldSettings(Tk.Toplevel):
         cb.grid(row = 1, sticky = Tk.W)
 
         # the Radiobox Control to choose the Field Type
-        self.FieldList = ['B Field', 'E field']
+        self.FieldList = ['B Field', 'E field', 'J [current]']
         self.FieldTypeVar  = Tk.IntVar()
         self.FieldTypeVar.set(self.parent.GetPlotParam('field_type'))
 
@@ -814,28 +853,28 @@ class FieldSettings(Tk.Toplevel):
                 value=i).grid(row = 3+i, sticky =Tk.W)
 
         # the Check boxes for the dimension
-        ttk.Label(frm, text='Dimension:').grid(row = 1, column = 1, sticky = Tk.W)
+        ttk.Label(frm, text='Dimension:').grid(row = 2, column = 1, sticky = Tk.W)
 
         self.ShowXVar = Tk.IntVar(self) # Create a var to track whether or not to show X
         self.ShowXVar.set(self.parent.GetPlotParam('show_x'))
         cb = ttk.Checkbutton(frm, text = "Show x",
             variable = self.ShowXVar,
             command = self.Selector)
-        cb.grid(row = 2, column = 1, sticky = Tk.W)
+        cb.grid(row = 3, column = 1, sticky = Tk.W)
 
         self.ShowYVar = Tk.IntVar(self) # Create a var to track whether or not to plot Y
         self.ShowYVar.set(self.parent.GetPlotParam('show_y'))
         cb = ttk.Checkbutton(frm, text = "Show y",
             variable = self.ShowYVar,
             command = self.Selector)
-        cb.grid(row = 3, column = 1, sticky = Tk.W)
+        cb.grid(row = 4, column = 1, sticky = Tk.W)
 
         self.ShowZVar = Tk.IntVar(self) # Create a var to track whether or not to plot Z
         self.ShowZVar.set(self.parent.GetPlotParam('show_z'))
         cb = ttk.Checkbutton(frm, text = "Show z",
             variable = self.ShowZVar,
             command = self.Selector)
-        cb.grid(row = 4, column = 1, sticky = Tk.W)
+        cb.grid(row = 5, column = 1, sticky = Tk.W)
 
 
         # Control whether or not Cbar is shown
@@ -844,7 +883,7 @@ class FieldSettings(Tk.Toplevel):
         cb = ttk.Checkbutton(frm, text = "Show Color bar",
                         variable = self.CbarVar,
                         command = self.CbarHandler)
-        cb.grid(row = 6, sticky = Tk.W)
+        cb.grid(row = 7, sticky = Tk.W)
 
         # Control whether or not diverging cmap is used
         self.DivVar = Tk.IntVar()
@@ -852,7 +891,7 @@ class FieldSettings(Tk.Toplevel):
         cb = ttk.Checkbutton(frm, text = "Use Diverging Cmap",
                         variable = self.DivVar,
                         command = self.DivHandler)
-        cb.grid(row = 7, sticky = Tk.W)
+        cb.grid(row = 8, sticky = Tk.W)
 
         # Use full div cmap
         self.StretchVar = Tk.IntVar()
@@ -860,7 +899,7 @@ class FieldSettings(Tk.Toplevel):
         cb = ttk.Checkbutton(frm, text = "Asymmetric Color Space",
                         variable = self.StretchVar,
                         command = self.StretchHandler)
-        cb.grid(row = 7, column = 1, sticky = Tk.W)
+        cb.grid(row = 8, column = 1, sticky = Tk.W)
 
         # Create the OptionMenu to chooses the cnorm_type:
         self.cnormvar = Tk.StringVar(self)
@@ -875,7 +914,7 @@ class FieldSettings(Tk.Toplevel):
         self.powGamma = Tk.StringVar()
         self.powGamma.set(str(self.parent.GetPlotParam('cpow_num')))
         ttk.Label(frm, text ='gamma =').grid(row = 7, column = 2, sticky =Tk.E)
-        ttk.Label(frm, text ='If cnorm is Pow =>').grid(row = 8, column = 2,columnspan = 2, sticky =Tk.W)
+        ttk.Label(frm, text ='If cnorm is Pow =>').grid(row = 8, column = 2,columnspan = 2, sticky =Tk.N)
         ttk.Label(frm, text ='sign(data)*|data|**gamma').grid(row = 9, column = 2,columnspan = 2, sticky =Tk.E)
 
         self.GammaEnter = ttk.Entry(frm, textvariable=self.powGamma, width=7)
@@ -919,14 +958,14 @@ class FieldSettings(Tk.Toplevel):
         cb = ttk.Checkbutton(frm, text = "Show Shock",
                         variable = self.ShockVar,
                         command = self.ShockVarHandler)
-        cb.grid(row = 8, column = 1, sticky = Tk.W)
+        cb.grid(row = 9, column = 1, sticky = Tk.W)
 
         self.FFTVar = Tk.IntVar()
         self.FFTVar.set(self.parent.GetPlotParam('show_FFT_region'))
         cb = ttk.Checkbutton(frm, text = "Show FFT Region",
                         variable = self.FFTVar,
                         command = self.FFTVarHandler)
-        cb.grid(row = 8, column = 0, sticky = Tk.W)
+        cb.grid(row = 9, column = 0, sticky = Tk.W)
 
 
         self.NormFieldVar = Tk.IntVar()
@@ -934,7 +973,7 @@ class FieldSettings(Tk.Toplevel):
         cb = ttk.Checkbutton(frm, text = "Normalize Fields",
                         variable = self.NormFieldVar,
                         command = self.NormFieldHandler)
-        cb.grid(row = 6, column = 1, sticky = Tk.W)
+        cb.grid(row = 7, column = 1, sticky = Tk.W)
 
 
     def CbarHandler(self, *args):
@@ -1066,17 +1105,19 @@ class FieldSettings(Tk.Toplevel):
                     self.parent.axes.set_ylabel(r'$B/B_0$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
                 else:
                     self.parent.axes.set_ylabel(r'$B$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
-                self.parent.anx.set_text(r'$B_x$')
-                self.parent.any.set_text(r'$B_y$')
-                self.parent.anz.set_text(r'$B_z$')
-            else:
+            elif self.FieldTypeVar.get() == 1:
                 if self.parent.GetPlotParam('normalize_fields'):
                     self.parent.axes.set_ylabel(r'$E/E_0$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
                 else:
                     self.parent.axes.set_ylabel(r'$E$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
-                self.parent.anx.set_text(r'$E_x$')
-                self.parent.any.set_text(r'$E_y$')
-                self.parent.anz.set_text(r'$E_z$')
+
+            elif self.FieldTypeVar.get() == 2:
+                self.parent.axes.set_ylabel(r'$J$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
+
+            self.parent.anx.set_text(self.parent.OneDxTxt[self.FieldTypeVar.get()])
+            self.parent.any.set_text(self.parent.OneDyTxt[self.FieldTypeVar.get()])
+            self.parent.anz.set_text(self.parent.OneDzTxt[self.FieldTypeVar.get()])
+
 
             self.parent.SetPlotParam('field_type', self.FieldTypeVar.get())
 
