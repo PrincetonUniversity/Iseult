@@ -305,7 +305,7 @@ class PlaybackBar(Tk.Frame):
         self.param.attach(self)
 
     def OnReload(self, *args):
-        self.parent.findDir()
+        self.parent.ReloadPath()
         self.parent.RenewCanvas()
 
     def RecChanged(self, *args):
@@ -1735,6 +1735,46 @@ class MainApp(Tk.Tk):
 
         print self.H5KeyDict
 
+    def ReloadPath(self):
+        """ This function updates the current pathdictionary"""
+        dirlist = os.listdir(self.dirname)
+
+        # Create a dictionary of all the paths to the files
+        self.PathDict = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
+
+        # create a bunch of regular expressions used to search for files
+        f_re = re.compile('flds.tot.*')
+        prtl_re = re.compile('prtl.tot.*')
+        s_re = re.compile('spect.*')
+        param_re = re.compile('param.*')
+        self.PathDict['Flds']= filter(f_re.match, os.listdir(self.dirname))
+        self.PathDict['Flds'].sort()
+
+        self.PathDict['Prtl']= filter(prtl_re.match, os.listdir(self.dirname))
+        self.PathDict['Prtl'].sort()
+
+        self.PathDict['Spect']= filter(s_re.match, os.listdir(self.dirname))
+        self.PathDict['Spect'].sort()
+
+        self.PathDict['Param']= filter(param_re.match, os.listdir(self.dirname))
+        self.PathDict['Param'].sort()
+
+
+        if not(np.isnan(float(self.cmd_args.n))):
+            max_file = int(self.cmd_args.n)
+            for key in self.PathDict.keys():
+                output_max = len(self.PathDict[key])
+                for tristan_file in self.PathDict[key]:
+                    if int(tristan_file.split('.')[-1]) >= max_file:
+                        output_max = min( int(tristan_file.split('.')[-1]), output_max)
+                self.PathDict[key] = self.PathDict[key][0:output_max]
+        self.TimeStep.setMax(len(self.PathDict['Flds']))
+        self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
+        if self.MainParamDict['Reload2End']:
+            self.TimeStep.value = len(self.PathDict['Flds'])
+            self.playbackbar.slider.set(self.TimeStep.value)
+        self.shock_finder()
+
     def pathOK(self):
         """ Test to see if the current path contains tristan files
         using regular expressions, then generate the lists of files
@@ -1779,10 +1819,10 @@ class MainApp(Tk.Tk):
                     self.PathDict[key] = self.PathDict[key][0:output_max]
             self.NewDirectory = True
             self.TimeStep.setMax(len(self.PathDict['Flds']))
+            self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
             if self.MainParamDict['Reload2End']:
                 self.TimeStep.value = len(self.PathDict['Flds'])
                 self.playbackbar.slider.set(self.TimeStep.value)
-            self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
             self.shock_finder()
 
         return is_okay
@@ -2073,8 +2113,8 @@ class MainApp(Tk.Tk):
                                     self.DataDict[elm] = 0.45
                                 else:
                                     raise
-            # don't keep more than 30 time steps in memory because of RAM issues
-            if len(self.timestep_visited)>30:
+            # don't keep more than 45 time steps in memory because of RAM issues
+            if len(self.timestep_visited)>45:
                 oldest_time = self.timestep_queue.popleft()
                 oldest_ind = self.timestep_visited.index(oldest_time)
                 self.timestep_visited.remove(oldest_time)
