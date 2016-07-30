@@ -1208,18 +1208,31 @@ class FieldSettings(Tk.Toplevel):
         plot_param_List = ['v_min', 'v_max']
         tkvarSetList = [self.setZminVar, self.setZmaxVar]
         to_reload = False
-        for j in range(len(tkvarLimList)):
-            try:
-            #make sure the user types in a int
-                if np.abs(float(tkvarLimList[j].get()) - self.parent.GetPlotParam(plot_param_List[j])) > 1E-4:
-                    self.parent.SetPlotParam(plot_param_List[j], float(tkvarLimList[j].get()), update_plot = False)
-                    to_reload += True*tkvarSetList[j].get()
+        try:
+            #make sure the user types in a float, no longer check to see if it has changed, because of precision issues.
+            self.parent.SetPlotParam('v_min', float(self.Zmin.get()), update_plot = False)
+            if self.parent.GetPlotParam('set_v_min'):
+                if self.parent.GetPlotParam('twoD'):
+                    self.parent.cax.norm.vmin = self.parent.GetPlotParam('v_min')
+                else:
+                    self.parent.axes.set_ylim(ymin = self.parent.GetPlotParam('v_min') )
+        except ValueError:
+            #if they type in random stuff, just set it ot the param value
+            self.Zmin.set(str(self.parent.GetPlotParam('v_min')))
 
-            except ValueError:
-                #if they type in random stuff, just set it ot the param value
-                tkvarLimList[j].set(str(self.parent.GetPlotParam(plot_param_List[j])))
-        if to_reload:
-            self.parent.SetPlotParam('v_min', self.parent.GetPlotParam('v_min'))
+        try:
+            #make sure the user types in a float, no longer check to see if it has changed, because of precision issues.
+            self.parent.SetPlotParam('v_max', float(self.Zmax.get()), update_plot = False)
+            if self.parent.GetPlotParam('set_v_max'):
+                if self.parent.GetPlotParam('twoD'):
+                    self.parent.cax.norm.vmax = self.parent.GetPlotParam('v_max')
+                else:
+                    self.parent.axes.set_ylim(ymax = self.parent.GetPlotParam('v_max') )
+        except ValueError:
+            #if they type in random stuff, just set it ot the param value
+            self.Zmax.set(str(self.parent.GetPlotParam('v_max')))
+        self.parent.refresh()
+        self.parent.parent.canvas.draw()
 
 
     def OnClosing(self):
