@@ -141,6 +141,7 @@ class SubPlotWrapper:
             self.parent.RenewCanvas(ForceRedraw = NeedsRedraw)
 
 
+
     def GetPlotParam(self, pname, ctype = None):
         if ctype is None:
             ctype = self.chartType
@@ -2092,7 +2093,7 @@ class MainApp(Tk.Tk):
             self.timestep_queue.append(self.TimeStep.value)
 
         else:
-            # The time has not alread been visited so we have to reload everything
+            # The time has not already been visited so we have to reload everything
             self.DataDict = {}
             for pkey in self.ToLoad.keys():
                 tmplist = list(set(self.ToLoad[pkey])) # get rid of duplicate keys
@@ -2113,8 +2114,8 @@ class MainApp(Tk.Tk):
                                     self.DataDict[elm] = 0.45
                                 else:
                                     raise
-            # don't keep more than 45 time steps in memory because of RAM issues
-            if len(self.timestep_visited)>45:
+            # don't keep more than 100 time steps in memory because of RAM issues
+            if len(self.timestep_visited)>100:
                 oldest_time = self.timestep_queue.popleft()
                 oldest_ind = self.timestep_visited.index(oldest_time)
                 self.timestep_visited.remove(oldest_time)
@@ -2311,15 +2312,20 @@ class MainApp(Tk.Tk):
         the plot went from 2d to 1D, etc.. If any change occurs that requires a
         redraw, renewcanvas must be called with ForceRedraw = True. '''
 
-#        tic = time.time()
+
         if ForceRedraw:
             self.ReDrawCanvas(keep_view = keep_view)
         else:
             self.RefreshCanvas(keep_view = keep_view)
         # Record the current ctypes for later
         self.MakePrevCtypeList()
-#        toc = time.time()
-#        print toc-tic
+
+        tic = time.time()
+        # remove some unnecessary data
+
+        for elm in tmp_list:
+            self.DataDict.pop(elm, None)
+
     def ReDrawCanvas(self, keep_view = True):
         #  We need to see if the user has moved around the zoom level in python.
         # First we see if there are any views in the toolbar

@@ -1231,8 +1231,7 @@ class FieldSettings(Tk.Toplevel):
         except ValueError:
             #if they type in random stuff, just set it ot the param value
             self.Zmax.set(str(self.parent.GetPlotParam('v_max')))
-        self.parent.refresh()
-        self.parent.parent.canvas.draw()
+        self.parent.SetPlotParam('v_max', self.parent.GetPlotParam('v_max'))
 
 
     def OnClosing(self):
