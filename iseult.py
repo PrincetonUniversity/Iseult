@@ -2322,7 +2322,7 @@ class MainApp(Tk.Tk):
 
         tic = time.time()
         # remove some unnecessary data
-
+        tmp_list = ['ui', 'vi', 'wi', 'ue', 've', 'we', 'che', 'chi']
         for elm in tmp_list:
             self.DataDict.pop(elm, None)
 
