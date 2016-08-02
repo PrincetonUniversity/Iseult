@@ -423,10 +423,11 @@ class PlaybackBar(Tk.Frame):
         if int(self.slider.get()) != self.param.value:
             self.param.set(int(self.slider.get()))
     def setKnob(self, value):
-        #set the text entry value
-        self.tstep.set(str(value))
+        pass
+#        #set the text entry value
+#        self.tstep.set(str(value))
         #set the slider
-        self.slider.set(value)
+#        self.slider.set(value)
 
 
 class SaveDialog(Tk.Toplevel):
@@ -2743,11 +2744,18 @@ class MainApp(Tk.Tk):
             self.MovieIm.set_data(im)
             self.MovieCanvas.draw()
 #            self.MovieCanvas.get_tk_widget().update_idletasks()
+            self.playbackbar.tstep.set(str(value))
+            #set the slider
+            self.playbackbar.slider.set(value)
 
 #            self.MovieCanvas.image
             pass
 #            self.f.
         else:
+            self.playbackbar.tstep.set(str(value))
+            #set the slider
+            self.playbackbar.slider.set(value)
+
             self.RenewCanvas()
 
     def TxtEnter(self, e):
