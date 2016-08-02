@@ -3,7 +3,8 @@
 import re # regular expressions
 import os, sys # Used to make the code portable
 import h5py # Allows us the read the data files
-import time,string
+import time, string, cStringIO
+from PIL import Image, ImageTk
 import matplotlib
 import ConfigParser
 matplotlib.use('TkAgg')
@@ -14,6 +15,7 @@ import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
+import matplotlib.image as mpimg
 from phase_plots import PhasePanel
 from fields_plots import FieldsPanel
 from density_plots import DensPanel
@@ -334,12 +336,45 @@ class PlaybackBar(Tk.Frame):
             # Set the value of play pressed to true, change the button name to
             # pause, turn off clear_fig, and start the play loop.
             self.playPressed = True
+            self.parent.HashIseultState()
+            already_saved = False
+            if self.parent.TimeStep.value in self.parent.SavedHashes.keys(): # we have already saved an image for this TimeStep
+                # is the current state of Iseult equal to the state when we saved said image?
+                already_saved = self.parent.SavedHashes[self.parent.TimeStep.value] ==  self.parent.StateHash
+
+            if not already_saved:
+                self.parent.RenewCanvas()
+                self.parent.SaveTmpFig()
+
+            # Prevent the window from being resized
+            self.parent.resizable(0,0)
 #            self.parent.MainParamDict['ClearFig'] = False
+            tmp_size = self.parent.f.get_size_inches()*self.parent.f.dpi
+#            self.parent.SaveTmpFig()
+            # Create the figure
+            self.MovieFrame = ttk.Frame(self.parent)
+            self.parent.MovieFig = Figure(figsize = self.parent.f.get_size_inches()*.99, dpi = self.parent.f.dpi, edgecolor = 'none')#, facecolor = '0.75')
+            self.parent.MovieFig.subplots_adjust(left = 0, right = 1, top = 1, bottom = 0 , wspace = 0, hspace = 0)
+            # a tk.DrawingArea
+            self.parent.MovieCanvas = FigureCanvasTkAgg(self.parent.MovieFig, master=self.MovieFrame)
+#            self.parent.MovieCanvas = Tk.Canvas(self.parent, width=tmp_size[0], height=tmp_size[1])
+
+            im = Image.frombuffer('RGBA', (int(tmp_size[0]), int(tmp_size[1])), self.parent.SavedImgStr[self.parent.TimeStep.value])
+            self.MovieFrame.place(in_=self.parent, relx=0.5, y=0, anchor=Tk.N)#, bordermode="outside")
+            self.parent.MovieCanvas._tkcanvas.pack(side=Tk.RIGHT, fill=Tk.BOTH, expand=1)
+            self.parent.MovieAx = self.parent.MovieFig.add_subplot(111)
+            self.parent.MovieAx.axis('off')
+            self.parent.MovieIm = self.parent.MovieAx.imshow(im.transpose(Image.FLIP_TOP_BOTTOM))
+            self.parent.MovieCanvas.get_tk_widget().update_idletasks()
+#            self.parent.MovieFrame = ImageTk.PhotoImage(im.transpose(Image.FLIP_TOP_BOTTOM))
+#            self.parent.MovieCanvas.image = ImageTk.BitmapImage(image = im.transpose(Image.FLIP_TOP_BOTTOM))
             self.playB.config(text='Pause')
             self.after(int(self.parent.MainParamDict['WaitTime']*1E3), self.blink)
         else:
+            self.parent.resizable(1,1)
             # pause the play loop, turn clear fig back on, and set the button name back to play
             self.playPressed = False
+            self.MovieFrame.destroy()
 #            self.parent.MainParamDict['ClearFig'] = True
             self.playB.config(text='Play')
 
@@ -1440,7 +1475,7 @@ class MainApp(Tk.Tk):
                           u'ppc0': 'Param'}
 
         # Create the figure
-        self.f = Figure(figsize = (2,2), dpi = 100)
+        self.f = Figure(figsize = (2,2), dpi = 100, edgecolor = 'none')#, facecolor = '0.75')
         # a tk.DrawingArea
         self.canvas = FigureCanvasTkAgg(self.f, master=self)
 
@@ -1693,6 +1728,9 @@ class MainApp(Tk.Tk):
         DictList = ['HSubPlotParams', 'VSubPlotParams']
         IntListsList = ['HAxesExtent', 'HCbarExtent', 'VAxesExtent', 'VCbarExtent']
 
+        # Update the 'WindowSize' attribute to the current window size
+        self.MainParamDict['WindowSize'] = str(self.winfo_width())+'x'+str(self.winfo_height())
+
         for key in self.MainParamDict.keys():
 
             if key in DictList:
@@ -1707,8 +1745,7 @@ class MainApp(Tk.Tk):
                 config.set('main', key, str(self.MainParamDict[key])[1:-1])
             else:
                 config.set('main', key, str(self.MainParamDict[key]))
-        # Grab the current window size:
-        config.set('main', 'WindowSize', str(self.winfo_width())+'x'+str(self.winfo_height()) )
+
         for i in range(self.MainParamDict['NumOfRows']):
             for j in range(self.MainParamDict['NumOfCols']):
                 tmp_str = 'Chart' + str(i) + ',' + str(j)
@@ -1886,7 +1923,6 @@ class MainApp(Tk.Tk):
         # divy up the figure into a bunch of subplots using GridSpec.
         self.gs0 = gridspec.GridSpec(self.MainParamDict['NumOfRows'],self.MainParamDict['NumOfCols'])
 
-
         # Create the list of all of subplot wrappers
         self.SubPlotList = []
         for i in range(self.MainParamDict['MaxRows']):
@@ -1917,6 +1953,7 @@ class MainApp(Tk.Tk):
                 else:
                     # The graph isn't specifiedin the config file, just set it equal to phase plots
                     self.SubPlotList[i][j].SetGraph('PhasePlot')
+
 
         # Make a list that will hold the previous ctype
         self.MakePrevCtypeList()
@@ -2023,8 +2060,16 @@ class MainApp(Tk.Tk):
                     ftype = self.H5KeyDict[elm]
                     # add the key to the list of that file type
                     self.ToLoad[ftype].append(elm)
+
         # See if we are in a new Directory
         if self.NewDirectory:
+            # Create a new Dictionary that will have StateHashes of visited steps
+            self.SavedHashes = {}
+            self.SavedImgStr = {}
+            self.SavedImgSize = {}
+            self.diff_from_home = []
+
+
             self.TotalEnergyTimeSteps = []
             self.TotalEnergyTimes = np.array([])
             self.TotalIonEnergy = np.array([])
@@ -2114,8 +2159,8 @@ class MainApp(Tk.Tk):
                                     self.DataDict[elm] = 0.45
                                 else:
                                     raise
-            # don't keep more than 100 time steps in memory because of RAM issues
-            if len(self.timestep_visited)>100:
+            # don't keep more than 30 time steps in memory because of RAM issues
+            if len(self.timestep_visited)>30:
                 oldest_time = self.timestep_queue.popleft()
                 oldest_ind = self.timestep_visited.index(oldest_time)
                 self.timestep_visited.remove(oldest_time)
@@ -2226,6 +2271,7 @@ class MainApp(Tk.Tk):
                 elif self.SubPlotList[i][j].GetPlotParam('twoD') == 1:
                     self.IsCbarList.append(True)
 
+
     def SaveView(self):
         # A function that will make sure our view will stay the same as the
         # plot updates.
@@ -2243,14 +2289,32 @@ class MainApp(Tk.Tk):
             home_view.pop(elm)
 
         self.is_changed_list = []
+        self.diff_from_home = []
         self.old_views = []
         if cur_view is not None:
             for i in range(len(cur_view)):
                 is_changed =[]
+                diff_list = []
                 for j in range(4):
-                    is_changed.append(np.abs(home_view[i][j]-cur_view[i][j])>1E-5)
+                    num_changed = home_view[i][j]-cur_view[i][j] != 0.0
+                    is_changed.append(num_changed)
+                    if num_changed:
+                        if self.MainParamDict['xLimsRelative'] and j < 2:
+                            #define the difference relative to the shock loc
+                            diff_list.append(cur_view[i][j]-self.shock_loc)
+                        else:
+                            # define the difference relative to the home loc
+                            diff_list.append(cur_view[i][j])
+
+                    else: # They haven't zoomed in, diff should be zero,
+                    # but I'm making it a string so cur_view-shock_loc can be
+                    # equal to zero and the hash still distinguish between the two cases.
+                        diff_list.append('n/a')
+
+
                 self.is_changed_list.append(is_changed)
                 self.old_views.append(cur_view[i])
+                self.diff_from_home.append(diff_list)
 
     def LoadView(self):
 
@@ -2313,6 +2377,7 @@ class MainApp(Tk.Tk):
         redraw, renewcanvas must be called with ForceRedraw = True. '''
 
 
+
         if ForceRedraw:
             self.ReDrawCanvas(keep_view = keep_view)
         else:
@@ -2320,11 +2385,71 @@ class MainApp(Tk.Tk):
         # Record the current ctypes for later
         self.MakePrevCtypeList()
 
-        tic = time.time()
+
+
         # remove some unnecessary data
         tmp_list = ['ui', 'vi', 'wi', 'ue', 've', 'we', 'che', 'chi']
         for elm in tmp_list:
             self.DataDict.pop(elm, None)
+
+        tic = time.time()
+        self.SaveTmpFig()
+        toc = time.time()
+        print toc-tic
+
+
+    def HashIseultState(self):
+        ''' A function that saves a hash of the current state of Iseult. Used to
+        determine if we can just show a saved image of a previous timeslice,
+        or if we must reload it.'''
+
+        #First update the main param dict to save the current window size:
+        self.MainParamDict['WindowSize'] = str(self.winfo_width())+'x'+str(self.winfo_height())
+        # a tuple that will eventually be hashed.
+        state_tuple =self.freeze(self.MainParamDict), # First add the MainParamDict
+        for i in range(self.MainParamDict['NumOfRows']):
+            for j in range(self.MainParamDict['NumOfCols']): #add every chart's param dictionary
+                tmp_str = 'Chart' + str(i) + ',' + str(j)
+                tmp_ctype = self.SubPlotList[i][j].chartType
+                state_tuple += tmp_str, tmp_ctype, self.freeze(self.SubPlotList[i][j].PlotParamsDict[tmp_ctype])
+
+        # Now save the difference of the zoom from the home view of the current plot
+
+        state_tuple += self.freeze(self.diff_from_home)
+
+        # add to the state_tuple the last modification time of all the output files:
+        for key in self.PathDict.keys():
+            state_tuple += os.path.getmtime(os.path.join(self.dirname,self.PathDict[key][self.TimeStep.value-1])),
+#        fname = 'iseult_img_'+ str(self.TimeStep.value).zfill(3)+'.png'
+        self.StateHash = hash(state_tuple)
+#        print self.freeze(self.MainParamDict)
+
+    def SaveTmpFig(self):
+        self.HashIseultState()
+        already_saved = False
+        if self.TimeStep.value in self.SavedHashes.keys(): # we have already saved an image for this TimeStep
+            # is the current state of Iseult equal to the state when we saved said image?
+            already_saved = self.SavedHashes[self.TimeStep.value] ==  self.StateHash
+
+
+        if not already_saved: # nope, better save it again!
+            self.SavedHashes[self.TimeStep.value] =  self.StateHash
+            self.SavedImgSize[self.TimeStep.value] =int(self.f.get_size_inches()[0]*self.f.dpi), int(self.f.get_size_inches()[1]*self.f.dpi)
+
+            ram = cStringIO.StringIO()
+            self.f.savefig(ram, format='raw', dpi=self.f.dpi, facecolor=self.f.get_facecolor())
+            ram.seek(0)
+            self.SavedImgStr[self.TimeStep.value] = ram.read() # Save the image into SavedImgs
+            ram.close()
+
+    def freeze(self, d):
+        ''' This function takes in a dictionary or list, which are not hashable,
+        and returns a frozen set, which can be used to hash the dictionary'''
+        if isinstance(d, dict):
+            return frozenset((key, self.freeze(value)) for key, value in d.items())
+        elif isinstance(d, list):
+            return tuple(self.freeze(value) for value in d)
+        return d
 
     def ReDrawCanvas(self, keep_view = True):
         #  We need to see if the user has moved around the zoom level in python.
@@ -2337,6 +2462,7 @@ class MainApp(Tk.Tk):
             keep_view = False
         if keep_view:
             self.SaveView()
+
         self.f.clf()
         #
         if self.MainParamDict['ClearFig']:
@@ -2404,11 +2530,19 @@ class MainApp(Tk.Tk):
         cur_view =  self.toolbar._views.__call__()
 
         if cur_view is None:
+
             keep_view = False
+
+            self.diff_from_home = []
+            for i in range(self.MainParamDict['NumOfRows']*self.MainParamDict['NumOfCols']):
+                self.diff_from_home.append(['n/a', 'n/a', 'n/a', 'n/a'])
+
+
         if self.NewDirectory:
             keep_view = False
         if keep_view:
             self.SaveView()
+
 
         self.toolbar._views.clear()
 
@@ -2447,6 +2581,7 @@ class MainApp(Tk.Tk):
 
         self.canvas.draw()
         self.canvas.get_tk_widget().update_idletasks()
+
         if self.MainParamDict['Recording']:
             self.PrintFig()
 
@@ -2459,7 +2594,8 @@ class MainApp(Tk.Tk):
                 raise
 
         fname = 'iseult_img_'+ str(self.TimeStep.value).zfill(3)+'.png'
-        self.f.savefig(os.path.join(movie_dir, fname))
+
+        self.f.savefig(os.path.join(movie_dir, fname), dpi = 300)#, facecolor=self.f.get_facecolor())#, edgecolor='none')
     def OpenSaveDialog(self):
         SaveDialog(self)
     def onclick(self, event):
@@ -2587,7 +2723,27 @@ class MainApp(Tk.Tk):
 
     def setKnob(self, value):
         # If the time parameter changes update the plots
-        self.RenewCanvas()
+        if self.playbackbar.playPressed:
+            self.HashIseultState()
+            already_saved = False
+            if self.TimeStep.value in self.SavedHashes.keys(): # we have already saved an image for this TimeStep
+                # is the current state of Iseult equal to the state when we saved said image?
+                already_saved = self.SavedHashes[self.TimeStep.value] ==  self.StateHash
+
+            if not already_saved:
+                self.RenewCanvas()
+                self.SaveTmpFig()
+
+            im = Image.frombuffer('RGBA', self.SavedImgSize[self.TimeStep.value], self.SavedImgStr[self.TimeStep.value])
+            self.MovieIm.set_data(im.transpose(Image.FLIP_TOP_BOTTOM))
+            self.MovieCanvas.draw()
+#            self.MovieCanvas.get_tk_widget().update_idletasks()
+
+#            self.MovieCanvas.image
+            pass
+#            self.f.
+        else:
+            self.RenewCanvas()
 
     def TxtEnter(self, e):
         self.playbackbar.TextCallback()
