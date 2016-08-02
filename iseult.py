@@ -358,12 +358,12 @@ class PlaybackBar(Tk.Frame):
             self.parent.MovieCanvas = FigureCanvasTkAgg(self.parent.MovieFig, master=self.MovieFrame)
 #            self.parent.MovieCanvas = Tk.Canvas(self.parent, width=tmp_size[0], height=tmp_size[1])
 
-            im = Image.frombuffer('RGBA', (int(tmp_size[0]), int(tmp_size[1])), self.parent.SavedImgStr[self.parent.TimeStep.value])
+            im = Image.frombuffer('RGBA', (int(tmp_size[0]), int(tmp_size[1])), self.parent.SavedImgStr[self.parent.TimeStep.value], 'raw', 'RGBA', 0, 1)
             self.MovieFrame.place(in_=self.parent, relx=0.5, y=0, anchor=Tk.N)#, bordermode="outside")
             self.parent.MovieCanvas._tkcanvas.pack(side=Tk.RIGHT, fill=Tk.BOTH, expand=1)
             self.parent.MovieAx = self.parent.MovieFig.add_subplot(111)
             self.parent.MovieAx.axis('off')
-            self.parent.MovieIm = self.parent.MovieAx.imshow(im.transpose(Image.FLIP_TOP_BOTTOM))
+            self.parent.MovieIm = self.parent.MovieAx.imshow(im)
             self.parent.MovieCanvas.get_tk_widget().update_idletasks()
             self.playB.config(text='Pause')
             self.after(int(self.parent.MainParamDict['WaitTime']*1E3), self.blink)
@@ -2731,8 +2731,8 @@ class MainApp(Tk.Tk):
                 self.RenewCanvas()
                 self.SaveTmpFig()
 
-            im = Image.frombuffer('RGBA', self.SavedImgSize[self.TimeStep.value], self.SavedImgStr[self.TimeStep.value])
-            self.MovieIm.set_data(im.transpose(Image.FLIP_TOP_BOTTOM))
+            im = Image.frombuffer('RGBA', self.SavedImgSize[self.TimeStep.value], self.SavedImgStr[self.TimeStep.value], 'raw', 'RGBA', 0, 1)
+            self.MovieIm.set_data(im)
             self.MovieCanvas.draw()
 #            self.MovieCanvas.get_tk_widget().update_idletasks()
 
