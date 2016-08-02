@@ -363,7 +363,7 @@ class PlaybackBar(Tk.Frame):
             self.parent.MovieCanvas._tkcanvas.pack(side=Tk.RIGHT, fill=Tk.BOTH, expand=1)
             self.parent.MovieAx = self.parent.MovieFig.add_subplot(111)
             self.parent.MovieAx.axis('off')
-            self.parent.MovieIm = self.parent.MovieAx.imshow(im)
+            self.parent.MovieIm = self.parent.MovieAx.imshow(im, interpolation = 'nearest')
             self.parent.MovieCanvas.get_tk_widget().update_idletasks()
             self.playB.config(text='Pause')
             self.after(int(self.parent.MainParamDict['WaitTime']*1E3), self.blink)
@@ -2089,13 +2089,13 @@ class MainApp(Tk.Tk):
 
             self.NewDirectory = False
         # see if one of the plots is the total energy panel
-        showing_total_energy_plt = False
+        self.showing_total_energy_plt = False
         for i in range(self.MainParamDict['NumOfRows']):
             for j in range(self.MainParamDict['NumOfCols']):
-                showing_total_energy_plt += str(self.SubPlotList[i][j].chartType) == 'TotalEnergyPlot'
+                self.showing_total_energy_plt += str(self.SubPlotList[i][j].chartType) == 'TotalEnergyPlot'
 
         if not self.TimeStep.value in self.TotalEnergyTimeSteps:
-            if showing_total_energy_plt:
+            if self.showing_total_energy_plt:
                 tmp_L = ['ui', 'vi', 'wi', 'ue', 've', 'we', 'mi', 'me', 'stride', 'bx', 'by', 'bz', 'ex', 'ey', 'ez','qi']
                 for elm in tmp_L:
                     self.ToLoad[self.H5KeyDict[elm]].append(elm)
@@ -2168,7 +2168,7 @@ class MainApp(Tk.Tk):
             self.timestep_queue.append(self.TimeStep.value)
 
         if not self.TimeStep.value in self.TotalEnergyTimeSteps:
-            if showing_total_energy_plt:
+            if self.showing_total_energy_plt:
                 self.TotalEnergyTimeSteps.append(self.TimeStep.value)
                 self.TotalEnergyTimeSteps.sort()
                 ind = self.TotalEnergyTimes.searchsorted(self.DataDict['time'][0])
@@ -2414,6 +2414,8 @@ class MainApp(Tk.Tk):
 
         state_tuple += self.freeze(self.diff_from_home)
 
+        if self.showing_total_energy_plt:
+            state_tuple += self.freeze(self.TotalEnergyTimeSteps)
         # add to the state_tuple the last modification time of all the output files:
         for key in self.PathDict.keys():
             state_tuple += os.path.getmtime(os.path.join(self.dirname,self.PathDict[key][self.TimeStep.value-1])),
