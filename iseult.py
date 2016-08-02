@@ -372,6 +372,7 @@ class PlaybackBar(Tk.Frame):
             # pause the play loop, turn clear fig back on, and set the button name back to play
             self.playPressed = False
             self.MovieFrame.destroy()
+            self.parent.RenewCanvas()
 #            self.parent.MainParamDict['ClearFig'] = True
             self.playB.config(text='Play')
 
