@@ -4,7 +4,7 @@ import re # regular expressions
 import os, sys # Used to make the code portable
 import h5py # Allows us the read the data files
 import time, string, cStringIO
-from PIL import Image, ImageTk
+from PIL import Image
 import matplotlib
 import ConfigParser
 matplotlib.use('TkAgg')
@@ -15,7 +15,6 @@ import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
-import matplotlib.image as mpimg
 from phase_plots import PhasePanel
 from fields_plots import FieldsPanel
 from density_plots import DensPanel
@@ -366,8 +365,6 @@ class PlaybackBar(Tk.Frame):
             self.parent.MovieAx.axis('off')
             self.parent.MovieIm = self.parent.MovieAx.imshow(im.transpose(Image.FLIP_TOP_BOTTOM))
             self.parent.MovieCanvas.get_tk_widget().update_idletasks()
-#            self.parent.MovieFrame = ImageTk.PhotoImage(im.transpose(Image.FLIP_TOP_BOTTOM))
-#            self.parent.MovieCanvas.image = ImageTk.BitmapImage(image = im.transpose(Image.FLIP_TOP_BOTTOM))
             self.playB.config(text='Pause')
             self.after(int(self.parent.MainParamDict['WaitTime']*1E3), self.blink)
         else:
@@ -2392,10 +2389,9 @@ class MainApp(Tk.Tk):
         for elm in tmp_list:
             self.DataDict.pop(elm, None)
 
-        tic = time.time()
+
         self.SaveTmpFig()
-        toc = time.time()
-        print toc-tic
+
 
 
     def HashIseultState(self):
