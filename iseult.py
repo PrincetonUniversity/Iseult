@@ -2403,7 +2403,14 @@ class MainApp(Tk.Tk):
         #First update the main param dict to save the current window size:
         self.MainParamDict['WindowSize'] = str(self.winfo_width())+'x'+str(self.winfo_height())
         # a tuple that will eventually be hashed.
-        state_tuple =self.freeze(self.MainParamDict), # First add the MainParamDict
+        state_tuple = self.freeze(self.diff_from_home)
+        # keys we should skip over when making the hash.
+        SkipList = ['Reload2End', 'WaitTime', 'MaxCols', 'MaxRows', 'SkipSize', 'Recording', 'ClearFig']
+        for key in self.MainParamDict.keys():
+            if key in SkipList:
+                pass
+            else:
+                state_tuple += key, self.freeze(self.MainParamDict[key])
         for i in range(self.MainParamDict['NumOfRows']):
             for j in range(self.MainParamDict['NumOfCols']): #add every chart's param dictionary
                 tmp_str = 'Chart' + str(i) + ',' + str(j)
@@ -2412,7 +2419,6 @@ class MainApp(Tk.Tk):
 
         # Now save the difference of the zoom from the home view of the current plot
 
-        state_tuple += self.freeze(self.diff_from_home)
 
         if self.showing_total_energy_plt:
             state_tuple += self.freeze(self.TotalEnergyTimeSteps)
