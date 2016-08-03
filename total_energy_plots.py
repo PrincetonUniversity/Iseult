@@ -11,7 +11,9 @@ import matplotlib.patheffects as PathEffects
 import matplotlib.transforms as mtransforms
 
 class TotEnergyPanel:
-    # A dictionary of all of the parameters for this plot with the default parameters
+    # A dictionary of all of the parameters for this plot with the default parameters,
+    # For the config file loading to work, the dictionary can only contain strings,
+    # bools, ints, or floats.
     plot_param_dict = {'twoD': 0,
                        'show_prtl_KE': True,
                        'show_field_E': True,
@@ -95,7 +97,7 @@ class TotEnergyPanel:
                                         color = self.prtlcolor, visible = self.GetPlotParam('show_prtl_KE'))
 
         self.Bz_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalBzEnergy,
-                                       ls= ':', marker = '*',  markersize = 10, markeredgecolor = self.fieldcolor,
+                                       ls= ':', marker = '<', markeredgecolor = self.fieldcolor,
                                        color = self.fieldcolor, visible = self.GetPlotParam('show_Bz_energy'))
         self.mag_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy,
                                        ls= ':', marker = '*',  markersize = 10, markeredgecolor = self.fieldcolor,
