@@ -335,43 +335,49 @@ class PlaybackBar(Tk.Frame):
             # Set the value of play pressed to true, change the button name to
             # pause, turn off clear_fig, and start the play loop.
             self.playPressed = True
-            self.parent.HashIseultState()
-            already_saved = False
-            if self.parent.TimeStep.value in self.parent.SavedHashes.keys(): # we have already saved an image for this TimeStep
-                # is the current state of Iseult equal to the state when we saved said image?
-                already_saved = self.parent.SavedHashes[self.parent.TimeStep.value] ==  self.parent.StateHash
-
-            if not already_saved:
+            if self.parent.MainParamDict['Recording']:
                 self.parent.RenewCanvas()
-                self.parent.SaveTmpFig()
+            else:
+                self.parent.HashIseultState()
+                already_saved = False
+                if self.parent.TimeStep.value in self.parent.SavedHashes.keys(): # we have already saved an image for this TimeStep
+                    # is the current state of Iseult equal to the state when we saved said image?
+                    already_saved = self.parent.SavedHashes[self.parent.TimeStep.value] ==  self.parent.StateHash
 
-            # Prevent the window from being resized
-            self.parent.resizable(0,0)
-#            self.parent.MainParamDict['ClearFig'] = False
-            tmp_size = self.parent.f.get_size_inches()*self.parent.f.dpi
-#            self.parent.SaveTmpFig()
-            # Create the figure
-            self.MovieFrame = ttk.Frame(self.parent)
-            self.parent.MovieFig = Figure(figsize = self.parent.f.get_size_inches()*.99, dpi = self.parent.f.dpi, edgecolor = 'none')#, facecolor = '0.75')
-            self.parent.MovieFig.subplots_adjust(left = 0, right = 1, top = 1, bottom = 0 , wspace = 0, hspace = 0)
-            # a tk.DrawingArea
-            self.parent.MovieCanvas = FigureCanvasTkAgg(self.parent.MovieFig, master=self.MovieFrame)
-#            self.parent.MovieCanvas = Tk.Canvas(self.parent, width=tmp_size[0], height=tmp_size[1])
+                if not already_saved:
+                    self.parent.RenewCanvas()
 
-            im = Image.frombuffer('RGBA', (int(tmp_size[0]), int(tmp_size[1])), self.parent.SavedImgStr[self.parent.TimeStep.value], 'raw', 'RGBA', 0, 1)
-            self.MovieFrame.place(in_=self.parent, relx=0.5, y=0, anchor=Tk.N)#, bordermode="outside")
-            self.parent.MovieCanvas._tkcanvas.pack(side=Tk.RIGHT, fill=Tk.BOTH, expand=1)
-            self.parent.MovieAx = self.parent.MovieFig.add_subplot(111)
-            self.parent.MovieAx.axis('off')
-            self.parent.MovieIm = self.parent.MovieAx.imshow(im, interpolation = 'nearest')
-            self.parent.MovieCanvas.get_tk_widget().update_idletasks()
+                # Prevent the window from being resized
+                self.parent.resizable(0,0)
+                #            self.parent.MainParamDict['ClearFig'] = False
+                tmp_size = self.parent.f.get_size_inches()*self.parent.f.dpi
+                #            self.parent.SaveTmpFig()
+                # Create the figure
+                self.MovieFrame = ttk.Frame(self.parent)
+                self.parent.MovieFig = Figure(figsize = self.parent.f.get_size_inches(), dpi = self.parent.f.dpi, edgecolor = 'none')#, facecolor = '0.75')
+                self.parent.MovieFig.subplots_adjust(left = 0, right = 1, top = 1, bottom = 0 , wspace = 0, hspace = 0)
+                # a tk.DrawingArea
+                self.parent.MovieCanvas = FigureCanvasTkAgg(self.parent.MovieFig, master=self.MovieFrame)
+                #            self.parent.MovieCanvas = Tk.Canvas(self.parent, width=tmp_size[0], height=tmp_size[1])
+
+                im = Image.frombuffer('RGBA', (int(tmp_size[0]), int(tmp_size[1])), self.parent.SavedImgStr[self.parent.TimeStep.value], 'raw', 'RGBA', 0, 1)
+                self.MovieFrame.place(in_=self.parent, relx=0.5, y=0, anchor=Tk.N)#, bordermode="outside")
+                self.parent.MovieCanvas._tkcanvas.pack(side=Tk.RIGHT, fill=Tk.BOTH, expand=1)
+                self.parent.MovieAx = self.parent.MovieFig.add_subplot(111)
+                self.parent.MovieAx.axis('off')
+                self.parent.MovieIm = self.parent.MovieAx.imshow(im, interpolation = 'nearest')
+                self.parent.MovieCanvas.get_tk_widget().update_idletasks()
+
             self.playB.config(text='Pause')
             self.after(int(self.parent.MainParamDict['WaitTime']*1E3), self.blink)
         else:
             self.parent.resizable(1,1)
             # pause the play loop, turn clear fig back on, and set the button name back to play
             self.playPressed = False
-            self.MovieFrame.destroy()
+            try:
+                self.MovieFrame.destroy()
+            except AttributeError:
+                pass
             self.parent.RenewCanvas()
 #            self.parent.MainParamDict['ClearFig'] = True
             self.playB.config(text='Play')
@@ -2601,7 +2607,7 @@ class MainApp(Tk.Tk):
 
         fname = 'iseult_img_'+ str(self.TimeStep.value).zfill(3)+'.png'
 
-        self.f.savefig(os.path.join(movie_dir, fname), dpi = 300)#, facecolor=self.f.get_facecolor())#, edgecolor='none')
+        self.f.savefig(os.path.join(movie_dir, fname))#, dpi = 300)#, facecolor=self.f.get_facecolor())#, edgecolor='none')
     def OpenSaveDialog(self):
         SaveDialog(self)
     def onclick(self, event):
@@ -2729,7 +2735,7 @@ class MainApp(Tk.Tk):
 
     def setKnob(self, value):
         # If the time parameter changes update the plots
-        if self.playbackbar.playPressed:
+        if self.playbackbar.playPressed and not self.MainParamDict['Recording']:
             self.HashIseultState()
             already_saved = False
             if self.TimeStep.value in self.SavedHashes.keys(): # we have already saved an image for this TimeStep
@@ -2738,7 +2744,6 @@ class MainApp(Tk.Tk):
 
             if not already_saved:
                 self.RenewCanvas()
-                self.SaveTmpFig()
 
             im = Image.frombuffer('RGBA', self.SavedImgSize[self.TimeStep.value], self.SavedImgStr[self.TimeStep.value], 'raw', 'RGBA', 0, 1)
             self.MovieIm.set_data(im)
@@ -2752,11 +2757,11 @@ class MainApp(Tk.Tk):
             pass
 #            self.f.
         else:
+            self.RenewCanvas()
             self.playbackbar.tstep.set(str(value))
             #set the slider
             self.playbackbar.slider.set(value)
 
-            self.RenewCanvas()
 
     def TxtEnter(self, e):
         self.playbackbar.TextCallback()
