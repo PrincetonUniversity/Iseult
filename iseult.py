@@ -2081,6 +2081,7 @@ class MainApp(Tk.Tk):
             self.TotalElectronEnergy = np.array([])
 
             self.TotalMagEnergy = np.array([])
+            self.TotalBzEnergy = np.array([])
             self.TotalElectricEnergy = np.array([])
 
 
@@ -2208,11 +2209,14 @@ class MainApp(Tk.Tk):
                 self.TotalElectronEnergy = np.append(np.append(self.TotalElectronEnergy[0:ind],TotalElectronKE),self.TotalElectronEnergy[ind:])
                 self.TotalIonEnergy = np.append(np.append(self.TotalIonEnergy[0:ind],TotalIonKE),self.TotalIonEnergy[ind:])
 
+                BzEnergy = self.DataDict['bz'][0,:,:]*self.DataDict['bz'][0,:,:]
                 TotalBEnergy = self.DataDict['bx'][0,:,:]*self.DataDict['bx'][0,:,:]
                 TotalBEnergy += self.DataDict['by'][0,:,:]*self.DataDict['by'][0,:,:]
-                TotalBEnergy += self.DataDict['bz'][0,:,:]*self.DataDict['bz'][0,:,:]
+                TotalBEnergy += BzEnergy
                 # sum over the array and then multiply by the number of points len(x)*len(y)
 
+                BzEnergy = np.sum(BzEnergy)
+                BzEnergy *= self.DataDict['istep'][0]**2
                 TotalBEnergy = np.sum(TotalBEnergy) #*self.DataDict['bx'][0,:,:].shape[1]*self.DataDict['bx'][0,:,:].shape[0]
                 TotalBEnergy *= self.DataDict['istep'][0]**2
 #                TotalBEnergy *= self.DataDict['c_omp'][0]/self.DataDict['istep'][0]
@@ -2226,6 +2230,7 @@ class MainApp(Tk.Tk):
                 TotalEEnergy = np.sum(TotalEEnergy) #*self.DataDict['ex'][0,:,:].shape[1]*self.DataDict['ex'][0,:,:].shape[0]
                 TotalEEnergy *= self.DataDict['istep'][0]**2
                 self.TotalMagEnergy = np.append(np.append(self.TotalMagEnergy[0:ind],TotalBEnergy), self.TotalMagEnergy[ind:])
+                self.TotalBzEnergy = np.append(np.append(self.TotalBzEnergy[0:ind],BzEnergy), self.TotalBzEnergy[ind:])
                 self.TotalElectricEnergy = np.append(np.append(self.TotalElectricEnergy[0:ind],TotalEEnergy), self.TotalElectricEnergy[ind:])
 
 

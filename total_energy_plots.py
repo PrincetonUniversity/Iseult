@@ -18,6 +18,7 @@ class TotEnergyPanel:
                        'show_ion_E': False,
                        'show_electron_E': False,
                        'show_total_E': True,
+                       'show_Bz_energy': False,
                        'show_B_E': False,
                        'show_E_E': False,
                        'y_min': 0,
@@ -37,7 +38,7 @@ class TotEnergyPanel:
     # We need the types of all the parameters for the config file
     BoolList = ['twoD', 'set_y_min', 'set_y_max','show_prtl_KE', 'show_field_E','show_B_E', 'show_E_E',
                 'show_ion_E', 'show_electron_E', 'show_total_E', 'yLog', 'spatial_x', 'spatial_y', 'set_x_min',
-                'set_x_max', 'show_legend','show_current_time']
+                'set_x_max', 'show_legend','show_current_time', 'show_Bz_energy']
     IntList = ['E_type']
     FloatList = ['y_min', 'y_max','x_min', 'x_max']
     StrList = []
@@ -93,6 +94,9 @@ class TotEnergyPanel:
                                         ls= ':', marker = 'd', markeredgecolor = self.prtlcolor,
                                         color = self.prtlcolor, visible = self.GetPlotParam('show_prtl_KE'))
 
+        self.Bz_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalBzEnergy,
+                                       ls= ':', marker = '*',  markersize = 10, markeredgecolor = self.fieldcolor,
+                                       color = self.fieldcolor, visible = self.GetPlotParam('show_Bz_energy'))
         self.mag_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy,
                                        ls= ':', marker = '*',  markersize = 10, markeredgecolor = self.fieldcolor,
                                        color = self.fieldcolor, visible = self.GetPlotParam('show_B_E'))
@@ -122,9 +126,9 @@ class TotEnergyPanel:
 
         # fancy code to make sure that matplotlib sets its limits
         # only based on visible lines
-        self.key_list = ['show_total_E', 'show_prtl_KE', 'show_ion_E', 'show_electron_E', 'show_field_E', 'show_E_E', 'show_B_E']
-        self.plot_list = [self.total_plot[0], self.prtl_plot[0], self.ion_plot[0], self.electron_plot[0], self.field_plot[0], self.e_plot[0], self.mag_plot[0]]
-        self.label_names = ['Prtl+Field', 'Particles', 'Ions', 'Electrons', 'EM Field', 'Electric Field', 'Magnetic Field']
+        self.key_list = ['show_total_E', 'show_prtl_KE', 'show_ion_E', 'show_electron_E', 'show_field_E', 'show_E_E', 'show_B_E', 'show_Bz_energy']
+        self.plot_list = [self.total_plot[0], self.prtl_plot[0], self.ion_plot[0], self.electron_plot[0], self.field_plot[0], self.e_plot[0], self.mag_plot[0], self.Bz_plot[0]]
+        self.label_names = ['Prtl+Field', 'Particles', 'Ions', 'Electrons', 'EM Field', 'Electric Field', 'Magnetic Field', r'$B_z^2$']
 
         self.axes.dataLim = mtransforms.Bbox.unit()
         self.axes.dataLim.update_from_data_xy(xy = np.vstack(self.field_plot[0].get_data()).T, ignore=True)
@@ -177,6 +181,8 @@ class TotEnergyPanel:
         self.e_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalElectricEnergy)
         self.field_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy + self.parent.TotalElectricEnergy)
         self.total_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy + self.parent.TotalElectricEnergy + self.parent.TotalElectronEnergy + self.parent.TotalIonEnergy)
+        self.Bz_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalBzEnergy)
+
         self.cur_time.set_xdata([self.time,self.time])
         # fancy code to make sure that matplotlib sets its limits
         # based only on the visible lines.
@@ -285,7 +291,14 @@ class TotEnergySettings(Tk.Toplevel):
         cb = ttk.Checkbutton(frm, text = "E&M + Prtls",
             variable = self.ShowTotalVar,
             command = self.Selector)
-        cb.grid(row = 5, column = 0, columnspan =2) #sticky = Tk.W)
+        cb.grid(row = 5, column = 0, columnspan =1, sticky = Tk.W)
+
+        self.ShowBzVar = Tk.IntVar(self) # Create a var to track whether or not to plot poynting energy
+        self.ShowBzVar.set(self.parent.GetPlotParam('show_Bz_energy'))
+        cb = ttk.Checkbutton(frm, text = "B_z*B_z",
+            variable = self.ShowBzVar,
+            command = self.Selector)
+        cb.grid(row = 5, column = 1, columnspan =1, sticky = Tk.W)
 
 
 
@@ -447,7 +460,7 @@ class TotEnergySettings(Tk.Toplevel):
         # self.parent.key_list = ['show_prtl_KE', 'show_ion_E', 'show_electron_E', 'show_field_E', 'show_E_E', 'show_B_E']
         # self.parent.plot_list = [self.prtl_plot[0], self.ion_plot[0], self.electron_plot[0], self.field_plot[0], self.e_plot[0], self.mag_plot[0]]
         # self.parent.label_names = ['Particles', 'Ions', 'Electrons', 'EM Field', 'Electric Field', 'Magnetic Field']
-        VarList = [self.ShowTotalVar, self.ShowPrtlVar,  self.ShowIonVar, self.ShowElectronVar, self.ShowFieldVar, self.ShowEVar, self.ShowMagVar]
+        VarList = [self.ShowTotalVar, self.ShowPrtlVar,  self.ShowIonVar, self.ShowElectronVar, self.ShowFieldVar, self.ShowEVar, self.ShowMagVar, self.ShowBzVar]
 
 
         # First set the visibility of the plots to their new value
