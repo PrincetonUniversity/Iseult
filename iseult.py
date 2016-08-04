@@ -335,9 +335,8 @@ class PlaybackBar(Tk.Frame):
             # Set the value of play pressed to true, change the button name to
             # pause, turn off clear_fig, and start the play loop.
             self.playPressed = True
-            if self.parent.MainParamDict['Recording']:
-                self.parent.RenewCanvas()
-            else:
+            self.parent.RenewCanvas()
+            if not self.parent.MainParamDict['Recording']:
                 self.parent.HashIseultState()
                 already_saved = False
                 if self.parent.TimeStep.value in self.parent.SavedHashes.keys(): # we have already saved an image for this TimeStep
@@ -351,7 +350,7 @@ class PlaybackBar(Tk.Frame):
                 self.parent.resizable(0,0)
                 #            self.parent.MainParamDict['ClearFig'] = False
                 tmp_size = self.parent.f.get_size_inches()*self.parent.f.dpi
-                #            self.parent.SaveTmpFig()
+
                 # Create the figure
                 self.MovieFrame = ttk.Frame(self.parent)
                 self.parent.MovieFig = Figure(figsize = self.parent.f.get_size_inches(), dpi = self.parent.f.dpi, edgecolor = 'none')#, facecolor = '0.75')
@@ -2741,7 +2740,6 @@ class MainApp(Tk.Tk):
     def setKnob(self, value):
         # If the time parameter changes update the plots
         if self.playbackbar.playPressed and not self.MainParamDict['Recording']:
-            self.HashIseultState()
             already_saved = False
             if self.TimeStep.value in self.SavedHashes.keys(): # we have already saved an image for this TimeStep
                 # is the current state of Iseult equal to the state when we saved said image?
