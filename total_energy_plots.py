@@ -39,8 +39,8 @@ class TotEnergyPanel:
 
     # We need the types of all the parameters for the config file
     BoolList = ['twoD', 'set_y_min', 'set_y_max','show_prtl_KE', 'show_field_E','show_B_E', 'show_E_E',
-                'show_ion_E', 'show_electron_E', 'show_total_E', 'yLog', 'spatial_x', 'spatial_y', 'set_x_min',
-                'set_x_max', 'show_legend','show_current_time', 'show_Bz_energy']
+                'show_ion_E', 'show_electron_E', 'show_total_E', 'yLog', 'set_x_min',
+                'set_x_max', 'show_legend','show_current_time', 'show_Bz_energy'] # spatial_x and spatial_y should never be true, remove from boollist
     IntList = ['E_type']
     FloatList = ['y_min', 'y_max','x_min', 'x_max']
     StrList = []
