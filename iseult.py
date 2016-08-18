@@ -25,7 +25,6 @@ from fft_plots import FFTPanel
 from total_energy_plots import TotEnergyPanel
 from functools import partial
 #from ThreeD_mag_plots import ThreeDBPanel STILL TESTING
-import multiprocessing
 
 # I don't think that matplotlib allows multi-threading, in the interactive mode.
 # This is a flag that i have so I can mess around trying to get it to work.
@@ -65,9 +64,12 @@ class SubPlotWrapper:
     about each sub_plot in the Figure"""
 
     def __init__(self, parent, figure=None, pos = None, subplot_spec = None, ctype=None, graph = None):
-        self.parent = parent
-        self.chartType = 'PhasePlot'
+        # What happens when a SubPlotWrapper is initiated
+        self.parent = parent # Define the parent. MUST BE MainApp OF ISEULT
+        self.chartType = 'PhasePlot' # The default chartype
         # A dictionary that contains all of the plot types.
+        # The panels must follow certain conventions. TODO: Make a class and
+        # Have the panels extend this class.
         self.PlotTypeDict = {'PhasePlot': PhasePanel,
                              'EnergyPlot': EnergyPanel,
                              'FieldsPlot': FieldsPanel,
@@ -78,7 +80,19 @@ class SubPlotWrapper:
                              'FFTPlots': FFTPanel,
                              'TotalEnergyPlot': TotEnergyPanel
                              }
-        # A dictionary that will store where everything is in Hdf5 Files
+        #####
+        #
+        # First we create dictionary of dictionarys that will store all of the
+        # plot params values at self.PlotParamsDict['ctype']['param_name'],
+        #
+        # We also need a dictionary that returns a list of all of the params of
+        # a certain type, used in loading the config files.
+        # self.ParamsTypeDict['ctype']['BoolList'] returns all of the Booleans
+        # stored in the self.PlotParamsDict['ctype'] dictionary.
+        # BoolList, IntList, FloatList and StrList are the options, and the only
+        # types that are allowed self.PlotParamsDict['ctype'] dictionary.
+        #
+        ####
         self.GenParamDict()
         self.figure = figure
         self.subplot_spec = subplot_spec
@@ -88,13 +102,26 @@ class SubPlotWrapper:
         self.Changedto2D = False
         #
     def GetKeys(self):
+        ''' A function that returns a list of all of the keys required to plot
+        the subplot contained within SubPlotWrapper. the set_plot_keys function
+        must be defined in each of the subplot panel classes.'''
         return self.graph.set_plot_keys()
 
     def LoadKey(self, h5key):
+        '''This is a function the graph should call to load a particular key
+        stored in the Tristan outputfiles'''
         return self.parent.DataDict[h5key]
     def LoadData(self):
+
+        ''' LoadData is called by MainApp, it is defined by the subplot panel
+        class, but basically it is a function that should load all of the raw
+        output data of the current time slice required to make the plot and
+        then perform all the necessary calculations to calculate the quantity
+        of interest.'''
         self.graph.LoadData()
     def ChangeGraph(self, str_arg):
+        '''ChangeGraph changes the plotted graph to the one given by str_arg.
+        str_arg must be a key in self.PlotTypeDict'''
         # Change the graph type
         self.chartType = str_arg
         # put a list of the previous chart types in iseult
@@ -103,7 +130,18 @@ class SubPlotWrapper:
         self.parent.RenewCanvas(ForceRedraw = True)
 
     def GenParamDict(self):
-        # Generate a dictionary that will store all of the params at dict['ctype']['param_name']
+        '''First we create dictionary of dictionarys that will store all of the
+        plot params values at self.PlotParamsDict['ctype']['param_name'],
+
+        We also need a dictionary that returns a list of all of the params of
+        a certain type, used in loading the config files.
+        self.ParamsTypeDict['ctype']['BoolList'] returns all of the Booleans
+        stored in the self.PlotParamsDict['ctype'] dictionary.
+        BoolList, IntList, FloatList and StrList are the options, and the only
+        types that are allowed self.PlotParamsDict['ctype'] dictionary.
+        Generate a dictionary that will store all of the params at dict['ctype']['param_name']
+        '''
+
         self.PlotParamsDict = {plot_type: '' for plot_type in self.PlotTypeDict.keys()}
         for elm in self.PlotTypeDict.keys():
             self.PlotParamsDict[elm] = {key: self.PlotTypeDict[elm].plot_param_dict[key] for key in self.PlotTypeDict[elm].plot_param_dict.keys()}
@@ -118,14 +156,22 @@ class SubPlotWrapper:
 
 
     def RestoreDefaultPlotParams(self, ctype = None, RestoreAll = False):
-        if ctype is None:
+        ''' Restore the PlotParamsDictionary to the default values contained in
+        the class definition.'''
+        if ctype is None: # restore the currently shown plot
             ctype = self.chartType
-        if RestoreAll:
+        if RestoreAll: # Restore all of the plot types for this subplot
             self.GenParamDict()
-        else:
+        else: # Only restore the values of the ctype listed.
             self.PlotParamsDict[ctype] = {key: self.PlotTypeDict[ctype].plot_param_dict[key] for key in self.PlotTypeDict[ctype].plot_param_dict.keys()}
 
     def SetPlotParam(self, pname, val, ctype = None, update_plot = True, NeedsRedraw = False):
+        ''' A function that changes plot param 'pname' for the ctype chart to val
+        in the dictionary held by SubPlotWrapper. If update_plot is true,
+        the figure will be refreshed. If NeedsRedraw is true, the figure will
+        be cleared then re-drawn.'''
+
+
         if ctype is None:
             ctype = self.chartType
         # Check to see if a plot is changed from 1d to 2d
@@ -144,25 +190,47 @@ class SubPlotWrapper:
 
 
     def GetPlotParam(self, pname, ctype = None):
+        ''' A function that returns the value of the plot param 'pname' for the
+        ctype chart. If ctype is None, the currently shown subplot is used'''
+
         if ctype is None:
             ctype = self.chartType
         return self.PlotParamsDict[ctype][pname]
 
     def SetGraph(self, ctype = None):
+        ''' SetGraph is useful if you want to change the plot type without redrawing the figure
+        (e.g. if you want to set many graphs at once, like when loading in a config file.)'''
         if ctype:
             self.chartType = ctype
         self.graph = self.PlotTypeDict[self.chartType](self.parent, self)
 
     def DrawGraph(self):
+        ''' This function calls a function that must be defined in the subplotpanel
+         class, e.g. FieldsPanel.... It creates all of the axes used in the panel,
+         and writes the data. It should be called after clearing a figure, the
+         chartype is changed or when first initializing the figure. It will be
+         called if RenewCanvas(ForceRedraw = True)'''
+
         self.graph.draw()
 
     def RefreshGraph(self):
+        ''' This function calls a function that must be defined in the subplotpanel
+         class, e.g. FieldsPanel.... It only updates things held by  the panel to the data in output files with the current timestep.
+         It should be called when stepping through the times, or possibly when a plot param changes.
+         It will be called if RenewCanvas(ForceRedraw = False)'''
         self.graph.refresh()
 
     def OpenSubplotSettings(self):
+
+        ''' A function that that must be defined in the subplotpanel class, e.g.
+        FieldsPanel.... Opens up the pop-up that allows one to change parameters
+        of the plot, change chart type, etc.'''
+
         self.graph.OpenSettings()
+
 class Knob:
     """
+    ---- Taken from the Matplotlib gallery
     Knob - simple class with a "setKnob" method.
     A Knob instance is attached to a Param instance, e.g., param.attach(knob)
     Base class is for documentation purposes.
@@ -171,8 +239,8 @@ class Knob:
         pass
 
 class Param:
-
     """
+    ---- Taken from the Matplotlib gallery
     The idea of the "Param" class is that some parameter in the GUI may have
     several knobs that both control it and reflect the parameter's state, e.g.
     a slider, text, and dragging can all change the value of the frequency in
@@ -203,11 +271,13 @@ class Param:
                     feedbackKnob.setKnob(self.value)
         # Adding a new feature that allows one to loop backwards or forwards:
         elif self.maximum != self.minimum:
+
             if self.value == self.maximum:
                 self.value = self.minimum
                 for feedbackKnob in self.knobs:
                     if feedbackKnob != knob:
                         feedbackKnob.setKnob(self.value)
+
             elif self.value == self.minimum:
                 self.value = self.maximum
                 for feedbackKnob in self.knobs:
@@ -222,6 +292,7 @@ class Param:
             if feedbackKnob != knob:
                 feedbackKnob.setKnob(self.value)
         return self.value
+
     def constrain(self, value):
         if value <= self.minimum:
             value = self.minimum
@@ -232,9 +303,11 @@ class Param:
 
 class PlaybackBar(Tk.Frame):
 
-    """A Class that will handle the time-stepping in Iseult, and has the
+    """
+    A Class that will handle the time-stepping in Iseult, and has the
     following, a step left button, a play/pause button, a step right button, a
-    playbar, and a settings button."""
+    playbar, and a settings button.
+    """
 
     def __init__(self, parent, param, canvas = None):
         Tk.Frame.__init__(self)
@@ -612,8 +685,6 @@ class SettingsFrame(Tk.Toplevel):
         self.LimVar = Tk.IntVar()
         self.LimVar.set(self.parent.MainParamDict['SetxLim'])
         self.LimVar.trace('w', self.LimChanged)
-
-
 
         self.xleft = Tk.StringVar()
         self.xleft.set(str(self.parent.MainParamDict['xLeft']))
@@ -2272,8 +2343,7 @@ class MainApp(Tk.Tk):
                 self.IsCbarList.append(False)
                 if prev ==True:
                     if self.SubPlotList[i][j].GetPlotParam('twoD') == 1 and not self.SubPlotList[i][j].Changedto2D:
-                    #Note the axes still show up in the view if they are set to zero so we have to do it this way.
-#                    if self.SubPlotList[i][j].GetPlotParam('show_cbar') == 1:
+                    # Note the axes still show up in the view if they are set to zero so we have to do it this way.
                         self.IsCbarList.append(True)
                     elif self.SubPlotList[i][j].Changedto1D:
                         self.IsCbarList.append(True)
@@ -2315,9 +2385,10 @@ class MainApp(Tk.Tk):
                             # define the difference relative to the home loc
                             diff_list.append(cur_view[i][j])
 
-                    else: # They haven't zoomed in, diff should be zero,
-                    # but I'm making it a string so cur_view-shock_loc can be
-                    # equal to zero and the hash still distinguish between the two cases.
+                    else:
+                        # They haven't zoomed in, diff should be zero,
+                        # but I'm making it a string so cur_view-shock_loc can be
+                        # equal to zero and the hash still distinguish between the two cases.
                         diff_list.append('n/a')
 
 
@@ -2376,7 +2447,7 @@ class MainApp(Tk.Tk):
 
     def RenewCanvas(self, keep_view = True, ForceRedraw = False):
 
-        '''We have two way of updated the graphs: one) by refreshing them using
+        '''We have two way of updated the graphs: 1) by refreshing them using
         self.RefreshCanvas, we don't recreate all of the artists that matplotlib
         needs to make the plot work. self.RefreshCanvas should be fast. Two we
         can ReDraw the canvas using self.ReDrawCanvas. This recreates all the
@@ -2567,26 +2638,11 @@ class MainApp(Tk.Tk):
 
         # By design, the first_x and first_y cannot change if the graph is
         # being refreshed. Any call that would require this needs a redraw
+        # Now we refresh the graph.
+        for i in range(self.MainParamDict['NumOfRows']):
+            for j in range(self.MainParamDict['NumOfCols']):
 
-        if Use_MultiProcess:
-            jobs = []
-            # Refresh graphs in parallel
-            for i in range(self.MainParamDict['NumOfRows']):
-                for j in range(self.MainParamDict['NumOfCols']):
-                    jobs.append(CallAThread(self, i, j))
-
-            while len(jobs)>0:
-                for process in jobs:
-                    if not process.is_alive():
-                        jobs.remove(process)
-                time.sleep(.05)
-            print 'refreshed'
-
-        else:
-            for i in range(self.MainParamDict['NumOfRows']):
-                for j in range(self.MainParamDict['NumOfCols']):
-                    # Now we can refresh the graph.
-                    self.SubPlotList[i][j].RefreshGraph()
+                self.SubPlotList[i][j].RefreshGraph()
 
         if self.MainParamDict['ShowTitle']:
             tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].split('.')[-1]
@@ -2756,11 +2812,10 @@ class MainApp(Tk.Tk):
             #set the slider
             self.playbackbar.slider.set(value)
 
-#            self.MovieCanvas.image
-            pass
-#            self.f.
+
         else:
             self.RenewCanvas()
+
             self.playbackbar.tstep.set(str(value))
             #set the slider
             self.playbackbar.slider.set(value)
@@ -2769,19 +2824,6 @@ class MainApp(Tk.Tk):
     def TxtEnter(self, e):
         self.playbackbar.TextCallback()
 
-def CallAThread(iseult, i, j):
-    '''Code that will hopefully allow multiprocessing on refreshing the graphs...
-    Not working, doesn't update the plot DO NOT USE!'''
-    p = multiprocessing.Process(target=worker, args=(iseult,i,j))
-    p.start()
-    p.join()
-    return p
-
-
-
-def worker(iseult,i,j):
-    iseult.SubPlotList[i][j].RefreshGraph()
-    return
 if __name__ == "__main__":
 
 
