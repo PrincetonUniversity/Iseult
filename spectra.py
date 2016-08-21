@@ -26,12 +26,13 @@ class SpectralPanel:
                        'spatial_x': False,
                        'spatial_y': False,
                        'show_legend': True,
+                       'normalize_spectra': True,
                        'y_min': -6,
                        'y_max': 0}
 
     # We need the types of all the parameters for the config file
     BoolList = ['twoD', 'set_ylim', 'set_xlim',
-                'spatial_x', 'spatial_y',
+                'spatial_x', 'spatial_y', 'normalize_spectra',
                 'show_ions', 'show_electrons', 'rest_frame','show_legend']
     IntList = ['spectral_type']
     FloatList = ['y_min', 'y_max', 'x_min', 'x_max']
@@ -76,13 +77,17 @@ class SpectralPanel:
     def LoadData(self):
         self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
         self.istep = self.FigWrap.LoadKey('istep')[0]
-        self.gamma0 = self.FigWrap.LoadKey('gamma0')[0]
+#        self.gamma0 = self.FigWrap.LoadKey('gamma0')[0]
         self.xsl = self.FigWrap.LoadKey('xsl')/self.c_omp
         self.gamma = self.FigWrap.LoadKey('gamma')
 
         self.keyname = 'spectra_data'
+        if self.GetPlotParam('normalize_spectra'):
+            self.keyname +='_normalized_'
+
         if self.GetPlotParam('rest_frame'):
             self.keyname +='in_rest_frame'
+
 
         # A list that will make sure that the data has the same int region
         self.region_args = [self.parent.MainParamDict['PrtlIntegrationRelative'], self.parent.MainParamDict['ElectronLeft'], self.parent.MainParamDict['ElectronRight'], self.parent.MainParamDict['IonLeft'], self.parent.MainParamDict['IonRight']]
@@ -149,29 +154,38 @@ class SpectralPanel:
                 eL = eR
                 eR += 1
 
-                # total particles in each linear x bin
-            norme = np.copy(self.xsl)
-            normp = np.copy(self.xsl)
-            for i in range(len(norme)):
-                norme[i]=sum(self.spece[:,i])
-                normp[i]=sum(self.specp[:,i])
 
             # energy distribution, f(E)=(dn/dE)/N
             self.fe=np.empty(len(self.gamma))
             self.fp=np.empty(len(self.gamma))
 
 
+            norme = np.ones(len(self.xsl))
+            normp = np.ones(len(self.xsl))
+
+            # total particles in each linear x bin
+            for i in range(len(norme)):
+                norme[i]=sum(self.spece[:,i])
+                normp[i]=sum(self.specp[:,i])
+
             for k in range(len(self.fe)):
                 if sum(norme[eL:eR])*self.dgamma[k] > 1E-100:
-                    self.fe[k]=sum(self.spece[k][eL:eR])/(sum(norme[eL:eR])*self.dgamma[k])
+                    self.fe[k]=sum(self.spece[k][eL:eR])
                 else:
                     print 'RUNTIME WARNING: spectra.py can\'t find the electrons in the integration region, plot may be wrong'
                     self.fe[k] = 1E-100
                 if sum(norme[iL:iR])*self.dgamma[k] > 1E-100:
-                    self.fp[k]=sum(self.specp[k][iL:iR])/(sum(normp[iL:iR])*self.dgamma[k])
+                    self.fp[k]=sum(self.specp[k][iL:iR])
                 else:
                     print 'RUNTIME WARNING: spectra.py can\'t find ions in the integration region, plot may be wrong'
                     self.fp[k] = 1E-100
+
+            self.fe *= self.dgamma**(-1)
+            self.fp *= self.dgamma**(-1)
+            if self.GetPlotParam('normalize_spectra'):
+                self.fe *= 1.0/sum(norme[eL:eR])
+                self.fp *= 1.0/sum(normp[iL:iR])
+
 
             self.fe[self.fe <= 0] = 1E-100
             self.fp[self.fp <= 0] = 1E-100
@@ -693,6 +707,15 @@ class SpectraSettings(Tk.Toplevel):
                         variable = self.eVar,
                         command = self.eVarHandler)
         cb.grid(row = 6, column = 1, sticky = Tk.W)
+
+        # Normalize spectra
+        self.NormalizeVar = Tk.IntVar()
+        self.NormalizeVar.set(self.parent.GetPlotParam('normalize_spectra'))
+        cb = ttk.Checkbutton(frm, text = "Normalize Spectra",
+                        variable = self.NormalizeVar,
+                        command = self.NormalizeVarHandler)
+        cb.grid(row = 7, column = 1, sticky = Tk.W)
+
         # show in rest frame
         self.RestVar = Tk.IntVar()
         self.RestVar.set(self.parent.GetPlotParam('rest_frame'))
@@ -714,10 +737,10 @@ class SpectraSettings(Tk.Toplevel):
         self.xmax.set(str(self.parent.GetPlotParam('x_max')))
 
 
-#        cb = ttk.Checkbutton(frm, text ='Set xlim',
-#                        variable = self.xLimVar)
-#        cb.grid(row = 4, column =3,sticky = Tk.W)
-        ttk.Label(frm, text = 'Set xlim').grid(row = 4, column = 3, sticky = Tk.W)
+        cb = ttk.Checkbutton(frm, text ='Set xlim',
+                        variable = self.xLimVar)
+        cb.grid(row = 4, column =3,sticky = Tk.W)
+#        ttk.Label(frm, text = 'Set xlim').grid(row = 4, column = 3, sticky = Tk.W)
         self.eLEnter = ttk.Entry(frm, textvariable=self.xmin, width=7)
         self.eLEnter.grid(row = 4, column =4)
         self.eREnter = ttk.Entry(frm, textvariable=self.xmax, width=7)
@@ -736,10 +759,10 @@ class SpectraSettings(Tk.Toplevel):
         self.ymax.set(str(self.parent.GetPlotParam('y_max')))
 
 
-#        cb = ttk.Checkbutton(frm, text ='Set log(y) lim',
-#                        variable = self.yLimVar)
-#        cb.grid(row = 5,  column =3, sticky = Tk.W)
-        ttk.Label(frm, text = 'Set log(y) lim').grid(row = 5, column =3, sticky = Tk.W)
+        cb = ttk.Checkbutton(frm, text ='Set log(y) lim',
+                        variable = self.yLimVar)
+        cb.grid(row = 5,  column =3, sticky = Tk.W)
+#        ttk.Label(frm, text = 'Set log(y) lim').grid(row = 5, column =3, sticky = Tk.W)
         self.eLEnter = ttk.Entry(frm, textvariable=self.ymin, width=7)
         self.eLEnter.grid(row = 5, column =4)
         self.eREnter = ttk.Entry(frm, textvariable=self.ymax, width=7)
@@ -764,6 +787,13 @@ class SpectraSettings(Tk.Toplevel):
         else:
             self.parent.electron_spect[0].set_visible(self.eVar.get())
             self.parent.SetPlotParam('show_electrons', self.eVar.get())
+
+
+    def NormalizeVarHandler(self, *args):
+        if self.NormalizeVar.get() == self.parent.GetPlotParam('normalize_spectra'):
+            pass
+        else:
+            self.parent.SetPlotParam('normalize_spectra', self.NormalizeVar.get())
 
     def RadioSpect(self):
         if self.SpectTypeVar.get() == self.parent.GetPlotParam('spectral_type'):
