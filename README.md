@@ -19,7 +19,7 @@ Python packages required: MatPlotLib 1.4 & its required dependencies, python 2.7
 
 Iseult should work on Windows, MacOS & Linux.
 
-To run Iseult on orbital type the following:
+To run Iseult on tigressdata type the following:
 ```bash
 $ module load anaconda/2.5.0
 $ source activate root
