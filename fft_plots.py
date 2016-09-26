@@ -41,7 +41,7 @@ class FFTPanel:
         self.InterpolationMethods = ['nearest', 'bilinear', 'bicubic', 'spline16',
             'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
-        self.ylabel_list = [r'$|\delta B_z(k)|/B_0$', r'$|\delta B_\perp(k)|/B_0$', r'$\chi(k)\ [\ \! ^\circ]$']
+        self.ylabel_list = [r'$|\delta B_z(k)|/B_0$', r'$|\delta B_\perp(k)|/B_0$', r'$|E_x(k)|/E_0$', r'$\chi(k)\ [\ \! ^\circ]$']
     def ChangePlotType(self, str_arg):
         self.FigWrap.ChangeGraph(str_arg)
 
@@ -51,7 +51,7 @@ class FFTPanel:
         # First make sure that omega_plasma & xi is loaded so we can fix the
         # distances. We need all 3 magnetic field directions to calculate the FFT
         # or Chi
-        self.arrs_needed = ['c_omp', 'istep', 'bx', 'by', 'bz']
+        self.arrs_needed = ['c_omp', 'istep', 'bx', 'by', 'bz', 'ex']
         return self.arrs_needed
 
     def LoadData(self):
@@ -85,7 +85,7 @@ class FFTPanel:
             # Check that the save value has the same region for the FFT
             if np.all(self.region_args == self.parent.DataDict['FFTs'][-1]):
                 is_loaded = True
-                self.k_axis, self.BzFFT, self.BperpFFT, self.StokesChi, self.all_min_max, self.klims, region_args = self.parent.DataDict['FFTs']
+                self.k_axis, self.BzFFT, self.BperpFFT, self.ExFFT, self.StokesChi, self.all_min_max, self.klims, region_args = self.parent.DataDict['FFTs']
                 self.min_max = self.all_min_max[self.GetPlotParam('FFT_type')]
         if not is_loaded:
             ####
@@ -112,6 +112,12 @@ class FFTPanel:
             self.BperpFFT = np.fft.fftshift(self.BperpFFT)
 
             self.all_min_max.append(self.LimFinder(np.abs(self.BperpFFT)))
+
+	    ex = self.FigWrap.LoadKey('ex')[0,:,:]
+	    self.ExFFT = np.fft.fft(ex[self.oneDslice,iL:iR]*self.parent.e0**(-1.0))
+ 	    self.ExFFT = np.fft.fftshift(self.ExFFT)
+	    self.all_min_max.append(self.LimFinder(np.abs(self.ExFFT)))
+
             # Calculate Stokes I
             I = self.BperpFFT*np.conjugate(self.BperpFFT)
             I += self.BzFFT*np.conjugate(self.BzFFT)
@@ -131,7 +137,7 @@ class FFTPanel:
 
 #            self.klims = [[0, 5*kmaxval], [kmaxval/5, 50*kmaxval]]
             self.klims = [[0, 5*kmaxval], [kmaxval/5., 50*kmaxval]]
-            self.parent.DataDict['FFTs'] = self.k_axis, self.BzFFT, self.BperpFFT, self.StokesChi, self.all_min_max, self.klims, self.region_args
+            self.parent.DataDict['FFTs'] = self.k_axis, self.BzFFT, self.BperpFFT, self.ExFFT, self.StokesChi, self.all_min_max, self.klims, self.region_args
 
         # figure out the y lims for the plot
         self.min_max = self.all_min_max[self.GetPlotParam('FFT_type')]
@@ -144,6 +150,9 @@ class FFTPanel:
             self.y = np.abs(self.BperpFFT)
 
         if self.GetPlotParam('FFT_type') == 2:
+            self.y = np.abs(self.ExFFT)
+
+        if self.GetPlotParam('FFT_type') == 3:
             self.y = self.StokesChi
 
         self.ylabel = self.ylabel_list[self.GetPlotParam('FFT_type')]
@@ -268,7 +277,7 @@ class FFTSettings(Tk.Toplevel):
 
 
         # the Radiobox Control to choose the Field Type
-        self.FFTList = ['FFT_Bz', 'FFT_perp_in_plane', 'Chi']
+        self.FFTList = ['FFT_Bz', 'FFT_perp_in_plane', 'FFT_Ex', 'Chi']
         self.FFTTypeVar  = Tk.IntVar()
         self.FFTTypeVar.set(self.parent.GetPlotParam('FFT_type'))
 
@@ -324,11 +333,11 @@ class FFTSettings(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text ='k-axis logscale',
                         variable = self.xLogVar)
-        cb.grid(row = 6, column = 0, sticky = Tk.W)
+        cb.grid(row = 7, column = 0, sticky = Tk.W)
 
         cb = ttk.Checkbutton(frm, text ='y-axis logscale',
                         variable = self.yLogVar)
-        cb.grid(row = 7, column = 0, sticky = Tk.W)
+        cb.grid(row = 8, column = 0, sticky = Tk.W)
 
 
 
