@@ -2267,7 +2267,7 @@ class MainApp(Tk.Tk):
                 TotalIonKE = np.sum(np.sqrt(TotalIonKE)-1)
                 #TotalIonKE += -len(self.DataDict['we'])
 
-                TotalIonKE *= self.DataDict['stride'][0]
+                #TotalIonKE *= self.DataDict['stride'][0]
                 TotalIonKE *= self.DataDict['stride'][0]*self.DataDict['mi'][0]/self.DataDict['me']*np.abs(self.DataDict['qi'][0]) #mass of particle is its charge, qe/me=1
 
                 TotalKE = (TotalElectronKE +TotalIonKE)
