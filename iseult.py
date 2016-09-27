@@ -2174,7 +2174,7 @@ class MainApp(Tk.Tk):
 
         if not self.TimeStep.value in self.TotalEnergyTimeSteps:
             if self.showing_total_energy_plt:
-                tmp_L = ['ui', 'vi', 'wi', 'ue', 've', 'we', 'mi', 'me', 'stride', 'bx', 'by', 'bz', 'ex', 'ey', 'ez','qi']
+                tmp_L = ['ui', 'vi', 'wi', 'ue', 've', 'we', 'mi', 'me', 'stride', 'bx', 'by', 'bz', 'ex', 'ey', 'ez','qi','c']
                 for elm in tmp_L:
                     self.ToLoad[self.H5KeyDict[elm]].append(elm)
 
