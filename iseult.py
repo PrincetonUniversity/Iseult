@@ -2258,7 +2258,9 @@ class MainApp(Tk.Tk):
                 TotalElectronKE = np.sum(np.sqrt(TotalElectronKE)-1)
                 #TotalElectronKE += -len(self.DataDict['we'])
 
-                TotalElectronKE *= self.DataDict['stride'][0]*np.abs(self.DataDict['qi'][0]) #mass of particle is its charge, qe/me=1
+                TotalElectronKE *= self.DataDict['stride'][0] # multiply by the stride
+                TotalElectronKE *= np.abs(self.DataDict['qi'][0])*self.DataDict['c'][0]**2 # * m_e c^2, mass of particle is its charge, qe/me=1
+
 
 
                 TotalIonKE = self.DataDict['ui']*self.DataDict['ui']
@@ -2267,8 +2269,8 @@ class MainApp(Tk.Tk):
                 TotalIonKE = np.sum(np.sqrt(TotalIonKE)-1)
                 #TotalIonKE += -len(self.DataDict['we'])
 
-                #TotalIonKE *= self.DataDict['stride'][0]
-                TotalIonKE *= self.DataDict['stride'][0]*self.DataDict['mi'][0]/self.DataDict['me']*np.abs(self.DataDict['qi'][0]) #mass of particle is its charge, qe/me=1
+                TotalIonKE *= self.DataDict['stride'][0] # multiply by the stride
+                TotalIonKE *= self.DataDict['mi'][0]/self.DataDict['me']*np.abs(self.DataDict['qi'][0])*self.DataDict['c'][0]**2 #mass of particle is its charge, qe/me=1
 
                 TotalKE = (TotalElectronKE +TotalIonKE)
                 # Divide by x size
@@ -2286,9 +2288,9 @@ class MainApp(Tk.Tk):
                 # sum over the array and then multiply by the number of points len(x)*len(y)
 
                 BzEnergy = np.sum(BzEnergy)
-                BzEnergy *= self.DataDict['istep'][0]**2
+                BzEnergy *= self.DataDict['istep'][0]**2*.5
                 TotalBEnergy = np.sum(TotalBEnergy) #*self.DataDict['bx'][0,:,:].shape[1]*self.DataDict['bx'][0,:,:].shape[0]
-                TotalBEnergy *= self.DataDict['istep'][0]**2
+                TotalBEnergy *= self.DataDict['istep'][0]**2*.5
 #                TotalBEnergy *= self.DataDict['c_omp'][0]/self.DataDict['istep'][0]
 #                TotalBEnergy *= self.DataDict['c_omp'][0]/self.DataDict['istep'][0]
 
@@ -2298,7 +2300,7 @@ class MainApp(Tk.Tk):
 
                 # sum over the array and then divide by the number of points len(x)*len(y)
                 TotalEEnergy = np.sum(TotalEEnergy) #*self.DataDict['ex'][0,:,:].shape[1]*self.DataDict['ex'][0,:,:].shape[0]
-                TotalEEnergy *= self.DataDict['istep'][0]**2
+                TotalEEnergy *= self.DataDict['istep'][0]**2*.5
                 self.TotalMagEnergy = np.append(np.append(self.TotalMagEnergy[0:ind],TotalBEnergy), self.TotalMagEnergy[ind:])
                 self.TotalBzEnergy = np.append(np.append(self.TotalBzEnergy[0:ind],BzEnergy), self.TotalBzEnergy[ind:])
                 self.TotalElectricEnergy = np.append(np.append(self.TotalElectricEnergy[0:ind],TotalEEnergy), self.TotalElectricEnergy[ind:])
