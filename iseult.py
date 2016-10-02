@@ -1908,15 +1908,39 @@ class MainApp(Tk.Tk):
         param_re = re.compile('param.*')
         self.PathDict['Flds']= filter(f_re.match, os.listdir(self.dirname))
         self.PathDict['Flds'].sort()
+        for i in range(len(self.PathDict['Flds'])):
+            try:
+                int(self.PathDict['Flds'][i].split('.')[-1])
+            except:
+                self.PathDict['Flds'].pop(i)
 
         self.PathDict['Prtl']= filter(prtl_re.match, os.listdir(self.dirname))
         self.PathDict['Prtl'].sort()
+        for i in range(len(self.PathDict['Prtl'])):
+            try:
+                int(self.PathDict['Prtl'][i].split('.')[-1])
+            except:
+                self.PathDict['Prtl'].pop(i)
+
+
 
         self.PathDict['Spect']= filter(s_re.match, os.listdir(self.dirname))
         self.PathDict['Spect'].sort()
+        for i in range(len(self.PathDict['Spect'])):
+            try:
+                int(self.PathDict['Spect'][i].split('.')[-1])
+            except:
+                self.PathDict['Spect'].pop(i)
 
         self.PathDict['Param']= filter(param_re.match, os.listdir(self.dirname))
         self.PathDict['Param'].sort()
+        for i in range(len(self.PathDict['Param'])):
+            try:
+                int(self.PathDict['Param'][i].split('.')[-1])
+            except:
+                self.PathDict['Param'].pop(i)
+
+
 
         for key in self.PathDict.keys():
             is_okay &= len(self.PathDict[key]) > 0
