@@ -1911,17 +1911,20 @@ class MainApp(Tk.Tk):
         for i in range(len(self.PathDict['Flds'])):
             try:
                 int(self.PathDict['Flds'][i].split('.')[-1])
-            except:
+            except ValueError:
                 self.PathDict['Flds'].pop(i)
+            except IndexError:
+                pass
 
         self.PathDict['Prtl']= filter(prtl_re.match, os.listdir(self.dirname))
         self.PathDict['Prtl'].sort()
         for i in range(len(self.PathDict['Prtl'])):
             try:
                 int(self.PathDict['Prtl'][i].split('.')[-1])
-            except:
+            except ValueError:
                 self.PathDict['Prtl'].pop(i)
-
+            except IndexError:
+                pass
 
 
         self.PathDict['Spect']= filter(s_re.match, os.listdir(self.dirname))
@@ -1929,17 +1932,20 @@ class MainApp(Tk.Tk):
         for i in range(len(self.PathDict['Spect'])):
             try:
                 int(self.PathDict['Spect'][i].split('.')[-1])
-            except:
+            except ValueError:
                 self.PathDict['Spect'].pop(i)
+            except IndexError:
+                pass
 
         self.PathDict['Param']= filter(param_re.match, os.listdir(self.dirname))
         self.PathDict['Param'].sort()
         for i in range(len(self.PathDict['Param'])):
             try:
                 int(self.PathDict['Param'][i].split('.')[-1])
-            except:
+            except ValueError:
                 self.PathDict['Param'].pop(i)
-
+            except IndexError:
+                pass
 
 
         for key in self.PathDict.keys():
