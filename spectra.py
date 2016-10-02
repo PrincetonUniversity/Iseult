@@ -79,6 +79,7 @@ class SpectralPanel:
         self.istep = self.FigWrap.LoadKey('istep')[0]
 #        self.gamma0 = self.FigWrap.LoadKey('gamma0')[0]
         self.xsl = self.FigWrap.LoadKey('xsl')/self.c_omp
+        # Load gamma-1 of the spectra
         self.gamma = self.FigWrap.LoadKey('gamma')
 
         self.keyname = 'spectra_data'
@@ -103,6 +104,12 @@ class SpectralPanel:
                 self.gamma, self.edist, self.pdist, self.momentum, self.momedist, self.mompdist, region_args = self.parent.DataDict[self.keyname]
 
         if not is_loaded:
+
+            # Calculate the momentum := gamma*beta
+            #  NOTE: self.gamma is actually the real lorentz factor, gamma, minus 1
+
+            self.momentum=np.sqrt((self.gamma+1)**2-1.)
+
             if self.GetPlotParam('rest_frame'):
                 self.spece = np.copy(self.FigWrap.LoadKey('specerest'))
                 self.specp = np.copy(self.FigWrap.LoadKey('specprest'))
@@ -169,35 +176,44 @@ class SpectralPanel:
                 normp[i]=sum(self.specp[:,i])
 
             for k in range(len(self.fe)):
-                if sum(norme[eL:eR])*self.dgamma[k] > 1E-100:
-                    self.fe[k]=sum(self.spece[k][eL:eR])
-                else:
-                    print 'RUNTIME WARNING: spectra.py can\'t find the electrons in the integration region, plot may be wrong'
-                    self.fe[k] = 1E-100
-                if sum(norme[iL:iR])*self.dgamma[k] > 1E-100:
-                    self.fp[k]=sum(self.specp[k][iL:iR])
-                else:
-                    print 'RUNTIME WARNING: spectra.py can\'t find ions in the integration region, plot may be wrong'
-                    self.fp[k] = 1E-100
-
-            self.fe *= self.dgamma**(-1)
-            self.fp *= self.dgamma**(-1)
-            if self.GetPlotParam('normalize_spectra'):
-                self.fe *= 1.0/sum(norme[eL:eR])
-                self.fp *= 1.0/sum(normp[iL:iR])
+                self.fe[k]=sum(self.spece[k][eL:eR])
+                self.fp[k]=sum(self.specp[k][iL:iR])
 
 
-            self.fe[self.fe <= 0] = 1E-100
-            self.fp[self.fp <= 0] = 1E-100
-            #  NOTE: self.gamma is actually the real lorentz factor, gamma, minus 1 ***
-            self.edist=self.gamma*self.fe
-            self.pdist=self.gamma*self.fp
 
-            self.momentum=np.sqrt((self.gamma+1)**2-1.)
-            self.femom=self.fe/(4*np.pi*self.momentum)/(self.gamma+1)
-            self.momedist=self.femom*self.momentum**4
-            self.fpmom=self.fp/(4*np.pi*self.momentum)/(self.gamma+1)
-            self.mompdist=self.fpmom*self.momentum**4
+
+            if sum(norme[eL:eR]) > 0:
+                if self.GetPlotParam('normalize_spectra'):
+                    self.fe *= 1.0/sum(norme[eL:eR])
+
+                self.edist=np.copy(self.fe)
+                self.fe *= self.dgamma**(-1)
+                self.femom=self.fe/(4*np.pi*self.momentum)/(self.gamma+1)
+                self.momedist=self.femom*self.momentum**4
+
+            else:
+                print 'RUNTIME WARNING: spectra.py can\'t find the electrons in the integration region, spectra will be incorrect'
+                self.edist = 1E-200*np.ones(len(self.fe))
+                self.momedist = 1E-200*np.ones(len(self.fe))
+
+            if sum(normp[iL:iR]) > 0:
+                if self.GetPlotParam('normalize_spectra'):
+                    self.fp *= 1.0/sum(normp[iL:iR])
+
+                self.pdist=np.copy(self.fp)
+                self.fp *= self.dgamma**(-1)
+                self.fpmom=self.fp/(4*np.pi*self.momentum)/(self.gamma+1)
+                self.mompdist=self.fpmom*self.momentum**4
+
+            else:
+                print 'RUNTIME WARNING: spectra.py can\'t find ions in the integration region, spectra will be incorrect'
+                self.pdist = 1E-200*np.ones(len(self.fp))
+                self.mompdist = 1E-200*np.ones(len(self.fp))
+
+
+
+
+
             self.parent.DataDict[self.keyname] = self.gamma, self.edist, self.pdist, self.momentum, self.momedist, self.mompdist, self.region_args
 
     def draw(self):
