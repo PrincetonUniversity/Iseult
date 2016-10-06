@@ -696,7 +696,7 @@ class FieldsPanel:
 
                 elif self.GetPlotParam('field_type') == 2:
                     self.clims = np.copy(self.jymin_max[1])
-                    self.TwoDan.set_text(r'$J_y$')
+                    self.TwoDan.set_text(r'$J_z$')
 
             if self.parent.MainParamDict['SetxLim']:
                 if self.parent.MainParamDict['xLimsRelative']:
