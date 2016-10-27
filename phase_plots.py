@@ -259,16 +259,27 @@ class PhasePanel:
                 elif self.GetPlotParam('set_E_max'):
                     inRange = energy <= self.GetPlotParam('E_max')
                 inRange *= ~nan_ind
-                self.hist2d = np.histogram2d(self.y_values[inRange], self.x_values[inRange],
+                if self.GetPlotParam('weighted'):
+                    self.hist2d = np.histogram2d(self.y_values[inRange], self.x_values[inRange],
                         bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
                         range = [[self.pmin,self.pmax],[self.xmin,self.xmax]],
                         weights = self.weights[inRange])
+
+                else:
+                    self.hist2d = np.histogram2d(self.y_values[inRange], self.x_values[inRange],
+                        bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
+                        range = [[self.pmin,self.pmax],[self.xmin,self.xmax]])
+
             else:
-                self.hist2d = np.histogram2d(self.y_values[~nan_ind], self.x_values[~nan_ind],
+                if self.GetPlotParam('weighted'):
+                    self.hist2d = np.histogram2d(self.y_values[~nan_ind], self.x_values[~nan_ind],
                         bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
                         range = [[self.pmin,self.pmax],[self.xmin,self.xmax]],
                         weights = self.weights[~nan_ind])
-
+                else:
+                    self.hist2d = np.histogram2d(self.y_values[~nan_ind], self.x_values[~nan_ind],
+                        bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
+                        range = [[self.pmin,self.pmax],[self.xmin,self.xmax]])
 
             if self.GetPlotParam('masked'):
                 zval = ma.masked_array(self.hist2d[0])
