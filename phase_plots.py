@@ -135,7 +135,8 @@ class PhasePanel:
         ''' A helper function that checks if the histogram has
         already been calculated and if it hasn't, it calculates
         it then stores it.'''
-        self.key_name = ''
+        self.key_name = str(self.GetPlotParam('pbins')) + 'x' + str(self.GetPlotParam('xbins'))
+
         if self.GetPlotParam('masked'):
             self.key_name += 'masked_'
 
@@ -736,6 +737,18 @@ class PhaseSettings(Tk.Toplevel):
                         self.parent.SetPlotParam('masked', self.MaskVar.get()))
         cb.grid(row = 8, sticky = Tk.W)
 
+        self.TrueVar = Tk.IntVar()
+        self.TrueVar.set(1)
+        self.pBins = Tk.StringVar()
+        self.pBins.set(str(self.parent.GetPlotParam('pbins')))
+        ttk.Label(frm, text ='# of pbins').grid(row = 9, column = 0, sticky = Tk.W)
+        ttk.Entry(frm, textvariable=self.pBins, width=7).grid(row = 9, column = 1)
+
+        self.xBins = Tk.StringVar()
+        self.xBins.set(str(self.parent.GetPlotParam('xbins')))
+        ttk.Label(frm, text ='# of xbins').grid(row = 10, column = 0, sticky = Tk.W)
+        ttk.Entry(frm, textvariable=self.xBins, width=7).grid(row = 10, column = 1)
+
 
 #        ttk.Label(frm, text = 'If the zero values are not masked they are set to z_min/2').grid(row =9, columnspan =2)
     # Define functions for the events
@@ -931,9 +944,9 @@ class PhaseSettings(Tk.Toplevel):
         self.FieldsCallback()
 
     def FieldsCallback(self):
-        tkvarLimList = [self.Vmin, self.Vmax, self.Pmin, self.Pmax, self.Emin, self.Emax]
-        plot_param_List = ['v_min', 'v_max', 'p_min', 'p_max', 'E_min', 'E_max']
-        tkvarSetList = [self.setVminVar, self.setVmaxVar, self.setPminVar, self.setPmaxVar, self.setEminVar, self.setEmaxVar]
+        tkvarLimList = [self.Vmin, self.Vmax, self.Pmin, self.Pmax, self.Emin, self.Emax, self.pBins, self.xBins]
+        plot_param_List = ['v_min', 'v_max', 'p_min', 'p_max', 'E_min', 'E_max', 'pbins', 'xbins']
+        tkvarSetList = [self.setVminVar, self.setVmaxVar, self.setPminVar, self.setPmaxVar, self.setEminVar, self.setEmaxVar, self.TrueVar, self.TrueVar]
         to_reload = False
         for j in range(len(tkvarLimList)):
             try:
