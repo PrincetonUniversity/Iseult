@@ -227,16 +227,18 @@ class PhasePanel:
             v_tot_sq = vx_prime**2 + vy_prime**2 + vz_prime**2
             gamma_prime = 1/np.sqrt(1-v_tot_sq)
 
-            # Some of the values are becoming NaN.
-            # ignore them
-            nan_ind = np.isnan(gamma_prime)
-            
+
             if self.GetPlotParam('mom_dim') == 0:
                 self.y_values  = vx_prime*gamma_prime
             if self.GetPlotParam('mom_dim') == 1:
                 self.y_values  = vy_prime*gamma_prime
             if self.GetPlotParam('mom_dim') == 2:
                 self.y_values  = vz_prime*gamma_prime
+
+            # Some of the values are becoming NaN.
+            # ignore them
+            nan_ind = np.isnan(self.y_values)
+
 
             self.pmin = min(self.y_values)
             self.pmax = max(self.y_values)
@@ -260,12 +262,12 @@ class PhasePanel:
                 self.hist2d = np.histogram2d(self.y_values[inRange], self.x_values[inRange],
                         bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
                         range = [[self.pmin,self.pmax],[self.xmin,self.xmax]],
-                        weights = self.weights)
+                        weights = self.weights[inRange])
             else:
                 self.hist2d = np.histogram2d(self.y_values[~nan_ind], self.x_values[~nan_ind],
                         bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
                         range = [[self.pmin,self.pmax],[self.xmin,self.xmax]],
-                        weights = self.weights)
+                        weights = self.weights[~nan_ind])
 
 
             if self.GetPlotParam('masked'):
