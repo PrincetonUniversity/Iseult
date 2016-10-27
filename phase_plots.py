@@ -23,7 +23,6 @@ class PhasePanel:
                        'weighted': False,
                        'show_shock': False,
                        'show_int_region': True,
-                       'set_color_limits': False,
                        'xbins' : 200,
                        'pbins' : 200,
                        'v_min': -2.0,
@@ -42,7 +41,7 @@ class PhasePanel:
                        'spatial_y': False,
                        'interpolation': 'hermite'}
 
-    BoolList = ['twoD', 'masked', 'weighted', 'show_cbar', 'show_shock', 'show_int_region', 'set_color_limits',
+    BoolList = ['twoD', 'masked', 'weighted', 'show_cbar', 'show_shock', 'show_int_region',
                 'set_v_min', 'set_v_max', 'set_p_min', 'set_p_max', 'set_E_min', 'Set_E_max', 'spatial_x', 'spatial_y']
     IntList = ['prtl_type','mom_dim', 'xbins', 'pbins']
     FloatList = ['v_min', 'v_max', 'p_min', 'p_max', 'cpow_num', 'E_min', 'E_max']
@@ -173,20 +172,16 @@ class PhasePanel:
 
             # First calculate beta and gamma
             if self.parent.MainParamDict['GammaBoost'] >=1:
-                self.parent.MainParamDict['GammaBoost'] = self.parent.MainParamDict['GammaBoost']
+                self.GammaBoost = self.parent.MainParamDict['GammaBoost']
                 self.betaBoost = np.sqrt(1-1/self.parent.MainParamDict['GammaBoost']**2)
             elif self.parent.MainParamDict['GammaBoost'] >-1:
                 self.betaBoost = self.parent.MainParamDict['GammaBoost']
-                self.parent.MainParamDict['GammaBoost'] = np.sqrt(1-self.betaBoost**2)**(-1)
+                self.GammaBoost = np.sqrt(1-self.betaBoost**2)**(-1)
 
             else:
-                self.parent.MainParamDict['GammaBoost'] = -self.parent.MainParamDict['GammaBoost']
+                self.GammaBoost = -self.parent.MainParamDict['GammaBoost']
                 self.betaBoost = -np.sqrt(1-1/self.parent.MainParamDict['GammaBoost']**2)
 
-
-            # Now calculate the transformation of xmin & xmax
-            self.xmin = self.parent.MainParamDict['GammaBoost']*(self.xmin-self.betaBoost*self.FigWrap.LoadKey('time')[0])
-            self.xmax = self.parent.MainParamDict['GammaBoost']*(self.xmax-self.betaBoost*self.FigWrap.LoadKey('time')[0])
 
 
             # Now load the data. We require all 3 dimensions to determine
@@ -210,8 +205,6 @@ class PhasePanel:
                 if self.GetPlotParam('weighted'):
                     self.weights = self.FigWrap.LoadKey('che')
 
-            # Transformation of x_values of the particles
-            self.x_values = self.parent.MainParamDict['GammaBoost']*(self.x_values-self.betaBoost*self.FigWrap.LoadKey('time')[0])
 
             # Now calculate gamma of the particles in downstream restframe
             gamma_ds = np.sqrt(u**2+v**2+w**2+1)
@@ -226,8 +219,8 @@ class PhasePanel:
             # Now calulate the velocities in the boosted frames
             tmp_helper = 1-vx*self.betaBoost
             vx_prime = (vx-self.betaBoost)/tmp_helper
-            vy_prime = vy/self.parent.MainParamDict['GammaBoost']/tmp_helper
-            vz_prime = vz/self.parent.MainParamDict['GammaBoost']/tmp_helper
+            vy_prime = vy/self.GammaBoost/tmp_helper
+            vz_prime = vz/self.GammaBoost/tmp_helper
 
             # Now calculate the LF in the boosted frames
             gamma_prime = 1/np.sqrt(1-vx_prime**2-vy_prime**2-vz_prime**2)
