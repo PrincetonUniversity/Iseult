@@ -223,11 +223,16 @@ class PhasePanel:
             vy_prime = vy/self.GammaBoost/tmp_helper
             vz_prime = vz/self.GammaBoost/tmp_helper
 
-            # Now calculate the LF in the boosted frames
+            # Now calculate the LF in the boosted frames using rapidity
+            # Initial rapidity
+            rap_prtl = np.arccosh(gamma_ds)
+            rap_boost = np.arccosh(self.GammaBoost)
+
             v_tot_sq = vx_prime**2 + vy_prime**2 + vz_prime**2
-            gamma_prime = 1/np.sqrt(1-v_tot_sq)
+            gamma_old_way = 1/np.sqrt(1-v_tot_sq)
 
-
+            gamma_prime = gamma_ds*self.GammaBoost+np.sinh(rap_prtl)*np.sinh(rap_boost)/np.sqrt(1+(v/u)**2+(w/u)**2)
+            gamma_prime[vx_prime < 0.98] = gamma_old_way[vx_prime<0.98]
             if self.GetPlotParam('mom_dim') == 0:
                 self.y_values  = vx_prime*gamma_prime
             if self.GetPlotParam('mom_dim') == 1:
