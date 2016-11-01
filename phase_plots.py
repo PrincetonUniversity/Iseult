@@ -231,8 +231,8 @@ class PhasePanel:
             v_tot_sq = vx_prime**2 + vy_prime**2 + vz_prime**2
             gamma_old_way = 1/np.sqrt(1-v_tot_sq)
 
-            gamma_prime = gamma_ds*self.GammaBoost+np.sinh(rap_prtl)*np.sinh(rap_boost)/np.sqrt(1+(v/u)**2+(w/u)**2)
-            gamma_prime[vx_prime < 0.98] = gamma_old_way[vx_prime<0.98]
+            gamma_prime = gamma_ds*self.GammaBoost-np.sign(u)*np.sign(self.betaBoost)*np.sinh(rap_prtl)*np.sinh(rap_boost)/np.sqrt(1+(v/u)**2+(w/u)**2)
+
             if self.GetPlotParam('mom_dim') == 0:
                 self.y_values  = vx_prime*gamma_prime
             if self.GetPlotParam('mom_dim') == 1:
