@@ -9,6 +9,8 @@ IDL script.
 
 UPDATES:
 -------
+Dec 10th 2016: Added a really basic movie saving feature. You'll find it in the file menu.
+
 The code is now it's beta phase. See the implemented column for what has
 already been implemented.
 
