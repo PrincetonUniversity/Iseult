@@ -2879,6 +2879,9 @@ class MainApp(Tk.Tk):
         frame_arr = np.arange(start, stop, step)
         if frame_arr[-1] != stop:
             frame_arr = np.append(frame_arr, stop)
+        if self.showing_total_energy_plt:
+            for k in frame_arr:
+                self.TimeStep.set(k)
 
         with writer.saving(self.f, fname, 100):
             for i in frame_arr:
