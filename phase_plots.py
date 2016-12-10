@@ -228,8 +228,8 @@ class PhasePanel:
             rap_prtl = np.arccosh(gamma_ds)
             rap_boost = np.arccosh(self.GammaBoost)
 
-            v_tot_sq = vx_prime**2 + vy_prime**2 + vz_prime**2
-            gamma_old_way = 1/np.sqrt(1-v_tot_sq)
+            #v_tot_sq = vx_prime**2 + vy_prime**2 + vz_prime**2
+            #gamma_old_way = 1/np.sqrt(1-v_tot_sq)
 
             gamma_prime = gamma_ds*self.GammaBoost-np.sign(u)*np.sign(self.betaBoost)*np.sinh(rap_prtl)*np.sinh(rap_boost)/np.sqrt(1+(v/u)**2+(w/u)**2)
 
@@ -241,7 +241,7 @@ class PhasePanel:
                 self.y_values  = vz_prime*gamma_prime
 
             # Some of the values are becoming NaN.
-            # ignore them
+            # ignore them, but I don't think this should be happening anymore....
             nan_ind = np.isnan(self.y_values)
 
 
