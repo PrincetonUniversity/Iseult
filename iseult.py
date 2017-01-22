@@ -1562,7 +1562,7 @@ class MainApp(Tk.Tk):
                     help='Maximum file # to consider')
 
         parser.add_argument('-O', nargs = '?',# dest='accumulate', action='store_const',
-                    const='output', default='output',
+                    const='', default='',
                     help='Directory Iseult will open. Default is output')
 
         parser.add_argument('-p', nargs = '?',# dest='accumulate', action='store_const',
@@ -1601,6 +1601,7 @@ class MainApp(Tk.Tk):
                              command=quit, accelerator="Ctrl+Q")
         fileMenu.add_command(label= 'Save Current State', command = self.OpenSaveDialog)
         fileMenu.add_command(label= 'Make a Movie', command = self.OpenMovieDialog)
+        fileMenu.add_command(label= 'Reset Session', command = self.ResetSession)
 
 
         self.bind_all("<Control-q>", self.quit)
@@ -1742,6 +1743,9 @@ class MainApp(Tk.Tk):
         # Look for the tristan output files and load the file paths into
         # previous objects
         self.dirname = os.curdir
+        if len(self.cmd_args.O)>0:
+            self.dirname = os.path.join(self.dirname, self.cmd_args.O)
+
         self.findDir()
 
         # Set the particle colors
@@ -2057,8 +2061,8 @@ class MainApp(Tk.Tk):
         using regular expressions, then generate the lists of files
         to iterate over"""
         dirlist = os.listdir(self.dirname)
-        if self.cmd_args.O in dirlist:
-            self.dirname = os.path.join(self.dirname, self.cmd_args.O)
+        if 'output' in dirlist:
+            self.dirname = os.path.join(self.dirname, 'output')
 
         is_okay = True
 
@@ -2149,6 +2153,13 @@ class MainApp(Tk.Tk):
 #            p = MyDalog(self, 'Directory must contain either the output directory or all of the following: \n flds.tot.*, ptrl.tot.*, params.*, spect.*', title = 'Cannot find output files')
 #            self.wait_window(p.top)
             self.findDir()
+        else:
+            self.ReDrawCanvas()
+
+    def ResetSession(self, e = None):
+        """open a file"""
+        self.pathOK()
+        self.ReDrawCanvas()
 
     def findDir(self, dlgstr = 'Choose the directory of the output files.'):
         """Look for /ouput folder, where the simulation results are
