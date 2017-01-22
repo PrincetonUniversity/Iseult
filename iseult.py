@@ -611,6 +611,107 @@ class SaveDialog(Tk.Toplevel):
     def apply(self):
         ''' Save the config file'''
         self.parent.SaveIseultState(os.path.join(self.parent.IseultDir, '.iseult_configs', str(self.e1.get()).strip().replace(' ', '_') +'.cfg'), str(self.e1.get()).strip())
+class MaxNDialog(Tk.Toplevel):
+
+    def __init__(self, parent, title = None):
+
+        Tk.Toplevel.__init__(self, parent)
+        self.transient(parent)
+
+        if title:
+            self.title(title)
+
+        self.parent = parent
+
+        self.result = None
+
+        body = ttk.Frame(self)
+        self.initial_focus = self.body(body)
+#        body.pack(fill=Tk.BOTH)#, expand=True)
+        body.pack(fill = Tk.BOTH, anchor = Tk.CENTER, expand=1)
+
+        self.buttonbox()
+
+        self.grab_set()
+
+        if not self.initial_focus:
+            self.initial_focus = self
+
+        self.protocol("WM_DELETE_WINDOW", self.cancel)
+
+        self.geometry("+%d+%d" % (parent.winfo_rootx()+50,
+                                  parent.winfo_rooty()+50))
+
+        self.initial_focus.focus_set()
+
+        self.wait_window(self)
+
+    #
+    # construction hooks
+
+    def body(self, master):
+        # create dialog body.  return widget that should have
+        # initial focus.  this method should be overridden
+        ttk.Label(master, text="Max Frame (-1 for last frame):").grid(row=0)
+        self.e1 = ttk.Entry(master, width=17)
+        self.e1.insert(0,str(self.parent.cmd_args.n))
+        self.e1.grid(row=0, column=1, sticky = Tk.E)
+
+    def buttonbox(self):
+        # add standard button box. override if you don't want the
+        # standard buttons
+
+        box = ttk.Frame(self)
+
+        w = ttk.Button(box, text="OK", width=10, command=self.ok, default=Tk.ACTIVE)
+        w.pack(side=Tk.LEFT, padx=5, pady=5)
+
+        self.bind("<Return>", self.ok)
+        box.pack()
+
+    #
+    # standard button semantics
+
+    def ok(self, event=None):
+
+        if not self.validate():
+            self.initial_focus.focus_set() # put focus back
+            return
+
+        self.withdraw()
+        self.update_idletasks()
+
+        self.apply()
+
+        self.cancel()
+
+    def cancel(self, event=None):
+
+        # put focus back to the parent window
+        self.parent.focus_set()
+        self.destroy()
+
+    #
+    # command hooks
+
+    def validate(self):
+        ''' Check to make sure the config file doesn't already exist'''
+        self.N = str(self.e1.get())
+        try:
+            self.N = int(self.e1.get())
+        except ValueError:
+            self.N = ''
+        if self.N == '':
+            tkMessageBox.showwarning(
+                "Bad input",
+                "Max N must contain an int, please try again"
+            )
+        else:
+            return 1 # override
+
+    def apply(self):
+        '''Update the -n option'''
+        self.parent.cmd_args.n = int(self.N)
 
 class MovieDialog(Tk.Toplevel):
 
@@ -1558,7 +1659,7 @@ class MainApp(Tk.Tk):
 #        parser.add_argument('--foo', nargs='?', const='c', default='d')
 #        parser.add_argument('bar', nargs='?', default='d')
         parser.add_argument('-n', nargs = '?',# dest='accumulate', action='store_const',
-                    const=np.NaN, default=np.NaN,
+                    const=-1, default=-1,
                     help='Maximum file # to consider')
 
         parser.add_argument('-O', nargs = '?',# dest='accumulate', action='store_const',
@@ -2020,6 +2121,9 @@ class MainApp(Tk.Tk):
         """ This function updates the current pathdictionary"""
         dirlist = os.listdir(self.dirname)
 
+        if int(self.cmd_args.n)!=-1:
+            self.CheckMaxNPopUp()
+            
         # Create a dictionary of all the paths to the files
         self.PathDict = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
 
@@ -2041,7 +2145,7 @@ class MainApp(Tk.Tk):
         self.PathDict['Param'].sort()
 
 
-        if not(np.isnan(float(self.cmd_args.n))):
+        if int(self.cmd_args.n)!=-1:
             max_file = int(self.cmd_args.n)
             for key in self.PathDict.keys():
                 output_max = len(self.PathDict[key])
@@ -2056,6 +2160,8 @@ class MainApp(Tk.Tk):
             self.playbackbar.slider.set(self.TimeStep.value)
         self.shock_finder()
 
+    def CheckMaxNPopUp(self):
+        MaxNDialog(self)
     def pathOK(self):
         """ Test to see if the current path contains tristan files
         using regular expressions, then generate the lists of files
@@ -2120,7 +2226,7 @@ class MainApp(Tk.Tk):
             is_okay &= len(self.PathDict[key]) > 0
 
         if is_okay:
-            if not(np.isnan(float(self.cmd_args.n))):
+            if int(self.cmd_args.n)!=-1:
                 max_file = int(self.cmd_args.n)
                 for key in self.PathDict.keys():
                     output_max = len(self.PathDict[key])
@@ -2142,6 +2248,8 @@ class MainApp(Tk.Tk):
     def OnOpen(self, e = None):
         """open a file"""
 
+        if cmd_args.n != -1:
+            self.CheckMaxNPopUp()
 
         tmpdir = tkFileDialog.askdirectory(title = 'Choose the directory of the output files', **self.dir_opt)
         if tmpdir == '':
@@ -2158,6 +2266,8 @@ class MainApp(Tk.Tk):
 
     def ResetSession(self, e = None):
         """open a file"""
+        if int(self.cmd_args.n) != -1:
+            self.CheckMaxNPopUp()
         self.pathOK()
         self.ReDrawCanvas()
 
