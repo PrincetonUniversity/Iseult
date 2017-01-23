@@ -25,6 +25,7 @@ from energy_plots import EnergyPanel
 from fft_plots import FFTPanel
 from total_energy_plots import TotEnergyPanel
 from functools import partial
+#import datetime
 #from ThreeD_mag_plots import ThreeDBPanel STILL TESTING
 
 # I don't think that matplotlib allows multi-threading, in the interactive mode.
@@ -1675,7 +1676,8 @@ class MainApp(Tk.Tk):
 
 
         self.cmd_args = parser.parse_args()
-
+#        if self.cmd_args.r:
+#            self.iconify()
         # A variable that keeps track of the first graph with spatial x & y axes
         self.first_x = None
         self.first_y = None
@@ -1892,6 +1894,8 @@ class MainApp(Tk.Tk):
         self.bind('<Right>', self.playbackbar.SkipRight)
         self.bind('r', self.playbackbar.OnReload)
         self.bind('<space>', self.playbackbar.PlayHandler)
+        self.update()
+
 
     def quit(self, event):
         print("quitting...")
@@ -2123,7 +2127,7 @@ class MainApp(Tk.Tk):
 
         if int(self.cmd_args.n)!=-1:
             self.CheckMaxNPopUp()
-            
+
         # Create a dictionary of all the paths to the files
         self.PathDict = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
 
@@ -2248,7 +2252,7 @@ class MainApp(Tk.Tk):
     def OnOpen(self, e = None):
         """open a file"""
 
-        if cmd_args.n != -1:
+        if self.cmd_args.n != -1:
             self.CheckMaxNPopUp()
 
         tmpdir = tkFileDialog.askdirectory(title = 'Choose the directory of the output files', **self.dir_opt)
