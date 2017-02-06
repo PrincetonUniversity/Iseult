@@ -246,7 +246,7 @@ class TotEnergySettings(Tk.Toplevel):
 
         # the Check boxes for the dimension
         ttk.Label(frm, text='Show Prtl Energy:').grid(row = 1, column = 0, sticky = Tk.W)
-        ttk.Label(frm, text='Show Field Energy:').grid(row = 1, column = 0, sticky = Tk.W)
+        ttk.Label(frm, text='Show Field Energy:').grid(row = 1, column = 1, sticky = Tk.W)
 
         self.ShowElectronVar = Tk.IntVar(self) # Create a var to track whether or not to show electrons
         self.ShowElectronVar.set(self.parent.GetPlotParam('show_electron_E'))
