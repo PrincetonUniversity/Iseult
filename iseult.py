@@ -24,6 +24,7 @@ from mag_plots import BPanel
 from energy_plots import EnergyPanel
 from fft_plots import FFTPanel
 from total_energy_plots import TotEnergyPanel
+from moments import MomentsPanel
 from functools import partial
 #import datetime
 #from ThreeD_mag_plots import ThreeDBPanel STILL TESTING
@@ -80,7 +81,8 @@ class SubPlotWrapper:
                              'MagPlots': BPanel,
 #                             '3dMagPlots': ThreeDBPanel,
                              'FFTPlots': FFTPanel,
-                             'TotalEnergyPlot': TotEnergyPanel
+                             'TotalEnergyPlot': TotEnergyPanel,
+                             'Moments': MomentsPanel
                              }
         #####
         #
