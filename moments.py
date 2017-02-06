@@ -168,7 +168,8 @@ class  MomentsPanel:
             self.xaxis_values = np.arange(self.FigWrap.LoadKey('bx')[0,:,:].shape[1])/self.c_omp*self.istep
         #            print self.xaxis_values
             self.parent.DataDict['xaxis_values'] = np.copy(self.xaxis_values)
-
+        self.xmin = 0
+        self.xmax = self.xaxis_values[-1]
         self.key_name = str(self.GetPlotParam('xbins'))
         if self.GetPlotParam('UpstreamFrame'):
             self.key_name += 'Up'
@@ -514,6 +515,15 @@ class  MomentsPanel:
         if self.GetPlotParam('set_v_max'):
             self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
 
+        if self.parent.MainParamDict['SetxLim']:
+            if self.parent.MainParamDict['xLimsRelative']:
+                self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                   self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+            else:
+                self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+        else:
+            self.axes.set_xlim(self.xmin,self.xmax)
+
 
 
         self.axes.set_xlabel(r'$x\  [c/\omega_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
@@ -560,6 +570,14 @@ class  MomentsPanel:
             self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
 
 
+        if self.parent.MainParamDict['SetxLim']:
+            if self.parent.MainParamDict['xLimsRelative']:
+                self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                   self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+            else:
+                self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+        else:
+            self.axes.set_xlim(self.xmin,self.xmax)
 
 
     def GetPlotParam(self, keyname):
