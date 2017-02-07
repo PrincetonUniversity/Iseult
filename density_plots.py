@@ -210,10 +210,10 @@ class DensPanel:
             if self.FigWrap.GetPlotParam('dens_type') == 0:
                 if self.FigWrap.GetPlotParam('normalize_density'):
                     self.zval = self.dens*self.ppc0**(-1.0)
-                    self.two_d_label = r'$n_e/n_0$'
+                    self.two_d_label = r'$n/n_0$'
                 else:
                     self.zval = self.dens
-                    self.two_d_label = r'$n_e$'
+                    self.two_d_label = r'$n$'
 
             if self.FigWrap.GetPlotParam('dens_type') == 1:
                 self.zval = self.rho
@@ -758,9 +758,9 @@ class DensSettings(Tk.Toplevel):
             if self.parent.GetPlotParam('twoD')==1:
                 if self.parent.GetPlotParam('dens_type') == 0:
                     if self.NormDVar.get():
-                        self.parent.an_2d.set_text(r'$n_e/n_0$')
+                        self.parent.an_2d.set_text(r'$n/n_0$')
                     else:
-                        self.parent.an_2d.set_text(r'$n_e$')
+                        self.parent.an_2d.set_text(r'$n$')
             # Now for the 1d label
             else:
                 if self.parent.GetPlotParam('dens_type') == 0:
@@ -860,9 +860,9 @@ class DensSettings(Tk.Toplevel):
             if self.parent.GetPlotParam('twoD'):
                 if self.DensTypeVar.get() == 0:
                     if self.parent.GetPlotParam('normalize_density'):
-                        self.parent.an_2d.set_text(r'$n_e/n_0$')
+                        self.parent.an_2d.set_text(r'$n/n_0$')
                     else:
-                        self.parent.an_2d.set_text(r'$n_e$')
+                        self.parent.an_2d.set_text(r'$n$')
 
                 else:
                     self.parent.an_2d.set_text(r'$\rho$')
