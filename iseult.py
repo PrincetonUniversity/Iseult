@@ -126,11 +126,21 @@ class SubPlotWrapper:
     def ChangeGraph(self, str_arg):
         '''ChangeGraph changes the plotted graph to the one given by str_arg.
         str_arg must be a key in self.PlotTypeDict'''
+
+        # First check if the current plot has a color bar
+        tmpIs2D = self.PlotParamsDict[self.chartType]['twoD']
+
         # Change the graph type
         self.chartType = str_arg
         # put a list of the previous chart types in iseult
 
         self.graph = self.PlotTypeDict[self.chartType](self.parent, self)
+
+        # If the graph changes from 1D or 2D, we need to save this
+        if tmpIs2D != self.PlotParamsDict[self.chartType]['twoD']:
+            self.Changedto1D = not self.PlotParamsDict[self.chartType]['twoD']
+            self.Changedto2D = self.PlotParamsDict[self.chartType]['twoD']
+
         self.parent.RenewCanvas(ForceRedraw = True)
 
     def GenParamDict(self):
