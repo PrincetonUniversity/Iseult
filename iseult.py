@@ -1042,6 +1042,15 @@ class SettingsFrame(Tk.Toplevel):
                                 variable = self.AspectVar)
         cb.grid(row = 11, column = 1, sticky = Tk.W)
 
+        self.ConstantShockVar = Tk.IntVar()
+        self.ConstantShockVar.set(self.parent.MainParamDict['ConstantShockVel'])
+        self.ConstantShockVar.trace('w', self.ShockSpeedVarChanged)
+
+        cb = ttk.Checkbutton(frm, text = "Constant Shock v" + '\r' + 'Warning: False may break things...',
+                                variable = self.ConstantShockVar)
+        cb.grid(row = 11, column = 2, rowspan  =2, sticky = Tk.W)
+
+
         self.CbarOrientation = Tk.IntVar()
         self.CbarOrientation.set(self.parent.MainParamDict['HorizontalCbars'])
         self.CbarOrientation.trace('w', self.OrientationChanged)
@@ -1076,6 +1085,11 @@ class SettingsFrame(Tk.Toplevel):
         else:
             self.parent.MainParamDict['ImageAspect'] = self.AspectVar.get()
             self.parent.RenewCanvas(ForceRedraw = True)
+
+
+    def ShockSpeedVarChanged(self, *args):
+        self.parent.MainParamDict['ConstantShockVel'] = self.ConstantShockVar.get()
+        self.parent.RenewCanvas(ForceRedraw = True)
 
     def OrientationChanged(self, *args):
         if self.CbarOrientation.get() == self.parent.MainParamDict['HorizontalCbars']:
@@ -1984,6 +1998,7 @@ class MainApp(Tk.Tk):
                               'yLabelPad': 0,
                               'SetxLim': False,
                               'xLimsRelative': False,
+                              'ConstantShockVel': True,
                               'xRight': 100.0,
                               'GammaElectronInjection': 30.0,
                               'LinkSpatial': 2,
@@ -2012,7 +2027,8 @@ class MainApp(Tk.Tk):
                     'SetTe', 'SetTi','MeasureEpsP', 'MeasureEpsE',
                     'DoPowerLawFitElectron', 'DoPowerLawFitIon',
                     'SetxLim', 'SetyLim', 'SetkLim', 'LinkK',
-                    'LoopPlayback', 'Recording', 'FFTRelative', 'xLimsRelative']
+                    'LoopPlayback', 'Recording', 'FFTRelative', 'xLimsRelative',
+                    'ConstantShockVel']
 
 
         for elm in BoolList:
@@ -2637,20 +2653,54 @@ class MainApp(Tk.Tk):
                 self.TotalElectricEnergy = np.append(np.append(self.TotalElectricEnergy[0:ind],TotalEEnergy), self.TotalElectricEnergy[ind:])
 
 
-        if np.isnan(self.prev_shock_loc):
-            # If self.prev_shock_loc is NaN, that means this is the first time
-            # the shock has been found, and the previous and current shock_loc
-            # should be the same.
+        if self.MainParamDict['ConstantShockVel']:
+            # We can just calculate the time * self.shock_speed
+            if np.isnan(self.prev_shock_loc):
+                # If self.prev_shock_loc is NaN, that means this is the first time
+                # the shock has been found, and the previous and current shock_loc
+                # should be the same.
 
-            # First calculate the new shock location
-            self.shock_loc = self.DataDict['time'][0]*self.shock_speed
-            # Set previous shock loc to current location
-            self.prev_shock_loc = np.copy(self.shock_loc)
+                # First calculate the new shock location
+                self.shock_loc = self.DataDict['time'][0]*self.shock_speed
+                # Set previous shock loc to current location
+                self.prev_shock_loc = np.copy(self.shock_loc)
+            else:
+                # First save the previous shock location,
+                self.prev_shock_loc = np.copy(self.shock_loc)
+                # Now calculate the new shock location
+                self.shock_loc = self.DataDict['time'][0]*self.shock_speed
+
         else:
-            # First save the previous shock location,
-            self.prev_shock_loc = np.copy(self.shock_loc)
-            # Now calculate the new shock location
-            self.shock_loc = self.DataDict['time'][0]*self.shock_speed
+            # Let's see if the shock_loc is in the DataDict
+            if not 'shock_loc' in self.DataDict.keys():
+                # Have to figure out where the shock is
+
+                jstart = min(10*self.DataDict['c_omp']/self.DataDict['istep'], self.DataDict['dens'][0,:,:].shape[1])
+                cur_xaxis = np.arange(self.DataDict['dens'][0,:,:].shape[1])/self.DataDict['c_omp']*self.DataDict['istep']
+                # Find the shock by seeing where the density is 1/2 of it's
+                # max value.
+
+                dens_half_max = max(self.DataDict['dens'][0,:,:][self.DataDict['dens'][0,:,:].shape[0]/2,jstart:])*.5
+
+                # Find the farthest location where the average density is greater
+                # than half max
+                ishock = np.where(self.DataDict['dens'][0,:,:][self.DataDict['dens'][0,:,:].shape[0]/2,jstart:]>=dens_half_max)[0][-1]
+                self.DataDict['shock_loc'] = cur_xaxis[ishock]
+
+            if np.isnan(self.prev_shock_loc):
+                # If self.prev_shock_loc is NaN, that means this is the first time
+                # the shock has been found, and the previous and current shock_loc
+                # should be the same.
+
+                # First calculate the new shock location
+                self.shock_loc = self.DataDict['shock_loc']
+                # Set previous shock loc to current location
+                self.prev_shock_loc = np.copy(self.shock_loc)
+            else:
+                # First save the previous shock location,
+                self.prev_shock_loc = np.copy(self.shock_loc)
+                # Now calculate the new shock location
+                self.shock_loc = self.DataDict['shock_loc']
 
 
         # Now that the DataDict is created, iterate over all the subplots and
