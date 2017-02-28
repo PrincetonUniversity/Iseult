@@ -182,7 +182,7 @@ class  MomentsPanel:
         # See if anything at all needs loading.
 
 #        if self.ShowingSomething:
-        if self.key_name in self.parent.DataDict.keys():
+        if self.key_name+'x_bins' in self.parent.DataDict.keys():
             self.x_bins = self.parent.DataDict[self.key_name+'x_bins']
 
             self.ex = self.parent.DataDict[self.key_name+'ex']
@@ -753,6 +753,8 @@ class MomentsSettings(Tk.Toplevel):
         else:
             self.parent.axes.set_ylabel(self.parent.ylabel_list[self.pvar.get()][self.parent.GetPlotParam('UpstreamFrame')], labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
             self.parent.SetPlotParam('m_type', self.pvar.get())
+            self.Selector()
+
     def RadioRefFrame(self):
         if self.framevar.get() == self.parent.GetPlotParam('UpstreamFrame'):
             pass
