@@ -2806,14 +2806,20 @@ class MainApp(Tk.Tk):
                         # only keep the x values if they have changed
                         for n in range(2):
                             if is_changed[n]:
-                                tmp_new_view[n] = tmp_old_view[n]+self.MainParamDict['xLimsRelative']*(self.shock_loc-self.prev_shock_loc)
+                                if self.SubPlotList[i][j].PlotParamsDict[self.SubPlotList[i][j].chartType]['spatial_x']:
+                                    tmp_new_view[n] = tmp_old_view[n]+self.MainParamDict['xLimsRelative']*(self.shock_loc-self.prev_shock_loc)
+                                else:
+                                    tmp_new_view[n] = tmp_old_view[n]
                     else:
                         # Keep any y or x that is changed
                         for n in range(4):
                             if is_changed[n]:
                                 tmp_new_view[n] = tmp_old_view[n]
                                 if n < 2:
-                                    tmp_new_view[n]+=self.MainParamDict['xLimsRelative']*(self.shock_loc-self.prev_shock_loc)
+                                    if self.SubPlotList[i][j].PlotParamsDict[self.SubPlotList[i][j].chartType]['spatial_x']:
+                                        tmp_new_view[n] = tmp_old_view[n]+self.MainParamDict['xLimsRelative']*(self.shock_loc-self.prev_shock_loc)
+                                    else:
+                                        tmp_new_view[n] = tmp_old_view[n]
 
                 cur_view[k] = tmp_new_view
                 # Handle the counting of the 'views' array in matplotlib
