@@ -1046,9 +1046,9 @@ class SettingsFrame(Tk.Toplevel):
         self.ConstantShockVar.set(self.parent.MainParamDict['ConstantShockVel'])
         self.ConstantShockVar.trace('w', self.ShockSpeedVarChanged)
 
-        cb = ttk.Checkbutton(frm, text = "Constant Shock v" + '\r' + 'Warning: False may break things...',
+        cb = ttk.Checkbutton(frm, text = "Constant Shock v",
                                 variable = self.ConstantShockVar)
-        cb.grid(row = 11, column = 2, rowspan  =2, sticky = Tk.W)
+        cb.grid(row = 11, column = 2, sticky = Tk.W)
 
 
         self.CbarOrientation = Tk.IntVar()

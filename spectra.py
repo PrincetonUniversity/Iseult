@@ -91,7 +91,7 @@ class SpectralPanel:
 
 
         # A list that will make sure that the data has the same int region
-        self.region_args = [self.parent.MainParamDict['PrtlIntegrationRelative'], self.parent.MainParamDict['ElectronLeft'], self.parent.MainParamDict['ElectronRight'], self.parent.MainParamDict['IonLeft'], self.parent.MainParamDict['IonRight']]
+        self.region_args = [self.parent.MainParamDict['ConstantShockVel'], self.parent.MainParamDict['PrtlIntegrationRelative'], self.parent.MainParamDict['ElectronLeft'], self.parent.MainParamDict['ElectronRight'], self.parent.MainParamDict['IonLeft'], self.parent.MainParamDict['IonRight']]
 
         is_loaded = False
         if self.keyname in self.parent.DataDict.keys():

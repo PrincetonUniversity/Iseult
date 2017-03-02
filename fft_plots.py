@@ -29,7 +29,7 @@ class FFTPanel:
     IntList = ['FFT_type']
     FloatList = ['y_min', 'y_max']
     StrList = []
-    
+
     def __init__(self, parent, figwrapper):
         self.settings_window = None
         self.FigWrap = figwrapper
@@ -78,7 +78,7 @@ class FFTPanel:
 
 
         # A list that will make sure that the data has the same int region
-        self.region_args = [self.parent.MainParamDict['FFTRelative'], self.parent.MainParamDict['FFTLeft'], self.parent.MainParamDict['FFTRight']]
+        self.region_args = [self.parent.MainParamDict['ConstantShockVel'], self.parent.MainParamDict['FFTRelative'], self.parent.MainParamDict['FFTLeft'], self.parent.MainParamDict['FFTRight']]
         # Check if the region is the same in the DataDict
         is_loaded = False
         if 'FFTs' in self.parent.DataDict.keys():
