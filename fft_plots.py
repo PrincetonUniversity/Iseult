@@ -78,7 +78,7 @@ class FFTPanel:
 
 
         # A list that will make sure that the data has the same int region
-        self.region_args = [self.parent.MainParamDict['ConstantShockVel'], self.parent.MainParamDict['FFTRelative'], self.parent.MainParamDict['FFTLeft'], self.parent.MainParamDict['FFTRight']]
+        self.region_args = list([self.left_loc, self.right_loc])
         # Check if the region is the same in the DataDict
         is_loaded = False
         if 'FFTs' in self.parent.DataDict.keys():
@@ -112,11 +112,10 @@ class FFTPanel:
             self.BperpFFT = np.fft.fftshift(self.BperpFFT)
 
             self.all_min_max.append(self.LimFinder(np.abs(self.BperpFFT)))
-
-	    ex = self.FigWrap.LoadKey('ex')[0,:,:]
-	    self.ExFFT = np.fft.fft(ex[self.oneDslice,iL:iR]*self.parent.e0**(-1.0))
- 	    self.ExFFT = np.fft.fftshift(self.ExFFT)
-	    self.all_min_max.append(self.LimFinder(np.abs(self.ExFFT)))
+            ex = self.FigWrap.LoadKey('ex')[0,:,:]
+            self.ExFFT = np.fft.fft(ex[self.oneDslice,iL:iR]*self.parent.e0**(-1.0))
+            self.ExFFT = np.fft.fftshift(self.ExFFT)
+            self.all_min_max.append(self.LimFinder(np.abs(self.ExFFT)))
 
             # Calculate Stokes I
             I = self.BperpFFT*np.conjugate(self.BperpFFT)

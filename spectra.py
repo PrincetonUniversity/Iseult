@@ -90,12 +90,27 @@ class SpectralPanel:
             self.keyname +='in_rest_frame'
 
 
+        # Select the x-range from which to take the spectra
+        e_left_loc = self.parent.MainParamDict['ElectronLeft']
+        e_right_loc = self.parent.MainParamDict['ElectronRight']
+
+        if self.parent.MainParamDict['PrtlIntegrationRelative']:
+            e_left_loc = self.parent.shock_loc+self.parent.MainParamDict['ElectronLeft']
+            e_right_loc = self.parent.shock_loc+self.parent.MainParamDict['ElectronRight']
+
+
+        i_left_loc = self.parent.MainParamDict['IonLeft']
+        i_right_loc = self.parent.MainParamDict['IonRight']
+
+        if self.parent.MainParamDict['PrtlIntegrationRelative']:
+            i_left_loc = self.parent.shock_loc+self.parent.MainParamDict['IonLeft']
+            i_right_loc = self.parent.shock_loc+self.parent.MainParamDict['IonRight']
+
         # A list that will make sure that the data has the same int region
-        self.region_args = [self.parent.MainParamDict['ConstantShockVel'], self.parent.MainParamDict['PrtlIntegrationRelative'], self.parent.MainParamDict['ElectronLeft'], self.parent.MainParamDict['ElectronRight'], self.parent.MainParamDict['IonLeft'], self.parent.MainParamDict['IonRight']]
+        self.region_args = list([e_left_loc, e_right_loc, i_left_loc, i_right_loc])
 
         is_loaded = False
         if self.keyname in self.parent.DataDict.keys():
-
             # make sure it is integrating over the correct region.
             if np.all(self.region_args == self.parent.DataDict[self.keyname][-1]):
                 is_loaded = True
