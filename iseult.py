@@ -1062,7 +1062,7 @@ class SettingsFrame(Tk.Toplevel):
 
         self.LinkKVar = Tk.IntVar()
         self.LinkKVar.set(self.parent.MainParamDict['LinkK'])
-        self.CbarOrientation.trace('w', self.LinkKChanged)
+        self.LinkKVar.trace('w', self.LinkKChanged)
 
         cb = ttk.Checkbutton(frm, text = "Share k-axes",
                                 variable = self.LinkKVar)
