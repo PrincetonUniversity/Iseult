@@ -234,13 +234,13 @@ class  MomentsPanel:
                     e_ind = np.where(e_find_loc)[0]
 
 
-                    self.ix[j]=np.sum(ui[i_ind]*i_weights[i_ind])/(len(i_ind))
-                    self.iy[j]=np.sum(vi[i_ind]*i_weights[i_ind])/(len(i_ind))
-                    self.iz[j]=np.sum(wi[i_ind]*i_weights[i_ind])/(len(i_ind))
+                    self.ix[j]=np.sum(ui[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
+                    self.iy[j]=np.sum(vi[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
+                    self.iz[j]=np.sum(wi[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
 
-                    self.ex[j]=np.sum(ue[e_ind]*e_weights[e_ind])/(len(e_ind))/self.mass_ratio
-                    self.ey[j]=np.sum(ve[e_ind]*e_weights[e_ind])/(len(e_ind))/self.mass_ratio
-                    self.ez[j]=np.sum(we[e_ind]*e_weights[e_ind])/(len(e_ind))/self.mass_ratio
+                    self.ex[j]=np.sum(ue[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))/self.mass_ratio
+                    self.ey[j]=np.sum(ve[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))/self.mass_ratio
+                    self.ez[j]=np.sum(we[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))/self.mass_ratio
 
 
             else:
@@ -268,13 +268,13 @@ class  MomentsPanel:
                         e_ind = np.where(e_find_loc)[0]
 
 
-                        self.ix[j]=np.sum(vix[i_ind]*i_weights[i_ind])/(len(i_ind))
-                        self.iy[j]=np.sum(viy[i_ind]*i_weights[i_ind])/(len(i_ind))
-                        self.iz[j]=np.sum(viz[i_ind]*i_weights[i_ind])/(len(i_ind))
+                        self.ix[j]=np.sum(vix[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
+                        self.iy[j]=np.sum(viy[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
+                        self.iz[j]=np.sum(viz[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
 
-                        self.ex[j]=np.sum(vex[e_ind]*e_weights[e_ind])/(len(e_ind))
-                        self.ey[j]=np.sum(vey[e_ind]*e_weights[e_ind])/(len(e_ind))
-                        self.ez[j]=np.sum(vez[e_ind]*e_weights[e_ind])/(len(e_ind))
+                        self.ex[j]=np.sum(vex[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))
+                        self.ey[j]=np.sum(vey[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))
+                        self.ez[j]=np.sum(vez[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))
 
                 if self.GetPlotParam('m_type') == 0 and self.GetPlotParam('UpstreamFrame'):
                     # Velocities in the upstream frame
@@ -311,13 +311,13 @@ class  MomentsPanel:
                         e_ind = np.where(e_find_loc)[0]
 
 
-                        self.ix[j]=np.sum(vix[i_ind]*i_weights[i_ind])/(len(i_ind))
-                        self.iy[j]=np.sum(viy[i_ind]*i_weights[i_ind])/(len(i_ind))
-                        self.iz[j]=np.sum(viz[i_ind]*i_weights[i_ind])/(len(i_ind))
+                        self.ix[j]=np.sum(vix[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
+                        self.iy[j]=np.sum(viy[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
+                        self.iz[j]=np.sum(viz[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
 
-                        self.ex[j]=np.sum(vex[e_ind]*e_weights[e_ind])/(len(e_ind))
-                        self.ey[j]=np.sum(vey[e_ind]*e_weights[e_ind])/(len(e_ind))
-                        self.ez[j]=np.sum(vez[e_ind]*e_weights[e_ind])/(len(e_ind))
+                        self.ex[j]=np.sum(vex[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))
+                        self.ey[j]=np.sum(vey[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))
+                        self.ez[j]=np.sum(vez[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))
 
 
                 if self.GetPlotParam('m_type') == 1 and self.GetPlotParam('UpstreamFrame'):
@@ -371,13 +371,13 @@ class  MomentsPanel:
                         e_ind = np.where(e_find_loc)[0]
 
 
-                        self.ix[j]=np.sum(vix[i_ind]*i_weights[i_ind])/(len(i_ind))
-                        self.iy[j]=np.sum(viy[i_ind]*i_weights[i_ind])/(len(i_ind))
-                        self.iz[j]=np.sum(viz[i_ind]*i_weights[i_ind])/(len(i_ind))
+                        self.ix[j]=np.sum(vix[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
+                        self.iy[j]=np.sum(viy[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
+                        self.iz[j]=np.sum(viz[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
 
-                        self.ex[j]=np.sum(vex[e_ind]*e_weights[e_ind])/(len(e_ind))/self.mass_ratio
-                        self.ey[j]=np.sum(vey[e_ind]*e_weights[e_ind])/(len(e_ind))/self.mass_ratio
-                        self.ez[j]=np.sum(vez[e_ind]*e_weights[e_ind])/(len(e_ind))/self.mass_ratio
+                        self.ex[j]=np.sum(vex[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))/self.mass_ratio
+                        self.ey[j]=np.sum(vey[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))/self.mass_ratio
+                        self.ez[j]=np.sum(vez[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))/self.mass_ratio
 
 
 
