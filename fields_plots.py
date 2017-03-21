@@ -1100,23 +1100,24 @@ class FieldSettings(Tk.Toplevel):
         if self.FieldTypeVar.get() == self.parent.GetPlotParam('field_type'):
             pass
         else:
-            if self.FieldTypeVar.get() == 0:
-                if self.parent.GetPlotParam('normalize_fields'):
-                    self.parent.axes.set_ylabel(r'$B/B_0$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
-                else:
-                    self.parent.axes.set_ylabel(r'$B$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
-            elif self.FieldTypeVar.get() == 1:
-                if self.parent.GetPlotParam('normalize_fields'):
-                    self.parent.axes.set_ylabel(r'$E/E_0$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
-                else:
-                    self.parent.axes.set_ylabel(r'$E$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
+            if not self.parent.GetPlotParam('twoD'):
+                if self.FieldTypeVar.get() == 0:
+                    if self.parent.GetPlotParam('normalize_fields'):
+                        self.parent.axes.set_ylabel(r'$B/B_0$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
+                    else:
+                        self.parent.axes.set_ylabel(r'$B$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
+                elif self.FieldTypeVar.get() == 1:
+                    if self.parent.GetPlotParam('normalize_fields'):
+                        self.parent.axes.set_ylabel(r'$E/E_0$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
+                    else:
+                        self.parent.axes.set_ylabel(r'$E$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
 
-            elif self.FieldTypeVar.get() == 2:
-                self.parent.axes.set_ylabel(r'$J$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
+                elif self.FieldTypeVar.get() == 2:
+                    self.parent.axes.set_ylabel(r'$J$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
 
-            self.parent.anx.set_text(self.parent.OneDxTxt[self.FieldTypeVar.get()])
-            self.parent.any.set_text(self.parent.OneDyTxt[self.FieldTypeVar.get()])
-            self.parent.anz.set_text(self.parent.OneDzTxt[self.FieldTypeVar.get()])
+                self.parent.anx.set_text(self.parent.OneDxTxt[self.FieldTypeVar.get()])
+                self.parent.any.set_text(self.parent.OneDyTxt[self.FieldTypeVar.get()])
+                self.parent.anz.set_text(self.parent.OneDzTxt[self.FieldTypeVar.get()])
 
 
             self.parent.SetPlotParam('field_type', self.FieldTypeVar.get())
