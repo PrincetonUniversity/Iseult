@@ -24,7 +24,7 @@ class  MomentsPanel:
                        'show_z': False,
                        'show_ions': True,
                        'show_electrons': True,
-                       'UpstreamFrame': True,
+                       'UpstreamFrame': False,
                        'weighted': False,
                        'xbins': 100,
                        'spatial_x': True,
