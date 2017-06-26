@@ -3062,7 +3062,7 @@ class MainApp(Tk.Tk):
         '''Record a movie'''
 
         FFMpegWriter = manimation.writers['ffmpeg']
-        writer = FFMpegWriter(fps=FPS, bitrate = -1)
+        writer = FFMpegWriter(fps=FPS, bitrate = 10000)
 
         # First find the last frame is stop is -1:
         if stop == -1:
