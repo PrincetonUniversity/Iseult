@@ -83,8 +83,7 @@ class DensPanel:
         self.arrs_needed = ['c_omp', 'istep', 'dens']
 
         # Load ppc if we are normalizing the density
-        if self.GetPlotParam('normalize_density'):
-            self.arrs_needed.append('ppc0')
+        self.arrs_needed.append('ppc0')
         # To plot rho we need both dens and densi
         if self.GetPlotParam('dens_type') == 1: # Load the ion density
             self.arrs_needed.append('densi')
