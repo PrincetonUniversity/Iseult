@@ -101,9 +101,9 @@ class SubPlotWrapper:
         self.figure = figure
         self.subplot_spec = subplot_spec
         self.pos = pos
-        self.graph = graph
-        self.Changedto1D = False
-        self.Changedto2D = False
+        self.graph = graph # The panel class-- e.g. PhasesPanel, FieldsPanel...etc
+        self.Changedto1D = False # needed to keep track of color bars and views
+        self.Changedto2D = False # needed to keep track of color bars and views
         #
     def GetKeys(self):
         ''' A function that returns a list of all of the keys required to plot
@@ -242,6 +242,43 @@ class SubPlotWrapper:
 
         self.graph.OpenSettings()
 
+    def SetCpuDomainLines(self):
+        '''This function sets the Cpu lines up. It should only be called when
+        redrawing the axes and after the axes is creates as it creates all of
+        the line objects.'''
+
+        # regardless if it is 1D or 2D we'll show the x_domains...
+        # This could change if we decide to add the ability to show transverse 1D slices
+        self.cpu_x_lines = []
+        self.cpu_y_lines = []
+        for i in xrange(len(self.parent.cpu_x_locs)):
+            self.cpu_x_lines.append(self.graph.axes.axvline(self.parent.cpu_x_locs[i], linewidth = 1, linestyle = ':',color = 'w') )
+        if self.GetPlotParam('twoD'):
+            for i in xrange(len(self.parent.cpu_y_locs)):
+                self.cpu_y_lines.append(self.graph.axes.axhline(self.parent.cpu_y_locs[i], linewidth = 1, linestyle = ':',color = 'w'))
+
+    def UpdateCpuDomainLines(self):
+        '''This updates the location of the Cpu lines. It should only be called
+        when refreshing the axes as it requires the line objects to already be
+        created.'''
+        # regardless if it is 1D or 2D we'll show the x_domains...
+        # This could change if we decide to add the ability to show transverse 1D slices
+        for i in xrange(len(self.cpu_x_lines)):
+            self.cpu_x_lines[i].set_xdata([self.parent.cpu_x_locs[i],self.parent.cpu_x_locs[i]])
+
+        if self.GetPlotParam('twoD'):
+            for i in xrange(len(self.parent.cpu_y_locs)):
+                self.cpu_y_lines[i].set_ydata([self.parent.cpu_x_locs[i],self.parent.cpu_x_locs[i]])
+
+
+    def RemoveCpuDomainLines(self):
+        '''This removes the Cpu lines. It should only be called
+        when the user unselects show CPU domains.'''
+        # iterate over the line list and destroy the objects
+        for i in xrange(len(self.cpu_x_lines)):
+            self.cpu_x_lines.pop().remove()
+        for i in xrange(len(self.cpu_y_lines)):
+            self.cpu_y_lines.pop().remove()
 class Knob:
     """
     ---- Taken from the Matplotlib gallery
@@ -2467,10 +2504,12 @@ class MainApp(Tk.Tk):
         self.ToLoad = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
         # we always load time because it is needed to calculate the shock location
         self.ToLoad[self.H5KeyDict['time']].append('time')
-        # We always load enough to calculate xmin, xmax, ymin, ymax:
+        # We always load enough to calculate xmin, xmax, ymin, ymax & the cpu domains:
         self.ToLoad[self.H5KeyDict['c_omp']].append('c_omp')
         self.ToLoad[self.H5KeyDict['istep']].append('istep')
         self.ToLoad[self.H5KeyDict['dens']].append('dens')
+        self.ToLoad[self.H5KeyDict['mx']].append('mx')
+        self.ToLoad[self.H5KeyDict['my']].append('my')
         # look at each subplot and see what is needed
         for i in range(self.MainParamDict['NumOfRows']):
             for j in range(self.MainParamDict['NumOfCols']):
@@ -2702,7 +2741,8 @@ class MainApp(Tk.Tk):
                 # Now calculate the new shock location
                 self.shock_loc = self.DataDict['shock_loc']
 
-
+        self.cpu_x_locs = np.cumsum(self.DataDict['mx']-5)/self.DataDict['c_omp'][0]
+        self.cpu_y_locs = np.cumsum(self.DataDict['my']-5)/self.DataDict['c_omp'][0]
         # Now that the DataDict is created, iterate over all the subplots and
         # load the data into them:
         for i in range(self.MainParamDict['NumOfRows']):

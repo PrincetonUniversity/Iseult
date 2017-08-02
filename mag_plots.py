@@ -31,7 +31,8 @@ class BPanel:
                        'div_midpoint': 0.0, # The cpow color norm normalizes data to [0,1] using np.sign(x-midpoint)*np.abs(x-midpoint)**(-cpow_num) -> [0,midpoint,1] if it is a divering cmap or [0,1] if it is not a divering cmap
                        'UseDivCmap': True,
                        'stretch_colors': False,
-                       'cmap': 'None' # If cmap is none, the plot will inherit the parent's cmap,
+                       'cmap': 'None', # If cmap is none, the plot will inherit the parent's cmap,
+                       'show_cpu_domains': False # plots lines showing how the CPUs are divvying up the computational region
                        }
     # We need the types of all the parameters for the config file
     BoolList = ['twoD', 'show_cbar', 'set_v_min', 'set_v_max',
@@ -449,7 +450,8 @@ class BPanel:
             self.right_loc = self.parent.MainParamDict['FFTRight'] + self.parent.shock_loc*self.parent.MainParamDict['FFTRelative']
             self.right_loc = min(self.right_loc, self.xaxis_values[-1])
             self.lineright.set_xdata([self.right_loc,self.right_loc])
-
+        if self.GetPlotParam('show_cpu_domains'):
+            self.FigWrap.SetCpuDomainLines()
     def refresh(self):
 
         '''This is a function that will be called only if self.axes already
@@ -533,7 +535,8 @@ class BPanel:
             #self.axes.draw_artist(self.axes.patch)
             #self.axes.draw_artist(self.cax)
             #self.axes.draw_artist(self.axes.xaxis)
-
+        if self.GetPlotParam('show_cpu_domains'):
+            self.FigWrap.UpdateCpuDomainLines()
     def CbarTickFormatter(self):
         ''' A helper function that sets the cbar ticks & labels. This used to be
         easier, but because I am no longer using the colorbar class i have to do
@@ -598,13 +601,13 @@ class BPanel:
 
     def OpenSettings(self):
         if self.settings_window is None:
-            self.settings_window = FieldSettings(self)
+            self.settings_window = BSettings(self)
         else:
             self.settings_window.destroy()
-            self.settings_window = FieldSettings(self)
+            self.settings_window = BSettings(self)
 
 
-class FieldSettings(Tk.Toplevel):
+class BSettings(Tk.Toplevel):
     def __init__(self, parent):
         self.parent = parent
         Tk.Toplevel.__init__(self)
@@ -702,6 +705,12 @@ class FieldSettings(Tk.Toplevel):
                         command = self.ShockVarHandler)
         cb.grid(row = 6, column = 3, sticky = Tk.W)
 
+        self.CPUVar = Tk.IntVar()
+        self.CPUVar.set(self.parent.GetPlotParam('show_cpu_domains'))
+        cb = ttk.Checkbutton(frm, text = "Show CPU domains",
+                        variable = self.CPUVar,
+                        command = self.CPUVarHandler)
+        cb.grid(row = 8, column = 0, sticky = Tk.W)
 
         self.FFTVar = Tk.IntVar()
         self.FFTVar.set(self.parent.GetPlotParam('show_FFT_region'))
@@ -895,6 +904,18 @@ class FieldSettings(Tk.Toplevel):
         if to_reload:
             self.parent.SetPlotParam('v_min', self.parent.GetPlotParam('v_min'))
 
+    def CPUVarHandler(self, *args):
+        if self.parent.GetPlotParam('show_cpu_domains')== self.CPUVar.get():
+            pass
+        else:
+            self.parent.SetPlotParam('show_cpu_domains', self.CPUVar.get(), update_plot = False)
+            if self.parent.GetPlotParam('show_cpu_domains'):
+                self.parent.FigWrap.SetCpuDomainLines()
+
+            else: # We need to get remove of the cpu lines. Pop them out of the array and remove them from the list.
+                self.parent.FigWrap.RemoveCpuDomainLines()
+            self.parent.parent.canvas.draw()
+            self.parent.parent.canvas.get_tk_widget().update_idletasks()
 
     def OnClosing(self):
         self.parent.settings_window = None

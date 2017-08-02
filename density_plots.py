@@ -35,12 +35,13 @@ class DensPanel:
                        'UseDivCmap': False,
                        'div_midpoint': 0.0,
                        'stretch_colors': False,
-                       'cmap': 'None' # If cmap is none, the plot will inherit the parent's cmap
+                       'cmap': 'None', # If cmap is none, the plot will inherit the parent's cmap
+                       'show_cpu_domains': False # plots lines showing how the CPUs are divvying up the computational region
                        }
     # We need the types of all the parameters for the config file
     BoolList = ['twoD', 'show_cbar', 'set_color_limits', 'set_v_min', 'set_v_max',
                    'show_labels', 'show_shock', 'OutlineText', 'spatial_x', 'spatial_y',
-                   'normalize_density', 'UseDivCmap', 'stretch_colors']
+                   'normalize_density', 'UseDivCmap', 'stretch_colors', 'show_cpu_domains']
     IntList = ['dens_type']
     FloatList = ['v_min', 'v_max', 'cpow_num', 'div_midpoint']
     StrList = ['interpolation', 'cnorm_type', 'cmap']
@@ -388,6 +389,9 @@ class DensPanel:
             self.axes.set_ylabel(tmp_str, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
 
 
+        if self.GetPlotParam('show_cpu_domains'):
+            self.FigWrap.SetCpuDomainLines()
+
     def refresh(self):
         '''This is a function that will be called only if self.axes already
         holds a density type plot. We only update things that have shown.  If
@@ -478,6 +482,8 @@ class DensPanel:
                 self.CbarTickFormatter()
             if self.GetPlotParam('show_shock'):
                 self.shockline_2d.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
+        if self.GetPlotParam('show_cpu_domains'):
+            self.FigWrap.UpdateCpuDomainLines()
 
     def CbarTickFormatter(self):
         ''' A helper function that sets the cbar ticks & labels. This used to be
@@ -649,6 +655,13 @@ class DensSettings(Tk.Toplevel):
                         command = self.StretchHandler)
         cb.grid(row = 9, column = 0, columnspan =2, sticky = Tk.W)
 
+        self.CPUVar = Tk.IntVar()
+        self.CPUVar.set(self.parent.GetPlotParam('show_cpu_domains'))
+        cb = ttk.Checkbutton(frm, text = "Show CPU domains",
+                        variable = self.CPUVar,
+                        command = self.CPUVarHandler)
+        cb.grid(row = 10, column = 0, sticky = Tk.W)
+
         # Create the OptionMenu to chooses the cnorm_type:
         self.cnormvar = Tk.StringVar(self)
         self.cnormvar.set(self.parent.chartType) # default value
@@ -779,6 +792,17 @@ class DensSettings(Tk.Toplevel):
 
             self.parent.SetPlotParam('show_labels', self.ShowLabels.get(), update_plot =self.parent.GetPlotParam('twoD'))
 
+    def CPUVarHandler(self, *args):
+        if self.parent.GetPlotParam('show_cpu_domains')== self.CPUVar.get():
+            pass
+        else:
+            self.parent.SetPlotParam('show_cpu_domains', self.CPUVar.get(), update_plot = False)
+            if self.parent.GetPlotParam('show_cpu_domains'):
+                self.FigWrap.SetCpuDomainLines()
+            else: # We need to get remove of the cpu lines. Pop them out of the array and remove them from the list.
+                self.FigWrap.RemoveCpuDomainLines()
+            self.parent.parent.canvas.draw()
+            self.parent.parent.canvas.get_tk_widget().update_idletasks()
 
     def Change2d(self):
         if self.TwoDVar.get() == self.parent.GetPlotParam('twoD'):

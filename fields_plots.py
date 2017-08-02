@@ -12,7 +12,6 @@ import matplotlib.patheffects as PathEffects
 
 class FieldsPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
-
     plot_param_dict = {'twoD': 0,
                        'field_type': 0, #0 = B-Field, 1 = E-field, 3 Currents
                        'show_x' : 1,
@@ -35,11 +34,13 @@ class FieldsPanel:
                        'interpolation': 'nearest',
                        'cmap': 'None', # If cmap is none, the plot will inherit the parent's cmap
                        'UseDivCmap': True, # Use a diverging cmap for the 2d plots
-                       'stretch_colors': False # If stretch colors is false, then for a diverging cmap the plot ensures -b and b are the same distance from the midpoint of the cmap.
+                       'stretch_colors': False, # If stretch colors is false, then for a diverging cmap the plot ensures -b and b are the same distance from the midpoint of the cmap.
+                       'show_cpu_domains': False # plots lines showing how the CPUs are divvying up the computational region
                        }
     BoolList = ['twoD', 'show_cbar', 'set_v_min', 'set_v_max',
-             'show_shock', 'OutlineText', 'spatial_x', 'spatial_y', 'Show_FFT_region',
-             'UseDivCmap', 'stretch_colors', 'normalize_fields', 'show_x', 'show_y', 'show_z']
+             'show_shock', 'OutlineText', 'spatial_x', 'spatial_y',
+             'Show_FFT_region', 'UseDivCmap', 'stretch_colors', 'normalize_fields',
+             'show_x', 'show_y', 'show_z', 'show_cpu_domains']
     IntList = ['field_type']
     FloatList = ['v_min', 'v_max', 'cpow_num', 'div_midpoint']
     StrList = ['interpolation', 'cnorm_type', 'cmap']
@@ -113,6 +114,7 @@ class FieldsPanel:
         self.zcolor = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.8)
 
         if np.isnan(self.parent.btheta):
+            # Maybe B_0 is 0????
             self.SetPlotParam('normalize_fields', 0, update_plot = False)
         # see if the axis values are saved in the data dict
         if 'xaxis_values' in self.parent.DataDict.keys():
@@ -222,7 +224,8 @@ class FieldsPanel:
 
             self.oneDslice = self.fx.shape[0]/2
 
-            # Have we already calculated min/max?
+            # Have we already calculated min/max? We will need to change
+            # this behavior as we go to making the slices changeable.
 
             if kxwarg in self.parent.DataDict.keys():
                 self.jxmin_max = self.parent.DataDict[kxwarg]
@@ -439,7 +442,7 @@ class FieldsPanel:
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
             self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
 
-        else:
+        else: # It's 1D
             if self.parent.MainParamDict['LinkSpatial'] != 0 and self.parent.MainParamDict['LinkSpatial'] != 3:
                 if self.FigWrap.pos == self.parent.first_x:
                     self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
@@ -540,6 +543,14 @@ class FieldsPanel:
             self.right_loc = min(self.right_loc, self.xmax)
             self.lineright.set_xdata([self.right_loc,self.right_loc])
 
+        ####
+        #
+        # Code to show the CPU domains
+        #
+        ####
+
+        if self.GetPlotParam('show_cpu_domains'):
+            self.FigWrap.SetCpuDomainLines()
     def refresh(self):
 
         '''This is a function that will be called only if self.axes already
@@ -725,9 +736,9 @@ class FieldsPanel:
             if self.GetPlotParam('show_shock'):
                 self.shockline_2d.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
             self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
-            #self.axes.draw_artist(self.axes.patch)
-            #self.axes.draw_artist(self.cax)
-            #self.axes.draw_artist(self.axes.xaxis)
+
+        if self.GetPlotParam('show_cpu_domains'):
+            self.FigWrap.UpdateCpuDomainLines()
 
     def CbarTickFormatter(self):
         ''' A helper function that sets the cbar ticks & labels. This used to be
@@ -967,6 +978,12 @@ class FieldSettings(Tk.Toplevel):
                         command = self.FFTVarHandler)
         cb.grid(row = 9, column = 0, sticky = Tk.W)
 
+        self.CPUVar = Tk.IntVar()
+        self.CPUVar.set(self.parent.GetPlotParam('show_cpu_domains'))
+        cb = ttk.Checkbutton(frm, text = "Show CPU domains",
+                        variable = self.CPUVar,
+                        command = self.CPUVarHandler)
+        cb.grid(row = 10, column = 0, sticky = Tk.W)
 
         self.NormFieldVar = Tk.IntVar()
         self.NormFieldVar.set(self.parent.GetPlotParam('normalize_fields'))
@@ -1026,8 +1043,34 @@ class FieldSettings(Tk.Toplevel):
         if self.parent.GetPlotParam('show_FFT_region')== self.FFTVar.get():
             pass
         else:
-            self.parent.SetPlotParam('show_FFT_region', self.FFTVar.get())
+            self.parent.SetPlotParam('show_FFT_region', self.FFTVar.get(), update_plot = False)
+            self.parent.lineleft.set_visible(self.parent.GetPlotParam('show_FFT_region'))
+            self.parent.lineright.set_visible(self.parent.GetPlotParam('show_FFT_region'))
 
+            ### The .parent.parent is less than ideal.... consider re-writing.
+            if self.parent.GetPlotParam('show_FFT_region'):
+                self.parent.left_loc = self.parent.parent.MainParamDict['FFTLeft'] + self.parent.parent.shock_loc*self.parent.parent.MainParamDict['FFTRelative']
+                self.parent.left_loc = max(self.parent.left_loc, self.parent.xmin)
+                self.parent.lineleft.set_xdata([self.parent.left_loc,self.parent.left_loc])
+
+                self.parent.right_loc = self.parent.parent.MainParamDict['FFTRight'] + self.parent.parent.shock_loc*self.parent.parent.MainParamDict['FFTRelative']
+                self.parent.right_loc = min(self.parent.right_loc, self.parent.xmax)
+                self.parent.lineright.set_xdata([self.parent.right_loc,self.parent.right_loc])
+            self.parent.parent.canvas.draw()
+            self.parent.parent.canvas.get_tk_widget().update_idletasks()
+
+    def CPUVarHandler(self, *args):
+        if self.parent.GetPlotParam('show_cpu_domains')== self.CPUVar.get():
+            pass
+        else:
+            self.parent.SetPlotParam('show_cpu_domains', self.CPUVar.get(), update_plot = False)
+            if self.parent.GetPlotParam('show_cpu_domains'):
+                self.parent.FigWrap.SetCpuDomainLines()
+
+            else: # We need to get remove of the cpu lines. Pop them out of the array and remove them from the list.
+                self.parent.FigWrap.RemoveCpuDomainLines()
+            self.parent.parent.canvas.draw()
+            self.parent.parent.canvas.get_tk_widget().update_idletasks()
 
     def NormFieldHandler(self, *args):
         if self.parent.GetPlotParam('normalize_fields') == self.NormFieldVar.get():
