@@ -441,7 +441,7 @@ class  MomentsPanel:
         self.iy_plot[0].set_dashes([1, 1])
 
         self.iz_plot = self.axes.plot(0,0,
-                                     ls= '--', #marker = 's', markeredgecolor  = self.parent.ion_color,
+                                     ls= '-', #marker = 's', markeredgecolor  = self.parent.ion_color,
                                      color = self.parent.ion_color,
                                      visible =  self.GetPlotParam('show_ions')*self.GetPlotParam('show_z'))
 
