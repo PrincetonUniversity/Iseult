@@ -417,7 +417,7 @@ class PlaybackBar(Tk.Frame):
         new_frame.pack(side= Tk.LEFT, fill = Tk.BOTH, expand =0)
 
         # a measurement button that should lauch a window to take measurements.
-        self.MeasuresB= ttk.Button(self, text='Measure', command=self.OpenMeasures)
+        self.MeasuresB= ttk.Button(self, text='FFT', command=self.OpenMeasures)
         self.MeasuresB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
 
 
@@ -1351,134 +1351,8 @@ class MeasureFrame(Tk.Toplevel):
         frm = ttk.Frame(self)
         frm.pack(fill=Tk.BOTH, expand=True)
 
-        # Make an entry to change the integration region
-        # A StringVar for a box to type in a value for the left ion region
-        self.ileft = Tk.StringVar()
-        # set it to the left value
-        self.ileft.set(str(self.parent.MainParamDict['IonLeft']))
 
-        # A StringVar for a box to type in a value for the right ion region
-        self.iright = Tk.StringVar()
-        # set it to the right value
-        self.iright.set(str(self.parent.MainParamDict['IonRight']))
-
-        # Now the electrons
-        self.eleft = Tk.StringVar()
-        self.eleft.set(str(self.parent.MainParamDict['ElectronLeft']))
-        self.eright = Tk.StringVar()
-        self.eright.set(str(self.parent.MainParamDict['ElectronRight']))
-
-        ttk.Label(frm, text='Energy Int region:').grid(row = 0, sticky = Tk.W)
-        ttk.Label(frm, text='left').grid(row = 0, column = 1, sticky = Tk.N)
-        ttk.Label(frm, text='right').grid(row = 0, column = 2, sticky = Tk.N)
-
-        # the ion row
-        ttk.Label(frm, text='ions').grid(row= 1, sticky = Tk.N)
-        # Make an button to change the wait time
-
-        self.iLEnter = ttk.Entry(frm, textvariable=self.ileft, width=7)
-        self.iLEnter.grid(row =1, column = 1, sticky = Tk.W + Tk.E)
-
-        self.iREnter = ttk.Entry(frm, textvariable=self.iright, width=7)
-        self.iREnter.grid(row = 1, column =2, sticky = Tk.W + Tk.E)
-
-        ttk.Label(frm, text='electrons').grid(row= 2, sticky = Tk.N)
-        self.eLEnter = ttk.Entry(frm, textvariable=self.eleft, width=7)
-        self.eLEnter.grid(row = 2, column =1, sticky = Tk.W + Tk.E)
-        self.eREnter = ttk.Entry(frm, textvariable=self.eright, width=7)
-        self.eREnter.grid(row = 2, column =2, sticky = Tk.W + Tk.E)
-
-        self.RelVar = Tk.IntVar()
-        self.RelVar.set(self.parent.MainParamDict['PrtlIntegrationRelative'])
-        self.RelVar.trace('w', self.RelChanged)
-        cb = ttk.Checkbutton(frm, text = "Energy Region relative to shock?",
-                        variable = self.RelVar)
-        cb.grid(row = 3, columnspan = 3, sticky = Tk.W)
-
-        self.SetTeVar = Tk.IntVar()
-        self.SetTeVar.set(self.parent.MainParamDict['SetTe'])
-        self.SetTeVar.trace('w', self.SetTeChanged)
-        cb = ttk.Checkbutton(frm, text='Show T_e', variable =  self.SetTeVar)
-        cb.grid(row = 5, sticky = Tk.W)
-
-        ttk.Label(frm, text=u'\u0394'+u'\u0263' + ' =').grid(row= 5, column =1, sticky = Tk.N)
-
-        self.SetTpVar = Tk.IntVar()
-        self.SetTpVar.set(self.parent.MainParamDict['SetTi'])
-        self.SetTpVar.trace('w', self.SetTpChanged)
-
-        cb = ttk.Checkbutton(frm, text='Show T_i', variable =  self.SetTpVar)
-        cb.grid(row = 6, sticky = Tk.W)
-        ttk.Label(frm, text=u'\u0394'+u'\u0263' + ' =').grid(row= 6, column =1, sticky = Tk.N)
-
-        self.delgameVar = Tk.StringVar()
-        self.delgameVar.set(str(self.parent.MainParamDict['DelGame']))
-        self.delgampVar = Tk.StringVar()
-        self.delgampVar.set(str(self.parent.MainParamDict['DelGami']))
-
-
-        ttk.Entry(frm, textvariable=self.delgameVar, width = 7).grid(row = 5, column = 2, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.delgampVar, width = 7).grid(row = 6, column =2, sticky = Tk.N)
-
-        ttk.Label(frm, text='Powerlaw fits:').grid(row = 8, sticky = Tk.W)
-        ttk.Label(frm, text='E_min [mc^2]').grid(row = 8, column = 1, sticky = Tk.N)
-        ttk.Label(frm, text='E_max [mc^2]').grid(row = 8, column = 2, sticky = Tk.N)
-
-        self.PLFitEVar = Tk.IntVar()
-        self.PLFitEVar.set(self.parent.MainParamDict['DoPowerLawFitElectron'])
-        self.PLFitEVar.trace('w', self.PLFitEChanged)
-        ttk.Checkbutton(frm, text='Electrons', variable =  self.PLFitEVar).grid(row = 9, sticky = Tk.W)
-
-        self.E1Var = Tk.StringVar()
-        self.E1Var.set(str(self.parent.MainParamDict['PowerLawElectronMin']))
-        self.E2Var = Tk.StringVar()
-        self.E2Var.set(str(self.parent.MainParamDict['PowerLawElectronMax']))
-
-
-        ttk.Entry(frm, textvariable=self.E1Var, width = 7).grid(row = 9, column = 1, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.E2Var, width = 7).grid(row = 9, column =2, sticky = Tk.N)
-
-
-        self.PLFitPVar = Tk.IntVar()
-        self.PLFitPVar.set(self.parent.MainParamDict['DoPowerLawFitIon'])
-        self.PLFitPVar.trace('w', self.PLFitPChanged)
-        ttk.Checkbutton(frm, text='Ions', variable =  self.PLFitPVar).grid(row = 10, sticky = Tk.W)
-
-        self.P1Var = Tk.StringVar()
-        self.P1Var.set(str(self.parent.MainParamDict['PowerLawIonMin']))
-        self.P2Var = Tk.StringVar()
-        self.P2Var.set(str(self.parent.MainParamDict['PowerLawIonMax']))
-
-        ttk.Entry(frm, textvariable=self.P1Var, width = 7).grid(row = 10, column = 1, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.P2Var, width = 7).grid(row = 10, column =2, sticky = Tk.N)
-
-
-        ttk.Label(frm, text='Measure eps:').grid(row = 11, column = 0, sticky = Tk.W)
-        ttk.Label(frm, text='E_inj [mc^2]').grid(row = 11, column = 1, sticky = Tk.N)
-        ttk.Label(frm, text='eps').grid(row = 11, column = 2, sticky = Tk.N)
-
-        self.eps_p_fitVar = Tk.IntVar()
-        self.eps_p_fitVar.set(self.parent.MainParamDict['MeasureEpsP'])
-        self.eps_p_fitVar.trace('w', self.eps_pFitChanged)
-        ttk.Checkbutton(frm, text='protons', variable =  self.eps_p_fitVar).grid(row = 12, sticky = Tk.W)
-
-        self.EinjPVar = Tk.StringVar()
-        self.EinjPVar.set(str(self.parent.MainParamDict['GammaIonInjection']))
-        ttk.Entry(frm, textvariable=self.EinjPVar, width = 7).grid(row = 12, column = 1, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.parent.eps_pVar, width = 7, state = 'readonly').grid(row = 12, column =2, sticky = Tk.N)
-
-        self.eps_e_fitVar = Tk.IntVar()
-        self.eps_e_fitVar.set(self.parent.MainParamDict['MeasureEpsE'])
-        self.eps_e_fitVar.trace('w', self.eps_eFitChanged)
-        ttk.Checkbutton(frm, text='electrons', variable =  self.eps_e_fitVar).grid(row = 13, sticky = Tk.W)
-
-        self.EinjEVar = Tk.StringVar()
-        self.EinjEVar.set(str(self.parent.MainParamDict['GammaElectronInjection']))
-        ttk.Entry(frm, textvariable=self.EinjEVar, width = 7).grid(row = 13, column = 1, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.parent.eps_eVar, width = 7, state = 'readonly').grid(row = 13, column =2, sticky = Tk.N)
-
-
-        ttk.Label(frm, text='NOTE: You must have one \'spectra\' plot' +'\r' + 'showing to measure eps_e or eps_p').grid(row = 14, rowspan = 2,columnspan = 3, sticky = Tk.W)
+        ttk.Label(frm, text='NOTE: Spectral Measurements have been moved ' +'\r' + 'to the spectral subplot settings window.').grid(row = 0, rowspan = 2,columnspan = 3, sticky = Tk.W)
 
 
 
@@ -1493,149 +1367,21 @@ class MeasureFrame(Tk.Toplevel):
         # set it to the right value
         self.FFTRVar.set(str(self.parent.MainParamDict['FFTRight']))
 
-        ttk.Label(frm, text='left').grid(row = 16, column = 1, sticky = Tk.N)
-        ttk.Label(frm, text='right').grid(row = 16, column = 2, sticky = Tk.N)
+        ttk.Label(frm, text='left').grid(row = 2, column = 1, sticky = Tk.N)
+        ttk.Label(frm, text='right').grid(row = 2, column = 2, sticky = Tk.N)
 
-        ttk.Label(frm, text='FFT region:').grid(row = 17, sticky = Tk.W)
-        ttk.Entry(frm, textvariable=self.FFTLVar, width=7).grid(row =17, column = 1, sticky = Tk.W + Tk.E)
+        ttk.Label(frm, text='FFT region:').grid(row = 3, sticky = Tk.W)
+        ttk.Entry(frm, textvariable=self.FFTLVar, width=7).grid(row =3, column = 1, sticky = Tk.W + Tk.E)
 
-        ttk.Entry(frm, textvariable=self.FFTRVar, width=7).grid(row = 17, column =2, sticky = Tk.W + Tk.E)
+        ttk.Entry(frm, textvariable=self.FFTRVar, width=7).grid(row = 3, column =2, sticky = Tk.W + Tk.E)
 
         self.FFTRelVar = Tk.IntVar()
         self.FFTRelVar.set(self.parent.MainParamDict['FFTRelative'])
         self.FFTRelVar.trace('w', self.FFTRelChanged)
         cb = ttk.Checkbutton(frm, text = "FFT Region relative to shock?",
                         variable = self.FFTRelVar)
-        cb.grid(row = 18, columnspan = 3, sticky = Tk.W)
+        cb.grid(row = 4, columnspan = 3, sticky = Tk.W)
 
-
-
-
-    def eps_pFitChanged(self, *args):
-        if self.eps_p_fitVar.get() == self.parent.MainParamDict['MeasureEpsP']:
-            pass
-        else:
-            self.parent.MainParamDict['MeasureEpsP'] = self.eps_p_fitVar.get()
-            self.parent.RenewCanvas()
-
-    def eps_eFitChanged(self, *args):
-        if self.eps_e_fitVar.get() == self.parent.MainParamDict['MeasureEpsE']:
-            pass
-        else:
-            self.parent.MainParamDict['MeasureEpsE'] = self.eps_e_fitVar.get()
-            self.parent.RenewCanvas()
-
-
-    def PLFitEChanged(self, *args):
-        if self.PLFitEVar.get() == self.parent.MainParamDict['DoPowerLawFitElectron']:
-            pass
-        else:
-            self.parent.MainParamDict['DoPowerLawFitElectron'] = self.PLFitEVar.get()
-            self.parent.RenewCanvas()
-
-    def PLFitPChanged(self, *args):
-        if self.PLFitPVar.get() == self.parent.MainParamDict['DoPowerLawFitIon']:
-            pass
-        else:
-            self.parent.MainParamDict['DoPowerLawFitIon'] = self.PLFitPVar.get()
-            self.parent.RenewCanvas()
-
-    def CheckIfTeChanged(self):
-        to_reload = False
-        try:
-        #make sure the user types in a int
-            if np.abs(float(self.delgameVar.get()) - self.parent.MainParamDict['DelGame']) > 1E-4:
-                self.parent.MainParamDict['DelGame'] = float(self.delgameVar.get())
-                to_reload += self.parent.MainParamDict['SetTe']
-
-        except ValueError:
-            #if they type in random stuff, just set it ot the param value
-            self.delgameVar.set(str(self.parent.MainParamDict['DelGame']))
-        return to_reload
-
-    def CheckIfTpChanged(self):
-        to_reload = False
-        try:
-        #make sure the user types in a flof
-            if np.abs(float(self.delgampVar.get()) - self.parent.MainParamDict['DelGami']) > 1E-4:
-                    self.parent.MainParamDict['DelGami'] = float(self.delgampVar.get())
-                    to_reload += True*self.parent.MainParamDict['SetTi']
-
-        except ValueError:
-            #if they type in random stuff, just set it ot the param value
-            self.delgampVar.set(str(self.parent.MainParamDict['DelGami']))
-        return to_reload
-
-    def CheckIfEpsChanged(self):
-        to_reload = False
-
-        # The protons first
-        try:
-            # First check if the injection energy changed
-            if np.abs(float(self.EinjPVar.get()) -self.parent.MainParamDict['GammaIonInjection'])>1E-6:
-                # Set the parent value to the var value
-                self.parent.MainParamDict['GammaIonInjection'] = float(self.EinjPVar.get())
-                to_reload += self.parent.MainParamDict['MeasureEpsP']
-        except ValueError:
-            #if they type in random stuff, just set it to the value
-            self.EinjPVar.set(str(self.parent.MainParamDict['GammaIonInjection']))
-
-        # Now the electrons
-        try:
-            # First check if the injection energy changed
-            if np.abs(float(self.EinjEVar.get()) -self.parent.MainParamDict['GammaElectronInjection'])>1E-6:
-                # Set the parent value to the var value
-                self.parent.MainParamDict['GammaElectronInjection'] = float(self.EinjEVar.get())
-                to_reload += self.parent.MainParamDict['MeasureEpsE']
-        except ValueError:
-            #if they type in random stuff, just set it to the value
-            self.EinjEVar.set(str(self.parent.MainParamDict['GammaElectronInjection']))
-
-
-        return to_reload
-
-    def CheckIfPLChanged(self):
-        to_reload = False
-        VarList = [[self.E1Var, self.E2Var], [self.P1Var, self.P2Var]]
-        KeyList = [['PowerLawElectronMin', 'PowerLawElectronMax'], ['PowerLawIonMin', 'PowerLawIonMax']]
-        PLList = ['DoPowerLawFitElectron', 'DoPowerLawFitIon']
-
-        for j in range(2):
-            try:
-                # First check if the left index changed
-                if np.abs(float(VarList[j][0].get())- self.parent.MainParamDict[KeyList[j][0]])>1E-6:
-                    # See if the left index is larger than the right index
-                    if float(VarList[j][0].get()) > float(VarList[j][1].get()):
-                        # it is, so make it larger:
-                        VarList[j][1].set(str(float(VarList[j][0].get())*2))
-                        #set the parent value to the right var value
-                        self.parent.MainParamDict[KeyList[j][1]] = float(VarList[j][1].get())
-
-                    # Set the parent value to the left var value
-                    self.parent.MainParamDict[KeyList[j][0]] = float(VarList[j][0].get())
-                    to_reload += self.parent.MainParamDict[PLList[j]]
-            except ValueError:
-                #if they type in random stuff, just set it to the value
-                VarList[j][0].set(str(self.parent.MainParamDict[KeyList[j][0]]))
-
-            try:
-                # Now see if the right index changed
-                if np.abs(float(VarList[j][1].get())- self.parent.MainParamDict[KeyList[j][1]])>1E-6:
-                    # See if the left index is smaller than the right index
-                    if float(VarList[j][1].get()) < float(VarList[j][0].get()):
-                        # it is, so make it smaller:
-                        VarList[j][0].set(str(float(VarList[j][1].get())*.5))
-                        #set the parent value to the left var value
-                        self.parent.MainParamDict[KeyList[j][0]] = float(VarList[j][0].get())
-
-                    # Set the parent value to the right var value
-                    self.parent.MainParamDict[KeyList[j][1]] = float(VarList[j][1].get())
-                    to_reload += self.parent.MainParamDict[PLList[j]]
-
-            except ValueError:
-                #if they type in random stuff, just set it to the value
-                VarList[j][1].set(str(self.parent.MainParamDict[KeyList[j][1]]))
-        return to_reload
 
     def CheckIfFloatChanged(self, tkVar, paramKey):
         to_reload = False
@@ -1651,29 +1397,9 @@ class MeasureFrame(Tk.Toplevel):
             tkVar.set(str(self.parent.MainParamDict[paramKey]))
             return to_reload
 
-    def SetTeChanged(self, *args):
-        if self.SetTeVar.get()==self.parent.MainParamDict['SetTe']:
-            pass
-        else:
-            self.parent.MainParamDict['SetTe'] = self.SetTeVar.get()
-            self.parent.RenewCanvas()
-
-    def SetTpChanged(self, *args):
-        if self.SetTpVar.get()==self.parent.MainParamDict['SetTi']:
-            pass
-        else:
-            self.parent.MainParamDict['SetTi'] = self.SetTpVar.get()
-            self.parent.RenewCanvas()
-
     def TxtEnter(self, e):
         self.MeasuresCallback()
 
-    def RelChanged(self, *args):
-        if self.RelVar.get()==self.parent.MainParamDict['PrtlIntegrationRelative']:
-            pass
-        else:
-            self.parent.MainParamDict['PrtlIntegrationRelative'] = self.RelVar.get()
-            self.parent.RenewCanvas()
 
     def FFTRelChanged(self, *args):
         if self.FFTRelVar.get()==self.parent.MainParamDict['FFTRelative']:
@@ -1685,20 +1411,14 @@ class MeasureFrame(Tk.Toplevel):
 
 
     def MeasuresCallback(self):
-        tkvarIntList = [self.ileft, self.iright, self.eleft, self.eright, self.FFTLVar, self.FFTRVar]
-        IntValList = ['IonLeft', 'IonRight', 'ElectronLeft', 'ElectronRight', 'FFTLeft', 'FFTRight']
+        tkvarIntList = [self.FFTLVar, self.FFTRVar]
+        IntValList = ['FFTLeft', 'FFTRight']
 
         to_reload = False
-
-
 
         for j in range(len(tkvarIntList)):
             to_reload += self.CheckIfFloatChanged(tkvarIntList[j], IntValList[j])
 
-        to_reload += self.CheckIfTeChanged()
-        to_reload += self.CheckIfTpChanged()
-        to_reload += self.CheckIfPLChanged()
-        to_reload += self.CheckIfEpsChanged()
         if to_reload:
             self.parent.RenewCanvas()
 
@@ -1751,12 +1471,6 @@ class MainApp(Tk.Tk):
         self.cmaps_with_green = ['viridis', 'Rainbow + White', 'Blue/Green/Red/Yellow', 'Cube YF', 'Linear_L']
 
 
-        # The variable that store the eps_p & eps_e values
-        self.eps_pVar = Tk.StringVar(self)
-        self.eps_pVar.set('N/A')
-
-        self.eps_eVar = Tk.StringVar(self)
-        self.eps_eVar.set('N/A')
 
         fileMenu = Tk.Menu(menubar, tearoff=False)
         presetMenu = Tk.Menu(menubar, tearoff=False)
@@ -1906,6 +1620,8 @@ class MainApp(Tk.Tk):
         self.toolbar.update()
         self.canvas._tkcanvas.pack(side=Tk.RIGHT, fill=Tk.BOTH, expand=1)
 
+        # Some options to set the way the spectral lines are dashed
+        self.dashes_options = [[1E7,1],[3,1],[5,1],[1,1]]
         # Look for the tristan output files and load the file paths into
         # previous objects
         self.dirname = os.curdir
@@ -1985,14 +1701,14 @@ class MainApp(Tk.Tk):
         # First create MainParamDict with the default parameters,
         # the dictionary that will hold the parameters for the program.
         # See ./iseult_configs/Default.cfg for a description of what each parameter does.
-        self.MainParamDict = {'MeasureEpsP': False,
+        self.MainParamDict = {#'MeasureEpsP': False,
                               'WindowSize': '1200x700',
                               'yTop': 100.0,
                               'yBottom': 0.0,
                               'Reload2End': True,
                               'ColorMap': 'viridis',
-                              'IonLeft': -10000.0,
-                              'PowerLawIonMax': 10.0,
+#                              'IonLeft': -10000.0,
+#                              'PowerLawIonMax': 10.0,
                               'FFTLeft': 0.0,
                               'ShowTitle': True,
                               'ImageAspect': 0,
@@ -2003,19 +1719,19 @@ class MainApp(Tk.Tk):
                               'DoLorentzBoost': False,
                               'NumOfRows': 3,
                               'MaxRows': 5,
-                              'DoPowerLawFitElectron': False,
-                              'GammaIonInjection': 1.0,
+#                              'DoPowerLawFitElectron': False,
+#                              'GammaIonInjection': 1.0,
                               'SetkLim': False,
                               'VCbarExtent': [4, 90, 95, 98],
                               'SkipSize': 5,
-                              'DoPowerLawFitIon': False,
+#                              'DoPowerLawFitIon': False,
                               'xLeft': 0.0,
-                              'DelGami': 0.06,
+#                              'DelGami': 0.06,
                               'NumFontSize': 11,
-                              'DelGame': 0.03,
+#                              'DelGame': 0.03,
                               'FFTRelative': True,
                               'NumOfCols': 2,
-                              'SetTi': False,
+#                              'SetTi': False,
                               'VSubPlotParams': {'right': 0.95,
                                                  'bottom': 0.06,
                                                  'top': 0.93,
@@ -2030,39 +1746,39 @@ class MainApp(Tk.Tk):
                                                  'wspace': 0.15,
                                                  'hspace': 0.3,
                                                  'left': 0.06},
-                              'PowerLawIonMin': 1.0,
-                              'SetTe': False,
+#                              'PowerLawIonMin': 1.0,
+#                              'SetTe': False,
                               'yLabelPad': 0,
                               'SetxLim': False,
                               'xLimsRelative': False,
                               'ConstantShockVel': True,
                               'xRight': 100.0,
-                              'GammaElectronInjection': 30.0,
+#                              'GammaElectronInjection': 30.0,
                               'LinkSpatial': 2,
-                              'PowerLawElectronMin': 1.0,
+#                              'PowerLawElectronMin': 1.0,
                               'HCbarExtent': [0, 4, 0, -1],
                               'Recording': False,
-                              'ElectronRight': 0.0,
+#                              'ElectronRight': 0.0,
                               'xLabelPad': 0,
                               'FFTRight': 200.0,
                               'ClearFig': True,
                               'HorizontalCbars': False,
                               'DivColorMap': 'BuYlRd',
                               'LinkK': True,
-                              'PrtlIntegrationRelative': True,
-                              'PowerLawElectronMax': 10.0,
+#                              'PrtlIntegrationRelative': True,
+#                              'PowerLawElectronMax': 10.0,
                               'GammaBoost': 0.0,
                               'kLeft': 0.1,
-                              'ElectronLeft': -10000.0,
-                              'IonRight': 0.0,
-                              'LoopPlayback': True,
-                              'MeasureEpsE': False}
+#                              'ElectronLeft': -10000.0,
+#                              'IonRight': 0.0,
+                              'LoopPlayback': True}
+#                              'MeasureEpsE': False}
 
         # The list of things that should be formatted as booleans.
         BoolList = ['Reload2End', 'ClearFig', 'ShowTitle', 'DoLorentzBoost',
-                    'HorizontalCbars', 'PrtlIntegrationRelative',
-                    'SetTe', 'SetTi','MeasureEpsP', 'MeasureEpsE',
-                    'DoPowerLawFitElectron', 'DoPowerLawFitIon',
+                    'HorizontalCbars', #'PrtlIntegrationRelative',
+#                    'SetTe', 'SetTi','MeasureEpsP', 'MeasureEpsE',
+#                    'DoPowerLawFitElectron', 'DoPowerLawFitIon',
                     'SetxLim', 'SetyLim', 'SetkLim', 'LinkK',
                     'LoopPlayback', 'Recording', 'FFTRelative', 'xLimsRelative',
                     'ConstantShockVel']
@@ -2083,10 +1799,11 @@ class MainApp(Tk.Tk):
 
 
         # The list of things that should be formatted as Floats.
-        FloatList = ['DelGame', 'DelGami', 'GammaIonInjection', 'GammaElectronInjection',
-                    'PowerLawElectronMin', 'PowerLawElectronMax',
-                    'PowerLawIonMin', 'PowerLawIonMax', 'GammaBoost',
-                    'ElectronLeft', 'ElectronRight', 'IonLeft', 'IonRight',
+        FloatList = [#'DelGame', 'DelGami', 'GammaIonInjection', 'GammaElectronInjection',
+                    #'PowerLawElectronMin', 'PowerLawElectronMax',
+                    #'PowerLawIonMin', 'PowerLawIonMax',
+                    'GammaBoost',
+                    #'ElectronLeft', 'ElectronRight', 'IonLeft', 'IonRight',
                     'FFTLeft', 'FFTRight',
                     'xLeft', 'xRight', 'yBottom', 'yTop', 'kLeft', 'kRight',
                     'WaitTime']
@@ -2901,8 +2618,9 @@ class MainApp(Tk.Tk):
         for elm in tmp_list:
             self.DataDict.pop(elm, None)
 
-
+        # Save the image for quick playback later
         self.SaveTmpFig()
+
 
 
 
@@ -3032,6 +2750,61 @@ class MainApp(Tk.Tk):
             self.LoadView()
 
 
+        ####
+        #
+        # Write the lines to the phase plots
+        #
+        ####
+
+        # first find all the phase plots that need writing to
+        self.phase_plot_list = []
+        self.spectral_plot_list = []
+
+        for i in range(self.MainParamDict['NumOfRows']):
+            for j in range(self.MainParamDict['NumOfCols']):
+                if self.SubPlotList[i][j].chartType =='PhasePlot':
+                    if self.SubPlotList[i][j].GetPlotParam('show_int_region'):
+                        self.phase_plot_list.append([i,j])
+                if self.SubPlotList[i][j].chartType =='SpectraPlot':
+                    self.spectral_plot_list.append([i,j])
+
+        for pos in self.phase_plot_list:
+            if self.SubPlotList[pos[0]][pos[1]].GetPlotParam('prtl_type') == 0:
+                for spos in self.spectral_plot_list:
+
+                    if self.SubPlotList[spos[0]][spos[1]].GetPlotParam('show_ions'):
+                        k = self.SubPlotList[spos[0]][spos[1]].graph.spect_num
+                        # Append the left line to the list
+                        self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines.append(self.SubPlotList[pos[0]][pos[1]].graph.axes.axvline(
+                        max(self.SubPlotList[spos[0]][spos[1]].graph.i_left_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmin+1),
+                        linewidth = 1.5, linestyle = '-', color = self.ion_color))
+                        # Choose the left dashes pattern
+                        self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines[-1].set_dashes(self.dashes_options[k])
+
+                        # Append the right line to the list
+                        self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines.append(self.SubPlotList[pos[0]][pos[1]].graph.axes.axvline(
+                        min(self.SubPlotList[spos[0]][spos[1]].graph.i_right_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmax+1),
+                        linewidth = 1.5, linestyle = '-', color = self.ion_color))
+                        # Choose the right dashes pattern
+                        self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines[-1].set_dashes(self.dashes_options[k])
+            else:
+                for spos in self.spectral_plot_list:
+                    if self.SubPlotList[spos[0]][spos[1]].GetPlotParam('show_electrons'):
+                        k = self.SubPlotList[spos[0]][spos[1]].graph.spect_num
+                        # Append the left line to the list
+                        self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines.append(self.SubPlotList[pos[0]][pos[1]].graph.axes.axvline(
+                        max(self.SubPlotList[spos[0]][spos[1]].graph.e_left_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmin+1),
+                        linewidth = 1.5, linestyle = '-', color = self.electron_color))
+                        # Choose the left dashes pattern
+                        self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines[-1].set_dashes(self.dashes_options[k])
+
+                        # Append the right line to the list
+                        self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines.append(self.SubPlotList[pos[0]][pos[1]].graph.axes.axvline(
+                        min(self.SubPlotList[spos[0]][spos[1]].graph.e_right_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmax+1),
+                        linewidth = 1.5, linestyle = '-', color = self.electron_color))
+                        # Choose the right dashes pattern
+                        self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines[-1].set_dashes(self.dashes_options[k])
+
         self.canvas.show()
         self.canvas.get_tk_widget().update_idletasks()
 
@@ -3080,6 +2853,37 @@ class MainApp(Tk.Tk):
         if keep_view:
             self.LoadView()
 
+
+        for pos in self.phase_plot_list:
+            i = 0
+            if self.SubPlotList[pos[0]][pos[1]].GetPlotParam('prtl_type') == 0:
+                for spos in self.spectral_plot_list:
+                    if self.SubPlotList[spos[0]][spos[1]].GetPlotParam('show_ions'):
+                        k = self.SubPlotList[spos[0]][spos[1]].graph.spect_num
+                        # Update the left line to the list
+                        self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines[i].set_xdata(
+                        [max(self.SubPlotList[spos[0]][spos[1]].graph.i_left_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmin+1),
+                        max(self.SubPlotList[spos[0]][spos[1]].graph.i_left_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmin+1)])
+                        i+=1
+                        # Append the right line of the list
+                        self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines[i].set_xdata(
+                        [min(self.SubPlotList[spos[0]][spos[1]].graph.i_right_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmax+1),
+                        min(self.SubPlotList[spos[0]][spos[1]].graph.i_right_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmax+1)])
+                        i+=1
+            else:
+                for spos in self.spectral_plot_list:
+                    if self.SubPlotList[spos[0]][spos[1]].GetPlotParam('show_electrons'):
+                        k = self.SubPlotList[spos[0]][spos[1]].graph.spect_num
+                        # Update the left line to the list
+                        self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines[i].set_xdata(
+                        [max(self.SubPlotList[spos[0]][spos[1]].graph.e_left_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmin+1),
+                        max(self.SubPlotList[spos[0]][spos[1]].graph.e_left_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmin+1)])
+                        i+=1
+                        # Append the right line of the list
+                        self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines[i].set_xdata(
+                        [min(self.SubPlotList[spos[0]][spos[1]].graph.e_right_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmax+1),
+                        min(self.SubPlotList[spos[0]][spos[1]].graph.e_right_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmax+1)])
+                        i+=1
         self.canvas.draw()
         self.canvas.get_tk_widget().update_idletasks()
 
