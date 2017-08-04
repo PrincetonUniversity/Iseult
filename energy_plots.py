@@ -57,6 +57,66 @@ class EnergyPanel:
         self.InterpolationMethods = ['nearest', 'bilinear', 'bicubic', 'spline16',
             'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
+        # A variable that controls whether the energy integration region
+        # is shown
+        self.IntRegVar = Tk.IntVar()
+        self.IntRegVar.set(self.GetPlotParam('show_int_region'))
+        self.IntRegVar.trace('w', self.IntVarHandler)
+        # Figure out the energy color the intergration region
+        if self.GetPlotParam('prtl_type') == 1: #electons
+            self.energy_color = self.parent.electron_color
+        else:
+            self.energy_color = self.parent.ion_color
+        # A list that will hold any lines for the integration region
+
+
+    def IntVarHandler(self, *args):
+        # This should only be called by the user-interactio when all the plots already exist...
+        # so we can take some shortcuts and assume a lot of things are already created.
+        self.SetPlotParam('show_int_region', self.IntRegVar.get(), update_plot = False)
+        if self.IntRegVar.get() == True:
+            # We need to show the integration region.
+
+            # Look for all the spectra plots and plot the lines.
+            for i in range(self.parent.MainParamDict['NumOfRows']):
+                for j in range(self.parent.MainParamDict['NumOfCols']):
+                    if self.parent.SubPlotList[i][j].chartType == 'SpectraPlot':
+                        k = min(self.parent.SubPlotList[i][j].graph.spect_num, len(self.parent.dashes_options)-1)
+                        # figure out if we are as ion phase diagram or an electron one
+                        if self.GetPlotParam('prtl_type') == 0:
+                            # Append the left line to the list
+                            self.IntRegionLines.append(self.axes.axvline(
+                            max(self.parent.SubPlotList[i][j].graph.i_left_loc, self.xmin+1),
+                            linewidth = 1.5, linestyle = '-', color = self.energy_color))
+                            # Choose the right dashes pattern
+                            self.IntRegionLines[-1].set_dashes(self.parent.dashes_options[k])
+                            # Append the left line to the list
+                            self.IntRegionLines.append(self.axes.axvline(
+                            min(self.parent.SubPlotList[i][j].graph.i_right_loc, self.xmax-1),
+                            linewidth = 1.5, linestyle = '-', color = self.energy_color))
+                            # Choose the right dashes pattern
+                            self.IntRegionLines[-1].set_dashes(self.parent.dashes_options[k])
+                        else:
+                            # Append the left line to the list
+                            self.IntRegionLines.append(self.axes.axvline(
+                            max(self.parent.SubPlotList[i][j].graph.e_left_loc, self.xmin+1),
+                            linewidth = 1.5, linestyle = '-', color = self.energy_color))
+                            # Choose the right dashes pattern
+                            self.IntRegionLines[-1].set_dashes(self.parent.dashes_options[k])
+                            # Append the left line to the list
+                            self.IntRegionLines.append(self.axes.axvline(
+                            min(self.parent.SubPlotList[i][j].graph.e_right_loc, self.xmax-1),
+                            linewidth = 1.5, linestyle = '-', color = self.energy_color))
+                            # Choose the right dashes pattern
+                            self.IntRegionLines[-1].set_dashes(self.parent.dashes_options[k])
+
+        # CLOSES IF. NOW IF WE TURN OFF THE INTEGRATION REGIONS, we have to delete all the lines.
+        else:
+            for i in xrange(len(self.IntRegionLines)):
+                self.IntRegionLines.pop(0).remove()
+        # Update the canvas
+        self.parent.canvas.draw()
+        self.parent.canvas.get_tk_widget().update_idletasks()
 
 
     def ChangePlotType(self, str_arg):
@@ -173,6 +233,8 @@ class EnergyPanel:
         if self.GetPlotParam('prtl_type') == 0: #protons
             self.energy_color = self.parent.ion_color
             self.y_label  = r'$E_p\ [m_i c]$'
+        for line in self.IntRegionLines:
+            line.set_color(self.energy_color)
 
         if self.GetPlotParam('prtl_type') == 1: #electons
             self.energy_color = self.parent.electron_color
@@ -184,6 +246,8 @@ class EnergyPanel:
 
         # Figure out the color and ylabel
         # Choose the particle type and px, py, or pz
+        self.IntRegionLines = []
+
         self.UpdateLabelsandColors()
 
         self.xmin = self.hist2d[2][0]
@@ -229,15 +293,6 @@ class EnergyPanel:
                    PathEffects.Normal()])
         if not self.GetPlotParam('show_shock'):
             self.shock_line.set_visible(False)
-
-        # a placeholder
-        self.lineleft = self.axes.axvline(0, linewidth = 1.5, linestyle = '-', color = self.energy_color)
-        self.lineright = self.axes.axvline(0, linewidth = 1.5, linestyle = '-', color = self.energy_color)
-
-        if not self.GetPlotParam('show_int_region'):
-            self.lineleft.set_visible(False)
-            self.lineright.set_visible(False)
-
 
         self.axC = self.figure.add_subplot(self.gs[self.parent.cbar_extent[0]:self.parent.cbar_extent[1], self.parent.cbar_extent[2]:self.parent.cbar_extent[3]])
         # Technically I should use the colorbar class here,
@@ -324,29 +379,6 @@ class EnergyPanel:
             self.CbarTickFormatter()
         if self.GetPlotParam('show_shock'):
             self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
-
-        if self.GetPlotParam('show_int_region'):
-            if self.GetPlotParam('prtl_type') ==0 and self.parent.MainParamDict['PrtlIntegrationRelative']:
-                self.left_loc = self.parent.shock_loc+self.parent.MainParamDict['IonLeft']
-                self.right_loc = self.parent.shock_loc+self.parent.MainParamDict['IonRight']
-
-            elif self.GetPlotParam('prtl_type') == 0:
-                self.left_loc = self.parent.MainParamDict['IonLeft']
-                self.right_loc = self.parent.MainParamDict['IonRight']
-
-            elif self.GetPlotParam('prtl_type') == 1 and self.parent.MainParamDict['PrtlIntegrationRelative']:
-                self.left_loc = self.parent.shock_loc+self.parent.MainParamDict['ElectronLeft']
-                self.right_loc = self.parent.shock_loc+self.parent.MainParamDict['ElectronRight']
-
-            else:
-                self.left_loc = self.parent.MainParamDict['ElectronLeft']
-                self.right_loc = self.parent.MainParamDict['ElectronRight']
-
-            self.left_loc = max(self.left_loc, self.xmin+1)
-            self.lineleft.set_xdata([self.left_loc,self.left_loc])
-
-            self.right_loc = min(self.right_loc, self.xmax-1)
-            self.lineright.set_xdata([self.right_loc,self.right_loc])
 
         self.UpdateLabelsandColors()
         self.axes.set_xlabel(self.x_label, labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
@@ -501,11 +533,8 @@ class EnergySettings(Tk.Toplevel):
         cb.grid(row = 7, sticky = Tk.W)
 
         # Show energy integration region
-        self.IntRegVar = Tk.IntVar()
-        self.IntRegVar.set(self.parent.GetPlotParam('show_int_region'))
         cb = ttk.Checkbutton(frm, text = "Show Energy Region",
-                        variable = self.IntRegVar,
-                        command = self.ShowIntRegionHandler)
+                        variable = self.parent.IntRegVar)
         cb.grid(row = 7, column = 1, sticky = Tk.W)
 
         # control mask
@@ -590,13 +619,6 @@ class EnergySettings(Tk.Toplevel):
             self.parent.shock_line.set_visible(self.ShockVar.get())
             self.parent.SetPlotParam('show_shock', self.ShockVar.get())
 
-    def ShowIntRegionHandler(self, *args):
-        if self.parent.GetPlotParam('show_int_region')== self.IntRegVar.get():
-            pass
-        else:
-            self.parent.lineleft.set_visible(self.IntRegVar.get())
-            self.parent.lineright.set_visible(self.IntRegVar.get())
-            self.parent.SetPlotParam('show_int_region', self.IntRegVar.get())
 
     def CbarHandler(self, *args):
         if self.parent.GetPlotParam('show_cbar')== self.CbarVar.get():

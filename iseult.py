@@ -2762,7 +2762,7 @@ class MainApp(Tk.Tk):
 
         for i in range(self.MainParamDict['NumOfRows']):
             for j in range(self.MainParamDict['NumOfCols']):
-                if self.SubPlotList[i][j].chartType =='PhasePlot':
+                if self.SubPlotList[i][j].chartType =='PhasePlot' or self.SubPlotList[i][j].chartType =='EnergyPlot':
                     if self.SubPlotList[i][j].GetPlotParam('show_int_region'):
                         self.phase_plot_list.append([i,j])
                 if self.SubPlotList[i][j].chartType =='SpectraPlot':
@@ -2771,9 +2771,8 @@ class MainApp(Tk.Tk):
         for pos in self.phase_plot_list:
             if self.SubPlotList[pos[0]][pos[1]].GetPlotParam('prtl_type') == 0:
                 for spos in self.spectral_plot_list:
-
                     if self.SubPlotList[spos[0]][spos[1]].GetPlotParam('show_ions'):
-                        k = self.SubPlotList[spos[0]][spos[1]].graph.spect_num
+                        k = min(self.SubPlotList[spos[0]][spos[1]].graph.spect_num, len(self.dashes_options)-1)
                         # Append the left line to the list
                         self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines.append(self.SubPlotList[pos[0]][pos[1]].graph.axes.axvline(
                         max(self.SubPlotList[spos[0]][spos[1]].graph.i_left_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmin+1),
@@ -2790,7 +2789,7 @@ class MainApp(Tk.Tk):
             else:
                 for spos in self.spectral_plot_list:
                     if self.SubPlotList[spos[0]][spos[1]].GetPlotParam('show_electrons'):
-                        k = self.SubPlotList[spos[0]][spos[1]].graph.spect_num
+                        k = min(self.SubPlotList[spos[0]][spos[1]].graph.spect_num, len(self.dashes_options)-1)
                         # Append the left line to the list
                         self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines.append(self.SubPlotList[pos[0]][pos[1]].graph.axes.axvline(
                         max(self.SubPlotList[spos[0]][spos[1]].graph.e_left_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmin+1),
@@ -2859,7 +2858,6 @@ class MainApp(Tk.Tk):
             if self.SubPlotList[pos[0]][pos[1]].GetPlotParam('prtl_type') == 0:
                 for spos in self.spectral_plot_list:
                     if self.SubPlotList[spos[0]][spos[1]].GetPlotParam('show_ions'):
-                        k = self.SubPlotList[spos[0]][spos[1]].graph.spect_num
                         # Update the left line to the list
                         self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines[i].set_xdata(
                         [max(self.SubPlotList[spos[0]][spos[1]].graph.i_left_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmin+1),
@@ -2867,22 +2865,21 @@ class MainApp(Tk.Tk):
                         i+=1
                         # Append the right line of the list
                         self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines[i].set_xdata(
-                        [min(self.SubPlotList[spos[0]][spos[1]].graph.i_right_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmax+1),
-                        min(self.SubPlotList[spos[0]][spos[1]].graph.i_right_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmax+1)])
+                        [min(self.SubPlotList[spos[0]][spos[1]].graph.i_right_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmax-1),
+                        min(self.SubPlotList[spos[0]][spos[1]].graph.i_right_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmax-1)])
                         i+=1
             else:
                 for spos in self.spectral_plot_list:
                     if self.SubPlotList[spos[0]][spos[1]].GetPlotParam('show_electrons'):
-                        k = self.SubPlotList[spos[0]][spos[1]].graph.spect_num
                         # Update the left line to the list
                         self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines[i].set_xdata(
                         [max(self.SubPlotList[spos[0]][spos[1]].graph.e_left_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmin+1),
-                        max(self.SubPlotList[spos[0]][spos[1]].graph.e_left_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmin+1)])
+                        max(self.SubPlotList[spos[0]][spos[1]].graph.e_left_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmin-1)])
                         i+=1
                         # Append the right line of the list
                         self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines[i].set_xdata(
                         [min(self.SubPlotList[spos[0]][spos[1]].graph.e_right_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmax+1),
-                        min(self.SubPlotList[spos[0]][spos[1]].graph.e_right_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmax+1)])
+                        min(self.SubPlotList[spos[0]][spos[1]].graph.e_right_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmax-1)])
                         i+=1
         self.canvas.draw()
         self.canvas.get_tk_widget().update_idletasks()

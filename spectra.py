@@ -83,9 +83,8 @@ class SpectralPanel:
             for j in range(self.parent.MainParamDict['NumOfCols']):
                 if self.parent.SubPlotList[i][j].chartType == 'SpectraPlot':
                     self.spect_num+=1
-        if self.spect_num > len(self.parent.dashes_options)-1:
-            self.spect_num = len(self.parent.dashes_options)-1
-        self.dashes = self.parent.dashes_options[self.spect_num]
+
+        self.dashes = self.parent.dashes_options[min(self.spect_num,len(self.parent.dashes_options)-1)]
         self.RegionFlag = True # Set to true if the region lines need to be written to a phase plot
         # The variables that store the eps_p & eps_e values
         self.eps_pVar = Tk.StringVar()
@@ -639,8 +638,8 @@ class SpectralPanel:
     def GetPlotParam(self, keyname):
         return self.FigWrap.GetPlotParam(keyname)
 
-    def SetPlotParam(self, keyname, value, update_plot = True):
-        self.FigWrap.SetPlotParam(keyname, value, update_plot = update_plot)
+    def SetPlotParam(self, keyname, value, update_plot = True, NeedsRedraw = False):
+        self.FigWrap.SetPlotParam(keyname, value, update_plot = update_plot, NeedsRedraw = NeedsRedraw)
 
     def MakeLegend(self):
         ''' A helper function to make the legend'''
@@ -898,7 +897,7 @@ class SpectraSettings(Tk.Toplevel):
         cb = ttk.Checkbutton(frm2, text='Show T_e', variable =  self.SetTeVar)
         cb.grid(row = 5, sticky = Tk.W)
 
-        ttk.Label(frm, text=u'\u0394'+u'\u0263' + ' =').grid(row= 5, column =1, sticky = Tk.N)
+        ttk.Label(frm2, text=u'\u0394'+u'\u0263' + ' =').grid(row= 5, column =1, sticky = Tk.N)
 
         self.SetTpVar = Tk.IntVar()
         self.SetTpVar.set(self.parent.GetPlotParam('SetTi'))
@@ -906,7 +905,7 @@ class SpectraSettings(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm2, text='Show T_i', variable =  self.SetTpVar)
         cb.grid(row = 6, sticky = Tk.W)
-        ttk.Label(frm, text=u'\u0394'+u'\u0263' + ' =').grid(row= 6, column =1, sticky = Tk.N)
+        ttk.Label(frm2, text=u'\u0394'+u'\u0263' + ' =').grid(row= 6, column =1, sticky = Tk.N)
 
         self.delgameVar = Tk.StringVar()
         self.delgameVar.set(str(self.parent.GetPlotParam('DelGame')))
@@ -986,14 +985,15 @@ class SpectraSettings(Tk.Toplevel):
             pass
         else:
             self.parent.ion_spect[0].set_visible(self.IonVar.get())
-            self.parent.SetPlotParam('show_ions', self.IonVar.get())
+            # I could do a better job here...
+            self.parent.SetPlotParam('show_ions', self.IonVar.get(), NeedsRedraw = True)
 
     def eVarHandler(self, *args):
         if self.eVar.get() == self.parent.GetPlotParam('show_electrons'):
             pass
         else:
             self.parent.electron_spect[0].set_visible(self.eVar.get())
-            self.parent.SetPlotParam('show_electrons', self.eVar.get())
+            self.parent.SetPlotParam('show_electrons', self.eVar.get(), NeedsRedraw = True)
 
 
     def NormalizeVarHandler(self, *args):

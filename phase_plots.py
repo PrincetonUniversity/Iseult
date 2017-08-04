@@ -89,9 +89,9 @@ class PhasePanel:
         else:
             self.energy_color = self.parent.ion_color
         # A list that will hold any lines for the integration region
-        self.IntRegionLines = []
 
-    def IntVarHandler(self):
+
+    def IntVarHandler(self, *args):
         # This should only be called by the user-interactio when all the plots already exist...
         # so we can take some shortcuts and assume a lot of things are already created.
         self.SetPlotParam('show_int_region', self.IntRegVar.get(), update_plot = False)
@@ -102,7 +102,7 @@ class PhasePanel:
             for i in range(self.parent.MainParamDict['NumOfRows']):
                 for j in range(self.parent.MainParamDict['NumOfCols']):
                     if self.parent.SubPlotList[i][j].chartType == 'SpectraPlot':
-                        k = self.parentSubPlotList[i][j].graph.spect_num
+                        k = min(self.parent.SubPlotList[i][j].graph.spect_num, len(self.parent.dashes_options)-1)
                         # figure out if we are as ion phase diagram or an electron one
                         if self.GetPlotParam('prtl_type') == 0:
                             # Append the left line to the list
@@ -110,31 +110,31 @@ class PhasePanel:
                             max(self.parent.SubPlotList[i][j].graph.i_left_loc, self.xmin+1),
                             linewidth = 1.5, linestyle = '-', color = self.energy_color))
                             # Choose the right dashes pattern
-                            self.IntRegionLines[-1].set_dashes[self.parent.dashes_options[k]]
+                            self.IntRegionLines[-1].set_dashes(self.parent.dashes_options[k])
                             # Append the left line to the list
                             self.IntRegionLines.append(self.axes.axvline(
                             min(self.parent.SubPlotList[i][j].graph.i_right_loc, self.xmax-1),
                             linewidth = 1.5, linestyle = '-', color = self.energy_color))
                             # Choose the right dashes pattern
-                            self.IntRegionLines[-1].set_dashes[self.parent.dashes_options[k]]
+                            self.IntRegionLines[-1].set_dashes(self.parent.dashes_options[k])
                         else:
                             # Append the left line to the list
                             self.IntRegionLines.append(self.axes.axvline(
                             max(self.parent.SubPlotList[i][j].graph.e_left_loc, self.xmin+1),
                             linewidth = 1.5, linestyle = '-', color = self.energy_color))
                             # Choose the right dashes pattern
-                            self.IntRegionLines[-1].set_dashes[self.parent.dashes_options[k]]
+                            self.IntRegionLines[-1].set_dashes(self.parent.dashes_options[k])
                             # Append the left line to the list
                             self.IntRegionLines.append(self.axes.axvline(
                             min(self.parent.SubPlotList[i][j].graph.e_right_loc, self.xmax-1),
                             linewidth = 1.5, linestyle = '-', color = self.energy_color))
                             # Choose the right dashes pattern
-                            self.IntRegionLines[-1].set_dashes[self.parent.dashes_options[k]]
+                            self.IntRegionLines[-1].set_dashes(self.parent.dashes_options[k])
 
         # CLOSES IF. NOW IF WE TURN OFF THE INTEGRATION REGIONS, we have to delete all the lines.
         else:
             for i in xrange(len(self.IntRegionLines)):
-                self.IntRegionLines.pop().remove()
+                self.IntRegionLines.pop(0).remove()
         # Update the canvas
         self.parent.canvas.draw()
         self.parent.canvas.get_tk_widget().update_idletasks()
@@ -476,7 +476,7 @@ class PhasePanel:
     def draw(self):
         # In order to speed up the plotting, we only recalculate everything
         # if necessary.
-
+        self.IntRegionLines = []
         # Figure out the color and ylabel
         # Choose the particle type and px, py, or pz
         self.UpdateLabelsandColors()
@@ -907,13 +907,6 @@ class PhaseSettings(Tk.Toplevel):
             self.parent.shock_line.set_visible(self.ShockVar.get())
             self.parent.SetPlotParam('show_shock', self.ShockVar.get())
 
-#    def ShowIntRegionHandler(self, *args):
-#        if self.parent.GetPlotParam('show_int_region')== self.IntRegVar.get():
-#            pass
-#        else:
-#            self.parent.lineleft.set_visible(self.IntRegVar.get())
-#            self.parent.lineright.set_visible(self.IntRegVar.get())
-#            self.parent.SetPlotParam('show_int_region', self.IntRegVar.get())
 
     def CbarHandler(self, *args):
         if self.parent.GetPlotParam('show_cbar')== self.CbarVar.get():
@@ -945,8 +938,8 @@ class PhaseSettings(Tk.Toplevel):
             self.parent.SetPlotParam('prtl_type', self.pvar.get(), update_plot =  False)
             self.parent.UpdateLabelsandColors()
             self.parent.axes.set_ylabel(self.parent.y_label, labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
-            self.parent.lineleft.set_color(self.parent.energy_color)
-            self.parent.lineright.set_color(self.parent.energy_color)
+            #self.parent.lineleft.set_color(self.parent.energy_color)
+            #self.parent.lineright.set_color(self.parent.energy_color)
             self.parent.SetPlotParam('prtl_type', self.pvar.get())
 
     def RadioDim(self):
