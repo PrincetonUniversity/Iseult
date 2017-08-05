@@ -2027,6 +2027,7 @@ class MainApp(Tk.Tk):
                 self.TimeStep.value = len(self.PathDict['Flds'])
                 self.playbackbar.slider.set(self.TimeStep.value)
             self.shock_finder()
+            self.movie_dir = ''
 
         return is_okay
 
@@ -2888,17 +2889,29 @@ class MainApp(Tk.Tk):
             self.PrintFig()
 
     def PrintFig(self):
-        movie_dir = os.path.abspath(os.path.join(self.dirname, '..', 'Movie'))
-        try:
-            os.makedirs(movie_dir)
-        except OSError:
-            if not os.path.isdir(movie_dir):
-                raise
+        if self.movie_dir == '':
+            self.movie_dir = os.path.abspath(os.path.join(self.dirname, '..', 'Movie'))
+            try:
+                os.makedirs(self.movie_dir)
+            except OSError:
+                if not os.path.isdir(self.movie_dir):
+                    mvdir_opt = {}
+                    mvdir_opt['initialdir'] = self.dirname
+                    mvdir_opt['mustexist'] = True
+                    mvdir_opt['parent'] = self
+                    self.movie_dir = tkFileDialog.askdirectory(title = 'Problems saving to ./Movie, please choose a different directory where you have write access.', **self.dir_opt)
+
 
         fname = 'iseult_img_'+ str(self.TimeStep.value).zfill(3)+'.png'
-
-        self.f.savefig(os.path.join(movie_dir, fname))#, dpi = 300)#, facecolor=self.f.get_facecolor())#, edgecolor='none')
-
+        try:
+            self.f.savefig(os.path.join(self.movie_dir, fname))#, dpi = 300)#, facecolor=self.f.get_facecolor())#, edgecolor='none')
+        except OSError:
+            mvdir_opt = {}
+            mvdir_opt['initialdir'] = self.dirname
+            mvdir_opt['mustexist'] = True
+            mvdir_opt['parent'] = self
+            self.movie_dir = tkFileDialog.askdirectory(title = 'Problems saving file to directory, please choose a different directory where you have write access.', **self.dir_opt)
+            self.PrintFig()
     def MakeAMovie(self, fname, start, stop, step, FPS):
         '''Record a movie'''
 
