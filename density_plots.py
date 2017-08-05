@@ -798,9 +798,9 @@ class DensSettings(Tk.Toplevel):
         else:
             self.parent.SetPlotParam('show_cpu_domains', self.CPUVar.get(), update_plot = False)
             if self.parent.GetPlotParam('show_cpu_domains'):
-                self.FigWrap.SetCpuDomainLines()
+                self.parent.FigWrap.SetCpuDomainLines()
             else: # We need to get remove of the cpu lines. Pop them out of the array and remove them from the list.
-                self.FigWrap.RemoveCpuDomainLines()
+                self.parent.FigWrap.RemoveCpuDomainLines()
             self.parent.parent.canvas.draw()
             self.parent.parent.canvas.get_tk_widget().update_idletasks()
 
