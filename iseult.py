@@ -1621,7 +1621,7 @@ class MainApp(Tk.Tk):
         self.canvas._tkcanvas.pack(side=Tk.RIGHT, fill=Tk.BOTH, expand=1)
 
         # Some options to set the way the spectral lines are dashed
-        self.dashes_options = [[1E7,1],[3,1],[5,1],[1,1]]
+        self.dashes_options = [[],[3,1],[5,1],[1,1]]
         # Look for the tristan output files and load the file paths into
         # previous objects
         self.dirname = os.curdir
