@@ -717,7 +717,7 @@ class MomentsSettings(Tk.Toplevel):
         ttk.Label(frm, text ='# of xbins').grid(row = 8, column = 0, sticky = Tk.W)
         ttk.Entry(frm, textvariable=self.xBins, width=8).grid(row = 8, column = 1)
 
-
+        '''
         # Create the OptionMenu to chooses the Legend location:
         self.LLocVar = Tk.StringVar(self)
         self.LLocVar.set(self.parent.GetPlotParam('legend_loc')) # default value
@@ -726,7 +726,7 @@ class MomentsSettings(Tk.Toplevel):
         ttk.Label(frm, text="Lengend Location:").grid(row=0, column = 2)
         InterplChooser = apply(ttk.OptionMenu, (frm, self.LLocVar, self.parent.GetPlotParam('legend_loc')) + tuple(self.parent.LegendLocOpts))
         InterplChooser.grid(row =8, column = 3, sticky = Tk.W + Tk.E)
-
+        '''
         self.ShowLegVar = Tk.IntVar(self)
         self.ShowLegVar.set(self.parent.GetPlotParam('show_legend'))
         self.ShowLegVar.trace('w', self.ShowLegChanged)
