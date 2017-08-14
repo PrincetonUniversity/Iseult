@@ -1312,32 +1312,13 @@ class SettingsFrame(Tk.Toplevel):
         to_reload = False
 
         try:
-
             #make sure the user types in a int
             if self.PrtlStrideVar.get() <= 0:
                 self.PrtlStrideVar.set(str(self.parent.MainParamDict['PrtlStride']))
             if int(self.PrtlStrideVar.get()) != self.parent.MainParamDict['PrtlStride']:
-                # first we have to remove the calculated energy time steps
-                self.parent.TotalEnergyTimeSteps = []
-                self.parent.TotalEnergyTimes = np.array([])
-                self.parent.TotalIonEnergy = np.array([])
-                self.parent.TotalElectronEnergy = np.array([])
-
-                self.parent.TotalMagEnergy = np.array([])
-                self.parent.TotalBzEnergy = np.array([])
-                self.parent.TotalElectricEnergy = np.array([])
-
-                # figure out all keys that have 'Prtl'
-                prtl_keys = []
-                for k, v in self.parent.H5KeyDict.iteritems():
-                    if v =='Prtl':
-                        prtl_keys.append(k)
-                # now we have to go through the data dictionary and remove the particle info
-                for DataDict in self.parent.ListOfDataDict:
-                    for k in prtl_keys:
-                        DataDict.pop(k, None)
-
                 self.parent.MainParamDict['PrtlStride'] = int(self.PrtlStrideVar.get())
+                self.parent.stride = self.parent.MainParamDict['PrtlStride']
+                self.parent.StrideChanged()
                 to_reload += True
 
         except ValueError:
@@ -1508,6 +1489,9 @@ class MainApp(Tk.Tk):
         # A variable that keeps track of the first graph with spatial x & y axes
         self.first_x = None
         self.first_y = None
+
+        # An int that stores the current stride
+        self.stride = 0
 
         self.IseultDir = os.path.dirname(__file__)
 
@@ -1719,6 +1703,27 @@ class MainApp(Tk.Tk):
         self.bind('<space>', self.playbackbar.PlayHandler)
         self.update()
 
+    def StrideChanged(self):
+        # first we have to remove the calculated energy time steps
+        self.TotalEnergyTimeSteps = []
+        self.TotalEnergyTimes = np.array([])
+        self.TotalIonEnergy = np.array([])
+        self.TotalElectronEnergy = np.array([])
+
+        self.TotalMagEnergy = np.array([])
+        self.TotalBzEnergy = np.array([])
+        self.TotalElectricEnergy = np.array([])
+
+        # figure out all keys that have 'Prtl'
+        prtl_keys = []
+        for k, v in self.H5KeyDict.iteritems():
+            if v =='Prtl':
+                prtl_keys.append(k)
+        # now we have to go through the data dictionary and remove the particle info
+        for DataDict in self.ListOfDataDict:
+            for k in prtl_keys:
+                DataDict.pop(k, None)
+
 
     def quit(self, event):
         print("quitting...")
@@ -1864,6 +1869,9 @@ class MainApp(Tk.Tk):
                 self.MainParamDict[elm]['wspace'] = float(tmplist[4])
                 self.MainParamDict[elm]['hspace'] = float(tmplist[5])
 
+        # if stride is 0 that means it has only been initialized... set to zero
+        if self.stride == 0:
+            self.stride = self.MainParamDict['PrtlStride']
     def SaveIseultState(self, cfgfile, cfgname):
         config = ConfigParser.RawConfigParser()
 
@@ -2185,6 +2193,10 @@ class MainApp(Tk.Tk):
         # Generate the Main Param Dict
         self.GenMainParamDict(config_file)
 
+        #Loading a config file may change the stride... watch out!
+        if self.stride != self.MainParamDict['PrtlStride']:
+            self.stride = self.MainParamDict['PrtlStride']
+            self.StrideChanged()
         # Load in all the subplot params
         for i in range(self.MainParamDict['NumOfRows']):
             for j in range(self.MainParamDict['NumOfCols']):
