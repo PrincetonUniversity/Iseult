@@ -214,7 +214,8 @@ class PhasePanel:
 
         self.key_name += self.prtl_opts[self.GetPlotParam('prtl_type')]
         self.key_name += self.direction_opts[self.GetPlotParam('mom_dim')]
-
+        self.key_name += str(self.parent.MainParamDict['PrtlStride'])
+        
         if self.key_name in self.parent.DataDict.keys():
             self.hist2d = self.parent.DataDict[self.key_name]
 
@@ -701,7 +702,7 @@ class PhaseSettings(Tk.Toplevel):
         self.protocol('WM_DELETE_WINDOW', self.OnClosing)
         self.bind('<Return>', self.TxtEnter)
 
-        # Create the OptionMenu to chooses the Chart Type:
+        # Create the OptionMenu to chooses the Interpolation Type:
         self.InterpolVar = Tk.StringVar(self)
         self.InterpolVar.set(self.parent.GetPlotParam('interpolation')) # default value
         self.InterpolVar.trace('w', self.InterpolChanged)

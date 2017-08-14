@@ -37,7 +37,7 @@ class  MomentsPanel:
                 'show_y', 'show_z', 'spatial_x', 'spatial_y', 'weighted', 'show_legend']
     IntList = ['m_type','xbins']
     FloatList = ['v_min', 'v_max']
-    StrList = []
+    StrList = ['legend_loc']
 
     def __init__(self, parent, figwrapper):
         self.settings_window = None
@@ -48,10 +48,6 @@ class  MomentsPanel:
         self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
         self.chartType = self.FigWrap.chartType
         self.figure = self.FigWrap.figure
-        self.SetPlotParam('spatial_y', self.GetPlotParam('twoD'), update_plot = False)
-        self.InterpolationMethods = ['nearest', 'bilinear', 'bicubic', 'spline16',
-            'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
-            'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
 
     def ChangePlotType(self, str_arg):
         self.FigWrap.ChangeGraph(str_arg)
@@ -179,9 +175,8 @@ class  MomentsPanel:
             self.key_name += 'vel'
         elif self.GetPlotParam('m_type') == 1:
             self.key_name += 'mom'
-        # See if anything at all needs loading.
+        self.key_name += str(self.parent.MainParamDict['PrtlStride'])
 
-#        if self.ShowingSomething:
         if self.key_name+'x_bins' in self.parent.DataDict.keys():
             self.x_bins = self.parent.DataDict[self.key_name+'x_bins']
 
@@ -615,7 +610,6 @@ class MomentsSettings(Tk.Toplevel):
         ctypeChooser = apply(ttk.OptionMenu, (frm, self.ctypevar, self.parent.chartType) + tuple(self.parent.ChartTypes))
         ctypeChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
 
-
         # the Radiobox Control to choose the moment
         self.momList = ['avg velocity', 'avg momentum']
         self.pvar = Tk.IntVar()
@@ -723,8 +717,29 @@ class MomentsSettings(Tk.Toplevel):
         ttk.Entry(frm, textvariable=self.xBins, width=8).grid(row = 8, column = 1)
 
 
+        # Create the OptionMenu to chooses the Legend location:
+        self.LLocVar = Tk.StringVar(self)
+        self.LLocVar.set(self.parent.GetPlotParam('legend_loc')) # default value
+        self.LLocVar.trace('w', self.LLocChanged)
 
+        ttk.Label(frm, text="Lengend Location:").grid(row=0, column = 2)
+        InterplChooser = apply(ttk.OptionMenu, (frm, self.LLocVar, self.parent.GetPlotParam('legend_loc')) + tuple(self.parent.LegendLocOpts))
+        InterplChooser.grid(row =8, column = 3, sticky = Tk.W + Tk.E)
 
+        self.ShowLegVar = Tk.IntVar(self)
+        self.ShowLegVar.set(self.parent.GetPlotParam('show_legend'))
+        self.ShowLegVar.trace('w', self.ShowLegChanged)
+        cb = ttk.Checkbutton(frm, text ='Show Legend',
+                        variable = self.ShowLegVar)
+        cb.grid(row = 7, column = 3, sticky = Tk.W)
+    def ShowLegChanged(self, *args):
+        if self.ShowLegVar.get() == self.parent.GetPlotParam('show_legend'):
+            pass
+        else:
+            self.parent.SetPlotParam('show_legend', self.ShowLegVar.get(), update_plot  = 'False')
+            self.parent.legend.set_visible(self.parent.GetPlotParam('show_legend'))
+            self.parent.parent.canvas.draw()
+            self.parent.parent.canvas.get_tk_widget().update_idletasks()
 
     def ctypeChanged(self, *args):
         if self.ctypevar.get() == self.parent.chartType:
@@ -794,10 +809,10 @@ class MomentsSettings(Tk.Toplevel):
 
         if self.ShowElectronsVar.get() and self.ShowIonsVar.get():
             self.parent.legend = self.parent.axes.legend(legend_handles, legend_labels,
-            framealpha = .05, fontsize = 11, loc = 'best', ncol = 2)
+            framealpha = .05, fontsize = 11, loc = self.parent.GetPlotParam('legend_loc'), ncol = 2)
         else:
             self.parent.legend = self.parent.axes.legend(legend_handles, legend_labels,
-            framealpha = .05, fontsize = 11, loc = 'best')
+            framealpha = .05, fontsize = 11, loc = self.parent.GetPlotParam('legend_loc'))
 
         self.parent.legend.set_visible(self.parent.GetPlotParam('show_legend'))
         self.parent.legend.get_frame().set_facecolor('k')

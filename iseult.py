@@ -990,6 +990,11 @@ class SettingsFrame(Tk.Toplevel):
         self.RowSpin = Spinbox(frm, from_=1, to=self.parent.MainParamDict['MaxRows'], textvariable=self.rowNum, width = 6)
         self.RowSpin.grid(row =5, column = 1, sticky = Tk.W + Tk.E)
 
+        self.PrtlStrideVar = Tk.StringVar()
+        self.PrtlStrideVar.set(str(self.parent.MainParamDict['PrtlStride']))
+        ttk.Entry(frm, textvariable = self.PrtlStrideVar, width =6).grid(row =6, column =1, sticky = Tk.W +Tk.E)
+        ttk.Label(frm, text='Particle stride').grid(row= 6,column =0)
+
         # Control whether or not Title is shown
         self.TitleVar = Tk.IntVar()
         self.TitleVar.set(self.parent.MainParamDict['ShowTitle'])
@@ -1005,13 +1010,13 @@ class SettingsFrame(Tk.Toplevel):
         self.xright.set(str(self.parent.MainParamDict['xRight']))
 
 
-        ttk.Label(frm, text = 'min').grid(row= 6, column = 1, sticky = Tk.N)
-        ttk.Label(frm, text = 'max').grid(row= 6, column = 2, sticky = Tk.N)
+        ttk.Label(frm, text = 'min').grid(row= 7, column = 1, sticky = Tk.N)
+        ttk.Label(frm, text = 'max').grid(row= 7, column = 2, sticky = Tk.N)
         cb = ttk.Checkbutton(frm, text ='Set xlim',
                         variable = self.LimVar)
-        cb.grid(row = 7, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.xleft, width = 8).grid(row = 7, column =1, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.xright, width = 8).grid(row = 7, column =2, sticky = Tk.N)
+        cb.grid(row = 8, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.xleft, width = 8).grid(row = 8, column =1, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.xright, width = 8).grid(row = 8, column =2, sticky = Tk.N)
 
 
 
@@ -1028,9 +1033,9 @@ class SettingsFrame(Tk.Toplevel):
 
 
         ttk.Checkbutton(frm, text ='Set ylim',
-                        variable = self.yLimVar).grid(row = 8, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.yleft, width = 8 ).grid(row = 8, column =1, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.yright, width =8 ).grid(row = 8, column =2, sticky = Tk.N)
+                        variable = self.yLimVar).grid(row = 9, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.yleft, width = 8 ).grid(row = 9, column =1, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.yright, width =8 ).grid(row = 9, column =2, sticky = Tk.N)
 
         self.kLimVar = Tk.IntVar()
         self.kLimVar.set(self.parent.MainParamDict['SetkLim'])
@@ -1044,19 +1049,19 @@ class SettingsFrame(Tk.Toplevel):
         self.kright.set(str(self.parent.MainParamDict['kRight']))
 
 
-        ttk.Checkbutton(frm, text ='Set klim', variable = self.kLimVar).grid(row = 9, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.kleft, width = 8 ).grid(row = 9, column =1, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.kright, width =8 ).grid(row = 9, column =2, sticky = Tk.N)
+        ttk.Checkbutton(frm, text ='Set klim', variable = self.kLimVar).grid(row = 10, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.kleft, width = 8 ).grid(row = 10, column =1, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.kright, width =8 ).grid(row = 10, column =2, sticky = Tk.N)
 
         self.xRelVar = Tk.IntVar()
         self.xRelVar.set(self.parent.MainParamDict['xLimsRelative'])
         self.xRelVar.trace('w', self.xRelChanged)
         ttk.Checkbutton(frm, text = "x limits & zooms relative to shock",
-                        variable = self.xRelVar).grid(row = 10, columnspan = 3, sticky = Tk.W)
+                        variable = self.xRelVar).grid(row = 11, columnspan = 3, sticky = Tk.W)
 
         cb = ttk.Checkbutton(frm, text = "Show Title",
                         variable = self.TitleVar)
-        cb.grid(row = 11, sticky = Tk.W)
+        cb.grid(row = 12, sticky = Tk.W)
         # Control whether or not axes are shared with a radio box:
         self.toLinkList = ['None', 'All spatial', 'All non p-x', 'All 2-D spatial']
         self.LinkedVar = Tk.IntVar()
@@ -1077,7 +1082,7 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Aspect = 1",
                                 variable = self.AspectVar)
-        cb.grid(row = 11, column = 1, sticky = Tk.W)
+        cb.grid(row = 12, column = 1, sticky = Tk.W)
 
         self.ConstantShockVar = Tk.IntVar()
         self.ConstantShockVar.set(self.parent.MainParamDict['ConstantShockVel'])
@@ -1085,7 +1090,7 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Constant Shock v",
                                 variable = self.ConstantShockVar)
-        cb.grid(row = 11, column = 2, sticky = Tk.W)
+        cb.grid(row = 12, column = 2, sticky = Tk.W)
 
 
         self.CbarOrientation = Tk.IntVar()
@@ -1094,7 +1099,7 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Horizontal Cbars",
                                 variable = self.CbarOrientation)
-        cb.grid(row = 12, sticky = Tk.W)
+        cb.grid(row = 13, sticky = Tk.W)
 
 
         self.LinkKVar = Tk.IntVar()
@@ -1103,17 +1108,18 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Share k-axes",
                                 variable = self.LinkKVar)
-        cb.grid(row = 12, column =1, sticky = Tk.W)
+        cb.grid(row = 13, column =1, sticky = Tk.W)
+
 
 
         self.LorentzBoostVar = Tk.IntVar()
         self.LorentzBoostVar.set(self.parent.MainParamDict['DoLorentzBoost'])
         self.LorentzBoostVar.trace('w', self.LorentzBoostChanged)
-        cb = ttk.Checkbutton(frm, text='Boost PhasePlots', variable =  self.LorentzBoostVar).grid(row = 13, sticky = Tk.W)
-        ttk.Label(frm, text='Gamma/Beta = \r (- for left boost)').grid(row= 13, rowspan = 2,column =1, sticky = Tk.E)
+        cb = ttk.Checkbutton(frm, text='Boost PhasePlots', variable =  self.LorentzBoostVar).grid(row = 14, sticky = Tk.W)
+        ttk.Label(frm, text='Gamma/Beta = \r (- for left boost)').grid(row= 14, rowspan = 2,column =1, sticky = Tk.E)
         self.GammaVar = Tk.StringVar()
         self.GammaVar.set(str(self.parent.MainParamDict['GammaBoost']))
-        ttk.Entry(frm, textvariable=self.GammaVar, width = 7).grid(row = 13, column = 2, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.GammaVar, width = 7).grid(row = 14, column = 2, sticky = Tk.N)
 
     def AspectVarChanged(self, *args):
         if self.AspectVar.get() == self.parent.MainParamDict['ImageAspect']:
@@ -1302,6 +1308,43 @@ class SettingsFrame(Tk.Toplevel):
             self.GammaVar.set(str(self.parent.MainParamDict['GammaBoost']))
         return to_reload*self.parent.MainParamDict['DoLorentzBoost']
 
+    def CheckIfStrideChanged(self):
+        to_reload = False
+
+        try:
+
+            #make sure the user types in a int
+            if self.PrtlStrideVar.get() <= 0:
+                self.PrtlStrideVar.set(str(self.parent.MainParamDict['PrtlStride']))
+            if int(self.PrtlStrideVar.get()) != self.parent.MainParamDict['PrtlStride']:
+                # first we have to remove the calculated energy time steps
+                self.parent.TotalEnergyTimeSteps = []
+                self.parent.TotalEnergyTimes = np.array([])
+                self.parent.TotalIonEnergy = np.array([])
+                self.parent.TotalElectronEnergy = np.array([])
+
+                self.parent.TotalMagEnergy = np.array([])
+                self.parent.TotalBzEnergy = np.array([])
+                self.parent.TotalElectricEnergy = np.array([])
+
+                # figure out all keys that have 'Prtl'
+                prtl_keys = []
+                for k, v in self.parent.H5KeyDict.iteritems():
+                    if v =='Prtl':
+                        prtl_keys.append(k)
+                # now we have to go through the data dictionary and remove the particle info
+                for DataDict in self.parent.ListOfDataDict:
+                    for k in prtl_keys:
+                        DataDict.pop(k, None)
+
+                self.parent.MainParamDict['PrtlStride'] = int(self.PrtlStrideVar.get())
+                to_reload += True
+
+        except ValueError:
+            #if they type in random stuff, just set it to the param value
+            self.PrtlStrideVar.set(str(self.parent.MainParamDict['PrtlStride']))
+        return to_reload
+
 
     def LimChanged(self, *args):
         if self.LimVar.get()==self.parent.MainParamDict['SetxLim']:
@@ -1328,6 +1371,7 @@ class SettingsFrame(Tk.Toplevel):
     def SettingsCallback(self, e):
         to_reload = self.CheckIfLimsChanged()
         to_reload += self.CheckIfGammaChanged()
+        to_reload += self.CheckIfStrideChanged()
         if to_reload:
             self.parent.RenewCanvas()
 
@@ -1707,8 +1751,6 @@ class MainApp(Tk.Tk):
                               'yBottom': 0.0,
                               'Reload2End': True,
                               'ColorMap': 'viridis',
-#                              'IonLeft': -10000.0,
-#                              'PowerLawIonMax': 10.0,
                               'FFTLeft': 0.0,
                               'ShowTitle': True,
                               'ImageAspect': 0,
@@ -1719,19 +1761,13 @@ class MainApp(Tk.Tk):
                               'DoLorentzBoost': False,
                               'NumOfRows': 3,
                               'MaxRows': 5,
-#                              'DoPowerLawFitElectron': False,
-#                              'GammaIonInjection': 1.0,
                               'SetkLim': False,
                               'VCbarExtent': [4, 90, 95, 98],
                               'SkipSize': 5,
-#                              'DoPowerLawFitIon': False,
                               'xLeft': 0.0,
-#                              'DelGami': 0.06,
                               'NumFontSize': 11,
-#                              'DelGame': 0.03,
                               'FFTRelative': True,
                               'NumOfCols': 2,
-#                              'SetTi': False,
                               'VSubPlotParams': {'right': 0.95,
                                                  'bottom': 0.06,
                                                  'top': 0.93,
@@ -1746,40 +1782,28 @@ class MainApp(Tk.Tk):
                                                  'wspace': 0.15,
                                                  'hspace': 0.3,
                                                  'left': 0.06},
-#                              'PowerLawIonMin': 1.0,
-#                              'SetTe': False,
                               'yLabelPad': 0,
                               'SetxLim': False,
                               'xLimsRelative': False,
                               'ConstantShockVel': True,
                               'xRight': 100.0,
-#                              'GammaElectronInjection': 30.0,
                               'LinkSpatial': 2,
-#                              'PowerLawElectronMin': 1.0,
                               'HCbarExtent': [0, 4, 0, -1],
                               'Recording': False,
-#                              'ElectronRight': 0.0,
                               'xLabelPad': 0,
                               'FFTRight': 200.0,
                               'ClearFig': True,
                               'HorizontalCbars': False,
                               'DivColorMap': 'BuYlRd',
                               'LinkK': True,
-#                              'PrtlIntegrationRelative': True,
-#                              'PowerLawElectronMax': 10.0,
                               'GammaBoost': 0.0,
                               'kLeft': 0.1,
-#                              'ElectronLeft': -10000.0,
-#                              'IonRight': 0.0,
-                              'LoopPlayback': True}
-#                              'MeasureEpsE': False}
+                              'LoopPlayback': True,
+                              'PrtlStride': 5}
 
         # The list of things that should be formatted as booleans.
         BoolList = ['Reload2End', 'ClearFig', 'ShowTitle', 'DoLorentzBoost',
-                    'HorizontalCbars', #'PrtlIntegrationRelative',
-#                    'SetTe', 'SetTi','MeasureEpsP', 'MeasureEpsE',
-#                    'DoPowerLawFitElectron', 'DoPowerLawFitIon',
-                    'SetxLim', 'SetyLim', 'SetkLim', 'LinkK',
+                    'HorizontalCbars', 'SetxLim', 'SetyLim', 'SetkLim', 'LinkK',
                     'LoopPlayback', 'Recording', 'FFTRelative', 'xLimsRelative',
                     'ConstantShockVel']
 
@@ -1791,7 +1815,7 @@ class MainApp(Tk.Tk):
         # The list of things that should be formatted as ints.
         IntList = ['NumFontSize', 'xLabelPad', 'yLabelPad', 'MaxRows',
                    'MaxCols', 'NumOfRows', 'NumOfCols', 'ImageAspect',
-                   'LinkSpatial', 'SkipSize']
+                   'LinkSpatial', 'SkipSize', 'PrtlStride']
 
         for elm in IntList:
             if elm.lower() in config.options('main'):
@@ -2216,7 +2240,8 @@ class MainApp(Tk.Tk):
 
     def LoadAllKeys(self):
         ''' A function that will find out will arrays need to be loaded for
-        to draw the graphs. If the time hasn't changed, it will only load new keys.'''
+        to draw the graphs. Then it will save all the data necessaru to
+        If the time hasn't changed, it will only load new keys.'''
         # Make a dictionary that stores all of the keys we will need to load
         # to draw the graphs.
         self.ToLoad = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
@@ -2296,24 +2321,34 @@ class MainApp(Tk.Tk):
                         tmplist.remove(tmplist2[i])
                 # Now iterate over each path key and create a datadictionary
                 if len(tmplist)> 0:
-                    with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
-                        for elm in tmplist:
-                            try:
-                                # Load all the keys
-                                if elm == 'spect_dens':
-                                    self.DataDict[elm] = np.copy(f['dens'][:])
-                                else:
-                                    self.DataDict[elm] = np.copy(f[elm][:])
+                    if pkey == 'Prtl': # we load particle arrays with a stride because they are very expensive
+                        with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
+                            for elm in tmplist:
+                                try:
+                                    # Load all the keys
+                                    self.DataDict[elm] = f[elm][::self.MainParamDict['PrtlStride']]
 
-                            except KeyError:
-                                if elm == 'sizex':
-                                    self.DataDict[elm] = 1
-                                if elm == 'c':
-                                    self.DataDict[elm]= 0.45
-                                if elm == 'ppc0':
-                                    self.DataDict[elm] = np.NaN
-                                else:
+                                except KeyError:
                                     raise
+                    else:
+                        with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
+                            for elm in tmplist:
+                                try:
+                                    # Load all the keys
+                                    if elm == 'spect_dens':
+                                        self.DataDict[elm] = f['dens'][:]
+                                    else:
+                                        self.DataDict[elm] = f[elm][:]
+
+                                except KeyError:
+                                    if elm == 'sizex':
+                                        self.DataDict[elm] = 1
+                                    if elm == 'c':
+                                        self.DataDict[elm]= 0.45
+                                    if elm == 'ppc0':
+                                        self.DataDict[elm] = np.NaN
+                                    else:
+                                        raise
 
             self.timestep_queue.append(self.TimeStep.value)
 
@@ -2323,22 +2358,36 @@ class MainApp(Tk.Tk):
             for pkey in self.ToLoad.keys():
                 tmplist = list(set(self.ToLoad[pkey])) # get rid of duplicate keys
                 # Load the file
-                if len(tmplist) > 0: #check we actually have something to load
-                    with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
-                        for elm in tmplist:
-                        # Load all the keys
-                            try:
-                                if elm == 'spect_dens':
-                                    self.DataDict[elm] = np.copy(f['dens'][:])
-                                else:
-                                    self.DataDict[elm] = np.copy(f[elm][:])
-                            except KeyError:
-                                if elm == 'sizex':
-                                    self.DataDict[elm] = 1
-                                if elm == 'c':
-                                    self.DataDict[elm] = 0.45
-                                else:
+                if len(tmplist)> 0:
+                    if pkey =='Prtl': # we load partile arrays with a stride because they are expensive
+                        with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
+                            for elm in tmplist:
+                                try:
+                                    # Load all the key
+                                    self.DataDict[elm] = f[elm][::self.MainParamDict['PrtlStride']]
+
+                                except KeyError:
                                     raise
+                    else:
+                        with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
+                            for elm in tmplist:
+                                try:
+                                    # Load all the keys
+                                    if elm == 'spect_dens':
+                                        self.DataDict[elm] = f['dens'][:]
+                                    else:
+                                        self.DataDict[elm] = f[elm][:]
+
+                                except KeyError:
+                                    if elm == 'sizex':
+                                        self.DataDict[elm] = 1
+                                    if elm == 'c':
+                                        self.DataDict[elm]= 0.45
+                                    if elm == 'ppc0':
+                                        self.DataDict[elm] = np.NaN
+                                    else:
+                                        raise
+
             # don't keep more than 30 time steps in memory because of RAM issues
             if len(self.timestep_visited)>30:
                 oldest_time = self.timestep_queue.popleft()
