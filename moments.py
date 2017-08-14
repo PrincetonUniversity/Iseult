@@ -29,7 +29,8 @@ class  MomentsPanel:
                        'xbins': 100,
                        'spatial_x': True,
                        'show_legend': True,
-                       'spatial_y': False}
+                       'spatial_y': False,
+                       'legend_loc': 'best'}
 
     # We need the types of all the parameters for the config file
     BoolList = ['twoD', 'set_v_min', 'set_v_max',
