@@ -35,7 +35,8 @@ class TotEnergyPanel:
                        'set_x_max': False,
                        'yLog': True,
                        'spatial_x': False,
-                       'spatial_y': False}
+                       'spatial_y': False,
+                       'legend_loc': 'N/A'}
 
     # We need the types of all the parameters for the config file
     BoolList = ['twoD', 'set_y_min', 'set_y_max','show_prtl_KE', 'show_field_E','show_B_E', 'show_E_E',
@@ -43,7 +44,7 @@ class TotEnergyPanel:
                 'set_x_max', 'show_legend','show_current_time', 'show_Bz_energy'] # spatial_x and spatial_y should never be true, remove from boollist
     IntList = ['E_type']
     FloatList = ['y_min', 'y_max','x_min', 'x_max']
-    StrList = []
+    StrList = ['legend_loc']
 
     def __init__(self, parent, figwrapper):
         self.settings_window = None
@@ -159,11 +160,16 @@ class TotEnergyPanel:
                 legend_handles.append(self.plot_list[i])
                 legend_labels.append(self.label_names[i])
         self.legend = self.axes.legend(legend_handles, legend_labels,
-        framealpha = .05, fontsize = 11, loc = 'best')
+        framealpha = .05, fontsize = 11, loc = 1)
         self.legend.get_frame().set_facecolor('k')
         self.legend.get_frame().set_linewidth(0.0)
         if not self.GetPlotParam('show_legend'):
             self.legend.set_visible(False)
+
+        self.legend.draggable(update = 'loc')
+        if self.GetPlotParam('legend_loc') != 'N/A':
+            tmp_tup = float(self.GetPlotParam('legend_loc').split()[0]),float(self.GetPlotParam('legend_loc').split()[1])
+            self.legend._set_loc(tmp_tup)
 
         self.axes.set_xlabel(r'$t\ \  [\omega^{-1}_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
         self.axes.set_ylabel('Energy [arb. unit]', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
@@ -464,6 +470,9 @@ class TotEnergySettings(Tk.Toplevel):
         # self.parent.label_names = ['Particles', 'Ions', 'Electrons', 'EM Field', 'Electric Field', 'Magnetic Field']
         VarList = [self.ShowTotalVar, self.ShowPrtlVar,  self.ShowIonVar, self.ShowElectronVar, self.ShowFieldVar, self.ShowEVar, self.ShowMagVar, self.ShowBzVar]
 
+        # Update current legend position
+        if self.parent.legend._get_loc() != 1:
+            self.parent.SetPlotParam('legend_loc', ' '.join(str(x) for x in self.parent.legend._get_loc()), update_plot = False)
 
         # First set the visibility of the plots to their new value
         for i in range(len(self.parent.key_list)):
@@ -479,10 +488,16 @@ class TotEnergySettings(Tk.Toplevel):
                 legend_handles.append(self.parent.plot_list[i])
                 legend_labels.append(self.parent.label_names[i])
         self.parent.legend = self.parent.axes.legend(legend_handles, legend_labels,
-        framealpha = .05, fontsize = 11, loc = 'best')
+        framealpha = .05, fontsize = 11, loc = 1)
         self.parent.legend.set_visible(self.parent.GetPlotParam('show_legend'))
         self.parent.legend.get_frame().set_facecolor('k')
         self.parent.legend.get_frame().set_linewidth(0.0)
+        self.parent.legend.draggable()
+        tmp_tup = 1
+        if self.parent.GetPlotParam('legend_loc') != 'N/A':
+            tmp_tup = float(self.parent.GetPlotParam('legend_loc').split()[0]),float(self.parent.GetPlotParam('legend_loc').split()[1])
+            self.parent.legend._set_loc(tmp_tup)
+        self.parent.legend._set_loc(tmp_tup)
 
         # Force a plot refresh
         self.parent.SetPlotParam(self.parent.key_list[0], VarList[0].get())

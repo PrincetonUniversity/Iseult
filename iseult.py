@@ -2537,6 +2537,50 @@ class MainApp(Tk.Tk):
                 tmp_ctype_l.append(str(self.SubPlotList[i][j].chartType))
             self.prev_ctype_list.append(tmp_ctype_l)
 
+    def SaveLLoc(self):
+        for i in range(self.MainParamDict['NumOfRows']):
+            for j in range(self.MainParamDict['NumOfCols']):
+                subplot = self.SubPlotList[i][j]
+                if subplot.chartType == 'Moments' or subplot.chartType == 'TotalEnergyPlot':
+                    try:
+                        if subplot.graph.legend._get_loc() != 1:
+                            subplot.SetPlotParam('legend_loc', ' '.join(str(x) for x in subplot.graph.legend._get_loc()), update_plot = False)
+                    except:
+                        pass
+                if subplot.chartType == 'SpectraPlot':
+                    try:
+                        if subplot.graph.legDelta._get_loc() != 1:
+                            subplot.SetPlotParam('PL_legend_loc', ' '.join(str(x) for x in subplot.graph.legDelta._get_loc()), update_plot = False)
+                    except:
+                        pass
+                    try:
+                        if subplot.graph.legT._get_loc() != 2:
+                            subplot.SetPlotParam('T_legend_loc', ' '.join(str(x) for x in subplot.graph.legT._get_loc()), update_plot = False)
+                    except:
+                        pass
+    def SetLLoc(self):
+        for i in range(self.MainParamDict['NumOfRows']):
+            for j in range(self.MainParamDict['NumOfCols']):
+                subplot = self.SubPlotList[i][j]
+                if subplot.chartType == 'Moments' or subplot.chartType == 'TotalEnergyPlot':
+                    if subplot.GetPlotParam('legend_loc') != 'N/A':
+                        tmp_tup = float(subplot.GetPlotParam('legend_loc').split()[0]),float(subplot.GetPlotParam('legend_loc').split()[1])
+                        subplot.graph.legend._set_loc(tmp_tup)
+                if subplot.chartType == 'SpectraPlot':
+                    if subplot.GetPlotParam('T_legend_loc') != 'N/A':
+                        tmp_tup = float(subplot.GetPlotParam('T_legend_loc').split()[0]),float(subplot.GetPlotParam('T_legend_loc').split()[1])
+                        try:
+                            subplot.graph.legT._set_loc(tmp_tup)
+                        except:
+                            pass
+                    if subplot.GetPlotParam('PL_legend_loc') != 'N/A':
+                        tmp_tup = float(subplot.GetPlotParam('PL_legend_loc').split()[0]),float(subplot.GetPlotParam('PL_legend_loc').split()[1])
+                        try:
+                            subplot.graph.legDelta._set_loc(tmp_tup)
+                        except:
+                            pass
+
+
     def FindCbars(self, prev = False):
         ''' A function that will find where all the cbars are in the current view '''
         self.IsCbarList = []
@@ -2664,8 +2708,7 @@ class MainApp(Tk.Tk):
         the plot went from 2d to 1D, etc.. If any change occurs that requires a
         redraw, renewcanvas must be called with ForceRedraw = True. '''
 
-
-
+        self.SaveLLoc()
         if ForceRedraw:
             self.ReDrawCanvas(keep_view = keep_view)
         else:
@@ -2674,11 +2717,12 @@ class MainApp(Tk.Tk):
         self.MakePrevCtypeList()
 
 
-
         # remove some unnecessary data
         tmp_list = ['ui', 'vi', 'wi', 'ue', 've', 'we', 'che', 'chi']
         for elm in tmp_list:
             self.DataDict.pop(elm, None)
+        self.SetLLoc()
+#        self.SaveLLoc()
 
         # Save the image for quick playback later
         self.SaveTmpFig()
@@ -2751,7 +2795,6 @@ class MainApp(Tk.Tk):
         #  We need to see if the user has moved around the zoom level in python.
         # First we see if there are any views in the toolbar
         cur_view =  self.toolbar._views.__call__()
-
         if cur_view is None:
             keep_view = False
         if self.NewDirectory:
@@ -2878,7 +2921,6 @@ class MainApp(Tk.Tk):
         #  We need to see if the user has moved around the zoom level in python.
         # First we see if there are any views in the toolbar
         cur_view =  self.toolbar._views.__call__()
-
         if cur_view is None:
 
             keep_view = False

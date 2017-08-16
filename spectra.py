@@ -47,7 +47,9 @@ class SpectralPanel:
                        'PowerLawElectronMax': 10.0,
                        'ElectronLeft': -10000.0,
                        'IonRight': 0.0,
-                       'MeasureEpsE': False}
+                       'MeasureEpsE': False,
+                       'T_legend_loc':  'N/A', # location of temperature legend.
+                       'PL_legend_loc': 'N/A'} # lcation of power law legend
 
     # We need the types of all the parameters for the config file
     BoolList = ['twoD', 'set_ylim', 'set_xlim',
@@ -62,7 +64,7 @@ class SpectralPanel:
                  'PowerLawElectronMin', 'PowerLawElectronMax',
                  'PowerLawIonMin', 'PowerLawIonMax',
                  'ElectronLeft', 'ElectronRight', 'IonLeft', 'IonRight',]
-    StrList = []
+    StrList = ['T_legend_loc', 'PL_legend_loc']
 
     def __init__(self, parent, figwrapper):
         self.settings_window = None
@@ -593,7 +595,7 @@ class SpectralPanel:
         else:
             '''
             HERE is a trapezoidal integration in logspace not using anymore
-            because it goes when energy_dist is zero. I'm leaving it in, commented out in case it is
+            because it goes bad when energy_dist is zero. I'm leaving it in, commented out in case it is
             valuable later.
             # do a cummulative
             LogY = np.log(energy_dist[e_injloc-1:])
@@ -690,22 +692,33 @@ class SpectralPanel:
 
 
         # Draw the legend, there is a complication here because each plot can only have one legend.
-        if len(Tlegend_handles)> 0 and len(legend_handles) == 0:
-            self.legT = self.axes.legend(Tlegend_handles, Tlegend_labels, framealpha = .05, fontsize = 11, loc = 'upper left')
-            self.legT.get_frame().set_facecolor('k')
-            self.legT.get_frame().set_linewidth(0.0)
+        #if len(Tlegend_handles)> 0 and len(legend_handles) == 0:
+        #    self.legT = self.axes.legend(Tlegend_handles, Tlegend_labels, framealpha = .05, fontsize = 11, loc = 'upper left')
+        #    self.legT.get_frame().set_facecolor('k')
+        #    self.legT.get_frame().set_linewidth(0.0)
 
-        elif len(Tlegend_handles) > 0:
-            self.legT = self.axes.legend(Tlegend_handles, Tlegend_labels, framealpha = .05, fontsize = 11, loc = 'upper left')
+        if len(Tlegend_handles) > 0:
+            self.legT = self.axes.legend(Tlegend_handles, Tlegend_labels, framealpha = .05, fontsize = 11, loc = 2)
             self.legT.get_frame().set_facecolor('k')
             self.legT.get_frame().set_linewidth(0.0)
-            self.axes.add_artist(self.legT)
+            self.legT.draggable(update = 'loc')
+            if self.GetPlotParam('T_legend_loc') != 'N/A':
+                tmp_tup = float(self.GetPlotParam('T_legend_loc').split()[0]),float(self.GetPlotParam('T_legend_loc').split()[1])
+                self.legT._set_loc(tmp_tup)
+
+            if len(legend_handles) != 0:
+                self.axes.add_artist(self.legT)
 
         if len(legend_handles)> 0:
             self.legDelta = self.axes.legend(legend_handles, legend_labels,
             framealpha = .05, fontsize = 11, loc = 'upper right')
             self.legDelta.get_frame().set_facecolor('k')
             self.legDelta.get_frame().set_linewidth(0.0)
+            self.legDelta.draggable()
+            if self.GetPlotParam('PL_legend_loc') != 'N/A':
+                tmp_tup = float(self.GetPlotParam('PL_legend_loc').split()[0]),float(self.GetPlotParam('PL_legend_loc').split()[1])
+                self.legDelta._set_loc(tmp_tup)
+
 
     def OpenSettings(self):
         if self.settings_window is None:

@@ -30,7 +30,10 @@ class  MomentsPanel:
                        'spatial_x': True,
                        'show_legend': True,
                        'spatial_y': False,
-                       'legend_loc': 'best'}
+                       'legend_loc': 'N/A'} # legend_loc is a string that stores the
+                                         # location of the legend in figure pixels.
+                                         # Unfortunately it is not always up to date.
+                                         # It starts as 'best'.
 
     # We need the types of all the parameters for the config file
     BoolList = ['twoD', 'set_v_min', 'set_v_max',
@@ -49,7 +52,6 @@ class  MomentsPanel:
         self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
         self.chartType = self.FigWrap.chartType
         self.figure = self.FigWrap.figure
-
     def ChangePlotType(self, str_arg):
         self.FigWrap.ChangeGraph(str_arg)
     def stepify(self, bins, hist):
@@ -495,16 +497,20 @@ class  MomentsPanel:
         # now make the legend
         if self.GetPlotParam('show_ions') and self.GetPlotParam('show_electrons'):
             self.legend = self.axes.legend(legend_handles, legend_labels,
-            framealpha = .05, fontsize = 11, loc = 'best', ncol = 2)
+            framealpha = .05, fontsize = 11, loc = 1, ncol = 2)#, bbox_transform = self.parent.f.transFigure)
 
         else:
             self.legend = self.axes.legend(legend_handles, legend_labels,
-            framealpha = .05, fontsize = 11, loc = 'best')
+            framealpha = .05, fontsize = 11, loc = 1)#,bbox_transform = self.parent.f.transFigure)
         self.legend.get_frame().set_facecolor('k')
         self.legend.get_frame().set_linewidth(0.0)
         if not self.GetPlotParam('show_legend'):
             self.legend.set_visible(False)
 
+        self.legend.draggable(update = 'loc')
+        if self.GetPlotParam('legend_loc') != 'N/A':
+            tmp_tup = float(self.GetPlotParam('legend_loc').split()[0]),float(self.GetPlotParam('legend_loc').split()[1])
+            self.legend._set_loc(tmp_tup)
 
         if self.GetPlotParam('set_v_min'):
             self.axes.set_ylim(ymin = self.GetPlotParam('v_min'))
@@ -542,7 +548,6 @@ class  MomentsPanel:
 
         # fancy code to make sure that matplotlib sets its limits
         # based only on the visible lines.
-
         self.axes.dataLim = mtransforms.Bbox.unit()
         #self.axes.dataLim.update_from_data_xy(xy = np.vstack(self.ion_plot_list[0].get_data()).T, ignore=True)
         if self.GetPlotParam('show_ions'):
@@ -787,6 +792,9 @@ class MomentsSettings(Tk.Toplevel):
         # self.label_mid = [r'_{i',r'_{e']
         # self.label_suffix = [r'x}\rangle$',r'y\rangle}$',r'z}\rangle$']
 
+        # Update current legend position
+        if ' '.join(str(x) for x in self.parent.legend._get_loc()) != self.GetPlotParam('legend_loc'):
+            self.parent.SetPlotParam('legend_loc', ' '.join(str(x) for x in self.parent.legend._get_loc()), update_plot = False)
 
         VarList = [self.ShowXVar, self.ShowYVar,  self.ShowZVar]
 
@@ -810,14 +818,19 @@ class MomentsSettings(Tk.Toplevel):
 
         if self.ShowElectronsVar.get() and self.ShowIonsVar.get():
             self.parent.legend = self.parent.axes.legend(legend_handles, legend_labels,
-            framealpha = .05, fontsize = 11, loc = self.parent.GetPlotParam('legend_loc'), ncol = 2)
+            framealpha = .05, fontsize = 11, loc = 1, ncol = 2)
         else:
             self.parent.legend = self.parent.axes.legend(legend_handles, legend_labels,
-            framealpha = .05, fontsize = 11, loc = self.parent.GetPlotParam('legend_loc'))
+            framealpha = .05, fontsize = 11, loc = 1)
 
         self.parent.legend.set_visible(self.parent.GetPlotParam('show_legend'))
         self.parent.legend.get_frame().set_facecolor('k')
         self.parent.legend.get_frame().set_linewidth(0.0)
+        self.parent.legend.draggable(update = 'loc')
+        if self.parent.GetPlotParam('legend_loc') != '1':
+            tmp_tup = float(self.parent.GetPlotParam('legend_loc').split()[0]),float(self.parent.GetPlotParam('legend_loc').split()[1])
+            self.parent.legend._set_loc(tmp_tup)
+        self.parent.legend._set_loc(tmp_tup)
 
         # Force a plot refresh
         for i in range(len(VarList)):
