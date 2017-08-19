@@ -2493,7 +2493,7 @@ class MainApp(Tk.Tk):
             if not 'shock_loc' in self.DataDict.keys():
                 # Have to figure out where the shock is
 
-                jstart = min(10*self.DataDict['c_omp']/self.DataDict['istep'], self.DataDict['dens'][0,:,:].shape[1])
+                jstart = int(min(10*self.DataDict['c_omp']/self.DataDict['istep'], self.DataDict['dens'][0,:,:].shape[1]))
                 cur_xaxis = np.arange(self.DataDict['dens'][0,:,:].shape[1])/self.DataDict['c_omp']*self.DataDict['istep']
                 # Find the shock by seeing where the density is 1/2 of it's
                 # max value.
@@ -3155,7 +3155,7 @@ class MainApp(Tk.Tk):
             c_omp = f['c_omp'][0]
 
         # Find out where the shock is at the last time step.
-        jstart = min(10*c_omp/istep, nxf0)
+        jstart = int(min(10*c_omp/istep, nxf0))
         # build the final x_axis of the plot
 
         xaxis_final = np.arange(dens_arr.shape[1])/c_omp*istep
