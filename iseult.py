@@ -1061,7 +1061,7 @@ class SettingsFrame(Tk.Toplevel):
 
         new_frame = ttk.Frame(frm)
         self.TwoDSliceVar = Tk.StringVar()
-        self.TwoDSliceVar.set(str(int(self.parent.MainParamDict['2DSlice']*self.parent.istep/self.c_omp)))
+        self.TwoDSliceVar.set(str(int(self.parent.MainParamDict['2DSlice']*self.parent.istep/self.parent.c_omp)))
 
 
         # An entry box that will let us choose the time-step
@@ -1156,7 +1156,7 @@ class SettingsFrame(Tk.Toplevel):
             pass
 
         else:
-            self.parent.MainParamDict['2DSlice'] = int(self.TwoDSliceVar.get()/self.parent.istep*self.c_omp)
+            self.parent.MainParamDict['2DSlice'] = int(self.TwoDSliceVar.get()/self.parent.istep*self.parent.c_omp)
             self.parent.RenewCanvas()
 
 
@@ -1371,16 +1371,16 @@ class SettingsFrame(Tk.Toplevel):
             #make sure the user types in a int
             if int(self.TwoDSliceVar.get()) < 0:
                 self.TwoDSliceVar.set('0')
-            elif int(self.TwoDSliceVar.get()) > self.parent.MaxInd*self.parent.istep/self.c_omp:
-                self.TwoDSliceVar.set(str(self.parent.MaxInd*self.parent.istep/self.c_omp))
+            elif int(self.TwoDSliceVar.get()) > self.parent.MaxInd*self.parent.istep/self.parent.c_omp:
+                self.TwoDSliceVar.set(str(self.parent.MaxInd*self.parent.istep/self.parent.c_omp))
 
-            if int(self.TwoDSliceVar.get()/self.parent.istep*self.c_omp) != self.parent.MainParamDict['2DSlice']:
-                self.parent.MainParamDict['2DSlice'] = int(self.TwoDSliceVar.get()/self.parent.istep*self.c_omp)
+            if int(self.TwoDSliceVar.get()/self.parent.istep*self.parent.c_omp) != self.parent.MainParamDict['2DSlice']:
+                self.parent.MainParamDict['2DSlice'] = int(self.TwoDSliceVar.get()/self.parent.istep*self.parent.c_omp)
                 to_reload += True
 
         except ValueError:
             #if they type in random stuff, just set it to the param value
-            self.TwoDSliceVar.set(str(self.parent.MainParamDict['2DSlice']))
+            self.TwoDSliceVar.set(str(int(self.parent.MainParamDict['2DSlice']*self.parent.istep/self.parent.c_omp)))
         return to_reload
 
 
