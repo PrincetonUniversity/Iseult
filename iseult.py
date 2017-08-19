@@ -1152,11 +1152,11 @@ class SettingsFrame(Tk.Toplevel):
             self.TwoDSliceVar.set(str(int(self.slider.get())))
 
     def UpdateValue(self, e):
-        if int(self.TwoDSliceVar.get()/self.parent.istep*self.parent.c_omp) == self.parent.MainParamDict['2DSlice']:
+        if int(int(self.TwoDSliceVar.get())/self.parent.istep*self.parent.c_omp) == self.parent.MainParamDict['2DSlice']:
             pass
 
         else:
-            self.parent.MainParamDict['2DSlice'] = int(self.TwoDSliceVar.get()/self.parent.istep*self.parent.c_omp)
+            self.parent.MainParamDict['2DSlice'] = int(int(self.TwoDSliceVar.get())/self.parent.istep*self.parent.c_omp)
             self.parent.RenewCanvas()
 
 
@@ -1371,11 +1371,11 @@ class SettingsFrame(Tk.Toplevel):
             #make sure the user types in a int
             if int(self.TwoDSliceVar.get()) < 0:
                 self.TwoDSliceVar.set('0')
-            elif int(self.TwoDSliceVar.get()) > self.parent.MaxInd*self.parent.istep/self.parent.c_omp:
+            elif int(int(self.TwoDSliceVar.get())/self.parent.istep*self.parent.c_omp) > self.parent.MaxInd:
                 self.TwoDSliceVar.set(str(self.parent.MaxInd*self.parent.istep/self.parent.c_omp))
 
-            if int(self.TwoDSliceVar.get()/self.parent.istep*self.parent.c_omp) != self.parent.MainParamDict['2DSlice']:
-                self.parent.MainParamDict['2DSlice'] = int(self.TwoDSliceVar.get()/self.parent.istep*self.parent.c_omp)
+            if int(int(self.TwoDSliceVar.get())/self.parent.istep*self.parent.c_omp) != self.parent.MainParamDict['2DSlice']:
+                self.parent.MainParamDict['2DSlice'] = int(int(self.TwoDSliceVar.get())/self.parent.istep*self.parent.c_omp)
                 to_reload += True
 
         except ValueError:
