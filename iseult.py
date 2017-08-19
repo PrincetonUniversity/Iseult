@@ -1149,7 +1149,7 @@ class SettingsFrame(Tk.Toplevel):
     def ScaleHandler(self, e):
         # if changing the scale will change the value of the parameter, do so
         if int(self.TwoDSliceVar.get()) != int(self.slider.get()*self.parent.istep/self.parent.c_omp):
-            if int(int(self.TwoDSliceVar.get())/self.parent.istep*self.parent.c_omp)) != self.slider.get():
+            if int(int(self.TwoDSliceVar.get())/self.parent.istep*self.parent.c_omp) != self.slider.get():
                 self.TwoDSliceVar.set(str(int(self.slider.get()*self.parent.istep/self.parent.c_omp)))
 
     def UpdateValue(self, e):
