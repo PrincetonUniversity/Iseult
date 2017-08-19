@@ -1371,7 +1371,7 @@ class SettingsFrame(Tk.Toplevel):
             #make sure the user types in a int
             if int(self.TwoDSliceVar.get()) < 0:
                 self.TwoDSliceVar.set('0')
-            elif int(self.TwoDSliceVar) > self.parent.MaxInd:
+            elif int(self.TwoDSliceVar.get()) > self.parent.MaxInd:
                 self.TwoDSliceVar.set(str(self.parent.MaxInd))
 
             if int(self.TwoDSliceVar.get()) != self.parent.MainParamDict['2DSlice']:
