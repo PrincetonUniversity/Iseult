@@ -1061,14 +1061,14 @@ class SettingsFrame(Tk.Toplevel):
 
         new_frame = ttk.Frame(frm)
         self.TwoDSliceVar = Tk.StringVar()
-        self.TwoDSliceVar.set(str(self.parent.MainParamDict['2DSlice']))
+        self.TwoDSliceVar.set(str(int(self.parent.MainParamDict['2DSlice']*self.parent.istep/self.c_omp)))
 
 
         # An entry box that will let us choose the time-step
-        ttk.Label(new_frame, text='2d slice').pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+        ttk.Label(new_frame, text='2d slice [c_omp]').pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
 
         # A slider that will select the 2D slice in the simulation
-        self.slider = ttk.Scale(new_frame, from_=0, to=self.parent.MaxInd, command = self.ScaleHandler)
+        self.slider = ttk.Scale(new_frame, from_=0, to=self.parent.MaxInd*self.parent.istep/self.parent.c_omp, command = self.ScaleHandler)
         self.slider.set(self.TwoDSliceVar.get())
         self.slider.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
 
@@ -1152,11 +1152,11 @@ class SettingsFrame(Tk.Toplevel):
             self.TwoDSliceVar.set(str(int(self.slider.get())))
 
     def UpdateValue(self, e):
-        if int(self.TwoDSliceVar.get()) == self.parent.MainParamDict['2DSlice']:
+        if int(self.TwoDSliceVar.get()/self.parent.istep*self.parent.c_omp) == self.parent.MainParamDict['2DSlice']:
             pass
 
         else:
-            self.parent.MainParamDict['2DSlice'] = int(self.TwoDSliceVar.get())
+            self.parent.MainParamDict['2DSlice'] = int(self.TwoDSliceVar.get()/self.parent.istep*self.c_omp)
             self.parent.RenewCanvas()
 
 
@@ -1371,11 +1371,11 @@ class SettingsFrame(Tk.Toplevel):
             #make sure the user types in a int
             if int(self.TwoDSliceVar.get()) < 0:
                 self.TwoDSliceVar.set('0')
-            elif int(self.TwoDSliceVar.get()) > self.parent.MaxInd:
-                self.TwoDSliceVar.set(str(self.parent.MaxInd))
+            elif int(self.TwoDSliceVar.get()) > self.parent.MaxInd*self.parent.istep/self.c_omp:
+                self.TwoDSliceVar.set(str(self.parent.MaxInd*self.parent.istep/self.c_omp))
 
-            if int(self.TwoDSliceVar.get()) != self.parent.MainParamDict['2DSlice']:
-                self.parent.MainParamDict['2DSlice'] = int(self.TwoDSliceVar.get())
+            if int(self.TwoDSliceVar.get()/self.parent.istep*self.c_omp) != self.parent.MainParamDict['2DSlice']:
+                self.parent.MainParamDict['2DSlice'] = int(self.TwoDSliceVar.get()/self.parent.istep*self.c_omp)
                 to_reload += True
 
         except ValueError:
@@ -2337,6 +2337,10 @@ class MainApp(Tk.Tk):
                     self.ToLoad[ftype].append(elm)
 
         # Check to make sure the 2DSlice is OK...
+        # Grab c_omp & istep
+        with h5py.File(os.path.join(self.dirname,self.PathDict['Param'][self.TimeStep.value-1]), 'r') as f:
+            self.c_omp = f['c_omp'][0]
+            self.istep = f['istep'][0]
         with h5py.File(os.path.join(self.dirname,self.PathDict['Flds'][self.TimeStep.value-1]), 'r') as f:
             self.MaxInd = f['bx'].shape[0]-1
             if self.MainParamDict['2DSlice'] > self.MaxInd:
@@ -2345,7 +2349,7 @@ class MainApp(Tk.Tk):
                 if self.settings_window is None:
                     pass
                 else:
-                    self.settings_window.TwoDSliceVar.set(str(self.MainParamDict['2DSlice']))
+                    self.settings_window.TwoDSliceVar.set(str(self.MainParamDict['2DSlice']*self.istep/self.c_omp))
         # See if we are in a new Directory
         if self.NewDirectory:
             # Create a new Dictionary that will have StateHashes of visited steps
