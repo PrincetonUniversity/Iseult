@@ -1068,7 +1068,7 @@ class SettingsFrame(Tk.Toplevel):
         ttk.Label(new_frame, text='2d slice [c_omp]').pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
 
         # A slider that will select the 2D slice in the simulation
-        self.slider = ttk.Scale(new_frame, from_=0, to=self.parent.MaxInd*self.parent.istep/self.parent.c_omp, command = self.ScaleHandler)
+        self.slider = ttk.Scale(new_frame, from_=0, to=self.parent.MaxInd, command = self.ScaleHandler)
         self.slider.set(self.TwoDSliceVar.get())
         self.slider.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
 
@@ -1148,8 +1148,8 @@ class SettingsFrame(Tk.Toplevel):
 
     def ScaleHandler(self, e):
         # if changing the scale will change the value of the parameter, do so
-        if int(self.TwoDSliceVar.get()) != int(self.slider.get()):
-            self.TwoDSliceVar.set(str(int(self.slider.get())))
+        if int(int(self.TwoDSliceVar.get())/self.parent.istep*self.parent.c_omp) != int(self.slider.get()):
+            self.TwoDSliceVar.set(str(int(self.slider.get()*self.parent.istep/self.parent.c_omp)))
 
     def UpdateValue(self, e):
         if int(int(self.TwoDSliceVar.get())/self.parent.istep*self.parent.c_omp) == self.parent.MainParamDict['2DSlice']:
@@ -1157,6 +1157,7 @@ class SettingsFrame(Tk.Toplevel):
 
         else:
             self.parent.MainParamDict['2DSlice'] = int(int(self.TwoDSliceVar.get())/self.parent.istep*self.parent.c_omp)
+            self.TwoDSliceVar.set(str(int(self.parent.MainParamDict['2DSlice']*self.parent.istep/self.parent.c_omp)))
             self.parent.RenewCanvas()
 
 
@@ -1376,6 +1377,7 @@ class SettingsFrame(Tk.Toplevel):
 
             if int(int(self.TwoDSliceVar.get())/self.parent.istep*self.parent.c_omp) != self.parent.MainParamDict['2DSlice']:
                 self.parent.MainParamDict['2DSlice'] = int(int(self.TwoDSliceVar.get())/self.parent.istep*self.parent.c_omp)
+                self.TwoDSliceVar.set(str(int(self.parent.MainParamDict['2DSlice']*self.parent.istep/self.parent.c_omp)))
                 to_reload += True
 
         except ValueError:
