@@ -128,13 +128,13 @@ class FieldsPanel:
 
         if self.GetPlotParam('field_type') == 0: # Load the B-Field
             #
-            self.fx = self.FigWrap.LoadKey('bx')[0,:,:]
-            self.fy = self.FigWrap.LoadKey('by')[0,:,:]
-            self.fz = self.FigWrap.LoadKey('bz')[0,:,:]
+            self.fx = self.FigWrap.LoadKey('bx')[self.parent.MainParamDict['2DSlice'],:,:]
+            self.fy = self.FigWrap.LoadKey('by')[self.parent.MainParamDict['2DSlice'],:,:]
+            self.fz = self.FigWrap.LoadKey('bz')[self.parent.MainParamDict['2DSlice'],:,:]
 
-            kxwarg = 'bxmin_max'
-            kywarg = 'bymin_max'
-            kzwarg = 'bzmin_max'
+            kxwarg = 'bxmin_max'+str(self.parent.MainParamDict['2DSlice'])
+            kywarg = 'bymin_max'+str(self.parent.MainParamDict['2DSlice'])
+            kzwarg = 'bzmin_max'+str(self.parent.MainParamDict['2DSlice'])
 
             if self.GetPlotParam('normalize_fields'):
                 self.fx = self.fx/self.parent.b0
@@ -170,13 +170,13 @@ class FieldsPanel:
 
 
         elif self.GetPlotParam('field_type') == 1: # Load the e-Field
-            self.fx = self.FigWrap.LoadKey('ex')[0,:,:]
-            self.fy = self.FigWrap.LoadKey('ey')[0,:,:]
-            self.fz = self.FigWrap.LoadKey('ez')[0,:,:]
+            self.fx = self.FigWrap.LoadKey('ex')[self.parent.MainParamDict['2DSlice'],:,:]
+            self.fy = self.FigWrap.LoadKey('ey')[self.parent.MainParamDict['2DSlice'],:,:]
+            self.fz = self.FigWrap.LoadKey('ez')[self.parent.MainParamDict['2DSlice'],:,:]
 
-            kxwarg = 'exmin_max'
-            kywarg = 'eymin_max'
-            kzwarg = 'ezmin_max'
+            kxwarg = 'exmin_max'+str(self.parent.MainParamDict['2DSlice'])
+            kywarg = 'eymin_max'+str(self.parent.MainParamDict['2DSlice'])
+            kzwarg = 'ezmin_max'+str(self.parent.MainParamDict['2DSlice'])
 
             if self.GetPlotParam('normalize_fields'):
                 self.fx = self.fx/self.parent.e0
@@ -214,13 +214,13 @@ class FieldsPanel:
 
         elif self.GetPlotParam('field_type') == 2: # Load the currents
             #
-            self.fx = self.FigWrap.LoadKey('jx')[0,:,:]
-            self.fy = self.FigWrap.LoadKey('jy')[0,:,:]
-            self.fz = self.FigWrap.LoadKey('jz')[0,:,:]
+            self.fx = self.FigWrap.LoadKey('jx')[self.parent.MainParamDict['2DSlice'],:,:]
+            self.fy = self.FigWrap.LoadKey('jy')[self.parent.MainParamDict['2DSlice'],:,:]
+            self.fz = self.FigWrap.LoadKey('jz')[self.parent.MainParamDict['2DSlice'],:,:]
 
-            kxwarg = 'jxmin_max'
-            kywarg = 'jymin_max'
-            kzwarg = 'jzmin_max'
+            kxwarg = 'jxmin_max'+str(self.parent.MainParamDict['2DSlice'])
+            kywarg = 'jymin_max'+str(self.parent.MainParamDict['2DSlice'])
+            kzwarg = 'jzmin_max'+str(self.parent.MainParamDict['2DSlice'])
 
             self.oneDslice = self.fx.shape[0]/2
 

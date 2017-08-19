@@ -114,15 +114,15 @@ class DensPanel:
         self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
         self.istep = self.FigWrap.LoadKey('istep')[0]
 
-        self.dens = self.FigWrap.LoadKey('dens')[0,:,:]
+        self.dens = self.FigWrap.LoadKey('dens')[self.parent.MainParamDict['2DSlice'],:,:]
         self.oneDslice = self.dens.shape[0]/2
 
         # see if the min/max of all the arrays has aready been calculated.
-        if 'dens_min_max' in self.parent.DataDict.keys():
-            self.dens_min_max = self.parent.DataDict['dens_min_max']
+        if 'dens_min_max'+str(self.parent.MainParamDict['2DSlice']) in self.parent.DataDict.keys():
+            self.dens_min_max = self.parent.DataDict['dens_min_max'+str(self.parent.MainParamDict['2DSlice'])]
         else:
             self.dens_min_max = self.min_max_finder(self.dens)
-            self.parent.DataDict['dens_min_max'] = self.dens_min_max
+            self.parent.DataDict['dens_min_max'+str(self.parent.MainParamDict['2DSlice'])] = self.dens_min_max
 
 
         # Now calculate rho if needed.
@@ -131,7 +131,7 @@ class DensPanel:
             if 'rho' in self.parent.DataDict.keys():
                 self.rho = self.parent.DataDict['rho']
             else:
-                self.rho = 2*self.FigWrap.LoadKey('densi')[0,:,:] - self.FigWrap.LoadKey('dens')[0,:,:]
+                self.rho = 2*self.FigWrap.LoadKey('densi')[self.parent.MainParamDict['2DSlice'],:,:] - self.FigWrap.LoadKey('dens')[self.parent.MainParamDict['2DSlice'],:,:]
                 self.parent.DataDict['rho'] = self.rho
 
             # Handle the min/max

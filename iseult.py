@@ -546,8 +546,8 @@ class PlaybackBar(Tk.Frame):
 
     def ScaleHandler(self, e):
         # if changing the scale will change the value of the parameter, do so
-        if self.tstep.get() != int(self.slider.get()):
-            self.tstep.set(int(self.slider.get()))
+        if int(self.tstep.get()) != int(self.slider.get()):
+            self.tstep.set(str(int(self.slider.get())))
     def UpdateValue(self, *args):
         if int(self.slider.get()) != self.param.value:
             self.param.set(int(self.slider.get()))
@@ -1059,9 +1059,34 @@ class SettingsFrame(Tk.Toplevel):
         ttk.Checkbutton(frm, text = "x limits & zooms relative to shock",
                         variable = self.xRelVar).grid(row = 11, columnspan = 3, sticky = Tk.W)
 
+        new_frame = ttk.Frame(frm)
+        self.TwoDSliceVar = Tk.StringVar()
+        self.TwoDSliceVar.set(str(self.parent.MainParamDict['2DSlice']))
+
+
+        # An entry box that will let us choose the time-step
+        ttk.Label(new_frame, text='2d slice').pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+
+        # A slider that will select the 2D slice in the simulation
+        self.slider = ttk.Scale(new_frame, from_=0, to=self.parent.MaxInd, command = self.ScaleHandler)
+        self.slider.set(self.TwoDSliceVar.get())
+        self.slider.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
+
+        self.txtEnter = ttk.Entry(new_frame, textvariable=self.TwoDSliceVar, width=6)
+        self.txtEnter.pack(side=Tk.RIGHT, fill = Tk.BOTH, expand = 0)
+
+        # bind releasing the moust button to updating the plots.
+        self.slider.bind("<ButtonRelease-1>", self.UpdateValue)
+
+
+        new_frame.grid(row = 12, columnspan =4)
+
+
+
+
         cb = ttk.Checkbutton(frm, text = "Show Title",
                         variable = self.TitleVar)
-        cb.grid(row = 12, sticky = Tk.W)
+        cb.grid(row = 13, sticky = Tk.W)
         # Control whether or not axes are shared with a radio box:
         self.toLinkList = ['None', 'All spatial', 'All non p-x', 'All 2-D spatial']
         self.LinkedVar = Tk.IntVar()
@@ -1082,7 +1107,7 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Aspect = 1",
                                 variable = self.AspectVar)
-        cb.grid(row = 12, column = 1, sticky = Tk.W)
+        cb.grid(row = 13, column = 1, sticky = Tk.W)
 
         self.ConstantShockVar = Tk.IntVar()
         self.ConstantShockVar.set(self.parent.MainParamDict['ConstantShockVel'])
@@ -1090,7 +1115,7 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Constant Shock v",
                                 variable = self.ConstantShockVar)
-        cb.grid(row = 12, column = 2, sticky = Tk.W)
+        cb.grid(row = 13, column = 2, sticky = Tk.W)
 
 
         self.CbarOrientation = Tk.IntVar()
@@ -1099,7 +1124,7 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Horizontal Cbars",
                                 variable = self.CbarOrientation)
-        cb.grid(row = 13, sticky = Tk.W)
+        cb.grid(row = 14, sticky = Tk.W)
 
 
         self.LinkKVar = Tk.IntVar()
@@ -1108,7 +1133,7 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Share k-axes",
                                 variable = self.LinkKVar)
-        cb.grid(row = 13, column =1, sticky = Tk.W)
+        cb.grid(row = 14, column =1, sticky = Tk.W)
 
 
 
@@ -1120,6 +1145,20 @@ class SettingsFrame(Tk.Toplevel):
         self.GammaVar = Tk.StringVar()
         self.GammaVar.set(str(self.parent.MainParamDict['GammaBoost']))
         ttk.Entry(frm, textvariable=self.GammaVar, width = 7).grid(row = 14, column = 2, sticky = Tk.N)
+
+    def ScaleHandler(self, e):
+        # if changing the scale will change the value of the parameter, do so
+        if int(self.TwoDSliceVar.get()) != int(self.slider.get()):
+            self.TwoDSliceVar.set(str(int(self.slider.get())))
+
+    def UpdateValue(self, e):
+        if int(self.TwoDSliceVar.get()) == self.parent.MainParamDict['2DSlice']:
+            pass
+
+        else:
+            self.parent.MainParamDict['2DSlice'] = int(self.TwoDSliceVar.get())
+            self.parent.RenewCanvas()
+
 
     def AspectVarChanged(self, *args):
         if self.AspectVar.get() == self.parent.MainParamDict['ImageAspect']:
@@ -1313,7 +1352,7 @@ class SettingsFrame(Tk.Toplevel):
 
         try:
             #make sure the user types in a int
-            if self.PrtlStrideVar.get() <= 0:
+            if int(self.PrtlStrideVar.get()) <= 0:
                 self.PrtlStrideVar.set(str(self.parent.MainParamDict['PrtlStride']))
             if int(self.PrtlStrideVar.get()) != self.parent.MainParamDict['PrtlStride']:
                 self.parent.MainParamDict['PrtlStride'] = int(self.PrtlStrideVar.get())
@@ -1324,6 +1363,24 @@ class SettingsFrame(Tk.Toplevel):
         except ValueError:
             #if they type in random stuff, just set it to the param value
             self.PrtlStrideVar.set(str(self.parent.MainParamDict['PrtlStride']))
+        return to_reload
+    def CheckIfSliceChanged(self):
+        to_reload = False
+
+        try:
+            #make sure the user types in a int
+            if int(self.TwoDSliceVar.get()) < 0:
+                self.TwoDSliceVar.set('0')
+            elif int(self.TwoDSliceVar) > self.parent.MaxInd:
+                self.TwoDSliceVar.set(str(self.parent.MaxInd))
+
+            if int(self.TwoDSliceVar.get()) != self.parent.MainParamDict['2DSlice']:
+                self.parent.MainParamDict['2DSlice'] = int(self.TwoDSliceVar.get())
+                to_reload += True
+
+        except ValueError:
+            #if they type in random stuff, just set it to the param value
+            self.TwoDSliceVar.set(str(self.parent.MainParamDict['2DSlice']))
         return to_reload
 
 
@@ -1353,6 +1410,7 @@ class SettingsFrame(Tk.Toplevel):
         to_reload = self.CheckIfLimsChanged()
         to_reload += self.CheckIfGammaChanged()
         to_reload += self.CheckIfStrideChanged()
+        to_reload += self.CheckIfSliceChanged()
         if to_reload:
             self.parent.RenewCanvas()
 
@@ -1750,7 +1808,7 @@ class MainApp(Tk.Tk):
         # First create MainParamDict with the default parameters,
         # the dictionary that will hold the parameters for the program.
         # See ./iseult_configs/Default.cfg for a description of what each parameter does.
-        self.MainParamDict = {#'MeasureEpsP': False,
+        self.MainParamDict = {'2DSlice': 0,
                               'WindowSize': '1200x700',
                               'yTop': 100.0,
                               'yBottom': 0.0,
@@ -1869,9 +1927,10 @@ class MainApp(Tk.Tk):
                 self.MainParamDict[elm]['wspace'] = float(tmplist[4])
                 self.MainParamDict[elm]['hspace'] = float(tmplist[5])
 
-        # if stride is 0 that means it has only been initialized... set to zero
+        # if stride is 0 that means it has only been initialized... set to default
         if self.stride == 0:
             self.stride = self.MainParamDict['PrtlStride']
+
     def SaveIseultState(self, cfgfile, cfgname):
         config = ConfigParser.RawConfigParser()
 
@@ -2277,6 +2336,16 @@ class MainApp(Tk.Tk):
                     # add the key to the list of that file type
                     self.ToLoad[ftype].append(elm)
 
+        # Check to make sure the 2DSlice is OK...
+        with h5py.File(os.path.join(self.dirname,self.PathDict['Flds'][self.TimeStep.value-1]), 'r') as f:
+            self.MaxInd = f['bx'].shape[0]-1
+            if self.MainParamDict['2DSlice'] > self.MaxInd:
+                #the 2d slice is too big... set to Maximum.
+                self.MainParamDict['2DSlice'] = self.MaxInd
+                if self.settings_window is None:
+                    pass
+                else:
+                    self.settings_window.TwoDSliceVar.set(str(self.MainParamDict['2DSlice']))
         # See if we are in a new Directory
         if self.NewDirectory:
             # Create a new Dictionary that will have StateHashes of visited steps
@@ -2446,9 +2515,9 @@ class MainApp(Tk.Tk):
                 self.TotalElectronEnergy = np.append(np.append(self.TotalElectronEnergy[0:ind],TotalElectronKE),self.TotalElectronEnergy[ind:])
                 self.TotalIonEnergy = np.append(np.append(self.TotalIonEnergy[0:ind],TotalIonKE),self.TotalIonEnergy[ind:])
 
-                BzEnergy = self.DataDict['bz'][0,:,:]*self.DataDict['bz'][0,:,:]
-                TotalBEnergy = self.DataDict['bx'][0,:,:]*self.DataDict['bx'][0,:,:]
-                TotalBEnergy += self.DataDict['by'][0,:,:]*self.DataDict['by'][0,:,:]
+                BzEnergy = self.DataDict['bz'][:,:,:]*self.DataDict['bz'][:,:,:]
+                TotalBEnergy = self.DataDict['bx'][:,:,:]*self.DataDict['bx'][:,:,:]
+                TotalBEnergy += self.DataDict['by'][:,:,:]*self.DataDict['by'][:,:,:]
                 TotalBEnergy += BzEnergy
                 # sum over the array and then multiply by the number of points len(x)*len(y)
 
@@ -2456,12 +2525,10 @@ class MainApp(Tk.Tk):
                 BzEnergy *= self.DataDict['istep'][0]**2*.5
                 TotalBEnergy = np.sum(TotalBEnergy) #*self.DataDict['bx'][0,:,:].shape[1]*self.DataDict['bx'][0,:,:].shape[0]
                 TotalBEnergy *= self.DataDict['istep'][0]**2*.5
-#                TotalBEnergy *= self.DataDict['c_omp'][0]/self.DataDict['istep'][0]
-#                TotalBEnergy *= self.DataDict['c_omp'][0]/self.DataDict['istep'][0]
 
-                TotalEEnergy = self.DataDict['ex'][0,:,:]*self.DataDict['ex'][0,:,:]
-                TotalEEnergy += self.DataDict['ey'][0,:,:]*self.DataDict['ey'][0,:,:]
-                TotalEEnergy += self.DataDict['ez'][0,:,:]*self.DataDict['ez'][0,:,:]
+                TotalEEnergy = self.DataDict['ex'][:,:,:]*self.DataDict['ex'][:,:,:]
+                TotalEEnergy += self.DataDict['ey'][:,:,:]*self.DataDict['ey'][:,:,:]
+                TotalEEnergy += self.DataDict['ez'][:,:,:]*self.DataDict['ez'][:,:,:]
 
                 # sum over the array and then divide by the number of points len(x)*len(y)
                 TotalEEnergy = np.sum(TotalEEnergy) #*self.DataDict['ex'][0,:,:].shape[1]*self.DataDict['ex'][0,:,:].shape[0]
