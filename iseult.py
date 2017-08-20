@@ -1370,12 +1370,12 @@ class SettingsFrame(Tk.Toplevel):
 
         try:
             #make sure the user types in a int
-            self.TwoDSliceVar.get(int(int(self.TwoDSliceVarC_omp.get())*self.parent.c_omp/self.parent.istep))
+            self.TwoDSliceVar.set(int(int(self.TwoDSliceVarC_omp.get())*self.parent.c_omp/self.parent.istep))
             if int(self.TwoDSliceVar.get()) < 0:
                 self.TwoDSliceVar.set('0')
 
             elif int(self.TwoDSliceVar.get()) > self.parent.MaxInd:
-                self.TwoDSliceVar.set(str(self.parent.MaxInd)#*self.parent.istep/self.parent.c_omp))
+                self.TwoDSliceVar.set(str(self.parent.MaxInd))#*self.parent.istep/self.parent.c_omp))
 
             if int(self.TwoDSliceVar.get()) != self.parent.MainParamDict['2DSlice']:
                 self.parent.MainParamDict['2DSlice'] = int(self.TwoDSliceVar.get())
