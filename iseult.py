@@ -422,7 +422,7 @@ class PlaybackBar(Tk.Frame):
 
 
         # a settings button that should lauch some global settings.
-        self.SettingsB= ttk.Button(self, text='Settings', command=self.OpenSettings)
+        self.SettingsB= ttk.Button(self, text='Settings', command=self.parent.OpenSettings)
         self.SettingsB.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
 
         # a reload button that reloads the files and then refreshes the plot
@@ -505,12 +505,6 @@ class PlaybackBar(Tk.Frame):
 #            self.parent.MainParamDict['ClearFig'] = True
             self.playB.config(text='Play')
 
-    def OpenSettings(self):
-        if self.parent.settings_window is None:
-            self.parent.settings_window = SettingsFrame(self.parent)
-        else:
-            self.parent.settings_window.destroy()
-            self.parent.settings_window = SettingsFrame(self.parent)
 
     def OpenMeasures(self):
         if self.parent.measure_window is None:
@@ -1061,8 +1055,13 @@ class SettingsFrame(Tk.Toplevel):
 
         new_frame = ttk.Frame(frm)
         self.TwoDSliceVar = Tk.StringVar()
-        self.TwoDSliceVar.set(str(int(self.parent.MainParamDict['2DSlice']*self.parent.istep/self.parent.c_omp)))
+        self.TwoDSliceVar.set(str(self.parent.MainParamDict['2DSlice']))
 
+        self.units_list = []
+        for i in range(self.parent.MaxInd +1):
+            self.units_list.append(str(i*self.parent.istep/self.parent.c_omp))
+        self.TwoDSliceVarC_omp = Tk.StringVar()
+        self.TwoDSliceVarC_omp.set(self.units_list[self.parent.MainParamDict['2DSlice']])
 
         # An entry box that will let us choose the time-step
         ttk.Label(new_frame, text='2d slice [c_omp]').pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
@@ -1072,7 +1071,7 @@ class SettingsFrame(Tk.Toplevel):
         self.slider.set(self.TwoDSliceVar.get())
         self.slider.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
 
-        self.txtEnter = ttk.Entry(new_frame, textvariable=self.TwoDSliceVar, width=6)
+        self.txtEnter = ttk.Entry(new_frame, textvariable=self.TwoDSliceVarC_omp, width=6)
         self.txtEnter.pack(side=Tk.RIGHT, fill = Tk.BOTH, expand = 0)
 
         # bind releasing the moust button to updating the plots.
@@ -1148,17 +1147,17 @@ class SettingsFrame(Tk.Toplevel):
 
     def ScaleHandler(self, e):
         # if changing the scale will change the value of the parameter, do so
-        if int(self.TwoDSliceVar.get()) != int(self.slider.get()*self.parent.istep/self.parent.c_omp):
-            if int(int(self.TwoDSliceVar.get())/self.parent.istep*self.parent.c_omp) != self.slider.get():
-                self.TwoDSliceVar.set(str(int(self.slider.get()*self.parent.istep/self.parent.c_omp)))
+        if int(self.TwoDSliceVar.get()) != int(self.slider.get()):
+            self.TwoDSliceVar.set(str(int(self.slider.get())))
+            self.TwoDSliceVarC_omp.set(self.units_list[int(self.slider.get())])
 
     def UpdateValue(self, e):
-        if int(int(self.TwoDSliceVar.get())/self.parent.istep*self.parent.c_omp) == self.parent.MainParamDict['2DSlice']:
+        if int(self.TwoDSliceVar.get()) == self.parent.MainParamDict['2DSlice']:
             pass
 
         else:
-            self.parent.MainParamDict['2DSlice'] = int(int(self.TwoDSliceVar.get())/self.parent.istep*self.parent.c_omp)
-            self.TwoDSliceVar.set(str(int(self.parent.MainParamDict['2DSlice']*self.parent.istep/self.parent.c_omp)))
+            self.parent.MainParamDict['2DSlice'] = int(self.TwoDSliceVar.get())
+            self.TwoDSliceVarC_omp.set(self.units_list[self.parent.MainParamDict['2DSlice']])
             self.parent.RenewCanvas()
 
 
@@ -1373,12 +1372,13 @@ class SettingsFrame(Tk.Toplevel):
             #make sure the user types in a int
             if int(self.TwoDSliceVar.get()) < 0:
                 self.TwoDSliceVar.set('0')
-            elif int(int(self.TwoDSliceVar.get())/self.parent.istep*self.parent.c_omp) > self.parent.MaxInd:
+
+            elif int(self.TwoDSliceVar.get()) > self.parent.MaxInd:
                 self.TwoDSliceVar.set(str(self.parent.MaxInd*self.parent.istep/self.parent.c_omp))
 
-            if int(int(self.TwoDSliceVar.get())/self.parent.istep*self.parent.c_omp) != self.parent.MainParamDict['2DSlice']:
-                self.parent.MainParamDict['2DSlice'] = int(int(self.TwoDSliceVar.get())/self.parent.istep*self.parent.c_omp)
-                self.TwoDSliceVar.set(str(int(self.parent.MainParamDict['2DSlice']*self.parent.istep/self.parent.c_omp)))
+            if int(self.TwoDSliceVar.get()) != self.parent.MainParamDict['2DSlice']:
+                self.parent.MainParamDict['2DSlice'] = int(self.TwoDSliceVar.get())
+                self.TwoDSliceVarC_omp.set(self.units_list[self.parent.MainParamDict['2DSlice']])
                 to_reload += True
 
         except ValueError:
@@ -1575,7 +1575,7 @@ class MainApp(Tk.Tk):
 
         self.bind_all("<Control-q>", self.quit)
         self.bind_all("<Command-o>", self.OnOpen)
-
+        self.bind_all("S", self.OpenSettings)
 
         # create a bunch of regular expressions used to search for files
         f_re = re.compile('flds.tot.*')
@@ -3272,6 +3272,12 @@ class MainApp(Tk.Tk):
             #set the slider
             self.playbackbar.slider.set(value)
 
+    def OpenSettings(self, *args):
+        if self.settings_window is None:
+            self.settings_window = SettingsFrame(self)
+        else:
+            self.settings_window.destroy()
+            self.settings_window = SettingsFrame(self)
 
     def TxtEnter(self, e):
         self.playbackbar.TextCallback()
