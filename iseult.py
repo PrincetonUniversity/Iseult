@@ -3137,11 +3137,14 @@ class MainApp(Tk.Tk):
         # The ffmpeg command we want to call.
         # ffmpeg -y -f image2 -framerate 8 -pattern_type glob -i '*.png' -vcodec libx264 -pix_fmt yuv420p out.mp4
 
-        cmdstring = ['ffmpeg',  
+        cmdstring = ['xterm', '-e', 'ffmpeg', 
                      '-y', '-f', 'image2', # overwrite, image2 is a colorspace thing.                                  
                      '-framerate', str(int(FPS)), # Set framerate to the the user selected option
                      '-pattern_type', 'glob', '-i', os.path.join(self.movie_dir, '.tmp_erase','*.png'), # Not sure what this does... I am going to get rid of it
-                     '-vcodec', 'libx264', '-pix_fmt', 'yuv420p', fname] # output encoding
+                     '-vcodec', 'libx264',  # use hx264 codec
+                     '-pix_fmt', 'yuv420p', # the output size
+                     fname]#, '&']#, # output name,
+                     #'<dev/null', '>dev/null', '2>/var/log/ffmpeg.log', '&'] # run in background
         
         subprocess.call(cmdstring)
         for name in os.listdir(os.path.join(self.movie_dir, '.tmp_erase')):
