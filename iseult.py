@@ -26,6 +26,7 @@ from fft_plots import FFTPanel
 from total_energy_plots import TotEnergyPanel
 from moments import MomentsPanel
 from functools import partial
+import subprocess
 #import datetime
 #from ThreeD_mag_plots import ThreeDBPanel STILL TESTING
 
@@ -3066,11 +3067,12 @@ class MainApp(Tk.Tk):
         if self.MainParamDict['Recording']:
             self.PrintFig()
 
-    def PrintFig(self):
+    def PrintFig(self, HiddenFiles = False):
         if self.movie_dir == '':
             self.movie_dir = os.path.abspath(os.path.join(self.dirname, '..', 'Movie'))
             try:
                 os.makedirs(self.movie_dir)
+
             except OSError:
                 if not os.path.isdir(self.movie_dir):
                     mvdir_opt = {}
@@ -3079,22 +3081,39 @@ class MainApp(Tk.Tk):
                     mvdir_opt['parent'] = self
                     self.movie_dir = tkFileDialog.askdirectory(title = 'Problems saving to ./Movie, please choose a different directory where you have write access.', **self.dir_opt)
 
+        if HiddenFiles and os.path.isdir(self.movie_dir):
+            try:
+                os.makedirs(os.path.join(self.movie_dir, '.tmp_erase'))
+
+            except OSError:
+                 if not os.path.isdir(os.path.join(self.movie_dir, '.tmp_erase')):
+                     mvdir_opt = {}
+                     mvdir_opt['initialdir'] = self.dirname
+                     mvdir_opt['mustexist'] = True
+                     mvdir_opt['parent'] = self
+                     self.movie_dir = tkFileDialog.askdirectory(title = 'Problems saving to ./Movie, please choose a different directory where you have write access.', **self.dir_opt)
+
 
         fname = 'iseult_img_'+ str(self.TimeStep.value).zfill(3)+'.png'
         try:
-            self.f.savefig(os.path.join(self.movie_dir, fname))#, dpi = 300)#, facecolor=self.f.get_facecolor())#, edgecolor='none')
+            if not HiddenFiles:
+                self.f.savefig(os.path.join(self.movie_dir, fname))#, dpi = 300)#, facecolor=self.f.get_facecolor())#, edgecolor='none')
+            else:
+                self.f.savefig(os.path.join(self.movie_dir, '.tmp_erase', fname))#, dpi = 300)#, facecolor=self.f.get_facecolor())#, edgecolor='none')
         except OSError:
             mvdir_opt = {}
             mvdir_opt['initialdir'] = self.dirname
             mvdir_opt['mustexist'] = True
             mvdir_opt['parent'] = self
             self.movie_dir = tkFileDialog.askdirectory(title = 'Problems saving file to directory, please choose a different directory where you have write access.', **self.dir_opt)
-            self.PrintFig()
+            self.PrintFig(HiddenFiles = HiddenFiles)
     def MakeAMovie(self, fname, start, stop, step, FPS):
         '''Record a movie'''
-
-        FFMpegWriter = manimation.writers['ffmpeg']
-        writer = FFMpegWriter(fps=FPS, bitrate = 10000)
+        # Where-ever you are create a hidden file and then delete that directory:
+        self.PrintFig(HiddenFiles = True)
+        # Delete all the images in that subdirectory
+        for name in os.listdir(os.path.join(self.movie_dir, '.tmp_erase')):
+            os.remove(os.path.join(self.movie_dir, '.tmp_erase', name))
 
         # First find the last frame is stop is -1:
         if stop == -1:
@@ -3104,20 +3123,77 @@ class MainApp(Tk.Tk):
         frame_arr = np.arange(start, stop, step)
         if frame_arr[-1] != stop:
             frame_arr = np.append(frame_arr, stop)
+
+        # If total energy plot is showing, we have to loop through everything twice.
+
         if self.showing_total_energy_plt:
             for k in frame_arr:
                 self.TimeStep.set(k)
 
-        with writer.saving(self.f, fname, 300):
-            for i in frame_arr:
-                self.TimeStep.set(i)
-                self.after(10, writer.grab_frame())
-                if i == frame_arr[-1]:
-                    writer.grab_frame()
+        for i in frame_arr:
+            self.TimeStep.set(i)
+            self.PrintFig(HiddenFiles = True)
+
+        # The ffmpeg command we want to call.
+        # ffmpeg -y -f image2 -framerate 8 -pattern_type glob -i '*.png' -vcodec libx264 -pix_fmt yuv420p out.mp4
+
+        cmdstring = ['ffmpeg',  
+                     '-y', '-f', 'image2', # overwrite, image2 is a colorspace thing.                                  
+                     '-framerate', str(int(FPS)), # Set framerate to the the user selected option
+                     '-pattern_type', 'glob', '-i', os.path.join(self.movie_dir, '.tmp_erase','*.png'), # Not sure what this does... I am going to get rid of it
+                     '-vcodec', 'libx264', '-pix_fmt', 'yuv420p', fname] # output encoding
+        
+        subprocess.call(cmdstring)
+        for name in os.listdir(os.path.join(self.movie_dir, '.tmp_erase')):
+            os.remove(os.path.join(self.movie_dir, '.tmp_erase', name))
+        os.rmdir(os.path.join(self.movie_dir, '.tmp_erase'))
+        '''
+        #THIS METHOD TRIES TO USE SUBPROCCESS AND PIPING TO OUTPUT... LEAVING THIS HERE 
+        #FOR LATER....
+        # Draw frames
+        im_list = []
+        for i in frame_arr:
+            self.TimeStep.set(i)
+
+            
+            # Save the image png as a cString
+            ram = cStringIO.StringIO()
+            self.f.savefig(ram, format='png', dpi=self.f.dpi, facecolor=self.f.get_facecolor())
+            ram.seek(0)
+            # write to pipe
+            im_list.append(ram.read())
+            ram.close()
 
 
+        # Let's try using CStrings and piping to ffmpeg. Here's what we got from the OIC people
+        # ffmpeg -y -f image2 -framerate 8 -pattern_type glob -i '*.png' -codec copy out.mov
+        # ffmpeg -y -f image2 -framerate 8 -pattern_type glob -i '*.png' -vcodec libx264 -pix_fmt yuv420p out.mp4
+        # OLD DEPRECATED METHOD
+        #FFMpegWriter = manimation.writers['ffmpeg']
+        #writer = FFMpegWriter(fps=FPS, bitrate = 10000)
+      
 
 
+        # New Method.... First, let's translate the above command into a string
+
+
+        
+        cmdstring = ('ffmpeg',  
+                     '-y', '-f', 'image2', # overwrite, image2 is a colorspace thing..
+                     'vcodec', 'png',
+                     '-framerate', str(int(FPS)), # Set framerate to the the user selected option
+                     '-pattern_type', 'glob', '-i', '-', # Not sure what this does... I am going to get rid of it
+                     '-vcodec', 'libx264', '-pix_fmt', 'yuv420p', fname+'.mp4') # output encoding
+        p = subprocess.Popen(cmdstring, stdin=subprocess.PIPE)
+
+        # Write the images to the pipe
+        for i in range(len(im_list)):
+            print i
+            p.stdin.write(im_list.pop(0))
+        # Finish up
+        p.communicate()
+        #p.stdout.close()
+        '''
     def OpenSaveDialog(self):
         SaveDialog(self)
     def OpenMovieDialog(self):
