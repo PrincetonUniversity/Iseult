@@ -17,13 +17,17 @@ already been implemented.
 Dependencies:
 -------------
 
-Python packages required: MatPlotLib 1.4 & its required dependencies, python 2.7.11, h5py
+Python packages required: Anaconda 4.4.0, matplotlib 2.0 & its required
+dependencies, python 2.7.11, h5py. May work for older versions of anaconda and
+matplotlib, but not guaranteed.
+
+To use the movie saving feature: ffmpeg & xterm.
 
 Iseult should work on Windows, MacOS & Linux.
 
 To run Iseult on tigressdata type the following:
 ```bash
-$ module load anaconda/2.5.0
+$ module load anaconda/4.4.0
 $ source activate root
 $ cd /path/to/Iseult/
 $ chmod +x ./iseult.py
