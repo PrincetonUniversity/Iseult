@@ -308,7 +308,12 @@ class SpectralPanel:
 
         self.axes.set_xscale("log")
         self.axes.set_yscale("log")
-        self.axes.set_axis_bgcolor('lightgrey')
+
+        if int(matplotlib.__version__[0]) < 2:
+            self.axes.set_axis_bgcolor('lightgrey')
+        else:
+            self.axes.set_facecolor('lightgrey')
+
         if self.GetPlotParam('set_xlim'):
             self.axes.set_xlim(self.GetPlotParam('x_min'), self.GetPlotParam('x_max'))
         if self.GetPlotParam('set_ylim'):
@@ -317,11 +322,11 @@ class SpectralPanel:
         self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 
         if self.GetPlotParam('spectral_type') == 0:
-            self.axes.set_xlabel(r'$\gamma\beta$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
-            self.axes.set_ylabel(r'$p^4f(p)$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
+            self.axes.set_xlabel(r'$\gamma\beta$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            self.axes.set_ylabel(r'$p^4f(p)$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
         else:
-            self.axes.set_xlabel(r'$\gamma-1$', labelpad = -2, color = 'black')
-            self.axes.set_ylabel(r'$E(dn/dE)/n$', labelpad = 0, color = 'black')
+            self.axes.set_xlabel(r'$\gamma-1$', labelpad = -2, color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            self.axes.set_ylabel(r'$E(dn/dE)/n$', labelpad = 0, color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
         self.refresh()
 
@@ -1020,14 +1025,14 @@ class SpectraSettings(Tk.Toplevel):
             pass
         else:
             if self.SpectTypeVar.get() == 1:
-                self.parent.axes.set_xlabel(r'$\gamma-1$')
-                self.parent.axes.set_ylabel(r'$E(dn/dE)/n$')
+                self.parent.axes.set_xlabel(r'$\gamma-1$', size = self.parent.parent.MainParamDict['AxLabelSize'])
+                self.parent.axes.set_ylabel(r'$E(dn/dE)/n$', size = self.parent.parent.MainParamDict['AxLabelSize'])
                 self.parent.SetPlotParam('x_min', 0.0005, update_plot = False)
                 self.parent.SetPlotParam('x_max', 100, update_plot = False)
 
             else:
-                self.parent.axes.set_xlabel(r'$\gamma\beta$')
-                self.parent.axes.set_ylabel(r'$p^4f(p)$')
+                self.parent.axes.set_xlabel(r'$\gamma\beta$', size = self.parent.parent.MainParamDict['AxLabelSize'])
+                self.parent.axes.set_ylabel(r'$p^4f(p)$', size = self.parent.parent.MainParamDict['AxLabelSize'])
                 self.parent.SetPlotParam('x_min', 0.05, update_plot = False)
                 self.parent.SetPlotParam('x_max', 200, update_plot = False)
 

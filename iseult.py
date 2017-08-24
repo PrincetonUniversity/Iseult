@@ -40,6 +40,8 @@ import tkFileDialog, tkMessageBox
 
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
+matplotlib.rcParams['image.resample'] = False
+
 import argparse
 
 def destroy(e):
@@ -1140,11 +1142,11 @@ class SettingsFrame(Tk.Toplevel):
         self.LorentzBoostVar = Tk.IntVar()
         self.LorentzBoostVar.set(self.parent.MainParamDict['DoLorentzBoost'])
         self.LorentzBoostVar.trace('w', self.LorentzBoostChanged)
-        cb = ttk.Checkbutton(frm, text='Boost PhasePlots', variable =  self.LorentzBoostVar).grid(row = 14, sticky = Tk.W)
-        ttk.Label(frm, text='Gamma/Beta = \r (- for left boost)').grid(row= 14, rowspan = 2,column =1, sticky = Tk.E)
+        cb = ttk.Checkbutton(frm, text='Boost PhasePlots', variable =  self.LorentzBoostVar).grid(row = 15, sticky = Tk.W)
+        ttk.Label(frm, text='Gamma/Beta = \r (- for left boost)').grid(row= 15, rowspan = 2,column =1, sticky = Tk.E)
         self.GammaVar = Tk.StringVar()
         self.GammaVar.set(str(self.parent.MainParamDict['GammaBoost']))
-        ttk.Entry(frm, textvariable=self.GammaVar, width = 7).grid(row = 14, column = 2, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.GammaVar, width = 7).grid(row = 15, column = 2, sticky = Tk.N)
 
     def ScaleHandler(self, e):
         # if changing the scale will change the value of the parameter, do so
@@ -1686,7 +1688,7 @@ class MainApp(Tk.Tk):
                           u'ppc0': 'Param'}
 
         # Create the figure
-        self.f = Figure(figsize = (2,2), dpi = 100, edgecolor = 'none')#, facecolor = '0.75')
+        self.f = Figure(figsize = (2,2), dpi = 100, edgecolor = 'none', facecolor = 'w')
         # a tk.DrawingArea
         self.canvas = FigureCanvasTkAgg(self.f, master=self)
 
@@ -1830,10 +1832,11 @@ class MainApp(Tk.Tk):
                               'NumOfRows': 3,
                               'MaxRows': 5,
                               'SetkLim': False,
-                              'VCbarExtent': [4, 90, 95, 98],
+                              'VCbarExtent': [4, 90, 94, 97],
                               'SkipSize': 5,
                               'xLeft': 0.0,
                               'NumFontSize': 11,
+                              'AxLabelSize': 11,
                               'FFTRelative': True,
                               'NumOfCols': 2,
                               'VSubPlotParams': {'right': 0.95,
@@ -1881,7 +1884,7 @@ class MainApp(Tk.Tk):
                 self.MainParamDict[elm] = config.getboolean('main', elm)
 
         # The list of things that should be formatted as ints.
-        IntList = ['NumFontSize', 'xLabelPad', 'yLabelPad', 'MaxRows',
+        IntList = ['NumFontSize', 'AxLabelSize' 'xLabelPad', 'yLabelPad', 'MaxRows',
                    'MaxCols', 'NumOfRows', 'NumOfCols', 'ImageAspect',
                    'LinkSpatial', 'SkipSize', 'PrtlStride']
 
@@ -3137,28 +3140,28 @@ class MainApp(Tk.Tk):
         # The ffmpeg command we want to call.
         # ffmpeg -y -f image2 -framerate 8 -pattern_type glob -i '*.png' -vcodec libx264 -pix_fmt yuv420p out.mp4
 
-        cmdstring = ['xterm', '-e', 'ffmpeg', 
-                     '-y', '-f', 'image2', # overwrite, image2 is a colorspace thing.                                  
+        cmdstring = ['xterm', '-e', 'ffmpeg',
+                     '-y', '-f', 'image2', # overwrite, image2 is a colorspace thing.
                      '-framerate', str(int(FPS)), # Set framerate to the the user selected option
                      '-pattern_type', 'glob', '-i', os.path.join(self.movie_dir, '.tmp_erase','*.png'), # Not sure what this does... I am going to get rid of it
                      '-vcodec', 'libx264',  # use hx264 codec
                      '-pix_fmt', 'yuv420p', # the output size
                      fname]#, '&']#, # output name,
                      #'<dev/null', '>dev/null', '2>/var/log/ffmpeg.log', '&'] # run in background
-        
+
         subprocess.call(cmdstring)
         for name in os.listdir(os.path.join(self.movie_dir, '.tmp_erase')):
             os.remove(os.path.join(self.movie_dir, '.tmp_erase', name))
         os.rmdir(os.path.join(self.movie_dir, '.tmp_erase'))
         '''
-        #THIS METHOD TRIES TO USE SUBPROCCESS AND PIPING TO OUTPUT... LEAVING THIS HERE 
+        #THIS METHOD TRIES TO USE SUBPROCCESS AND PIPING TO OUTPUT... LEAVING THIS HERE
         #FOR LATER....
         # Draw frames
         im_list = []
         for i in frame_arr:
             self.TimeStep.set(i)
 
-            
+
             # Save the image png as a cString
             ram = cStringIO.StringIO()
             self.f.savefig(ram, format='png', dpi=self.f.dpi, facecolor=self.f.get_facecolor())
@@ -3174,14 +3177,14 @@ class MainApp(Tk.Tk):
         # OLD DEPRECATED METHOD
         #FFMpegWriter = manimation.writers['ffmpeg']
         #writer = FFMpegWriter(fps=FPS, bitrate = 10000)
-      
+
 
 
         # New Method.... First, let's translate the above command into a string
 
 
-        
-        cmdstring = ('ffmpeg',  
+
+        cmdstring = ('ffmpeg',
                      '-y', '-f', 'image2', # overwrite, image2 is a colorspace thing..
                      'vcodec', 'png',
                      '-framerate', str(int(FPS)), # Set framerate to the the user selected option

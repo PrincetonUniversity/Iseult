@@ -33,14 +33,15 @@ class EnergyPanel:
                        'y_max': 200.0,
                        'spatial_x': True,
                        'spatial_y': False,
-                       'interpolation': 'hermite'}
+                       'interpolation': 'nearest'}
 
     # We need the types of all the parameters for the config file
     BoolList = ['twoD', 'masked', 'weighted', 'show_cbar', 'show_shock', 'show_int_region', 'set_color_limits',
                 'set_v_min', 'set_v_max', 'set_y_min', 'set_y_max', 'spatial_x', 'spatial_y']
     IntList = ['prtl_type', 'xbins', 'ebins']
     FloatList = ['v_min', 'v_max', 'y_min', 'y_max', 'cpow_num']
-    StrList = ['interpolation', 'cnorm_type']
+    #StrList = ['interpolation', 'cnorm_type']
+    StrList = ['cnorm_type'] # No longer loading interpolation from config files
 
     prtl_opts = ['proton', 'electron']
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
@@ -54,7 +55,7 @@ class EnergyPanel:
         self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
         self.chartType = self.FigWrap.chartType
         self.figure = self.FigWrap.figure
-        self.InterpolationMethods = ['nearest', 'bilinear', 'bicubic', 'spline16',
+        self.InterpolationMethods = ['none','nearest', 'bilinear', 'bicubic', 'spline16',
             'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
         # A variable that controls whether the energy integration region
@@ -336,11 +337,15 @@ class EnergyPanel:
             self.axC.set_visible(False)
 
 
-        self.axes.set_axis_bgcolor('lightgrey')
+        if int(matplotlib.__version__[0]) < 2:
+            self.axes.set_axis_bgcolor('lightgrey')
+        else:
+            self.axes.set_facecolor('lightgrey')
+
         self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=self.tick_color)
 
-        self.axes.set_xlabel(self.x_label, labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
-        self.axes.set_ylabel(self.y_label, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
+        self.axes.set_xlabel(self.x_label, labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+        self.axes.set_ylabel(self.y_label, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
         self.refresh()
 
@@ -381,8 +386,8 @@ class EnergyPanel:
             self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
 
         self.UpdateLabelsandColors()
-        self.axes.set_xlabel(self.x_label, labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
-        self.axes.set_ylabel(self.y_label, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
+        self.axes.set_xlabel(self.x_label, labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+        self.axes.set_ylabel(self.y_label, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
         if self.GetPlotParam('set_y_min'):
             self.ymin = self.GetPlotParam('y_min')
@@ -411,9 +416,9 @@ class EnergyPanel:
                     self.axC.set_xlim(np.log10(clim[0]),np.log10(clim[1]))
                     self.axC.xaxis.set_label_position("top")
                     if self.GetPlotParam('prtl_type') ==0:
-                        self.axC.set_xlabel(r'$\log{\ \ f_i(p)}$')
+                        self.axC.set_xlabel(r'$\log{\ \ f_i(p)}$', size = self.parent.MainParamDict['AxLabelSize'])
                     else:
-                        self.axC.set_xlabel(r'$\log{\ \ f_e(p)}$')
+                        self.axC.set_xlabel(r'$\log{\ \ f_e(p)}$', size = self.parent.MainParamDict['AxLabelSize'])
 
                 else:
                     self.cbar.set_extent([0,1,np.log10(clim[0]),np.log10(clim[1])])
@@ -421,9 +426,9 @@ class EnergyPanel:
                     self.axC.locator_params(axis='y',nbins=6)
                     self.axC.yaxis.set_label_position("right")
                     if self.GetPlotParam('prtl_type') ==0:
-                        self.axC.set_ylabel(r'$\log{\ \ f_i(p)}$', labelpad =15, rotation = -90)
+                        self.axC.set_ylabel(r'$\log{\ \ f_i(p)}$', labelpad =15, rotation = -90, size = self.parent.MainParamDict['AxLabelSize'])
                     else:
-                        self.axC.set_ylabel(r'$\log{\ \ f_e(p)}$', size = 12,labelpad =15, rotation = -90)
+                        self.axC.set_ylabel(r'$\log{\ \ f_e(p)}$', labelpad =15, rotation = -90, size = self.parent.MainParamDict['AxLabelSize'])
 
             else:# self.GetPlotParam('cnorm_type') == "Linear":
                 if self.parent.MainParamDict['HorizontalCbars']:
@@ -431,9 +436,9 @@ class EnergyPanel:
                     self.axC.set_xlim(clim[0], clim[1])
                     self.axC.xaxis.set_label_position("top")
                     if self.GetPlotParam('prtl_type') ==0:
-                        self.axC.set_xlabel(r'$f_i(p)$')
+                        self.axC.set_xlabel(r'$f_i(p)$', size = self.parent.MainParamDict['AxLabelSize'])
                     else:
-                        self.axC.set_xlabel(r'$f_e(p)$')
+                        self.axC.set_xlabel(r'$f_e(p)$', size = self.parent.MainParamDict['AxLabelSize'])
 
                 else:
                     self.cbar.set_extent([0, 1, clim[0], clim[1]])
@@ -441,9 +446,9 @@ class EnergyPanel:
                     self.axC.locator_params(axis='y', nbins=6)
                     self.axC.yaxis.set_label_position("right")
                     if self.GetPlotParam('prtl_type') ==0:
-                        self.axC.set_ylabel(r'$f_i(p)$', labelpad =15, rotation = -90)
+                        self.axC.set_ylabel(r'$f_i(p)$', labelpad =15, rotation = -90, size = self.parent.MainParamDict['AxLabelSize'])
                     else:
-                        self.axC.set_ylabel(r'$f_e(p)$', size = 12,labelpad =15, rotation = -90)
+                        self.axC.set_ylabel(r'$f_e(p)$', labelpad =15, rotation = -90, size = self.parent.MainParamDict['AxLabelSize'])
 
 
     def GetPlotParam(self, keyname):
@@ -649,7 +654,7 @@ class EnergySettings(Tk.Toplevel):
 
             self.parent.SetPlotParam('prtl_type', self.pvar.get(), update_plot =  False)
             self.parent.UpdateLabelsandColors()
-            self.parent.axes.set_ylabel(self.parent.y_label, labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
+            self.parent.axes.set_ylabel(self.parent.y_label, labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
             self.parent.lineleft.set_color(self.parent.energy_color)
             self.parent.lineright.set_color(self.parent.energy_color)
             self.parent.SetPlotParam('prtl_type', self.pvar.get())

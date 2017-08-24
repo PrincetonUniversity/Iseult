@@ -28,7 +28,7 @@ class DensPanel:
                        'OutlineText': True,
                        'spatial_x': True,
                        'spatial_y': False,
-                       'interpolation': 'nearest',
+                       'interpolation': 'none',
                        'normalize_density': True, # Normalize density to it's upstream values
                        'cnorm_type': 'Linear', # Colormap norm;  options are Pow or Linear
                        'cpow_num': 0.6, # Used in the PowerNorm
@@ -44,7 +44,8 @@ class DensPanel:
                    'normalize_density', 'UseDivCmap', 'stretch_colors', 'show_cpu_domains']
     IntList = ['dens_type']
     FloatList = ['v_min', 'v_max', 'cpow_num', 'div_midpoint']
-    StrList = ['interpolation', 'cnorm_type', 'cmap']
+    #StrList = ['interpolation', 'cnorm_type', 'cmap']
+    StrList = ['cnorm_type', 'cmap'] # No longer loading interpolation from config files
 
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))
@@ -57,7 +58,7 @@ class DensPanel:
         self.chartType = self.FigWrap.chartType
         self.figure = self.FigWrap.figure
         self.SetPlotParam('spatial_y', self.GetPlotParam('twoD'), update_plot = False)
-        self.InterpolationMethods = ['nearest', 'bilinear', 'bicubic', 'spline16',
+        self.InterpolationMethods = ['none','nearest', 'bilinear', 'bicubic', 'spline16',
             'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
 
@@ -258,7 +259,6 @@ class DensPanel:
                                             **self.annotate_kwargs)
             self.an_2d.set_visible(self.GetPlotParam('show_labels'))
 
-            self.axes.set_axis_bgcolor('lightgrey')
 
             self.axC = self.figure.add_subplot(self.gs[self.parent.cbar_extent[0]:self.parent.cbar_extent[1], self.parent.cbar_extent[2]:self.parent.cbar_extent[3]])
             if self.parent.MainParamDict['HorizontalCbars']:
@@ -301,7 +301,11 @@ class DensPanel:
             else:
                 self.CbarTickFormatter()
 
-            self.axes.set_axis_bgcolor('lightgrey')
+            if int(matplotlib.__version__[0]) < 2:
+                self.axes.set_axis_bgcolor('lightgrey')
+            else:
+                self.axes.set_facecolor('lightgrey')
+
             self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 
             if self.parent.MainParamDict['SetxLim']:
@@ -317,8 +321,8 @@ class DensPanel:
                 self.axes.set_ylim(self.parent.MainParamDict['yBottom']*self.c_omp/self.istep, self.parent.MainParamDict['yTop']*self.c_omp/self.istep)
             else:
                 self.axes.set_ylim(self.ymin, self.ymax)
-            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
-            self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
+            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
         else:
             # Do the 1D Plots
@@ -362,7 +366,11 @@ class DensPanel:
                     PathEffects.Normal()])
             self.shock_line.set_visible(self.GetPlotParam('show_shock'))
 
-            self.axes.set_axis_bgcolor('lightgrey')
+            if int(matplotlib.__version__[0]) < 2:
+                self.axes.set_axis_bgcolor('lightgrey')
+            else:
+                self.axes.set_facecolor('lightgrey')
+
             self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 
             if self.parent.MainParamDict['SetxLim']:
@@ -385,8 +393,8 @@ class DensPanel:
                 tmp_str = r'${\rm density} \ [n_0]$'
             if self.GetPlotParam('dens_type') == 1:
                 tmp_str = r'$\rho$'
-            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
-            self.axes.set_ylabel(tmp_str, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
+            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            self.axes.set_ylabel(tmp_str, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
 
         if self.GetPlotParam('show_cpu_domains'):
@@ -777,9 +785,9 @@ class DensSettings(Tk.Toplevel):
             else:
                 if self.parent.GetPlotParam('dens_type') == 0:
                     if self.NormDVar.get():
-                        self.parent.axes.set_ylabel(r'${\rm density}\ [n_0]$')
+                        self.parent.axes.set_ylabel(r'${\rm density}\ [n_0]$', size = self.parent.parent.MainParamDict['AxLabelSize'])
                     else:
-                        self.parent.axes.set_ylabel('density')
+                        self.parent.axes.set_ylabel('density', size = self.parent.parent.MainParamDict['AxLabelSize'])
 
             self.parent.SetPlotParam('normalize_density', self.NormDVar.get(), update_plot = self.parent.GetPlotParam('dens_type')==0)
 
@@ -894,15 +902,15 @@ class DensSettings(Tk.Toplevel):
                     self.parent.linerho[0].set_visible(False)
                     self.parent.linedens[0].set_visible(True)
                     if self.parent.GetPlotParam('normalize_density'):
-                        self.parent.axes.set_ylabel(r'${\rm density}\ [n_0]$')
+                        self.parent.axes.set_ylabel(r'${\rm density}\ [n_0]$', size = self.parent.parent.MainParamDict['AxLabelSize'])
                     else:
-                        self.parent.axes.set_ylabel(r'$\rm density$')
+                        self.parent.axes.set_ylabel(r'$\rm density$', size = self.parent.parent.MainParamDict['AxLabelSize'])
 
 
                 else:
                     self.parent.linerho[0].set_visible(True)
                     self.parent.linedens[0].set_visible(False)
-                    self.parent.axes.set_ylabel(r'$\rho$')
+                    self.parent.axes.set_ylabel(r'$\rho$', size = self.parent.parent.MainParamDict['AxLabelSize'])
 
             self.parent.SetPlotParam('dens_type', self.DensTypeVar.get())
 

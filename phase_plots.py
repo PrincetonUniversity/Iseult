@@ -39,13 +39,14 @@ class PhasePanel:
                        'set_p_max': False,
                        'spatial_x': True,
                        'spatial_y': False,
-                       'interpolation': 'hermite'}
+                       'interpolation': 'nearest'}
 
     BoolList = ['twoD', 'masked', 'weighted', 'show_cbar', 'show_shock', 'show_int_region',
                 'set_v_min', 'set_v_max', 'set_p_min', 'set_p_max', 'set_E_min', 'Set_E_max', 'spatial_x', 'spatial_y']
     IntList = ['prtl_type','mom_dim', 'xbins', 'pbins']
     FloatList = ['v_min', 'v_max', 'p_min', 'p_max', 'cpow_num', 'E_min', 'E_max']
-    StrList = ['interpolation', 'cnorm_type']
+    #StrList = ['interpolation', 'cnorm_type']
+    StrList = ['cnorm_type'] # No longer loading interpolation from config files
 
     prtl_opts = ['proton_p', 'electron_p']
     direction_opts = ['x-x', 'y-x', 'z-x']
@@ -74,7 +75,7 @@ class PhasePanel:
         self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
         self.chartType = self.FigWrap.chartType
         self.figure = self.FigWrap.figure
-        self.InterpolationMethods = ['nearest', 'bilinear', 'bicubic', 'spline16',
+        self.InterpolationMethods = ['none','nearest', 'bilinear', 'bicubic', 'spline16',
             'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
 
@@ -214,8 +215,8 @@ class PhasePanel:
 
         self.key_name += self.prtl_opts[self.GetPlotParam('prtl_type')]
         self.key_name += self.direction_opts[self.GetPlotParam('mom_dim')]
-        self.key_name += str(self.parent.MainParamDict['PrtlStride'])
-        
+        self.key_name += str(int(self.parent.MainParamDict['PrtlStride']))
+
         if self.key_name in self.parent.DataDict.keys():
             self.hist2d = self.parent.DataDict[self.key_name]
 
@@ -573,11 +574,13 @@ class PhasePanel:
         if not self.GetPlotParam('show_cbar'):
             self.axC.set_visible(False)
 
-
-        self.axes.set_axis_bgcolor('lightgrey')
+        if int(matplotlib.__version__[0]) < 2:
+            self.axes.set_axis_bgcolor('lightgrey')
+        else:
+            self.axes.set_facecolor('lightgrey')
         self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=self.tick_color)
-        self.axes.set_xlabel(self.x_label, labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
-        self.axes.set_ylabel(self.y_label, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
+        self.axes.set_xlabel(self.x_label, labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+        self.axes.set_ylabel(self.y_label, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
         self.refresh()
 
@@ -615,8 +618,8 @@ class PhasePanel:
             self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
 
         self.UpdateLabelsandColors()
-        self.axes.set_xlabel(self.x_label, labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
-        self.axes.set_ylabel(self.y_label, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
+        self.axes.set_xlabel(self.x_label, labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+        self.axes.set_ylabel(self.y_label, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
         if self.GetPlotParam('set_p_min'):
             self.ymin = self.GetPlotParam('p_min')
@@ -646,9 +649,9 @@ class PhasePanel:
                     self.axC.set_xlim(np.log10(clim[0]),np.log10(clim[1]))
                     self.axC.xaxis.set_label_position("top")
                     if self.GetPlotParam('prtl_type') ==0:
-                        self.axC.set_xlabel(r'$\log{\ \ f_i(p)}$')#, labelpad =15, rotation = -90)
+                        self.axC.set_xlabel(r'$\log{\ \ f_i(p)}$', size = self.parent.MainParamDict['AxLabelSize'])#, labelpad =15, rotation = -90)
                     else:
-                        self.axC.set_xlabel(r'$\log{\ \ f_e(p)}$')#, size = 12,labelpad =15, rotation = -90)
+                        self.axC.set_xlabel(r'$\log{\ \ f_e(p)}$', size = self.parent.MainParamDict['AxLabelSize'])#, size = 12,labelpad =15, rotation = -90)
 
                 else:
                     self.cbar.set_extent([0,1,np.log10(clim[0]),np.log10(clim[1])])
@@ -656,23 +659,28 @@ class PhasePanel:
                     self.axC.locator_params(axis='y',nbins=6)
                     self.axC.yaxis.set_label_position("right")
                     if self.GetPlotParam('prtl_type') ==0:
-                        self.axC.set_ylabel(r'$\log{\ \ f_i(p)}$', labelpad =15, rotation = -90)
+                        self.axC.set_ylabel(r'$\log{\ \ f_i(p)}$', labelpad =15, rotation = -90, size = self.parent.MainParamDict['AxLabelSize'])
                     else:
-                        self.axC.set_ylabel(r'$\log{\ \ f_e(p)}$', size = 12,labelpad =15, rotation = -90)
+                        self.axC.set_ylabel(r'$\log{\ \ f_e(p)}$', labelpad =15, rotation = -90, size = self.parent.MainParamDict['AxLabelSize'])
 
             else:# self.GetPlotParam('cnorm_type') == "Linear":
                 if self.parent.MainParamDict['HorizontalCbars']:
                     self.cbar.set_extent([clim[0], clim[1], 0, 1])
                     self.axC.set_xlim(clim[0], clim[1])
+                    if self.GetPlotParam('prtl_type') ==0:
+                        self.axC.set_xlabel(r'$f_i(p)$', size = self.parent.MainParamDict['AxLabelSize'])
+                    else:
+                        self.axC.set_xlabel(r'$f_e(p)$', size = self.parent.MainParamDict['AxLabelSize'])
+
                 else:
                     self.cbar.set_extent([0, 1, clim[0], clim[1]])
                     self.axC.set_ylim(clim[0], clim[1])
                     self.axC.locator_params(axis='y', nbins=6)
                     self.axC.yaxis.set_label_position("right")
                     if self.GetPlotParam('prtl_type') ==0:
-                        self.axC.set_ylabel(r'$f_i(p)$', labelpad =15, rotation = -90)
+                        self.axC.set_ylabel(r'$f_i(p)$', labelpad =15, rotation = -90, size = self.parent.MainParamDict['AxLabelSize'])
                     else:
-                        self.axC.set_ylabel(r'$f_e(p)$', size = 12,labelpad =15, rotation = -90)
+                        self.axC.set_ylabel(r'$f_e(p)$', labelpad =15, rotation = -90, size = self.parent.MainParamDict['AxLabelSize'])
 
 
 
@@ -938,7 +946,7 @@ class PhaseSettings(Tk.Toplevel):
 
             self.parent.SetPlotParam('prtl_type', self.pvar.get(), update_plot =  False)
             self.parent.UpdateLabelsandColors()
-            self.parent.axes.set_ylabel(self.parent.y_label, labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
+            self.parent.axes.set_ylabel(self.parent.y_label, labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
             #self.parent.lineleft.set_color(self.parent.energy_color)
             #self.parent.lineright.set_color(self.parent.energy_color)
             self.parent.SetPlotParam('prtl_type', self.pvar.get())
@@ -949,7 +957,7 @@ class PhaseSettings(Tk.Toplevel):
         else:
             self.parent.SetPlotParam('mom_dim', self.dimvar.get(), update_plot = False)
             self.parent.UpdateLabelsandColors()
-            self.parent.axes.set_ylabel(self.parent.y_label, labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
+            self.parent.axes.set_ylabel(self.parent.y_label, labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
             self.parent.SetPlotParam('mom_dim', self.dimvar.get())
 
     def setVminChanged(self, *args):

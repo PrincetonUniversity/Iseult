@@ -38,7 +38,7 @@ class FFTPanel:
         self.chartType = self.FigWrap.chartType
         self.figure = self.FigWrap.figure
         self.SetPlotParam('spatial_y', self.GetPlotParam('twoD'), update_plot = False)
-        self.InterpolationMethods = ['nearest', 'bilinear', 'bicubic', 'spline16',
+        self.InterpolationMethods = ['none','nearest', 'bilinear', 'bicubic', 'spline16',
             'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
         self.ylabel_list = [r'$|\delta B_z(k)|/B_0$', r'$|\delta B_\perp(k)|/B_0$', r'$|E_x(k)|/E_0$', r'$\chi(k)\ [\ \! ^\circ]$']
@@ -189,7 +189,12 @@ class FFTPanel:
 
 
         self.line = self.axes.plot(self.k_axis, self.y, color = self.line_color)
-        self.axes.set_axis_bgcolor('lightgrey')
+
+        if int(matplotlib.__version__[0]) < 2:
+            self.axes.set_axis_bgcolor('lightgrey')
+        else:
+            self.axes.set_facecolor('lightgrey')
+
         self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 
         if self.parent.MainParamDict['SetkLim']:
@@ -208,8 +213,8 @@ class FFTPanel:
         if self.GetPlotParam('set_y_max'):
             self.axes.set_ylim(ymax = self.GetPlotParam('y_max'))
 
-        self.axes.set_xlabel(r'$k \ [\omega_{pe}/c]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
-        self.axes.set_ylabel(self.ylabel, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
+        self.axes.set_xlabel(r'$k \ [\omega_{pe}/c]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size  = self.parent.MainParamDict['AxLabelSize'])
+        self.axes.set_ylabel(self.ylabel, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
     def refresh(self):
 

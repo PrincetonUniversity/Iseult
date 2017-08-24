@@ -120,7 +120,11 @@ class TotEnergyPanel:
                                           visible = self.GetPlotParam('show_current_time'))
 
 
-        self.axes.set_axis_bgcolor('lightgrey')
+        if int(matplotlib.__version__[0]) < 2:
+            self.axes.set_axis_bgcolor('lightgrey')
+        else:
+            self.axes.set_facecolor('lightgrey')
+
         self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 
 
@@ -171,8 +175,8 @@ class TotEnergyPanel:
             tmp_tup = float(self.GetPlotParam('legend_loc').split()[0]),float(self.GetPlotParam('legend_loc').split()[1])
             self.legend._set_loc(tmp_tup)
 
-        self.axes.set_xlabel(r'$t\ \  [\omega^{-1}_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
-        self.axes.set_ylabel('Energy [arb. unit]', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
+        self.axes.set_xlabel(r'$t\ \  [\omega^{-1}_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+        self.axes.set_ylabel('Energy [arb. unit]', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
     def refresh(self):
 

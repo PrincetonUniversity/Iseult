@@ -25,7 +25,7 @@ class BPanel:
                        'spatial_x': True,
                        'spatial_y': False,
                        'show_FFT_region': False,
-                       'interpolation': 'nearest',
+                       'interpolation': 'none',
                        'cnorm_type': 'Linear', # Colormap norm;  options are Log, Pow or Linear
                        'cpow_num': 0.6, # Used in the PowerNorm,
                        'div_midpoint': 0.0, # The cpow color norm normalizes data to [0,1] using np.sign(x-midpoint)*np.abs(x-midpoint)**(-cpow_num) -> [0,midpoint,1] if it is a divering cmap or [0,1] if it is not a divering cmap
@@ -40,7 +40,8 @@ class BPanel:
              'UseDivCmap', 'stretch_colors']
     IntList = ['mag_plot_type']
     FloatList = ['v_min', 'v_max', 'cpow_num', 'div_midpoint']
-    StrList = ['interpolation', 'cnorm_type', 'cmap']
+    #StrList = ['interpolation', 'cnorm_type', 'cmap'] # Not loading interpolation anymore
+    StrList = ['cnorm_type', 'cmap']
 
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))
@@ -53,7 +54,7 @@ class BPanel:
         self.chartType = self.FigWrap.chartType
         self.figure = self.FigWrap.figure
         self.SetPlotParam('spatial_y', self.GetPlotParam('twoD'), update_plot = False)
-        self.InterpolationMethods = ['nearest', 'bilinear', 'bicubic', 'spline16',
+        self.InterpolationMethods = ['none','nearest', 'bilinear', 'bicubic', 'spline16',
             'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
 
@@ -329,8 +330,6 @@ class BPanel:
                             color = 'white',
                             **self.annotate_kwargs)
 
-            self.axes.set_axis_bgcolor('lightgrey')
-
             self.axC = self.figure.add_subplot(self.gs[self.parent.cbar_extent[0]:self.parent.cbar_extent[1], self.parent.cbar_extent[2]:self.parent.cbar_extent[3]])
             if self.parent.MainParamDict['HorizontalCbars']:
                 self.cbar = self.axC.imshow(self.gradient, aspect='auto',
@@ -378,7 +377,11 @@ class BPanel:
                                     PathEffects.Normal()])
             self.shockline_2d.set_visible(self.GetPlotParam('show_shock'))
 
-            self.axes.set_axis_bgcolor('lightgrey')
+            if int(matplotlib.__version__[0]) < 2:
+                self.axes.set_axis_bgcolor('lightgrey')
+            else:
+                self.axes.set_facecolor('lightgrey')
+
             self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 
             if self.parent.MainParamDict['SetxLim']:
@@ -393,8 +396,8 @@ class BPanel:
                 self.axes.set_ylim(self.parent.MainParamDict['yBottom'],self.parent.MainParamDict['yTop'])
             else:
                 self.axes.set_ylim(self.ymin, self.ymax)
-            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
-            self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
+            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
         else:
             if self.parent.MainParamDict['LinkSpatial'] != 0 and self.parent.MainParamDict['LinkSpatial'] != 3:
@@ -414,7 +417,11 @@ class BPanel:
 
             self.shock_line.set_visible(self.GetPlotParam('show_shock'))
 
-            self.axes.set_axis_bgcolor('lightgrey')
+            if int(matplotlib.__version__[0]) < 2:
+                self.axes.set_axis_bgcolor('lightgrey')
+            else:
+                self.axes.set_facecolor('lightgrey')
+
             self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)#, tick1On= False, tick2On= False)
 
             if self.parent.MainParamDict['SetxLim']:
@@ -432,8 +439,8 @@ class BPanel:
             if self.GetPlotParam('set_v_max'):
                 self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
 
-            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
-            self.axes.set_ylabel(self.ylabel, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
+            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            self.axes.set_ylabel(self.ylabel, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
         ####
         # FFT REGION PLOTTING CODE
@@ -499,7 +506,7 @@ class BPanel:
                 self.axes.set_ylim(ymin = self.GetPlotParam('v_min'))
             if self.GetPlotParam('set_v_max'):
                 self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
-            self.axes.set_ylabel(self.ylabel)
+            self.axes.set_ylabel(self.ylabel, size = self.parent.MainParamDict['AxLabelSize'])
 
         else: # Now refresh the plot if it is 2D
             self.cax.set_data(self.f)

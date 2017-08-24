@@ -452,7 +452,11 @@ class  MomentsPanel:
         self.iy_plot[0].set_data(*self.stepify(self.x_bins, self.iy))
         self.iz_plot[0].set_data(*self.stepify(self.x_bins, self.iz))
 
-        self.axes.set_axis_bgcolor('lightgrey')
+        if int(matplotlib.__version__[0]) < 2:
+            self.axes.set_axis_bgcolor('lightgrey')
+        else:
+            self.axes.set_facecolor('lightgrey')
+
         self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 
 
@@ -528,8 +532,8 @@ class  MomentsPanel:
 
 
 
-        self.axes.set_xlabel(r'$x\  [c/\omega_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black')
-        self.axes.set_ylabel(self.ylabel_list[self.GetPlotParam('m_type')][self.GetPlotParam('UpstreamFrame')], labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black')
+        self.axes.set_xlabel(r'$x\  [c/\omega_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+        self.axes.set_ylabel(self.ylabel_list[self.GetPlotParam('m_type')][self.GetPlotParam('UpstreamFrame')], labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
     def refresh(self):
 
@@ -772,7 +776,7 @@ class MomentsSettings(Tk.Toplevel):
         if self.pvar.get() == self.parent.GetPlotParam('m_type'):
             pass
         else:
-            self.parent.axes.set_ylabel(self.parent.ylabel_list[self.pvar.get()][self.parent.GetPlotParam('UpstreamFrame')], labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
+            self.parent.axes.set_ylabel(self.parent.ylabel_list[self.pvar.get()][self.parent.GetPlotParam('UpstreamFrame')], labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             self.parent.SetPlotParam('m_type', self.pvar.get())
             self.Selector()
 
@@ -780,7 +784,7 @@ class MomentsSettings(Tk.Toplevel):
         if self.framevar.get() == self.parent.GetPlotParam('UpstreamFrame'):
             pass
         else:
-            self.parent.axes.set_ylabel(self.parent.ylabel_list[self.parent.GetPlotParam('m_type')][self.framevar.get()], labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black')
+            self.parent.axes.set_ylabel(self.parent.ylabel_list[self.parent.GetPlotParam('m_type')][self.framevar.get()], labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             self.parent.SetPlotParam('UpstreamFrame', self.framevar.get())
 
     def Selector(self):
