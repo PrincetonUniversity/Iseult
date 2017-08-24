@@ -3090,6 +3090,8 @@ class MainApp(Tk.Tk):
     def PrintFig(self, HiddenFiles = False):
         if self.movie_dir == '':
             self.movie_dir = os.path.abspath(os.path.join(self.dirname, '..', 'Movie'))
+
+        if self.MainParamDict['Recording']:
             try:
                 os.makedirs(self.movie_dir)
 
@@ -3097,23 +3099,25 @@ class MainApp(Tk.Tk):
                 if not os.path.isdir(self.movie_dir):
                     self.recordProblemsPrompt()
 
-        if HiddenFiles and os.path.isdir(self.movie_dir):
+        if self.MainParamDict['Recording']:
+            if HiddenFiles and os.path.isdir(self.movie_dir):
+                try:
+                    os.makedirs(os.path.join(self.movie_dir, '.tmp_erase'))
+
+                except (OSError, IOError):
+                    if not os.path.isdir(os.path.join(self.movie_dir, '.tmp_erase')):
+                        self.recordProblemsPrompt()
+
+        if self.MainParamDict['Recording']:
+            fname = 'iseult_img_'+ str(self.TimeStep.value).zfill(3)+'.png'
             try:
-                os.makedirs(os.path.join(self.movie_dir, '.tmp_erase'))
-
+                if not HiddenFiles:
+                    self.f.savefig(os.path.join(self.movie_dir, fname))#, dpi = 300)#, facecolor=self.f.get_facecolor())#, edgecolor='none')
+                else:
+                    self.f.savefig(os.path.join(self.movie_dir, '.tmp_erase', fname))#, dpi = 300)#, facecolor=self.f.get_facecolor())#, edgecolor='none')
             except (OSError, IOError):
-                 if not os.path.isdir(os.path.join(self.movie_dir, '.tmp_erase')):
-                     self.recordProblemsPrompt()
-
-        fname = 'iseult_img_'+ str(self.TimeStep.value).zfill(3)+'.png'
-        try:
-            if not HiddenFiles:
-                self.f.savefig(os.path.join(self.movie_dir, fname))#, dpi = 300)#, facecolor=self.f.get_facecolor())#, edgecolor='none')
-            else:
-                self.f.savefig(os.path.join(self.movie_dir, '.tmp_erase', fname))#, dpi = 300)#, facecolor=self.f.get_facecolor())#, edgecolor='none')
-        except (OSError, IOError):
-            self.recordProblemsPrompt()
-            self.PrintFig(HiddenFiles = HiddenFiles)
+                self.recordProblemsPrompt()
+                self.PrintFig(HiddenFiles = HiddenFiles)
     def recordProblemsPrompt(self):
         if tkMessageBox.askyesno("Recording Problems", "You do not have write access to ~/.Movie Directory. \r Would you like record frames to a different directory?"):
             mvdir_opt = {}
@@ -3122,7 +3126,8 @@ class MainApp(Tk.Tk):
             mvdir_opt['parent'] = self
             self.movie_dir = tkFileDialog.askdirectory(title = 'Please choose a different directory where you have write access to save images.', **self.dir_opt)
         else:
-            self.RecVar.set(False)
+            self.MainParamDict['Recording']
+            self.playbackbar.RecVar.set(False)
 
     def MakeAMovie(self, fname, start, stop, step, FPS):
         '''Record a movie'''
