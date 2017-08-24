@@ -890,6 +890,7 @@ class MovieDialog(Tk.Toplevel):
                 "Bad input",
                 "Field must contain a name, please try again"
             )
+
         elif self.StartFrame == '':
             tkMessageBox.showwarning(
                 "Bad input",
@@ -900,15 +901,31 @@ class MovieDialog(Tk.Toplevel):
                 "Bad input",
                 "EndFrame must contain an int, please try again"
             )
+        elif self.StartFrame >= self.EndFrame:
+            tkMessageBox.showwarning(
+                "Bad input",
+                "Starting frame must be larger than ending frame"
+            )
+
         elif self.Step == '':
             tkMessageBox.showwarning(
                 "Bad input",
                 "Step must contain an int, please try again"
             )
+        elif self.Step <=0:
+            tkMessageBox.showwarning(
+                "Bad input",
+                "Step must be an integer >0, please try again"
+            )
         elif self.FPS == '':
             tkMessageBox.showwarning(
                 "Bad input",
-                "FPS must contain an int, please try again"
+                "FPS must contain an int >0, please try again"
+            )
+        elif self.FPS <= 0:
+            tkMessageBox.showwarning(
+                "Bad input",
+                "FPS must contain an int >0, please try again"
             )
         else:
             return 1 # override
@@ -3076,26 +3093,17 @@ class MainApp(Tk.Tk):
             try:
                 os.makedirs(self.movie_dir)
 
-            except OSError:
+            except (OSError, IOError):
                 if not os.path.isdir(self.movie_dir):
-                    mvdir_opt = {}
-                    mvdir_opt['initialdir'] = self.dirname
-                    mvdir_opt['mustexist'] = True
-                    mvdir_opt['parent'] = self
-                    self.movie_dir = tkFileDialog.askdirectory(title = 'Problems saving to ./Movie, please choose a different directory where you have write access.', **self.dir_opt)
+                    self.recordProblemsPrompt()
 
         if HiddenFiles and os.path.isdir(self.movie_dir):
             try:
                 os.makedirs(os.path.join(self.movie_dir, '.tmp_erase'))
 
-            except OSError:
+            except (OSError, IOError):
                  if not os.path.isdir(os.path.join(self.movie_dir, '.tmp_erase')):
-                     mvdir_opt = {}
-                     mvdir_opt['initialdir'] = self.dirname
-                     mvdir_opt['mustexist'] = True
-                     mvdir_opt['parent'] = self
-                     self.movie_dir = tkFileDialog.askdirectory(title = 'Problems saving to ./Movie, please choose a different directory where you have write access.', **self.dir_opt)
-
+                     self.recordProblemsPrompt()
 
         fname = 'iseult_img_'+ str(self.TimeStep.value).zfill(3)+'.png'
         try:
@@ -3103,13 +3111,19 @@ class MainApp(Tk.Tk):
                 self.f.savefig(os.path.join(self.movie_dir, fname))#, dpi = 300)#, facecolor=self.f.get_facecolor())#, edgecolor='none')
             else:
                 self.f.savefig(os.path.join(self.movie_dir, '.tmp_erase', fname))#, dpi = 300)#, facecolor=self.f.get_facecolor())#, edgecolor='none')
-        except OSError:
+        except (OSError, IOError):
+            self.recordProblemsPrompt()
+            self.PrintFig(HiddenFiles = HiddenFiles)
+    def recordProblemsPrompt(self):
+        if tkMessageBox.askyesno("Recording Problems", "You do not have write access to ~/.Movie Directory. \r Would you like record frames to a different directory?"):
             mvdir_opt = {}
             mvdir_opt['initialdir'] = self.dirname
             mvdir_opt['mustexist'] = True
             mvdir_opt['parent'] = self
-            self.movie_dir = tkFileDialog.askdirectory(title = 'Problems saving file to directory, please choose a different directory where you have write access.', **self.dir_opt)
-            self.PrintFig(HiddenFiles = HiddenFiles)
+            self.movie_dir = tkFileDialog.askdirectory(title = 'Please choose a different directory where you have write access to save images.', **self.dir_opt)
+        else:
+            self.RecVar.set(False)
+
     def MakeAMovie(self, fname, start, stop, step, FPS):
         '''Record a movie'''
         # Where-ever you are create a hidden file and then delete that directory:
@@ -3148,8 +3162,17 @@ class MainApp(Tk.Tk):
                      '-pix_fmt', 'yuv420p', # the output size
                      fname]#, '&']#, # output name,
                      #'<dev/null', '>dev/null', '2>/var/log/ffmpeg.log', '&'] # run in background
+        try:
+            subprocess.call(cmdstring)
+        except OSError:
+            try:
+                subprocess.call(cmdstring[2:])
+            except OSError:
+                tkMessageBox.showwarning(
+                    "Problems saving a movie",
+                    "Please make sure that ffmpeg is install on your machine."
+                )
 
-        subprocess.call(cmdstring)
         for name in os.listdir(os.path.join(self.movie_dir, '.tmp_erase')):
             os.remove(os.path.join(self.movie_dir, '.tmp_erase', name))
         os.rmdir(os.path.join(self.movie_dir, '.tmp_erase'))
