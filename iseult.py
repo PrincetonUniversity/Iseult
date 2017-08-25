@@ -742,7 +742,7 @@ class MaxNDialog(Tk.Toplevel):
     # command hooks
 
     def validate(self):
-        ''' Check to make sure the config file doesn't already exist'''
+        ''' Check to make sure the user put a good intput in as max file'''
         self.N = str(self.e1.get())
         try:
             self.N = int(self.e1.get())
@@ -863,7 +863,7 @@ class MovieDialog(Tk.Toplevel):
     # command hooks
 
     def validate(self):
-        ''' Check to make sure the config file doesn't already exist'''
+        ''' Check to make sure the Movie will work'''
         self.Name = str(self.e1.get())
         try:
             self.StartFrame = int(self.e2.get())
@@ -884,6 +884,10 @@ class MovieDialog(Tk.Toplevel):
 
         if self.Name != '':
             self.Name = os.path.join(self.parent.dirname, '..', str(self.e1.get()).strip().replace(' ', '_') +'.mp4')
+        if self.StartFrame <0:
+            self.StartFrame = len(self.parent.PathDict['Param'])+self.StartFrame + 1
+        if self.EndFrame <0:
+            self.EndFrame = len(self.parent.PathDict['Param'])+self.EndFrame + 1
 
         if self.Name == '':
             tkMessageBox.showwarning(
@@ -901,11 +905,17 @@ class MovieDialog(Tk.Toplevel):
                 "Bad input",
                 "EndFrame must contain an int, please try again"
             )
-        elif self.StartFrame >= self.EndFrame:
+        elif self.StartFrame == 0:
             tkMessageBox.showwarning(
                 "Bad input",
-                "Starting frame must be larger than ending frame"
+                "Starting frame cannot be zero"
             )
+        elif self.EndFrame == 0:
+            tkMessageBox.showwarning(
+                "Bad input",
+                "Ending frame cannot be zero"
+            )
+
 
         elif self.Step == '':
             tkMessageBox.showwarning(
@@ -3087,107 +3097,113 @@ class MainApp(Tk.Tk):
         if self.MainParamDict['Recording']:
             self.PrintFig()
 
-    def PrintFig(self, HiddenFiles = False):
+    def PrintFig(self, MakingMovie = False, Flag = True):
         if self.movie_dir == '':
             self.movie_dir = os.path.abspath(os.path.join(self.dirname, '..', 'Movie'))
+        if Flag:
+            if self.MainParamDict['Recording'] or MakingMovie:
+                try:
+                    os.makedirs(self.movie_dir)
 
-        if self.MainParamDict['Recording']:
-            try:
-                os.makedirs(self.movie_dir)
+                except (OSError, IOError):
+                    if not os.path.isdir(self.movie_dir):
+                        self.PrintFig(MakingMovie = MakingMovie, Flag = self.recordProblemsPrompt())
 
-            except (OSError, IOError):
-                if not os.path.isdir(self.movie_dir):
-                    self.recordProblemsPrompt()
-
-        if self.MainParamDict['Recording']:
-            if HiddenFiles and os.path.isdir(self.movie_dir):
+            if MakingMovie and os.path.isdir(self.movie_dir):
                 try:
                     os.makedirs(os.path.join(self.movie_dir, '.tmp_erase'))
 
                 except (OSError, IOError):
                     if not os.path.isdir(os.path.join(self.movie_dir, '.tmp_erase')):
-                        self.recordProblemsPrompt()
+                        self.PrintFig(MakingMovie = MakingMovie, Flag = self.recordProblemsPrompt())
 
-        if self.MainParamDict['Recording']:
             fname = 'iseult_img_'+ str(self.TimeStep.value).zfill(3)+'.png'
-            try:
-                if not HiddenFiles:
+            if self.MainParamDict['Recording'] :
+                try:
                     self.f.savefig(os.path.join(self.movie_dir, fname))#, dpi = 300)#, facecolor=self.f.get_facecolor())#, edgecolor='none')
-                else:
+                except (OSError, IOError):
+                    self.PrintFig(MakingMovie = MakingMovie, Flag = self.recordProblemsPrompt())
+            if MakingMovie:
+                try:
                     self.f.savefig(os.path.join(self.movie_dir, '.tmp_erase', fname))#, dpi = 300)#, facecolor=self.f.get_facecolor())#, edgecolor='none')
-            except (OSError, IOError):
-                self.recordProblemsPrompt()
-                self.PrintFig(HiddenFiles = HiddenFiles)
+                except (OSError, IOError):
+                    self.PrintFig(MakingMovie = MakingMovie, Flag = self.recordProblemsPrompt())
+
+
     def recordProblemsPrompt(self):
-        if tkMessageBox.askyesno("Recording Problems", "You do not have write access to ~/.Movie Directory. \r Would you like record frames to a different directory?"):
+        if tkMessageBox.askyesno("Recording Problems", "You do not have write access to " +self.movie_dir + ". Would you like record frames to a different directory?"):
             mvdir_opt = {}
             mvdir_opt['initialdir'] = self.dirname
             mvdir_opt['mustexist'] = True
             mvdir_opt['parent'] = self
             self.movie_dir = tkFileDialog.askdirectory(title = 'Please choose a different directory where you have write access to save images.', **self.dir_opt)
+            return True
         else:
-            self.MainParamDict['Recording']
+            return False
+            self.MainParamDict['Recording'] = False
             self.playbackbar.RecVar.set(False)
 
     def MakeAMovie(self, fname, start, stop, step, FPS):
         '''Record a movie'''
         # Where-ever you are create a hidden file and then delete that directory:
-        self.PrintFig(HiddenFiles = True)
+        self.PrintFig(MakingMovie= True)
         # Delete all the images in that subdirectory
-        for name in os.listdir(os.path.join(self.movie_dir, '.tmp_erase')):
-            os.remove(os.path.join(self.movie_dir, '.tmp_erase', name))
+        if os.path.isdir(os.path.join(self.movie_dir, '.tmp_erase')):
+            for name in os.listdir(os.path.join(self.movie_dir, '.tmp_erase')):
+                os.remove(os.path.join(self.movie_dir, '.tmp_erase', name))
 
-        # First find the last frame is stop is -1:
-        if stop == -1:
-            stop = len(self.PathDict['Param'])
+            # First find the last frame is stop is -1:
 
-        # Now build all the frames we have to visit
-        frame_arr = np.arange(start, stop, step)
-        if frame_arr[-1] != stop:
-            frame_arr = np.append(frame_arr, stop)
+            if stop == -1:
+                stop = len(self.PathDict['Param'])
 
-        # If total energy plot is showing, we have to loop through everything twice.
+            # Now build all the frames we have to visit
+            frame_arr = np.arange(start, stop, step)
+            if frame_arr[-1] != stop:
+                frame_arr = np.append(frame_arr, stop)
 
-        if self.showing_total_energy_plt:
-            for k in frame_arr:
-                self.TimeStep.set(k)
+            # If total energy plot is showing, we have to loop through everything twice.
 
-        for i in frame_arr:
-            self.TimeStep.set(i)
-            self.PrintFig(HiddenFiles = True)
+            if self.showing_total_energy_plt:
+                for k in frame_arr:
+                    self.TimeStep.set(k)
 
-        # The ffmpeg command we want to call.
-        # ffmpeg -y -f image2 -framerate 8 -pattern_type glob -i '*.png' -vcodec libx264 -pix_fmt yuv420p out.mp4
+            for i in frame_arr:
+                self.TimeStep.set(i)
+                self.PrintFig(MakingMovie  = True)
 
-        cmdstring = ['xterm', '-e', 'ffmpeg',
-                     '-y', '-f', 'image2', # overwrite, image2 is a colorspace thing.
-                     '-framerate', str(int(FPS)), # Set framerate to the the user selected option
-                     '-pattern_type', 'glob', '-i', os.path.join(self.movie_dir, '.tmp_erase','*.png'), # Not sure what this does... I am going to get rid of it
-                     '-vcodec', 'libx264',  # use hx264 codec
-                     '-pix_fmt', 'yuv420p', # the output size
-                     fname]#, '&']#, # output name,
-                     #'<dev/null', '>dev/null', '2>/var/log/ffmpeg.log', '&'] # run in background
-        try:
-            subprocess.call(cmdstring)
-        except OSError:
+            # The ffmpeg command we want to call.
+            # ffmpeg -y -f image2 -framerate 8 -pattern_type glob -i '*.png' -vcodec libx264 -pix_fmt yuv420p out.mp4
+
+            cmdstring = ['xterm', '-e', 'ffmpeg',
+                        '-y', '-f', 'image2', # overwrite, image2 is a colorspace thing.
+                        '-framerate', str(int(FPS)), # Set framerate to the the user selected option
+                        '-pattern_type', 'glob', '-i', os.path.join(self.movie_dir, '.tmp_erase','*.png'), # Not sure what this does... I am going to get rid of it
+                        '-vcodec', 'libx264',  # use hx264 codec
+                        '-pix_fmt', 'yuv420p', # the output size
+                        fname]#, '&']#, # output name,
+                        #'<dev/null', '>dev/null', '2>/var/log/ffmpeg.log', '&'] # run in background
             try:
-                subprocess.call(cmdstring[2:])
+                subprocess.call(cmdstring)
             except OSError:
-                tkMessageBox.showwarning(
-                    "Problems saving a movie",
-                    "Please make sure that ffmpeg is install on your machine."
-                )
+                try:
+                    subprocess.call(cmdstring[2:])
+                except OSError:
+                    tkMessageBox.showwarning(
+                        "Problems saving a movie",
+                        "Please make sure that ffmpeg is installedgg on your machine."
+                        )
 
-        for name in os.listdir(os.path.join(self.movie_dir, '.tmp_erase')):
-            os.remove(os.path.join(self.movie_dir, '.tmp_erase', name))
-        os.rmdir(os.path.join(self.movie_dir, '.tmp_erase'))
-        '''
-        #THIS METHOD TRIES TO USE SUBPROCCESS AND PIPING TO OUTPUT... LEAVING THIS HERE
-        #FOR LATER....
-        # Draw frames
-        im_list = []
-        for i in frame_arr:
-            self.TimeStep.set(i)
+            for name in os.listdir(os.path.join(self.movie_dir, '.tmp_erase')):
+                os.remove(os.path.join(self.movie_dir, '.tmp_erase', name))
+            os.rmdir(os.path.join(self.movie_dir, '.tmp_erase'))
+            '''
+            #THIS METHOD TRIES TO USE SUBPROCCESS AND PIPING TO OUTPUT... LEAVING THIS HERE
+            #FOR LATER....
+            # Draw frames
+            im_list = []
+            for i in frame_arr:
+                self.TimeStep.set(i)
 
 
             # Save the image png as a cString
@@ -3199,35 +3215,35 @@ class MainApp(Tk.Tk):
             ram.close()
 
 
-        # Let's try using CStrings and piping to ffmpeg. Here's what we got from the OIC people
-        # ffmpeg -y -f image2 -framerate 8 -pattern_type glob -i '*.png' -codec copy out.mov
-        # ffmpeg -y -f image2 -framerate 8 -pattern_type glob -i '*.png' -vcodec libx264 -pix_fmt yuv420p out.mp4
-        # OLD DEPRECATED METHOD
-        #FFMpegWriter = manimation.writers['ffmpeg']
-        #writer = FFMpegWriter(fps=FPS, bitrate = 10000)
+            # Let's try using CStrings and piping to ffmpeg. Here's what we got from the OIC people
+            # ffmpeg -y -f image2 -framerate 8 -pattern_type glob -i '*.png' -codec copy out.mov
+            # ffmpeg -y -f image2 -framerate 8 -pattern_type glob -i '*.png' -vcodec libx264 -pix_fmt yuv420p out.mp4
+            # OLD DEPRECATED METHOD
+            #FFMpegWriter = manimation.writers['ffmpeg']
+            #writer = FFMpegWriter(fps=FPS, bitrate = 10000)
 
 
 
-        # New Method.... First, let's translate the above command into a string
+            # New Method.... First, let's translate the above command into a string
 
 
 
-        cmdstring = ('ffmpeg',
-                     '-y', '-f', 'image2', # overwrite, image2 is a colorspace thing..
-                     'vcodec', 'png',
-                     '-framerate', str(int(FPS)), # Set framerate to the the user selected option
-                     '-pattern_type', 'glob', '-i', '-', # Not sure what this does... I am going to get rid of it
-                     '-vcodec', 'libx264', '-pix_fmt', 'yuv420p', fname+'.mp4') # output encoding
-        p = subprocess.Popen(cmdstring, stdin=subprocess.PIPE)
+            cmdstring = ('ffmpeg',
+                        '-y', '-f', 'image2', # overwrite, image2 is a colorspace thing..
+                        'vcodec', 'png',
+                        '-framerate', str(int(FPS)), # Set framerate to the the user selected option
+                        '-pattern_type', 'glob', '-i', '-', # Not sure what this does... I am going to get rid of it
+                        '-vcodec', 'libx264', '-pix_fmt', 'yuv420p', fname+'.mp4') # output encoding
+            p = subprocess.Popen(cmdstring, stdin=subprocess.PIPE)
 
-        # Write the images to the pipe
-        for i in range(len(im_list)):
-            print i
-            p.stdin.write(im_list.pop(0))
-        # Finish up
-        p.communicate()
-        #p.stdout.close()
-        '''
+            # Write the images to the pipe
+            for i in range(len(im_list)):
+                print i
+                p.stdin.write(im_list.pop(0))
+            # Finish up
+            p.communicate()
+            #p.stdout.close()
+            '''
     def OpenSaveDialog(self):
         SaveDialog(self)
     def OpenMovieDialog(self):
