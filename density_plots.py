@@ -124,7 +124,7 @@ class DensPanel:
 
         # see if the min/max of all the arrays has aready been calculated.
         if 'dens_min_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane']) in self.parent.DataDict.keys():
-            self.dens_min_max = self.parent.DataDict['dens_min_max'+str(self.parent.MainParamDict['2DSlice'])]
+            self.dens_min_max = self.parent.DataDict['dens_min_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])]
         else:
             self.dens_min_max = self.min_max_finder(self.dens)
             self.parent.DataDict['dens_min_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])] = self.dens_min_max
@@ -139,7 +139,7 @@ class DensPanel:
                 if self.parent.MainParamDict['2DSlicePlane'] == 0:
                     self.rho = 2*self.FigWrap.LoadKey('densi')[self.parent.MainParamDict['2DSlice'],:,:] - self.FigWrap.LoadKey('dens')[self.parent.MainParamDict['2DSlice'],:,:]
                 if self.parent.MainParamDict['2DSlicePlane'] == 1:
-                    self.rho = 2*np.swapaxis(self.FigWrap.LoadKey('densi'),0,1)[self.parent.MainParamDict['2DSlice'],:,:] - np.swapaxis()elf.FigWrap.LoadKey('dens'),0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+                    self.rho = 2*np.swapaxis(self.FigWrap.LoadKey('densi'),0,1)[self.parent.MainParamDict['2DSlice'],:,:] - np.swapaxis(self.FigWrap.LoadKey('dens'),0,1)[self.parent.MainParamDict['2DSlice'],:,:]
 
                 self.parent.DataDict['rho'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])] = self.rho
 
