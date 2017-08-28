@@ -128,14 +128,19 @@ class FieldsPanel:
 
 
         if self.GetPlotParam('field_type') == 0: # Load the B-Field
-            #
-            self.fx = self.FigWrap.LoadKey('bx')[self.parent.MainParamDict['2DSlice'],:,:]
-            self.fy = self.FigWrap.LoadKey('by')[self.parent.MainParamDict['2DSlice'],:,:]
-            self.fz = self.FigWrap.LoadKey('bz')[self.parent.MainParamDict['2DSlice'],:,:]
 
-            kxwarg = 'bxmin_max'+str(self.parent.MainParamDict['2DSlice'])
-            kywarg = 'bymin_max'+str(self.parent.MainParamDict['2DSlice'])
-            kzwarg = 'bzmin_max'+str(self.parent.MainParamDict['2DSlice'])
+            if self.parent.MainParamDict['2DSlicePlane'] == 0:
+                self.fx = self.FigWrap.LoadKey('bx')[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fy = self.FigWrap.LoadKey('by')[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fz = self.FigWrap.LoadKey('bz')[self.parent.MainParamDict['2DSlice'],:,:]
+            if self.parent.MainParamDict['2DSlicePlane'] == 1:
+                self.fx = np.swapaxis(self.FigWrap.LoadKey('bx'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fy = np.swapaxis(self.FigWrap.LoadKey('by'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fz = np.swapaxis(self.FigWrap.LoadKey('bz'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+
+            kxwarg = 'bxmin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
+            kywarg = 'bymin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
+            kzwarg = 'bzmin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
 
             if self.GetPlotParam('normalize_fields'):
                 self.fx = self.fx/self.parent.b0
@@ -171,13 +176,19 @@ class FieldsPanel:
 
 
         elif self.GetPlotParam('field_type') == 1: # Load the e-Field
-            self.fx = self.FigWrap.LoadKey('ex')[self.parent.MainParamDict['2DSlice'],:,:]
-            self.fy = self.FigWrap.LoadKey('ey')[self.parent.MainParamDict['2DSlice'],:,:]
-            self.fz = self.FigWrap.LoadKey('ez')[self.parent.MainParamDict['2DSlice'],:,:]
+            if self.parent.MainParamDict['2DSlicePlane'] == 0:
+                self.fx = self.FigWrap.LoadKey('ex')[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fy = self.FigWrap.LoadKey('ey')[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fz = self.FigWrap.LoadKey('ez')[self.parent.MainParamDict['2DSlice'],:,:]
+            if self.parent.MainParamDict['2DSlicePlane'] == 1:
+                self.fx = np.swapaxis(self.FigWrap.LoadKey('ex'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fy = np.swapaxis(self.FigWrap.LoadKey('ey'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fz = np.swapaxis(self.FigWrap.LoadKey('ez'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
 
-            kxwarg = 'exmin_max'+str(self.parent.MainParamDict['2DSlice'])
-            kywarg = 'eymin_max'+str(self.parent.MainParamDict['2DSlice'])
-            kzwarg = 'ezmin_max'+str(self.parent.MainParamDict['2DSlice'])
+
+            kxwarg = 'exmin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
+            kywarg = 'eymin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
+            kzwarg = 'ezmin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
 
             if self.GetPlotParam('normalize_fields'):
                 self.fx = self.fx/self.parent.e0
@@ -215,13 +226,18 @@ class FieldsPanel:
 
         elif self.GetPlotParam('field_type') == 2: # Load the currents
             #
-            self.fx = self.FigWrap.LoadKey('jx')[self.parent.MainParamDict['2DSlice'],:,:]
-            self.fy = self.FigWrap.LoadKey('jy')[self.parent.MainParamDict['2DSlice'],:,:]
-            self.fz = self.FigWrap.LoadKey('jz')[self.parent.MainParamDict['2DSlice'],:,:]
+            if self.parent.MainParamDict['2DSlicePlane'] == 0:
+                self.fx = self.FigWrap.LoadKey('jx')[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fy = self.FigWrap.LoadKey('jy')[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fz = self.FigWrap.LoadKey('jz')[self.parent.MainParamDict['2DSlice'],:,:]
+            if self.parent.MainParamDict['2DSlicePlane'] == 1:
+                self.fx = np.swapaxis(self.FigWrap.LoadKey('jx'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fy = np.swapaxis(self.FigWrap.LoadKey('jy'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fz = np.swapaxis(self.FigWrap.LoadKey('jz'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
 
-            kxwarg = 'jxmin_max'+str(self.parent.MainParamDict['2DSlice'])
-            kywarg = 'jymin_max'+str(self.parent.MainParamDict['2DSlice'])
-            kzwarg = 'jzmin_max'+str(self.parent.MainParamDict['2DSlice'])
+            kxwarg = 'jxmin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
+            kywarg = 'jymin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
+            kzwarg = 'jzmin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
 
             self.oneDslice = self.fx.shape[0]/2
 
@@ -441,7 +457,10 @@ class FieldsPanel:
             else:
                 self.axes.set_ylim(self.ymin, self.ymax)
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
-            self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            if self.parent.MainParamDict['2DSlicePlane'] == 0:
+                self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            if self.parent.MainParamDict['2DSlicePlane'] == 1:
+                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
         else: # It's 1D
             if self.parent.MainParamDict['LinkSpatial'] != 0 and self.parent.MainParamDict['LinkSpatial'] != 3:
@@ -739,7 +758,10 @@ class FieldsPanel:
 
             if self.GetPlotParam('show_shock'):
                 self.shockline_2d.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
-            self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            if self.parent.MainParamDict['2DSlicePlane'] == 0:
+                self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            if self.parent.MainParamDict['2DSlicePlane'] == 1:
+                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
         if self.GetPlotParam('show_cpu_domains'):
             self.FigWrap.UpdateCpuDomainLines()

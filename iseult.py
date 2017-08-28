@@ -883,7 +883,7 @@ class MovieDialog(Tk.Toplevel):
             self.FPS = ''
 
         if self.Name != '':
-            self.Name = os.path.join(self.parent.dirname, '..', str(self.e1.get()).strip().replace(' ', '_') +'.mov')
+            self.Name = os.path.join(self.parent.dirname, '..', str(self.e1.get()).strip().replace(' ', '_') +'.mp4')
         if self.StartFrame <0:
             self.StartFrame = len(self.parent.PathDict['Param'])+self.StartFrame + 1
         if self.EndFrame <0:
@@ -1843,6 +1843,7 @@ class MainApp(Tk.Tk):
         # the dictionary that will hold the parameters for the program.
         # See ./iseult_configs/Default.cfg for a description of what each parameter does.
         self.MainParamDict = {'2DSlice': 0,
+                              '2DSlicePlane': 0, # 0 = x-y plane, 1 == x-z plane
                               'WindowSize': '1200x700',
                               'yTop': 100.0,
                               'yBottom': 0.0,
@@ -2958,7 +2959,6 @@ class MainApp(Tk.Tk):
 
                 # Now... We can draw the graph.
                 self.SubPlotList[i][j].DrawGraph()
-
         if self.MainParamDict['ShowTitle']:
             tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].split('.')[-1]
             self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time'][0]), size = 15)
@@ -3178,15 +3178,13 @@ class MainApp(Tk.Tk):
                 self.PrintFig(MakingMovie  = True)
 
             # The ffmpeg command we want to call.
-            # ffmpeg -y -f image2 -framerate 8 -pattern_type glob -i '*.png' -vcodec libx264 -pix_fmt yuv420p out.mp4
+            # ffmpeg -y -f image2 -framerate 8 -pattern_type glob -i '*.png' -codec copy out.mov
 
             cmdstring = ['xterm', '-e', 'ffmpeg',
                         '-y', '-f', 'image2', # overwrite, image2 is a colorspace thing.
                         '-framerate', str(int(FPS)), # Set framerate to the the user selected option
-                         '-pattern_type', 'glob', '-i', os.path.join(self.movie_dir, '.tmp_erase','*.png'), # Not sure what this does... 
-                        #'-vcodec', 'libx264',  # use hx264 codec
-                        #'-pix_fmt', 'yuv420p', # the output size
-                         '-codec', 'copy',
+                        '-pattern_type', 'glob', '-i', os.path.join(self.movie_dir, '.tmp_erase','*.png'), # Not sure what this does... I am going to get rid of it
+                        '-codec', 'copy',  # save as a *.mov
                         fname]#, '&']#, # output name,
                         #'<dev/null', '>dev/null', '2>/var/log/ffmpeg.log', '&'] # run in background
             try:
@@ -3200,7 +3198,6 @@ class MainApp(Tk.Tk):
                         "Please make sure that ffmpeg is installedgg on your machine."
                         )
 
-            # Now we delete the files
             for name in os.listdir(os.path.join(self.movie_dir, '.tmp_erase')):
                 os.remove(os.path.join(self.movie_dir, '.tmp_erase', name))
             os.rmdir(os.path.join(self.movie_dir, '.tmp_erase'))

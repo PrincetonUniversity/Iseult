@@ -115,32 +115,40 @@ class DensPanel:
         self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
         self.istep = self.FigWrap.LoadKey('istep')[0]
 
-        self.dens = self.FigWrap.LoadKey('dens')[self.parent.MainParamDict['2DSlice'],:,:]
+        if self.parent.MainParamDict['2DSlicePlane'] == 0:
+            self.dens = self.FigWrap.LoadKey('dens')[self.parent.MainParamDict['2DSlice'],:,:]
+        if self.parent.MainParamDict['2DSlicePlane'] == 1:
+            self.dens = np.swapaxis(self.FigWrap.LoadKey('dens'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+
         self.oneDslice = self.dens.shape[0]/2
 
         # see if the min/max of all the arrays has aready been calculated.
-        if 'dens_min_max'+str(self.parent.MainParamDict['2DSlice']) in self.parent.DataDict.keys():
+        if 'dens_min_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane']) in self.parent.DataDict.keys():
             self.dens_min_max = self.parent.DataDict['dens_min_max'+str(self.parent.MainParamDict['2DSlice'])]
         else:
             self.dens_min_max = self.min_max_finder(self.dens)
-            self.parent.DataDict['dens_min_max'+str(self.parent.MainParamDict['2DSlice'])] = self.dens_min_max
+            self.parent.DataDict['dens_min_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])] = self.dens_min_max
 
 
         # Now calculate rho if needed.
         if self.GetPlotParam('dens_type') == 1:
 
-            if 'rho' in self.parent.DataDict.keys():
-                self.rho = self.parent.DataDict['rho']
+            if 'rho'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane']) in self.parent.DataDict.keys():
+                self.rho = self.parent.DataDict['rho'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])]
             else:
-                self.rho = 2*self.FigWrap.LoadKey('densi')[self.parent.MainParamDict['2DSlice'],:,:] - self.FigWrap.LoadKey('dens')[self.parent.MainParamDict['2DSlice'],:,:]
-                self.parent.DataDict['rho'] = self.rho
+                if self.parent.MainParamDict['2DSlicePlane'] == 0:
+                    self.rho = 2*self.FigWrap.LoadKey('densi')[self.parent.MainParamDict['2DSlice'],:,:] - self.FigWrap.LoadKey('dens')[self.parent.MainParamDict['2DSlice'],:,:]
+                if self.parent.MainParamDict['2DSlicePlane'] == 1:
+                    self.rho = 2*np.swapaxis(self.FigWrap.LoadKey('densi'),0,1)[self.parent.MainParamDict['2DSlice'],:,:] - np.swapaxis()elf.FigWrap.LoadKey('dens'),0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+
+                self.parent.DataDict['rho'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])] = self.rho
 
             # Handle the min/max
-            if 'rho_min_max' in self.parent.DataDict.keys():
-                self.rho_min_max = self.parent.DataDict['rho_min_max']
+            if 'rho_min_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane']) in self.parent.DataDict.keys():
+                self.rho_min_max = self.parent.DataDict['rho_min_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])]
             else:
                 self.rho_min_max = self.min_max_finder(self.rho)
-                self.parent.DataDict['rho_min_max'] = self.rho_min_max
+                self.parent.DataDict['rho_min_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])] = self.rho_min_max
 
 
 
@@ -322,7 +330,11 @@ class DensPanel:
             else:
                 self.axes.set_ylim(self.ymin, self.ymax)
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
-            self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            if self.parent.MainParamDict['2DSlicePlane'] == 0:
+                self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            if self.parent.MainParamDict['2DSlicePlane'] == 1:
+                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+
 
         else:
             # Do the 1D Plots
