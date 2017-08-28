@@ -118,7 +118,7 @@ class DensPanel:
         if self.parent.MainParamDict['2DSlicePlane'] == 0:
             self.dens = self.FigWrap.LoadKey('dens')[self.parent.MainParamDict['2DSlice'],:,:]
         if self.parent.MainParamDict['2DSlicePlane'] == 1:
-            self.dens = np.swapaxis(self.FigWrap.LoadKey('dens'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+            self.dens = np.swapaxes(self.FigWrap.LoadKey('dens'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
 
         self.oneDslice = self.dens.shape[0]/2
 
@@ -139,7 +139,7 @@ class DensPanel:
                 if self.parent.MainParamDict['2DSlicePlane'] == 0:
                     self.rho = 2*self.FigWrap.LoadKey('densi')[self.parent.MainParamDict['2DSlice'],:,:] - self.FigWrap.LoadKey('dens')[self.parent.MainParamDict['2DSlice'],:,:]
                 if self.parent.MainParamDict['2DSlicePlane'] == 1:
-                    self.rho = 2*np.swapaxis(self.FigWrap.LoadKey('densi'),0,1)[self.parent.MainParamDict['2DSlice'],:,:] - np.swapaxis(self.FigWrap.LoadKey('dens'),0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+                    self.rho = 2*np.swapaxes(self.FigWrap.LoadKey('densi'),0,1)[self.parent.MainParamDict['2DSlice'],:,:] - np.swapaxes(self.FigWrap.LoadKey('dens'),0,1)[self.parent.MainParamDict['2DSlice'],:,:]
 
                 self.parent.DataDict['rho'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])] = self.rho
 

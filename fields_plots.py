@@ -134,9 +134,9 @@ class FieldsPanel:
                 self.fy = self.FigWrap.LoadKey('by')[self.parent.MainParamDict['2DSlice'],:,:]
                 self.fz = self.FigWrap.LoadKey('bz')[self.parent.MainParamDict['2DSlice'],:,:]
             if self.parent.MainParamDict['2DSlicePlane'] == 1:
-                self.fx = np.swapaxis(self.FigWrap.LoadKey('bx'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
-                self.fy = np.swapaxis(self.FigWrap.LoadKey('by'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
-                self.fz = np.swapaxis(self.FigWrap.LoadKey('bz'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fx = np.swapaxes(self.FigWrap.LoadKey('bx'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fy = np.swapaxes(self.FigWrap.LoadKey('by'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fz = np.swapaxes(self.FigWrap.LoadKey('bz'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
 
             kxwarg = 'bxmin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
             kywarg = 'bymin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
@@ -181,9 +181,9 @@ class FieldsPanel:
                 self.fy = self.FigWrap.LoadKey('ey')[self.parent.MainParamDict['2DSlice'],:,:]
                 self.fz = self.FigWrap.LoadKey('ez')[self.parent.MainParamDict['2DSlice'],:,:]
             if self.parent.MainParamDict['2DSlicePlane'] == 1:
-                self.fx = np.swapaxis(self.FigWrap.LoadKey('ex'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
-                self.fy = np.swapaxis(self.FigWrap.LoadKey('ey'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
-                self.fz = np.swapaxis(self.FigWrap.LoadKey('ez'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fx = np.swapaxes(self.FigWrap.LoadKey('ex'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fy = np.swapaxes(self.FigWrap.LoadKey('ey'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fz = np.swapaxes(self.FigWrap.LoadKey('ez'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
 
 
             kxwarg = 'exmin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
@@ -231,9 +231,9 @@ class FieldsPanel:
                 self.fy = self.FigWrap.LoadKey('jy')[self.parent.MainParamDict['2DSlice'],:,:]
                 self.fz = self.FigWrap.LoadKey('jz')[self.parent.MainParamDict['2DSlice'],:,:]
             if self.parent.MainParamDict['2DSlicePlane'] == 1:
-                self.fx = np.swapaxis(self.FigWrap.LoadKey('jx'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
-                self.fy = np.swapaxis(self.FigWrap.LoadKey('jy'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
-                self.fz = np.swapaxis(self.FigWrap.LoadKey('jz'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fx = np.swapaxes(self.FigWrap.LoadKey('jx'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fy = np.swapaxes(self.FigWrap.LoadKey('jy'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+                self.fz = np.swapaxes(self.FigWrap.LoadKey('jz'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
 
             kxwarg = 'jxmin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
             kywarg = 'jymin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
