@@ -883,7 +883,7 @@ class MovieDialog(Tk.Toplevel):
             self.FPS = ''
 
         if self.Name != '':
-            self.Name = os.path.join(self.parent.dirname, '..', str(self.e1.get()).strip().replace(' ', '_') +'.mp4')
+            self.Name = str(self.e1.get()).strip().replace(' ', '_') +'.mov'
         if self.StartFrame <0:
             self.StartFrame = len(self.parent.PathDict['Param'])+self.StartFrame + 1
         if self.EndFrame <0:
@@ -3180,12 +3180,12 @@ class MainApp(Tk.Tk):
             # The ffmpeg command we want to call.
             # ffmpeg -y -f image2 -framerate 8 -pattern_type glob -i '*.png' -codec copy out.mov
 
-            cmdstring = ['xterm', '-e', 'ffmpeg',
+            cmdstring = ['xterm', '-e','ffmpeg',
                         '-y', '-f', 'image2', # overwrite, image2 is a colorspace thing.
                         '-framerate', str(int(FPS)), # Set framerate to the the user selected option
                         '-pattern_type', 'glob', '-i', os.path.join(self.movie_dir, '.tmp_erase','*.png'), # Not sure what this does... I am going to get rid of it
                         '-codec', 'copy',  # save as a *.mov
-                        fname]#, '&']#, # output name,
+                        os.path.join(self.movie_dir,fname)]#, '&']#, # output name,
                         #'<dev/null', '>dev/null', '2>/var/log/ffmpeg.log', '&'] # run in background
             try:
                 subprocess.call(cmdstring)
