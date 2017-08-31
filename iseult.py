@@ -25,7 +25,7 @@ from energy_plots import EnergyPanel
 from fft_plots import FFTPanel
 from total_energy_plots import TotEnergyPanel
 from moments import MomentsPanel
-from user_def_fields import UserFieldsPanel
+#from user_def_fields import UserFieldsPanel
 from functools import partial
 import subprocess
 #import datetime
@@ -83,7 +83,7 @@ class SubPlotWrapper:
                              'DensityPlot': DensPanel,
                              'SpectraPlot': SpectralPanel,
                              'MagPlots': BPanel,
-                             'UserFields': UserFieldsPanel,
+                             #'UserFields': UserFieldsPanel,
                              'FFTPlots': FFTPanel,
                              'TotalEnergyPlot': TotEnergyPanel,
                              'Moments': MomentsPanel
