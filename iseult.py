@@ -25,6 +25,7 @@ from energy_plots import EnergyPanel
 from fft_plots import FFTPanel
 from total_energy_plots import TotEnergyPanel
 from moments import MomentsPanel
+from user_def_fields import UserFieldsPanel
 from functools import partial
 import subprocess
 #import datetime
@@ -82,7 +83,7 @@ class SubPlotWrapper:
                              'DensityPlot': DensPanel,
                              'SpectraPlot': SpectralPanel,
                              'MagPlots': BPanel,
-#                             '3dMagPlots': ThreeDBPanel,
+                             'UserFields': UserFieldsPanel,
                              'FFTPlots': FFTPanel,
                              'TotalEnergyPlot': TotEnergyPanel,
                              'Moments': MomentsPanel
@@ -2245,7 +2246,7 @@ class MainApp(Tk.Tk):
 
                     for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['IntList']:
                         if param.lower() in config.options(tmp_str):
-                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.getint(tmp_str, param)
+                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = int(config.getfloat(tmp_str, param))
 
                     for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['FloatList']:
                         if param.lower() in config.options(tmp_str):
@@ -2308,7 +2309,7 @@ class MainApp(Tk.Tk):
 
                     for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['IntList']:
                         if param.lower() in config.options(tmp_str):
-                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.getint(tmp_str, param)
+                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = int(config.getfloat(tmp_str, param))
 
                     for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['FloatList']:
                         if param.lower() in config.options(tmp_str):

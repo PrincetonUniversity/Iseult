@@ -1001,9 +1001,10 @@ class PhaseSettings(Tk.Toplevel):
         self.FieldsCallback()
 
     def FieldsCallback(self):
-        tkvarLimList = [self.Vmin, self.Vmax, self.Pmin, self.Pmax, self.Emin, self.Emax, self.pBins, self.xBins]
-        plot_param_List = ['v_min', 'v_max', 'p_min', 'p_max', 'E_min', 'E_max', 'pbins', 'xbins']
-        tkvarSetList = [self.setVminVar, self.setVmaxVar, self.setPminVar, self.setPmaxVar, self.setEminVar, self.setEmaxVar, self.TrueVar, self.TrueVar]
+        #### First set the Float Values
+        tkvarLimList = [self.Vmin, self.Vmax, self.Pmin, self.Pmax, self.Emin, self.Emax]
+        plot_param_List = ['v_min', 'v_max', 'p_min', 'p_max', 'E_min', 'E_max']
+        tkvarSetList = [self.setVminVar, self.setVmaxVar, self.setPminVar, self.setPmaxVar, self.setEminVar, self.setEmaxVar]
         to_reload = False
         for j in range(len(tkvarLimList)):
             try:
@@ -1015,6 +1016,24 @@ class PhaseSettings(Tk.Toplevel):
             except ValueError:
                 #if they type in random stuff, just set it ot the param value
                 tkvarLimList[j].set(str(self.parent.GetPlotParam(plot_param_List[j])))
+
+        intVarList = [self.pBins, self.xBins]
+        intParamList = ['pbins', 'xbins']
+        for j in range(len(intVarList)):
+            try:
+            #make sure the user types in a float
+                intVarList[j].set(str(int(float(intVarList[j].get()))))
+                if int(float(intVarList[j].get())) - int(self.parent.GetPlotParam(intParamList[j])) != 0:
+
+                    self.parent.SetPlotParam(intParamList[j], int(float(intVarList[j].get())), update_plot = False)
+                    to_reload += True
+
+            except ValueError:
+            #    print hi
+                #if they type in random stuff, just set it ot the param value
+                intVarList[j].set(str(self.parent.GetPlotParam(intVarList[j])))
+
+
         if to_reload:
             self.parent.SetPlotParam('v_min', self.parent.GetPlotParam('v_min'))
 
