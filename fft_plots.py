@@ -41,7 +41,7 @@ class FFTPanel:
         self.InterpolationMethods = ['none','nearest', 'bilinear', 'bicubic', 'spline16',
             'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
-        self.ylabel_list = [r'$|\delta B_z(k)|/B_0$', r'$|\delta B_\perp(k)|/B_0$', r'$|E_x(k)|/E_0$', r'$\chi(k)\ [\ \! ^\circ]$']
+        self.ylabel_list = [r'$|\delta B_z(k)|/B_0$', r'$|\delta B_y(k)|/B_0$', r'$|E_x(k)|/E_0$', r'$\chi(k)\ [\ \! ^\circ]$']
     def ChangePlotType(self, str_arg):
         self.FigWrap.ChangeGraph(str_arg)
 
@@ -106,7 +106,7 @@ class FFTPanel:
 
             bx = self.FigWrap.LoadKey('bx')[0,:,:]
             by = self.FigWrap.LoadKey('by')[0,:,:]
-            b_perp_in_plane = (by*np.cos(self.parent.btheta)-bx*np.sin(self.parent.btheta))*self.parent.b0**(-1.0)
+            b_perp_in_plane = by*self.parent.b0**(-1.0)
             self.BperpFFT = np.fft.fft(b_perp_in_plane[self.oneDslice,iL:iR])
             # Shift the fft so it is centered
             self.BperpFFT = np.fft.fftshift(self.BperpFFT)
