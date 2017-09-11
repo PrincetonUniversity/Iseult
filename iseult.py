@@ -25,7 +25,7 @@ from energy_plots import EnergyPanel
 from fft_plots import FFTPanel
 from total_energy_plots import TotEnergyPanel
 from moments import MomentsPanel
-#from user_def_fields import UserFieldsPanel
+from user_def import UserDefPanel
 from functools import partial
 import subprocess
 #import datetime
@@ -83,7 +83,7 @@ class SubPlotWrapper:
                              'DensityPlot': DensPanel,
                              'SpectraPlot': SpectralPanel,
                              'MagPlots': BPanel,
-                             #'UserFields': UserFieldsPanel,
+                             'UserDef': UserDefPanel,
                              'FFTPlots': FFTPanel,
                              'TotalEnergyPlot': TotEnergyPanel,
                              'Moments': MomentsPanel
@@ -1854,12 +1854,12 @@ class MainApp(Tk.Tk):
                               'ShowTitle': True,
                               'ImageAspect': 0,
                               'WaitTime': 0.01,
-                              'MaxCols': 3,
+                              'MaxCols': 8,
                               'VAxesExtent': [4, 90, 0, 92],
                               'kRight': 1.0,
                               'DoLorentzBoost': False,
                               'NumOfRows': 3,
-                              'MaxRows': 5,
+                              'MaxRows': 8,
                               'SetkLim': False,
                               'VCbarExtent': [4, 90, 94, 97],
                               'SkipSize': 5,
@@ -1913,13 +1913,13 @@ class MainApp(Tk.Tk):
                 self.MainParamDict[elm] = config.getboolean('main', elm)
 
         # The list of things that should be formatted as ints.
-        IntList = ['NumFontSize', 'AxLabelSize' 'xLabelPad', 'yLabelPad', 'MaxRows',
-                   'MaxCols', 'NumOfRows', 'NumOfCols', 'ImageAspect',
+        IntList = ['NumFontSize', 'AxLabelSize' 'xLabelPad', 'yLabelPad', #'MaxRows','MaxCols',  No longer saving this to config files.
+                   'NumOfRows', 'NumOfCols', 'ImageAspect',
                    'LinkSpatial', 'SkipSize', 'PrtlStride']
 
         for elm in IntList:
             if elm.lower() in config.options('main'):
-                self.MainParamDict[elm] = config.getint('main', elm)
+                self.MainParamDict[elm] = int(config.getfloat('main', elm))
 
 
         # The list of things that should be formatted as Floats.
