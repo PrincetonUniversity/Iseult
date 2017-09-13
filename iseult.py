@@ -2065,7 +2065,7 @@ class MainApp(Tk.Tk):
             for tristan_file in self.PathDict['Param']:
                 if int(tristan_file.split('.')[-1]) <= max_file:
                     output_max += 1
-            for key in PathDict.keys():                    
+            for key in self.PathDict.keys():                    
                 self.PathDict[key] = self.PathDict[key][0:output_max]
         self.TimeStep.setMax(len(self.PathDict['Flds']))
         self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
@@ -2142,11 +2142,11 @@ class MainApp(Tk.Tk):
         if is_okay:
             if int(self.cmd_args.n)!=-1:
                 max_file = int(self.cmd_args.n)
-                for key in self.PathDict.keys():
-                    output_max = len(self.PathDict[key])
-                    for tristan_file in self.PathDict[key]:
-                        if int(tristan_file.split('.')[-1]) >= max_file:
-                            output_max = min( int(tristan_file.split('.')[-1]), output_max)
+                output_max = 0
+                for tristan_file in self.PathDict['Param']:
+                    if int(tristan_file.split('.')[-1]) <= max_file:
+                        output_max += 1
+                for key in self.PathDict.keys():                    
                     self.PathDict[key] = self.PathDict[key][0:output_max]
             self.NewDirectory = True
             self.TimeStep.setMax(len(self.PathDict['Flds']))
