@@ -2065,7 +2065,6 @@ class MainApp(Tk.Tk):
                 except IndexError:
                     pass
 
-<<<<<<< HEAD
         ### GET THE NUMBERS THAT HAVE ALL 4 FILES:
 
         allFour = set(self.PathDict['Param'])
@@ -2077,22 +2076,11 @@ class MainApp(Tk.Tk):
             while allFour[-1] > int(self.cmd_args.n) and len(allFour)>0:
                 allFour.pop(-1)
 
-        is_okay = len(allFour)>0
         # Rebuild the pathdict only with files that have all 4 things
         self.PathDict['Flds'] = ['flds.tot.'+str(elm).zfill(3) for elm in allFour]
         self.PathDict['Prtl'] = ['prtl.tot.'+str(elm).zfill(3) for elm in allFour]
         self.PathDict['Spect'] = ['spect.'+str(elm).zfill(3) for elm in allFour]
         self.PathDict['Param'] = ['param.'+str(elm).zfill(3) for elm in allFour]
-=======
-        if int(self.cmd_args.n)!=-1:
-            max_file = int(self.cmd_args.n)
-            output_max = 0
-            for tristan_file in self.PathDict['Param']:
-                if int(tristan_file.split('.')[-1]) <= max_file:
-                    output_max += 1
-            for key in self.PathDict.keys():                    
-                self.PathDict[key] = self.PathDict[key][0:output_max]
->>>>>>> refs/remotes/origin/master
         self.TimeStep.setMax(len(self.PathDict['Flds']))
         self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
         if self.MainParamDict['Reload2End']:
@@ -2159,17 +2147,6 @@ class MainApp(Tk.Tk):
         self.PathDict['Spect'] = ['spect.'+str(elm).zfill(3) for elm in allFour]
         self.PathDict['Param'] = ['param.'+str(elm).zfill(3) for elm in allFour]
         if is_okay:
-<<<<<<< HEAD
-=======
-            if int(self.cmd_args.n)!=-1:
-                max_file = int(self.cmd_args.n)
-                output_max = 0
-                for tristan_file in self.PathDict['Param']:
-                    if int(tristan_file.split('.')[-1]) <= max_file:
-                        output_max += 1
-                for key in self.PathDict.keys():                    
-                    self.PathDict[key] = self.PathDict[key][0:output_max]
->>>>>>> refs/remotes/origin/master
             self.NewDirectory = True
             self.TimeStep.setMax(len(self.PathDict['Flds']))
             self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
