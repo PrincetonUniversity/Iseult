@@ -2048,40 +2048,25 @@ class MainApp(Tk.Tk):
         param_re = re.compile('param.*')
         self.PathDict['Flds']= filter(f_re.match, os.listdir(self.dirname))
         self.PathDict['Flds'].sort()
+
         self.PathDict['Prtl']= filter(prtl_re.match, os.listdir(self.dirname))
         self.PathDict['Prtl'].sort()
+
         self.PathDict['Spect']= filter(s_re.match, os.listdir(self.dirname))
         self.PathDict['Spect'].sort()
+
         self.PathDict['Param']= filter(param_re.match, os.listdir(self.dirname))
         self.PathDict['Param'].sort()
 
-        ### iterate through the Paths and just get the .nnn number
-        for key in self.PathDict.keys():
-            for i in range(len(self.PathDict[key])):
-                try:
-                    self.PathDict[key][i] = int(self.PathDict[key][i].split('.')[-1])
-                except ValueError:
-                    self.PathDict[key].pop(i)
-                except IndexError:
-                    pass
 
-        ### GET THE NUMBERS THAT HAVE ALL 4 FILES:
-
-        allFour = set(self.PathDict['Param'])
-        for key in self.PathDict.keys():
-            allFour &= set(self.PathDict[key])
-        allFour = sorted(allFour)
-
-        if int(self.cmd_args.n) != -1:
-            while allFour[-1] > int(self.cmd_args.n) and len(allFour)>0:
-                allFour.pop(-1)
-
-        is_okay = len(allFour)>0
-        # Rebuild the pathdict only with files that have all 4 things
-        self.PathDict['Flds'] = ['flds.tot.'+str(elm).zfill(3) for elm in allFour]
-        self.PathDict['Prtl'] = ['prtl.tot.'+str(elm).zfill(3) for elm in allFour]
-        self.PathDict['Spect'] = ['spect.'+str(elm).zfill(3) for elm in allFour]
-        self.PathDict['Param'] = ['param.'+str(elm).zfill(3) for elm in allFour]
+        if int(self.cmd_args.n)!=-1:
+            max_file = int(self.cmd_args.n)
+            output_max = 0
+            for tristan_file in self.PathDict['Param']:
+                if int(tristan_file.split('.')[-1]) <= max_file:
+                    output_max += 1
+            for key in self.PathDict.keys():                    
+                self.PathDict[key] = self.PathDict[key][0:output_max]
         self.TimeStep.setMax(len(self.PathDict['Flds']))
         self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
         if self.MainParamDict['Reload2End']:
@@ -2109,45 +2094,60 @@ class MainApp(Tk.Tk):
         prtl_re = re.compile('prtl.tot.*')
         s_re = re.compile('spect.*')
         param_re = re.compile('param.*')
-
-
         self.PathDict['Flds']= filter(f_re.match, os.listdir(self.dirname))
         self.PathDict['Flds'].sort()
+        for i in range(len(self.PathDict['Flds'])):
+            try:
+                int(self.PathDict['Flds'][i].split('.')[-1])
+            except ValueError:
+                self.PathDict['Flds'].pop(i)
+            except IndexError:
+                pass
+
         self.PathDict['Prtl']= filter(prtl_re.match, os.listdir(self.dirname))
         self.PathDict['Prtl'].sort()
+        for i in range(len(self.PathDict['Prtl'])):
+            try:
+                int(self.PathDict['Prtl'][i].split('.')[-1])
+            except ValueError:
+                self.PathDict['Prtl'].pop(i)
+            except IndexError:
+                pass
+
+
         self.PathDict['Spect']= filter(s_re.match, os.listdir(self.dirname))
         self.PathDict['Spect'].sort()
+        for i in range(len(self.PathDict['Spect'])):
+            try:
+                int(self.PathDict['Spect'][i].split('.')[-1])
+            except ValueError:
+                self.PathDict['Spect'].pop(i)
+            except IndexError:
+                pass
+
         self.PathDict['Param']= filter(param_re.match, os.listdir(self.dirname))
         self.PathDict['Param'].sort()
+        for i in range(len(self.PathDict['Param'])):
+            try:
+                int(self.PathDict['Param'][i].split('.')[-1])
+            except ValueError:
+                self.PathDict['Param'].pop(i)
+            except IndexError:
+                pass
 
-        ### iterate through the Paths and just get the .nnn number
+
         for key in self.PathDict.keys():
-            for i in range(len(self.PathDict[key])):
-                try:
-                    self.PathDict[key][i] = int(self.PathDict[key][i].split('.')[-1])
-                except ValueError:
-                    self.PathDict[key].pop(i)
-                except IndexError:
-                    pass
+            is_okay &= len(self.PathDict[key]) > 0
 
-        ### GET THE NUMBERS THAT HAVE ALL 4 FILES:
-
-        allFour = set(self.PathDict['Param'])
-        for key in self.PathDict.keys():
-            allFour &= set(self.PathDict[key])
-        allFour = sorted(allFour)
-
-        if int(self.cmd_args.n) != -1:
-            while allFour[-1] > int(self.cmd_args.n) and len(allFour)>0:
-                allFour.pop(-1)
-
-        is_okay = len(allFour)>0
-        # Rebuild the pathdict only with files that have all 4 things
-        self.PathDict['Flds'] = ['flds.tot.'+str(elm).zfill(3) for elm in allFour]
-        self.PathDict['Prtl'] = ['prtl.tot.'+str(elm).zfill(3) for elm in allFour]
-        self.PathDict['Spect'] = ['spect.'+str(elm).zfill(3) for elm in allFour]
-        self.PathDict['Param'] = ['param.'+str(elm).zfill(3) for elm in allFour]
         if is_okay:
+            if int(self.cmd_args.n)!=-1:
+                max_file = int(self.cmd_args.n)
+                output_max = 0
+                for tristan_file in self.PathDict['Param']:
+                    if int(tristan_file.split('.')[-1]) <= max_file:
+                        output_max += 1
+                for key in self.PathDict.keys():                    
+                    self.PathDict[key] = self.PathDict[key][0:output_max]
             self.NewDirectory = True
             self.TimeStep.setMax(len(self.PathDict['Flds']))
             self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
@@ -3344,9 +3344,9 @@ class MainApp(Tk.Tk):
                 self.by0 = by[0,-1,-10]
                 self.bz0 = f['bz'][0,-1,-10]
                 self.b0 = np.sqrt(self.bx0**2+self.by0**2+self.bz0**2)
-                self.ex0 = f['ex'][0,-1,-2]
-                self.ey0 = f['ey'][0,-1,-2]
-                self.ez0 = f['ez'][0,-1,-2]
+                self.ex0 = f['ex'][0,-1,-10]
+                self.ey0 = f['ey'][0,-1,-10]
+                self.ez0 = f['ez'][0,-1,-10]
                 self.e0 = np.sqrt(self.ex0**2+self.ey0**2+self.ez0**2)
 
         # Load the final time step to find the shock's location at the end.
