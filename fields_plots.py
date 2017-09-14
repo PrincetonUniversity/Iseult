@@ -5,15 +5,47 @@ import matplotlib
 import numpy as np
 import numpy.ma as ma
 import new_cmaps
+import sys, traceback
+from tkMessageBox import showinfo
 from new_cnorms import PowerNormWithNeg, PowerNormFunc
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
+import matplotlib.transforms as mtransforms
 
 class FieldsPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
+    example = """# WHATEVER IS TYPED HERE IS EVALUATED AS PURE PYTHON. THERE IS NO ERROR CHECKING
+# OR ANY SANITIZATION OF USER INPUT. YOU WILL INHERIT THE NAMESPACE OF THE MAIN
+# PROGRAM, BUT YOU CAN IMPORT OTHER LIBRARIES, DEFINE HELPER FUNCTIONS, WHATEVER.
+# JUST BE SURE AT SOME POINT YOU DEFINE A FUNCTION NAMED 'FieldFunc' THAT RETURNS
+# SOMETHING THE SAME SHAPE AS YOUR FIELD ARRAYS. SIMULATION DATA CAN ONLY BE
+# ACCESSED INSIDE OF THE 'FieldFunc' DEFINITION.
+
+# IT'S EASY TO DO BAD THINGS HERE... TYPE CAREFULLY :)
+
+def FieldFunc(bx, by, bz):
+    # Be sure to include all the neccesary data you need to calculate your
+    # derived field quantity as arguments to the 'FieldFunc' function.
+    # The only valid arguments to field function are things saved in the Tristan
+    # HDF5 files: e.g., ui, bx, jz...etc
+
+    return bx**2+by**2+bz**2
+    """
     plot_param_dict = {'twoD': 0,
-                       'field_type': 0, #0 = B-Field, 1 = E-field, 3 Currents
+                       'field_type': 0, #0 = B-Field, 1 = E-field, 2 Currents, 3 = UserDefined quantity
+                       'cmdstr1': example,
+                       'cmdstr2': example,
+                       'cmdstr3': example,
+                       'yaxis_label': ['$B$','$E$','$J$','$B$'],
+                       '2D_label': [['$B_x$','$B_y$','$B_z$'],
+                                    ['$E_x$','$E_y$','$E_z$'],
+                                    ['$J_x$','$J_y$','$J_z$'],
+                                    ['$B_\mathrm{tot}$','$B_\mathrm{tot}$','$B_\mathrm{tot}$']],
+                       '1D_label': [['$B_x$','$B_y$','$B_z$'],
+                                    ['$E_x$','$E_y$','$E_z$'],
+                                    ['$J_x$','$J_y$','$J_z$'],
+                                    ['$B_\mathrm{tot}$','$B_\mathrm{tot}$','$B_\mathrm{tot}$']],
                        'show_x' : 1,
                        'show_y' : 1,
                        'show_z' : 1,
@@ -45,9 +77,6 @@ class FieldsPanel:
     FloatList = ['v_min', 'v_max', 'cpow_num', 'div_midpoint']
     #StrList = ['interpolation', 'cnorm_type', 'cmap']
     StrList = ['cnorm_type', 'cmap']
-    OneDxTxt = [r'$B_x$', r'$E_x$', r'$J_x$']
-    OneDyTxt = [r'$B_y$', r'$E_y$', r'$J_y$']
-    OneDzTxt = [r'$B_z$', r'$E_z$', r'$J_z$']
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))
 
@@ -62,6 +91,7 @@ class FieldsPanel:
         self.InterpolationMethods = ['none','nearest', 'bilinear', 'bicubic', 'spline16',
             'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
+
 
     def ChangePlotType(self, str_arg):
         self.FigWrap.ChangeGraph(str_arg)
@@ -83,18 +113,45 @@ class FieldsPanel:
         # First make sure that omega_plasma & xi is loaded so we can fix the
         # x & y distances.
 
-
-
         # Then see if we are plotting E-field or B-Field
         if self.GetPlotParam('field_type') == 0: # Load the B-Field
-            self.arrs_needed = ['c_omp', 'istep', 'bx', 'by', 'bz']
+            self.arrs_needed = ['c_omp', 'istep', 'bx']#, 'by', 'bz']
+            if self.GetPlotParam('show_y'):
+                self.arrs_needed.append('by')
+            if self.GetPlotParam('show_z'):
+                self.arrs_needed.append('bz')
 
         if self.GetPlotParam('field_type') == 1: # Load the E-Field
-            self.arrs_needed = ['c_omp', 'istep', 'ex', 'ey', 'ez']
+            self.arrs_needed = ['c_omp', 'istep', 'ex']
+            if self.GetPlotParam('show_y'):
+                self.arrs_needed.append('ey')
+            if self.GetPlotParam('show_z'):
+                self.arrs_needed.append('ez')
 
         if self.GetPlotParam('field_type') == 2: # Load the currents
-            self.arrs_needed = ['c_omp', 'istep', 'jx', 'jy', 'jz']
+            self.arrs_needed = ['c_omp', 'istep', 'jx']
+            if self.GetPlotParam('show_y'):
+                self.arrs_needed.append('jy')
+            if self.GetPlotParam('show_z'):
+                self.arrs_needed.append('jz')
 
+        if self.GetPlotParam('field_type') == 3: # Check what the user wants.
+            self.arrs_needed = ['c_omp', 'istep', 'bx']
+            if self.GetPlotParam('show_x'):
+                for line in self.GetPlotParam('cmdstr1').splitlines():
+                    if line[0:14] == 'def FieldFunc(':
+                        self.f1args = [elm.strip() for elm in line[14:-2].split(',')]
+                        self.arrs_needed += self.f1args
+            if self.GetPlotParam('show_y'):
+                for line in self.GetPlotParam('cmdstr2').splitlines():
+                    if line[0:14] == 'def FieldFunc(':
+                        self.f2args = [elm.strip() for elm in line[14:-2].split(',')]
+                        self.arrs_needed += self.f2args
+            if self.GetPlotParam('show_z'):
+                for line in self.GetPlotParam('cmdstr3').splitlines():
+                    if line[0:14] == 'def FieldFunc(':
+                        self.f3args = [elm.strip() for elm in line[14:-2].split(',')]
+                        self.arrs_needed += self.f3args
         return self.arrs_needed
 
     def LoadData(self):
@@ -117,163 +174,148 @@ class FieldsPanel:
         if np.isnan(self.parent.btheta):
             # Maybe B_0 is 0????
             self.SetPlotParam('normalize_fields', 0, update_plot = False)
+
         # see if the axis values are saved in the data dict
         if 'xaxis_values' in self.parent.DataDict.keys():
             self.xaxis_values = self.parent.DataDict['xaxis_values']
         else:
             # x-values haven't been calculated yet, generate them then save them to the dictionary for later.
-            self.xaxis_values = np.arange(self.FigWrap.LoadKey('bx')[0,:,:].shape[1])/self.c_omp*self.istep
-        #            print self.xaxis_values
+            if self.GetPlotParam('field_type') ==0 or self.GetPlotParam('field_type') == 3:
+                self.xaxis_values = np.arange(self.FigWrap.LoadKey('bx').shape[2])/self.c_omp*self.istep
+            elif self.GetPlotParam('field_type') ==1:
+                self.xaxis_values = np.arange(self.FigWrap.LoadKey('ex').shape[2])/self.c_omp*self.istep
+            elif self.GetPlotParam('field_type') ==2:
+                self.xaxis_values = np.arange(self.FigWrap.LoadKey('jx').shape[2])/self.c_omp*self.istep
             self.parent.DataDict['xaxis_values'] = np.copy(self.xaxis_values)
 
+        ##### SOON I SHOULD DELETE THIS AND MAKE 1D SLICE A TUNABLE PARAMETER
+        if self.GetPlotParam('field_type') ==0 or self.GetPlotParam('field_type') == 3:
+            self.oneDslice = int(self.FigWrap.LoadKey('bx').shape[1]/2)
+        elif self.GetPlotParam('field_type') ==1:
+            self.oneDslice = int(self.FigWrap.LoadKey('ex').shape[1]/2)
+        elif self.GetPlotParam('field_type') ==2:
+            self.oneDslice = int(self.FigWrap.LoadKey('jx').shape[1]/2)
+        self.flagx = False
+        self.flagy = False
+        self.flagz = False
 
         if self.GetPlotParam('field_type') == 0: # Load the B-Field
+            if self.GetPlotParam('show_x'):
+                self.flagx = True
+                if self.GetPlotParam('normalize_fields'):
+                    self.fx = self.FigWrap.LoadKey('bx')*self.parent.b0**-1
+                else:
+                    self.fx = self.FigWrap.LoadKey('bx')
+            if self.GetPlotParam('show_y'):
+                self.flagy = True
+                if self.GetPlotParam('normalize_fields'):
+                    self.fy = self.FigWrap.LoadKey('by')*self.parent.b0**-1
+                else:
+                    self.fy = self.FigWrap.LoadKey('by')
 
-            if self.parent.MainParamDict['2DSlicePlane'] == 0:
-                self.fx = self.FigWrap.LoadKey('bx')[self.parent.MainParamDict['2DSlice'],:,:]
-                self.fy = self.FigWrap.LoadKey('by')[self.parent.MainParamDict['2DSlice'],:,:]
-                self.fz = self.FigWrap.LoadKey('bz')[self.parent.MainParamDict['2DSlice'],:,:]
-            if self.parent.MainParamDict['2DSlicePlane'] == 1:
-                self.fx = np.swapaxes(self.FigWrap.LoadKey('bx'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
-                self.fy = np.swapaxes(self.FigWrap.LoadKey('by'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
-                self.fz = np.swapaxes(self.FigWrap.LoadKey('bz'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
+            if self.GetPlotParam('show_z'):
+                self.flagz = True
+                if self.GetPlotParam('normalize_fields'):
+                    self.fz =self.FigWrap.LoadKey('bz')*self.parent.b0**-1
+                else:
+                    self.fz =self.FigWrap.LoadKey('bz')
 
-            kxwarg = 'bxmin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
-            kywarg = 'bymin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
-            kzwarg = 'bzmin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
+        if self.GetPlotParam('field_type') == 1: # Load the E-Field
+            if self.GetPlotParam('show_x'):
+                self.flagx = True
+                if self.GetPlotParam('normalize_fields'):
+                    self.fx = self.FigWrap.LoadKey('ex')*self.parent.e0**-1
+                else:
+                    self.fx = self.FigWrap.LoadKey('ex')
+            if self.GetPlotParam('show_y'):
+                self.flagy = True
+                if self.GetPlotParam('normalize_fields'):
+                    self.fy = self.FigWrap.LoadKey('ey')*self.parent.e0**-1
+                else:
+                    self.fy = self.FigWrap.LoadKey('ey')
 
-            if self.GetPlotParam('normalize_fields'):
-                self.fx = self.fx/self.parent.b0
-                self.fy = self.fy/self.parent.b0
-                self.fz = self.fz/self.parent.b0
-                kxwarg += '_normalized'
-                kywarg += '_normalized'
-                kzwarg += '_normalized'
-            self.oneDslice = self.fx.shape[0]/2
+            if self.GetPlotParam('show_z'):
+                self.flagz = True
+                if self.GetPlotParam('normalize_fields'):
+                    self.fz =self.FigWrap.LoadKey('ez')*self.parent.e0**-1
+                else:
+                    self.fz =self.FigWrap.LoadKey('ez')
 
-            # Have we already calculated min/max?
-
-            if kxwarg in self.parent.DataDict.keys():
-                self.bxmin_max = self.parent.DataDict[kxwarg]
-
-            else:
-                self.bxmin_max =  self.min_max_finder(self.fx)
-                self.parent.DataDict[kxwarg] = list(self.bxmin_max)
-
-            if kywarg in self.parent.DataDict.keys():
-                self.bymin_max = self.parent.DataDict[kywarg]
-
-            else:
-                self.bymin_max = self.min_max_finder(self.fy)
-                self.parent.DataDict[kywarg] = list(self.bymin_max)
-
-            if kzwarg in self.parent.DataDict.keys():
-                self.bzmin_max = self.parent.DataDict[kzwarg]
-
-            else:
-                self.bzmin_max = self.min_max_finder(self.fz)
-                self.parent.DataDict[kzwarg] = list(self.bzmin_max)
-
-
-        elif self.GetPlotParam('field_type') == 1: # Load the e-Field
-            if self.parent.MainParamDict['2DSlicePlane'] == 0:
-                self.fx = self.FigWrap.LoadKey('ex')[self.parent.MainParamDict['2DSlice'],:,:]
-                self.fy = self.FigWrap.LoadKey('ey')[self.parent.MainParamDict['2DSlice'],:,:]
-                self.fz = self.FigWrap.LoadKey('ez')[self.parent.MainParamDict['2DSlice'],:,:]
-            if self.parent.MainParamDict['2DSlicePlane'] == 1:
-                self.fx = np.swapaxes(self.FigWrap.LoadKey('ex'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
-                self.fy = np.swapaxes(self.FigWrap.LoadKey('ey'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
-                self.fz = np.swapaxes(self.FigWrap.LoadKey('ez'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
-
-
-            kxwarg = 'exmin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
-            kywarg = 'eymin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
-            kzwarg = 'ezmin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
-
-            if self.GetPlotParam('normalize_fields'):
-                self.fx = self.fx/self.parent.e0
-                self.fy = self.fy/self.parent.e0
-                self.fz = self.fz/self.parent.e0
-                kxwarg += '_normalized'
-                kywarg += '_normalized'
-                kzwarg += '_normalized'
-
-            self.oneDslice = self.fx.shape[0]/2
-
-
-
-            # Have we already calculated min/max?
-            if kxwarg in self.parent.DataDict.keys():
-                self.exmin_max = self.parent.DataDict[kxwarg]
-
-            else:
-                self.exmin_max = self.min_max_finder(self.fx)
-                self.parent.DataDict[kxwarg] = list(self.exmin_max)
-
-            if kywarg in self.parent.DataDict.keys():
-                self.eymin_max = self.parent.DataDict[kywarg]
-
-            else:
-                self.eymin_max = self.min_max_finder(self.fy)
-                self.parent.DataDict[kywarg] = list(self.eymin_max)
-
-            if kzwarg in self.parent.DataDict.keys():
-                self.ezmin_max = self.parent.DataDict[kzwarg]
-
-            else:
-                self.ezmin_max = self.min_max_finder(self.fz)
-                self.parent.DataDict[kzwarg] = list(self.ezmin_max)
 
         elif self.GetPlotParam('field_type') == 2: # Load the currents
-            #
-            if self.parent.MainParamDict['2DSlicePlane'] == 0:
-                self.fx = self.FigWrap.LoadKey('jx')[self.parent.MainParamDict['2DSlice'],:,:]
-                self.fy = self.FigWrap.LoadKey('jy')[self.parent.MainParamDict['2DSlice'],:,:]
-                self.fz = self.FigWrap.LoadKey('jz')[self.parent.MainParamDict['2DSlice'],:,:]
-            if self.parent.MainParamDict['2DSlicePlane'] == 1:
-                self.fx = np.swapaxes(self.FigWrap.LoadKey('jx'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
-                self.fy = np.swapaxes(self.FigWrap.LoadKey('jy'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
-                self.fz = np.swapaxes(self.FigWrap.LoadKey('jz'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
 
-            kxwarg = 'jxmin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
-            kywarg = 'jymin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
-            kzwarg = 'jzmin_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])
+            if self.GetPlotParam('show_x'):
+                self.fx = self.FigWrap.LoadKey('jx')
+                self.flagx = True
 
-            self.oneDslice = self.fx.shape[0]/2
+            if self.GetPlotParam('show_y'):
+                self.fy = self.FigWrap.LoadKey('jy')
+                self.flagy = True
 
-            # Have we already calculated min/max? We will need to change
-            # this behavior as we go to making the slices changeable.
+            if self.GetPlotParam('show_z'):
+                self.fz = self.FigWrap.LoadKey('jz')
+                self.flagz = True
 
-            if kxwarg in self.parent.DataDict.keys():
-                self.jxmin_max = self.parent.DataDict[kxwarg]
+        elif self.GetPlotParam('field_type') == 3: # User Defined fields
+            if self.GetPlotParam('show_x'):
+                try:
+                    eval(compile(self.GetPlotParam('cmdstr1') + '\rself.fx = FieldFunc(*[self.FigWrap.LoadKey(k) for k in self.f1args])', '<string>', 'exec'))
+                    self.flagx = True
+                except:
+                    tb_lines = traceback.format_exc(sys.exc_info()[2]).splitlines()
+                    tb_lines.pop(1)
+                    tb_lines[1] = ''
+                    err_msg = ''
+                    for l in tb_lines:
+                        if l[0:17] == '  File "<string>"':
+                            err_msg += '  User Defined Function,'
+                            err_msg += l[18:] +'\r'
+                        else:
+                            err_msg += l+'\r'
+                    showinfo('Error when evaluating user defined function 1:', err_msg)
 
-            else:
-                self.jxmin_max =  self.min_max_finder(self.fx)
-                self.parent.DataDict[kxwarg] = list(self.jxmin_max)
+                    self.fx = np.NAN
+                    self.flagx = False
 
-            if kywarg in self.parent.DataDict.keys():
-                self.jymin_max = self.parent.DataDict[kywarg]
+            if self.GetPlotParam('show_y'):
+                try:
+                    eval(compile(self.GetPlotParam('cmdstr2') + '\rself.fy = FieldFunc(*[self.FigWrap.LoadKey(k) for k in self.f2args])', '<string>', 'exec'))
+                    self.flagy = True
+                except:
+                    tb_lines = traceback.format_exc(sys.exc_info()[2]).splitlines()
+                    tb_lines.pop(1)
+                    tb_lines[1] = ''
+                    err_msg = ''
+                    for l in tb_lines:
+                        if l[0:17] == '  File "<string>"':
+                            err_msg += '  User Defined Function,'
+                            err_msg += l[18:] +'\r'
+                        else:
+                            err_msg += l+'\r'
+                    showinfo('Error when evaluating user defined function 2:', err_msg)
 
-            else:
-                self.jymin_max = self.min_max_finder(self.fy)
-                self.parent.DataDict[kywarg] = list(self.jymin_max)
+                    self.fy = np.NAN
+                    self.flagy = False
 
-            if kzwarg in self.parent.DataDict.keys():
-                self.jzmin_max = self.parent.DataDict[kzwarg]
+            if self.GetPlotParam('show_z'):
+                try:
+                    eval(compile(self.GetPlotParam('cmdstr3') + '\rself.fz = FieldFunc(*[self.FigWrap.LoadKey(k) for k in self.f3args])', '<string>', 'exec'))
+                    self.flagz = True
+                except:
+                    tb_lines = traceback.format_exc(sys.exc_info()[2]).splitlines()
+                    tb_lines.pop(1)
+                    tb_lines[1] = ''
+                    err_msg = ''
+                    for l in tb_lines:
+                        if l[0:17] == '  File "<string>"':
+                            err_msg += '  User Defined Function,'
+                            err_msg += l[18:] +'\r'
+                        else:
+                            err_msg += l+'\r'
+                    showinfo('Error when evaluating user defined function 3:', err_msg)
 
-            else:
-                self.jzmin_max = self.min_max_finder(self.fz)
-                self.parent.DataDict[kzwarg] = list(self.jzmin_max)
-
-    def min_max_finder(self, arr):
-        # find 1d lims
-        oneD_lims = [arr[self.oneDslice,:].min(), arr[self.oneDslice,:].max()]
-        # now give it a bit of spacing, a 4% percent difference of the distance
-        dist = oneD_lims[1]-oneD_lims[0]
-        oneD_lims[0] -= 0.04*dist
-        oneD_lims[1] += 0.04*dist
-        twoD_lims = [arr.min(), arr.max()]
-        return [oneD_lims, twoD_lims]
+                    self.fz = np.NAN
+                    self.flagz = False
 
     def draw(self):
 
@@ -321,74 +363,80 @@ class FieldsPanel:
                 self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
 
             # First choose the 'zval' to plot, we can only do one because it is 2-d.
-            if self.GetPlotParam('show_x'):
-                self.zval = self.fx
-                if self.GetPlotParam('normalize_fields'):
-                    self.two_d_labels = (r'$B_x/B_0$', r'$E_x/E_0$', r'$J_x$')
+            self.plotFlag = -1
+            if self.GetPlotParam('show_x') and self.flagx:
+                if self.parent.MainParamDict['ImageAspect']:
+                    self.cax = self.axes.imshow(self.fx[self.parent.MainParamDict['2DSlice'],:,:], norm = self.norm(), origin = 'lower')
                 else:
-                    self.two_d_labels = (r'$B_x$', r'$E_x$', r'$J_x$')
-                # set the other plot values to zero in the PlotParams
+                    self.cax = self.axes.imshow(self.fx[self.parent.MainParamDict['2DSlice'],:,:], origin = 'lower', norm = self.norm(),
+                                                aspect= 'auto')
+                self.plotFlag = 0
                 self.SetPlotParam('show_y', 0, update_plot = False)
                 self.SetPlotParam('show_z', 0, update_plot = False)
 
-            elif self.GetPlotParam('show_y'):
-                self.zval = self.fy
-                if self.GetPlotParam('normalize_fields'):
-                    self.two_d_labels = (r'$B_y/B_0$', r'$E_y/E_0$',  r'$J_y$')
+            elif self.GetPlotParam('show_y') and self.flagy:
+                if self.parent.MainParamDict['ImageAspect']:
+                    self.cax = self.axes.imshow(self.fy[self.parent.MainParamDict['2DSlice'],:,:], norm = self.norm(), origin = 'lower')
                 else:
-                    self.two_d_labels = (r'$B_y$', r'$E_y$', r'$J_y$')
-
-
-                # set the other plot values to zero in the PlotParams
+                    self.cax = self.axes.imshow(self.fy[self.parent.MainParamDict['2DSlice'],:,:], origin = 'lower', norm = self.norm(),
+                                                aspect= 'auto')
+                self.plotFlag = 1
                 self.SetPlotParam('show_x', 0, update_plot = False)
                 self.SetPlotParam('show_z', 0, update_plot = False)
 
-            else:
+
+            elif self.GetPlotParam('show_z') and self.flagz:
                 # make sure z is loaded, (something has to be)
                 # set the other plot values to zero in the PlotParams
+                if self.parent.MainParamDict['ImageAspect']:
+                    self.cax = self.axes.imshow(self.fy[self.parent.MainParamDict['2DSlice'],:,:], norm = self.norm(), origin = 'lower')
+                else:
+                    self.cax = self.axes.imshow(self.fy[self.parent.MainParamDict['2DSlice'],:,:], origin = 'lower', norm = self.norm(),
+                                                aspect= 'auto')
+                self.plotFlag = 2
                 self.SetPlotParam('show_x', 0, update_plot = False)
                 self.SetPlotParam('show_y', 0, update_plot = False)
 
-                # set show_z to 1 to be consistent
-                self.SetPlotParam('show_z', 1, update_plot = False)
-
-                self.zval = self.fz
-                if self.GetPlotParam('normalize_fields'):
-                    self.two_d_labels = (r'$B_z/B_0$', r'$E_z/E_0$', r'$J_z$')
-                else:
-                    self.two_d_labels = (r'$B_z$', r'$E_z$', r'$J_z$')
-
-
-            self.ymin = 0
-            self.ymax =  self.zval.shape[0]/self.c_omp*self.istep
-            self.xmin = 0
-            self.xmax =  self.zval.shape[1]/self.c_omp*self.istep
-
-            self.vmin = self.zval.min()
-            if self.GetPlotParam('set_v_min'):
-                self.vmin = self.GetPlotParam('v_min')
-            self.vmax = self.zval.max()
-            if self.GetPlotParam('set_v_max'):
-                self.vmax = self.GetPlotParam('v_max')
-
-            if self.parent.MainParamDict['ImageAspect']:
-                self.cax = self.axes.imshow(self.zval, norm = self.norm(), origin = 'lower')
             else:
-                self.cax = self.axes.imshow(self.zval, origin = 'lower', norm = self.norm(),
-                                            aspect= 'auto')
+                if self.parent.MainParamDict['ImageAspect']:
+                    self.cax = self.axes.imshow(np.ones([2,2]), norm = self.norm(), origin = 'lower')
+                else:
+                    self.cax = self.axes.imshow(np.ones([2,2]), norm = self.norm(), origin = 'lower', aspect = 'auto')
+                self.cax.set_data(np.ma.masked_array(np.empty([2,2]), mask = np.ones([2,2])))
+            self.ymin = 0
+            self.ymax =  self.cax.get_array().shape[0]/self.c_omp*self.istep
+            self.xmin = 0
+            self.xmax =  self.cax.get_array().shape[1]/self.c_omp*self.istep
             self.cax.set_cmap(new_cmaps.cmaps[self.cmap])
-            self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
-            self.cax.norm.vmin = self.vmin
-            self.cax.norm.vmax = self.vmax
+
+            if self.plotFlag>=0:
+
+                self.vmin = self.cax.get_array().min()
+                if self.GetPlotParam('set_v_min'):
+                    self.vmin = self.GetPlotParam('v_min')
+                self.vmax = self.cax.get_array().max()
+                if self.GetPlotParam('set_v_max'):
+                    self.vmax = self.GetPlotParam('v_max')
+                self.cax.norm.vmin = self.vmin
+                self.cax.norm.vmax = self.vmax
+                self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
+
+
 
             self.axes.add_artist(self.cax)
+            self.anntext =''
+            if self.plotFlag >= 0:
+                self.anntext = self.GetPlotParam('2D_label')[self.GetPlotParam('field_type')][self.plotFlag]
+                if self.GetPlotParam('field_type') ==0  and self.GetPlotParam('normalize_fields'):
+                    self.anntext +=r'$/B_0$'
+                if self.GetPlotParam('field_type') ==1  and self.GetPlotParam('normalize_fields'):
+                    self.anntext +=r'$/E_0$'
 
-
-            self.TwoDan = self.axes.annotate(self.two_d_labels[self.GetPlotParam('field_type')],
-                            xy = (0.9,.9),
-                            xycoords= 'axes fraction',
-                            color = 'white',
-                            **self.annotate_kwargs)
+            self.TwoDan = self.axes.annotate(self.anntext,
+                        xy = (0.9,.9),
+                        xycoords= 'axes fraction',
+                        color = 'white',
+                        **self.annotate_kwargs)
 
             self.axC = self.figure.add_subplot(self.gs[self.parent.cbar_extent[0]:self.parent.cbar_extent[1], self.parent.cbar_extent[2]:self.parent.cbar_extent[3]])
             if self.parent.MainParamDict['HorizontalCbars']:
@@ -398,15 +446,15 @@ class FieldsPanel:
                 # Make the colobar axis more like the real colorbar
                 self.cbar.set_extent([0, 1.0, 0, 1.0])
                 self.axC.tick_params(axis='x',
-                                which = 'both', # bothe major and minor ticks
-                                top = 'off', # turn off top ticks
-                                labelsize=self.parent.MainParamDict['NumFontSize'])
+                                    which = 'both', # bothe major and minor ticks
+                                    top = 'off', # turn off top ticks
+                                    labelsize=self.parent.MainParamDict['NumFontSize'])
 
                 self.axC.tick_params(axis='y',          # changes apply to the y-axis
-                                which='both',      # both major and minor ticks are affected
-                                left='off',      # ticks along the bottom edge are off
-                                right='off',         # ticks along the top edge are off
-                                labelleft='off')
+                                    which='both',      # both major and minor ticks are affected
+                                    left='off',      # ticks along the bottom edge are off
+                                    right='off',         # ticks along the top edge are off
+                                    labelleft='off')
             else:
                 self.cbar = self.axC.imshow(np.transpose(self.gradient)[::-1], aspect='auto',
                                             cmap=new_cmaps.cmaps[self.cmap])
@@ -428,8 +476,8 @@ class FieldsPanel:
                                 labelright  = 'on',
                                 labelsize=self.parent.MainParamDict['NumFontSize'])
 
-            if self.GetPlotParam('show_cbar') == 0:
-                self.axC.set_visible = False
+            if self.GetPlotParam('show_cbar') == 0 or self.plotFlag == -1:
+                self.axC.set_visible(False)
             else:
                 self.CbarTickFormatter()
 
@@ -474,19 +522,33 @@ class FieldsPanel:
 
             self.annotate_pos = [0.8,0.9]
             self.xmin, self.xmax = self.xaxis_values[0], self.xaxis_values[-1]
-            self.linex = self.axes.plot(self.xaxis_values, self.fx[self.oneDslice,:], color = self.xcolor)
-            self.linex[0].set_visible(self.GetPlotParam('show_x'))
-            self.anx = self.axes.annotate(self.OneDxTxt[self.GetPlotParam('field_type')], xy = self.annotate_pos,
+
+            min_max = [np.inf, -np.inf]
+            if self.flagx and self.GetPlotParam('show_x'):
+                self.linex = self.axes.plot(self.xaxis_values, self.fx[self.parent.MainParamDict['2DSlice'],self.oneDslice,:], color = self.xcolor)
+                min_max[0]=min(min_max[0],self.linex[0].get_data()[1].min())
+                min_max[1]=max(min_max[1],self.linex[0].get_data()[1].max())
+
+            else:
+                self.linex = self.axes.plot(np.arange(10), np.arange(10), color = self.xcolor)
+                self.linex[0].set_visible(False)
+
+            self.anx = self.axes.annotate(self.GetPlotParam('1D_label')[self.GetPlotParam('field_type')][0], xy = self.annotate_pos,
                             xycoords = 'axes fraction',
                             color = self.xcolor,
                             **self.annotate_kwargs)
             self.anx.set_visible(self.GetPlotParam('show_x'))
 
             self.annotate_pos[0] += .08
-            self.liney = self.axes.plot(self.xaxis_values, self.fy[self.oneDslice,:], color = self.ycolor)
-            self.liney[0].set_visible(self.GetPlotParam('show_y'))
+            if self.flagy and self.GetPlotParam('show_y'):
+                self.liney = self.axes.plot(self.xaxis_values, self.fy[self.parent.MainParamDict['2DSlice'],self.oneDslice,:], color = self.ycolor)
+                min_max[0]=min(min_max[0],self.liney[0].get_data()[1].min())
+                min_max[1]=max(min_max[1],self.liney[0].get_data()[1].max())
+            else:
+                self.liney = self.axes.plot(np.arange(10), np.arange(10), color = self.ycolor)
+                self.liney[0].set_visible(False)
 
-            self.any =self.axes.annotate(self.OneDyTxt[self.GetPlotParam('field_type')], xy = self.annotate_pos,
+            self.any =self.axes.annotate(self.GetPlotParam('1D_label')[self.GetPlotParam('field_type')][1], xy = self.annotate_pos,
                             xycoords= 'axes fraction',
                             color = self.ycolor,
                             **self.annotate_kwargs)
@@ -494,12 +556,25 @@ class FieldsPanel:
             self.any.set_visible(self.GetPlotParam('show_y'))
             self.annotate_pos[0] += .08
 
+            if self.flagz and self.GetPlotParam('show_z'):
+                self.linez = self.axes.plot(self.xaxis_values, self.fz[self.parent.MainParamDict['2DSlice'],self.oneDslice,:], color = self.zcolor)
+                min_max[0]=min(min_max[0],self.linez[0].get_data()[1].min())
+                min_max[1]=max(min_max[1],self.linez[0].get_data()[1].max())
 
-            self.linez = self.axes.plot(self.xaxis_values, self.fz[self.oneDslice,:], color = self.zcolor)
-            self.linez[0].set_visible(self.GetPlotParam('show_z'))
+            else:
+                self.linez = self.axes.plot(np.arange(10), np.arange(10), color = self.zcolor)
+                self.linez[0].set_visible(False)
 
+            if np.isinf(min_max[0]):
+                min_max[0]=None
+                min_max[1]=None
+            else:
+                dist = min_max[1]-min_max[0]
+                min_max[0] -= 0.04*dist
+                min_max[1] += 0.04*dist
+            self.axes.set_ylim(min_max)
 
-            self.anz = self.axes.annotate(self.OneDzTxt[self.GetPlotParam('field_type')], xy = self.annotate_pos,
+            self.anz = self.axes.annotate(self.GetPlotParam('1D_label')[self.GetPlotParam('field_type')][2], xy = self.annotate_pos,
                                 xycoords= 'axes fraction',
                                 color = self.zcolor,
                                 **self.annotate_kwargs
@@ -518,9 +593,6 @@ class FieldsPanel:
             self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 
 
-            self.axes.relim()
-            self.axes.autoscale_view(scaley = True)
-
             if self.parent.MainParamDict['SetxLim']:
                 if self.parent.MainParamDict['xLimsRelative']:
                     self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
@@ -537,18 +609,15 @@ class FieldsPanel:
                 self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
 
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
-            if self.GetPlotParam('field_type') == 0:
-                if self.GetPlotParam('normalize_fields'):
-                    self.axes.set_ylabel(r'$B/B_0$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
-                else:
-                    self.axes.set_ylabel(r'$B$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
-            elif self.GetPlotParam('field_type') == 1:
-                if self.GetPlotParam('normalize_fields'):
-                    self.axes.set_ylabel(r'$E/E_0$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
-                else:
-                    self.axes.set_ylabel(r'$E$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
-            else:
-                self.axes.set_ylabel(r'$J$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            tmplblstr = self.GetPlotParam('yaxis_label')[self.GetPlotParam('field_type')]
+
+            if self.GetPlotParam('normalize_fields'):
+                if self.GetPlotParam('field_type') ==0:
+                    tmplblstr +=r'$/B_0$'
+                elif self.GetPlotParam('field_type') ==1:
+                    tmplblstr +=r'$/E_0$'
+
+            self.axes.set_ylabel(tmplblstr, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
         ####
         # FFT REGION PLOTTING CODE
         ####
@@ -601,51 +670,38 @@ class FieldsPanel:
 
         # Now do the 1D plots, because it is simpler
         if self.GetPlotParam('twoD') == 0:
-            self.line_ymin_max = [np.inf, -np.inf]
-            if self.GetPlotParam('show_x'):
-                self.linex[0].set_data(self.xaxis_values, self.fx[self.oneDslice,:])
-                if self.GetPlotParam('field_type') == 0:
-                    self.line_ymin_max[0] = min(self.bxmin_max[0][0], self.line_ymin_max[0])
-                    self.line_ymin_max[1] = max(self.bxmin_max[0][1], self.line_ymin_max[1])
-                elif self.GetPlotParam('field_type') == 1: #E fields
-                    self.line_ymin_max[0] = min(self.exmin_max[0][0], self.line_ymin_max[0])
-                    self.line_ymin_max[1] = max(self.exmin_max[0][1], self.line_ymin_max[1])
+            min_max = [np.inf, -np.inf]
+            if self.GetPlotParam('show_x') and self.flagx:
+                self.linex[0].set_data(self.xaxis_values, self.fx[self.parent.MainParamDict['2DSlice'],self.oneDslice,:])
+                self.linex[0].set_visible(True)
+                self.anx.set_visible(True)
+                min_max[0]=min(min_max[0],self.linex[0].get_data()[1].min())
+                min_max[1]=max(min_max[1],self.linex[0].get_data()[1].max())
 
-                elif self.GetPlotParam('field_type') == 2: #currents
-                    self.line_ymin_max[0] = min(self.jxmin_max[0][0], self.line_ymin_max[0])
-                    self.line_ymin_max[1] = max(self.jxmin_max[0][1], self.line_ymin_max[1])
+            if self.GetPlotParam('show_y') and self.flagy:
+                self.liney[0].set_data(self.xaxis_values, self.fy[self.parent.MainParamDict['2DSlice'],self.oneDslice,:])
+                self.liney[0].set_visible(True)
+                self.any.set_visible(True)
 
-            if self.GetPlotParam('show_y'):
-                self.liney[0].set_data(self.xaxis_values, self.fy[self.oneDslice,:])
-                if self.GetPlotParam('field_type') == 0: # B-field
-                    self.line_ymin_max[0] = min(self.bymin_max[0][0], self.line_ymin_max[0])
-                    self.line_ymin_max[1] = max(self.bymin_max[0][1], self.line_ymin_max[1])
-                elif self.GetPlotParam('field_type') == 1: # E-field
-                    self.line_ymin_max[0] = min(self.eymin_max[0][0], self.line_ymin_max[0])
-                    self.line_ymin_max[1] = max(self.eymin_max[0][1], self.line_ymin_max[1])
-                elif self.GetPlotParam('field_type') == 2: # Curents
-                    self.line_ymin_max[0] = min(self.jymin_max[0][0], self.line_ymin_max[0])
-                    self.line_ymin_max[1] = max(self.jymin_max[0][1], self.line_ymin_max[1])
-
+                min_max[0]=min(min_max[0],self.liney[0].get_data()[1].min())
+                min_max[1]=max(min_max[1],self.liney[0].get_data()[1].max())
 
             if self.GetPlotParam('show_z'):
-                self.linez[0].set_data(self.xaxis_values, self.fz[self.oneDslice,:])
-                if self.GetPlotParam('field_type') == 0:
-                    self.line_ymin_max[0] = min(self.bzmin_max[0][0], self.line_ymin_max[0])
-                    self.line_ymin_max[1] = max(self.bzmin_max[0][1], self.line_ymin_max[1])
+                self.linez[0].set_data(self.xaxis_values, self.fz[self.parent.MainParamDict['2DSlice'],self.oneDslice,:])
+                self.linez[0].set_visible(True)
+                self.anz.set_visible(True)
+                min_max[0]=min(min_max[0],self.linez[0].get_data()[1].min())
+                min_max[1]=max(min_max[1],self.linez[0].get_data()[1].max())
 
-                elif self.GetPlotParam('field_type') == 1:
-                    self.line_ymin_max[0] = min(self.ezmin_max[0][0], self.line_ymin_max[0])
-                    self.line_ymin_max[1] = max(self.ezmin_max[0][1], self.line_ymin_max[1])
+            if np.isinf(min_max[0]):
+                min_max[0]=None
+                min_max[1]=None
+            else:
+                dist = min_max[1]-min_max[0]
+                min_max[0] -= 0.04*dist
+                min_max[1] += 0.04*dist
+            self.axes.set_ylim(min_max)
 
-                elif self.GetPlotParam('field_type') == 2: # Curents
-                    self.line_ymin_max[0] = min(self.jzmin_max[0][0], self.line_ymin_max[0])
-                    self.line_ymin_max[1] = max(self.jzmin_max[0][1], self.line_ymin_max[1])
-
-            if not self.GetPlotParam('show_x') and not self.GetPlotParam('show_y') and not self.GetPlotParam('show_z'):
-                self.line_ymin_max = [0,1]
-
-            self.axes.set_ylim(self.line_ymin_max)
             if self.GetPlotParam('show_shock'):
                 self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
             if self.parent.MainParamDict['SetxLim']:
@@ -664,73 +720,39 @@ class FieldsPanel:
 
 
         else: # Now refresh the plot if it is 2D
-            if self.GetPlotParam('show_x'):
-                self.cax.set_data(self.fx)
+            self.plotFlag = -1
+
+            if self.GetPlotParam('show_x') and self.flagx:
+                self.plotFlag = 0
+                self.cax.set_data(self.fx[self.parent.MainParamDict['2DSlice'],:,:])
                 self.ymin = 0
-                self.ymax =  self.fx.shape[0]/self.c_omp*self.istep
+                self.ymax =  self.fx.shape[1]/self.c_omp*self.istep
                 self.xmin = 0
                 self.xmax = self.xaxis_values[-1]
-                if self.GetPlotParam('field_type') == 0:
-                    self.clims = np.copy(self.bxmin_max[1])
-                    if self.GetPlotParam('normalize_fields'):
-                        self.TwoDan.set_text(r'$B_x/B_0$')
-                    else:
-                        self.TwoDan.set_text(r'$B_x$')
-                elif self.GetPlotParam('field_type') == 1:
-                    self.clims = np.copy(self.exmin_max[1])
-                    if self.GetPlotParam('normalize_fields'):
-                        self.TwoDan.set_text(r'$E_x/E_0$')
-                    else:
-                        self.TwoDan.set_text(r'$E_x$')
-                elif self.GetPlotParam('field_type') == 2:
-                    self.clims = np.copy(self.jxmin_max[1])
-                    self.TwoDan.set_text(r'$J_x$')
+                self.clims = [self.fx[self.parent.MainParamDict['2DSlice'],:,:].min(),self.fx[self.parent.MainParamDict['2DSlice'],:,:].max()]
 
-            if self.GetPlotParam('show_y'):
-                self.cax.set_data(self.fy)
+            elif self.GetPlotParam('show_y') and self.flagy:
+                self.plotFlag = 1
+                self.cax.set_data(self.fy[self.parent.MainParamDict['2DSlice'],:,:])
                 self.ymin = 0
-                self.ymax =  self.fy.shape[0]/self.c_omp*self.istep
+                self.ymax =  self.fy.shape[1]/self.c_omp*self.istep
                 self.xmin = 0
                 self.xmax = self.xaxis_values[-1]
-                if self.GetPlotParam('field_type') == 0:
-                    self.clims = np.copy(self.bymin_max[1])
-                    if self.GetPlotParam('normalize_fields'):
-                        self.TwoDan.set_text(r'$B_y/B_0$')
-                    else:
-                        self.TwoDan.set_text(r'$B_y$')
-                elif self.GetPlotParam('field_type') ==1:
-                    self.clims = np.copy(self.eymin_max[1])
-                    if self.GetPlotParam('normalize_fields'):
-                        self.TwoDan.set_text(r'$E_y/E_0$')
-                    else:
-                        self.TwoDan.set_text(r'$E_y$')
-                elif self.GetPlotParam('field_type') == 2:
-                    self.clims = np.copy(self.jymin_max[1])
-                    self.TwoDan.set_text(r'$J_y$')
+                self.clims = [self.fy[self.parent.MainParamDict['2DSlice'],:,:].min(),self.fy[self.parent.MainParamDict['2DSlice'],:,:].max()]
 
-            if self.GetPlotParam('show_z'):
-                self.cax.set_data(self.fz)
+            elif self.GetPlotParam('show_z') and self.flagz:
+                self.plotFlag = 2
+                self.cax.set_data(self.fz[self.parent.MainParamDict['2DSlice'],:,:])
                 self.ymin = 0
-                self.ymax =  self.fz.shape[0]/self.c_omp*self.istep
+                self.ymax =  self.fz.shape[1]/self.c_omp*self.istep
                 self.xmin = 0
                 self.xmax =  self.xaxis_values[-1]
-                if self.GetPlotParam('field_type') == 0:
-                    self.clims = np.copy(self.bzmin_max[1])
-                    if self.GetPlotParam('normalize_fields'):
-                        self.TwoDan.set_text(r'$B_z/B_0$')
-                    else:
-                        self.TwoDan.set_text(r'$B_z$')
+                self.clims = [self.fz[self.parent.MainParamDict['2DSlice'],:,:].min(),self.fz[self.parent.MainParamDict['2DSlice'],:,:].max()]
+            else:
+                self.cax.set_data(np.ma.masked_array(np.empty([2,2]), mask = np.ones([2,2])))
+                self.clims = [None, None]
 
-                elif self.GetPlotParam('field_type') == 1:
-                    self.clims = np.copy(self.ezmin_max[1])
-                    if self.GetPlotParam('normalize_fields'):
-                        self.TwoDan.set_text(r'$E_z/E_0$')
-                    else:
-                        self.TwoDan.set_text(r'$E_z$')
-
-                elif self.GetPlotParam('field_type') == 2:
-                    self.clims = np.copy(self.jymin_max[1])
-                    self.TwoDan.set_text(r'$J_z$')
+            self.axC.set_visible(self.plotFlag !=-1)
 
             if self.parent.MainParamDict['SetxLim']:
                 if self.parent.MainParamDict['xLimsRelative']:
@@ -746,8 +768,15 @@ class FieldsPanel:
                 self.axes.set_ylim(self.ymin,self.ymax)
 
             self.cax.set_extent([self.xmin, self.xmax, self.ymin, self.ymax])
-
-
+            if self.plotFlag >= 0:
+                self.anntext = self.GetPlotParam('2D_label')[self.GetPlotParam('field_type')][self.plotFlag]
+                if self.GetPlotParam('field_type') ==0  and self.GetPlotParam('normalize_fields'):
+                    self.anntext +=r'$/B_0$'
+                if self.GetPlotParam('field_type') ==1  and self.GetPlotParam('normalize_fields'):
+                    self.anntext +=r'$/E_0$'
+                self.TwoDan.set_text(self.anntext)
+            else:
+                self.TwoDan.set_text('')
             if self.GetPlotParam('set_v_min'):
                 self.clims[0] =  self.GetPlotParam('v_min')
             if self.GetPlotParam('set_v_max'):
@@ -840,11 +869,13 @@ class FieldSettings(Tk.Toplevel):
     def __init__(self, parent):
         self.parent = parent
         Tk.Toplevel.__init__(self)
-
+        self.def1_window = None
+        self.def2_window = None
+        self.def3_window = None
         self.wm_title('Fields & Currents Plot (%d,%d) Settings' % self.parent.FigWrap.pos)
         self.parent = parent
-        frm = ttk.Frame(self)
-        frm.pack(fill=Tk.BOTH, expand=True)
+        self.frm = ttk.Frame(self)
+        self.frm.pack(fill=Tk.BOTH, expand=True)
         self.protocol('WM_DELETE_WINDOW', self.OnClosing)
         self.bind('<Return>', self.TxtEnter)
 
@@ -853,8 +884,8 @@ class FieldSettings(Tk.Toplevel):
         self.InterpolVar.set(self.parent.GetPlotParam('interpolation')) # default value
         self.InterpolVar.trace('w', self.InterpolChanged)
 
-        ttk.Label(frm, text="Interpolation Method:").grid(row=0, column = 2)
-        InterplChooser = apply(ttk.OptionMenu, (frm, self.InterpolVar, self.parent.GetPlotParam('interpolation')) + tuple(self.parent.InterpolationMethods))
+        ttk.Label(self.frm, text="Interpolation Method:").grid(row=0, column = 2)
+        InterplChooser = apply(ttk.OptionMenu, (self.frm, self.InterpolVar, self.parent.GetPlotParam('interpolation')) + tuple(self.parent.InterpolationMethods))
         InterplChooser.grid(row =0, column = 3, sticky = Tk.W + Tk.E)
 
         # Create the OptionMenu to chooses the Chart Type:
@@ -862,62 +893,70 @@ class FieldSettings(Tk.Toplevel):
         self.ctypevar.set(self.parent.chartType) # default value
         self.ctypevar.trace('w', self.ctypeChanged)
 
-        ttk.Label(frm, text="Choose Chart Type:").grid(row=0, column = 0)
-        ctypeChooser = apply(ttk.OptionMenu, (frm, self.ctypevar, self.parent.chartType) + tuple(self.parent.ChartTypes))
+        ttk.Label(self.frm, text="Choose Chart Type:").grid(row=0, column = 0)
+        ctypeChooser = apply(ttk.OptionMenu, (self.frm, self.ctypevar, self.parent.chartType) + tuple(self.parent.ChartTypes))
         ctypeChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
 
 
 
         self.TwoDVar = Tk.IntVar(self) # Create a var to track whether or not to plot in 2-D
         self.TwoDVar.set(self.parent.GetPlotParam('twoD'))
-        cb = ttk.Checkbutton(frm, text = "Show in 2-D",
+        cb = ttk.Checkbutton(self.frm, text = "Show in 2-D",
                 variable = self.TwoDVar,
                 command = self.Change2d)
         cb.grid(row = 1, sticky = Tk.W)
 
         # the Radiobox Control to choose the Field Type
-        self.FieldList = ['B Field', 'E field', 'J [current]']
+        self.FieldList = ['B Field', 'E field', 'J [current]', 'User Defined']
         self.FieldTypeVar  = Tk.IntVar()
         self.FieldTypeVar.set(self.parent.GetPlotParam('field_type'))
 
-        ttk.Label(frm, text='Choose Field:').grid(row = 2, sticky = Tk.W)
+        ttk.Label(self.frm, text='Choose Field:').grid(row = 2, sticky = Tk.W)
 
         for i in range(len(self.FieldList)):
-            ttk.Radiobutton(frm,
+            ttk.Radiobutton(self.frm,
                 text=self.FieldList[i],
                 variable=self.FieldTypeVar,
                 command = self.RadioField,
                 value=i).grid(row = 3+i, sticky =Tk.W)
 
         # the Check boxes for the dimension
-        ttk.Label(frm, text='Dimension:').grid(row = 2, column = 1, sticky = Tk.W)
+        ttk.Label(self.frm, text='Dimension:').grid(row = 2, column = 1, sticky = Tk.W)
 
         self.ShowXVar = Tk.IntVar(self) # Create a var to track whether or not to show X
         self.ShowXVar.set(self.parent.GetPlotParam('show_x'))
-        cb = ttk.Checkbutton(frm, text = "Show x",
+        self.cbx = ttk.Checkbutton(self.frm, text = "Show x",
             variable = self.ShowXVar,
             command = self.Selector)
-        cb.grid(row = 3, column = 1, sticky = Tk.W)
+        self.cbx.grid(row = 3, column = 1, sticky = Tk.W)
 
         self.ShowYVar = Tk.IntVar(self) # Create a var to track whether or not to plot Y
         self.ShowYVar.set(self.parent.GetPlotParam('show_y'))
-        cb = ttk.Checkbutton(frm, text = "Show y",
+        self.cby = ttk.Checkbutton(self.frm, text = "Show y",
             variable = self.ShowYVar,
             command = self.Selector)
-        cb.grid(row = 4, column = 1, sticky = Tk.W)
+        self.cby.grid(row = 4, column = 1, sticky = Tk.W)
 
         self.ShowZVar = Tk.IntVar(self) # Create a var to track whether or not to plot Z
         self.ShowZVar.set(self.parent.GetPlotParam('show_z'))
-        cb = ttk.Checkbutton(frm, text = "Show z",
+        self.cbz = ttk.Checkbutton(self.frm, text = "Show z",
             variable = self.ShowZVar,
             command = self.Selector)
-        cb.grid(row = 5, column = 1, sticky = Tk.W)
+        self.cbz.grid(row = 5, column = 1, sticky = Tk.W)
+        if self.FieldTypeVar.get()==3:
+            # ADD BUTTONS TO DEFINE THE FUNCTIONS
+            self.df1button = ttk.Button(self.frm, text = 'Def F1', command = self.OpenDef1)
+            self.df1button.grid(row =3, column =2)
+            self.df2button = ttk.Button(self.frm, text = 'Def F2', command = self.OpenDef2)
+            self.df2button.grid(row =4, column =2)
+            self.df3button = ttk.Button(self.frm, text = 'Def F3', command = self.OpenDef3)
+            self.df3button.grid(row =5, column =2)
 
 
         # Control whether or not Cbar is shown
         self.CbarVar = Tk.IntVar()
         self.CbarVar.set(self.parent.GetPlotParam('show_cbar'))
-        cb = ttk.Checkbutton(frm, text = "Show Color bar",
+        cb = ttk.Checkbutton(self.frm, text = "Show Color bar",
                         variable = self.CbarVar,
                         command = self.CbarHandler)
         cb.grid(row = 7, sticky = Tk.W)
@@ -925,7 +964,7 @@ class FieldSettings(Tk.Toplevel):
         # Control whether or not diverging cmap is used
         self.DivVar = Tk.IntVar()
         self.DivVar.set(self.parent.GetPlotParam('UseDivCmap'))
-        cb = ttk.Checkbutton(frm, text = "Use Diverging Cmap",
+        cb = ttk.Checkbutton(self.frm, text = "Use Diverging Cmap",
                         variable = self.DivVar,
                         command = self.DivHandler)
         cb.grid(row = 8, sticky = Tk.W)
@@ -933,7 +972,7 @@ class FieldSettings(Tk.Toplevel):
         # Use full div cmap
         self.StretchVar = Tk.IntVar()
         self.StretchVar.set(self.parent.GetPlotParam('stretch_colors'))
-        cb = ttk.Checkbutton(frm, text = "Asymmetric Color Space",
+        cb = ttk.Checkbutton(self.frm, text = "Asymmetric Color Space",
                         variable = self.StretchVar,
                         command = self.StretchHandler)
         cb.grid(row = 8, column = 1, sticky = Tk.W)
@@ -943,19 +982,19 @@ class FieldSettings(Tk.Toplevel):
         self.cnormvar.set(self.parent.chartType) # default value
         self.cnormvar.trace('w', self.cnormChanged)
 
-        ttk.Label(frm, text="Choose Color Norm:").grid(row=6, column = 2)
-        cnormChooser = apply(ttk.OptionMenu, (frm, self.cnormvar, self.parent.GetPlotParam('cnorm_type')) + tuple(['Pow', 'Linear']))
-        cnormChooser.grid(row =6, column = 3, sticky = Tk.W + Tk.E)
+        ttk.Label(self.frm, text="Choose Color Norm:").grid(row=6, column = 3)
+        cnormChooser = apply(ttk.OptionMenu, (self.frm, self.cnormvar, self.parent.GetPlotParam('cnorm_type')) + tuple(['Pow', 'Linear']))
+        cnormChooser.grid(row =6, column = 4, sticky = Tk.W + Tk.E)
 
         # Now the gamma of the pow norm
         self.powGamma = Tk.StringVar()
         self.powGamma.set(str(self.parent.GetPlotParam('cpow_num')))
-        ttk.Label(frm, text ='gamma =').grid(row = 7, column = 2, sticky =Tk.E)
-        ttk.Label(frm, text ='If cnorm is Pow =>').grid(row = 8, column = 2,columnspan = 2, sticky =Tk.N)
-        ttk.Label(frm, text ='sign(data)*|data|**gamma').grid(row = 9, column = 2,columnspan = 2, sticky =Tk.E)
+        ttk.Label(self.frm, text ='gamma =').grid(row = 7, column = 3, sticky =Tk.E)
+        ttk.Label(self.frm, text ='If cnorm is Pow =>').grid(row = 8, column = 3,columnspan = 2, sticky =Tk.N)
+        ttk.Label(self.frm, text ='sign(data)*|data|**gamma').grid(row = 9, column = 3,columnspan = 2, sticky =Tk.E)
 
-        self.GammaEnter = ttk.Entry(frm, textvariable=self.powGamma, width=7)
-        self.GammaEnter.grid(row = 7, column = 3)
+        self.GammaEnter = ttk.Entry(self.frm, textvariable=self.powGamma, width=7)
+        self.GammaEnter.grid(row = 7, column = 4)
 
 
 
@@ -977,43 +1016,43 @@ class FieldSettings(Tk.Toplevel):
         self.Zmax.set(str(self.parent.GetPlotParam('v_max')))
 
 
-        cb = ttk.Checkbutton(frm, text ='Set B or E min',
+        cb = ttk.Checkbutton(self.frm, text ='Set B or E min',
                         variable = self.setZminVar)
-        cb.grid(row = 3, column = 2, sticky = Tk.W)
-        self.ZminEnter = ttk.Entry(frm, textvariable=self.Zmin, width=7)
-        self.ZminEnter.grid(row = 3, column = 3)
+        cb.grid(row = 3, column = 3, sticky = Tk.W)
+        self.ZminEnter = ttk.Entry(self.frm, textvariable=self.Zmin, width=7)
+        self.ZminEnter.grid(row = 3, column = 4)
 
-        cb = ttk.Checkbutton(frm, text ='Set B or E max',
+        cb = ttk.Checkbutton(self.frm, text ='Set B or E max',
                         variable = self.setZmaxVar)
-        cb.grid(row = 4, column = 2, sticky = Tk.W)
+        cb.grid(row = 4, column = 3, sticky = Tk.W)
 
-        self.ZmaxEnter = ttk.Entry(frm, textvariable=self.Zmax, width=7)
-        self.ZmaxEnter.grid(row = 4, column = 3)
+        self.ZmaxEnter = ttk.Entry(self.frm, textvariable=self.Zmax, width=7)
+        self.ZmaxEnter.grid(row = 4, column = 4)
 
         self.ShockVar = Tk.IntVar()
         self.ShockVar.set(self.parent.GetPlotParam('show_shock'))
-        cb = ttk.Checkbutton(frm, text = "Show Shock",
+        cb = ttk.Checkbutton(self.frm, text = "Show Shock",
                         variable = self.ShockVar,
                         command = self.ShockVarHandler)
         cb.grid(row = 9, column = 1, sticky = Tk.W)
 
         self.FFTVar = Tk.IntVar()
         self.FFTVar.set(self.parent.GetPlotParam('show_FFT_region'))
-        cb = ttk.Checkbutton(frm, text = "Show FFT Region",
+        cb = ttk.Checkbutton(self.frm, text = "Show FFT Region",
                         variable = self.FFTVar,
                         command = self.FFTVarHandler)
         cb.grid(row = 9, column = 0, sticky = Tk.W)
 
         self.CPUVar = Tk.IntVar()
         self.CPUVar.set(self.parent.GetPlotParam('show_cpu_domains'))
-        cb = ttk.Checkbutton(frm, text = "Show CPU domains",
+        cb = ttk.Checkbutton(self.frm, text = "Show CPU domains",
                         variable = self.CPUVar,
                         command = self.CPUVarHandler)
         cb.grid(row = 10, column = 0, sticky = Tk.W)
 
         self.NormFieldVar = Tk.IntVar()
         self.NormFieldVar.set(self.parent.GetPlotParam('normalize_fields'))
-        cb = ttk.Checkbutton(frm, text = "Normalize Fields",
+        cb = ttk.Checkbutton(self.frm, text = "Normalize Fields",
                         variable = self.NormFieldVar,
                         command = self.NormFieldHandler)
         cb.grid(row = 7, column = 1, sticky = Tk.W)
@@ -1053,6 +1092,24 @@ class FieldSettings(Tk.Toplevel):
         else:
             self.parent.SetPlotParam('cnorm_type', self.cnormvar.get(), update_plot = False)
 
+    def OpenDef1(self):
+        if self.def1_window is None:
+            self.def1_window = UserDefSettings(self, self.parent,1)
+        else:
+            self.def1_window.destroy()
+            self.def1_window = UserDefSettings(self, self.parent,1)
+    def OpenDef2(self):
+        if self.def2_window is None:
+            self.def2_window = UserDefSettings(self, self.parent,2)
+        else:
+            self.def2_window.destroy()
+            self.def2_window = UserDefSettings(self, self.parent,2)
+    def OpenDef3(self):
+        if self.def3_window is None:
+            self.def3_window = UserDefSettings(self, self.parent,3)
+        else:
+            self.def3_window.destroy()
+            self.def3_window = UserDefSettings(self, self.parent,3)
 
     def ShockVarHandler(self, *args):
         if self.parent.GetPlotParam('show_shock')== self.ShockVar.get():
@@ -1103,16 +1160,15 @@ class FieldSettings(Tk.Toplevel):
             pass
         else:
             if ~self.parent.GetPlotParam('twoD'):
-                if self.parent.GetPlotParam('field_type') == 0:
-                    if self.NormFieldVar.get():
-                        self.parent.axes.set_ylabel(r'$B/B_0$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
-                    else:
-                        self.parent.axes.set_ylabel(r'$B$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
-                else:
-                    if self.NormFieldVar.get():
-                        self.parent.axes.set_ylabel(r'$E/E_0$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
-                    else:
-                        self.parent.axes.set_ylabel(r'$E$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
+                tmplblstr = self.parent.GetPlotParam('yaxis_label')[self.FieldTypeVar.get()]
+                if self.NormFieldVar.get():
+                    if self.parent.GetPlotParam('field_type') ==0:
+                        tmplblstr +=r'$/B_0$'
+                    elif self.parent.GetPlotParam('field_type') ==1:
+                        tmplblstr +=r'$/E_0$'
+
+                self.parent.axes.set_ylabel(tmplblstr, labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
+
 
             self.parent.SetPlotParam('normalize_fields', self.NormFieldVar.get())
 
@@ -1130,9 +1186,6 @@ class FieldSettings(Tk.Toplevel):
 
                 elif self.parent.GetPlotParam('show_y'):
                     self.ShowZVar.set(0)
-
-                elif ~self.parent.GetPlotParam('show_z'):
-                    self.ShowXVar.set(1)
 
             self.parent.SetPlotParam('spatial_y', self.TwoDVar.get(), update_plot=False)
             self.parent.SetPlotParam('twoD', self.TwoDVar.get())
@@ -1170,24 +1223,73 @@ class FieldSettings(Tk.Toplevel):
             pass
         else:
             if not self.parent.GetPlotParam('twoD'):
-                if self.FieldTypeVar.get() == 0:
-                    if self.parent.GetPlotParam('normalize_fields'):
-                        self.parent.axes.set_ylabel(r'$B/B_0$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
-                    else:
-                        self.parent.axes.set_ylabel(r'$B$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
-                elif self.FieldTypeVar.get() == 1:
-                    if self.parent.GetPlotParam('normalize_fields'):
-                        self.parent.axes.set_ylabel(r'$E/E_0$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
-                    else:
-                        self.parent.axes.set_ylabel(r'$E$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
+                tmplblstr = self.parent.GetPlotParam('yaxis_label')[self.FieldTypeVar.get()]
+                if self.parent.GetPlotParam('normalize_fields'):
+                    if self.FieldTypeVar.get() ==0:
+                        tmplblstr +=r'$/B_0$'
+                    elif self.FieldTypeVar.get() ==1:
+                        tmplblstr +=r'$/E_0$'
 
-                elif self.FieldTypeVar.get() == 2:
-                    self.parent.axes.set_ylabel(r'$J$', labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
+                self.parent.axes.set_ylabel(tmplblstr, labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
 
-                self.parent.anx.set_text(self.parent.OneDxTxt[self.FieldTypeVar.get()])
-                self.parent.any.set_text(self.parent.OneDyTxt[self.FieldTypeVar.get()])
-                self.parent.anz.set_text(self.parent.OneDzTxt[self.FieldTypeVar.get()])
 
+                self.parent.anx.set_text(self.parent.GetPlotParam('1D_label')[self.FieldTypeVar.get()][0])
+                self.parent.any.set_text(self.parent.GetPlotParam('1D_label')[self.FieldTypeVar.get()][1])
+                self.parent.anz.set_text(self.parent.GetPlotParam('1D_label')[self.FieldTypeVar.get()][2])
+
+            ####
+            #
+            # Plot to add UserDef fields
+            #
+            #####
+            if self.FieldTypeVar.get()==3:
+                # ADD BUTTONS TO DEFINE THE FUNCTIONS
+                self.df1button = ttk.Button(self.frm, text = 'Def F1', command = self.OpenDef1)
+                self.df1button.grid(row =3, column =2)
+                self.df2button = ttk.Button(self.frm, text = 'Def F2', command = self.OpenDef2)
+                self.df2button.grid(row =4, column =2)
+                self.df3button = ttk.Button(self.frm, text = 'Def F3', command = self.OpenDef3)
+                self.df3button.grid(row =5, column =2)
+                # CHANGE THE LABELS OF ALL THE CHECKBUTTONS
+                self.cbx.config(text='Show F1')
+                self.cby.config(text='Show F2')
+                self.cbz.config(text='Show F3')
+                # TURN OFF ALL THE LINES
+                self.ShowXVar.set(False)
+                self.ShowYVar.set(False)
+                self.ShowZVar.set(False)
+                self.parent.SetPlotParam('show_x', False, update_plot = False)
+                self.parent.SetPlotParam('show_y', False, update_plot = False)
+                self.parent.SetPlotParam('show_z', False, update_plot = False)
+                if ~self.parent.GetPlotParam('twoD'):
+                    self.parent.linex[0].set_visible(False)
+                    self.parent.anx.set_visible(False)
+                    self.parent.liney[0].set_visible(False)
+                    self.parent.any.set_visible(False)
+                    self.parent.linez[0].set_visible(False)
+                    self.parent.anz.set_visible(False)
+
+            elif self.parent.GetPlotParam('field_type') ==3 :
+                ### DESTROY THE buttons
+                self.df1button.destroy()
+                self.df2button.destroy()
+                self.df3button.destroy()
+                self.cbx.config(text='Show x')
+                self.cby.config(text='Show y')
+                self.cbz.config(text='Show z')
+                self.ShowXVar.set(False)
+                self.ShowYVar.set(False)
+                self.ShowZVar.set(False)
+                self.parent.SetPlotParam('show_x', False, update_plot = False)
+                self.parent.SetPlotParam('show_y', False, update_plot = False)
+                self.parent.SetPlotParam('show_z', False, update_plot = False)
+                if ~self.parent.GetPlotParam('twoD'):
+                    self.parent.linex[0].set_visible(False)
+                    self.parent.anx.set_visible(False)
+                    self.parent.liney[0].set_visible(False)
+                    self.parent.any.set_visible(False)
+                    self.parent.linez[0].set_visible(False)
+                    self.parent.anz.set_visible(False)
 
             self.parent.SetPlotParam('field_type', self.FieldTypeVar.get())
 
@@ -1195,9 +1297,9 @@ class FieldSettings(Tk.Toplevel):
         # First check if it is 2-D:
         if self.parent.GetPlotParam('twoD'):
 
-            if self.ShowXVar.get() == 0 and self.ShowYVar.get() == 0 and self.ShowZVar.get() == 0:
-                # All are zero, something must be selected for this plot
-                self.ShowXVar.set(1)
+            #if self.ShowXVar.get() == 0 and self.ShowYVar.get() == 0 and self.ShowZVar.get() == 0:
+            #    # All are zero, something must be selected for this plot
+            #    self.ShowXVar.set(1)
 
 
             if self.parent.GetPlotParam('show_x') != self.ShowXVar.get():
@@ -1306,4 +1408,85 @@ class FieldSettings(Tk.Toplevel):
 
     def OnClosing(self):
         self.parent.settings_window = None
+        self.destroy()
+
+class UserDefSettings(Tk.Toplevel):
+    def __init__(self, parent, subplot, fnum):
+        self.parent = parent
+        self.subplot = subplot
+        self.fnum = fnum
+        Tk.Toplevel.__init__(self)
+
+        self.wm_title('Define Fuction %d' % fnum)
+        self.parent = parent
+
+        S = Tk.Scrollbar(self)
+        self.T = Tk.Text(self, height=25, width=100)
+        S.pack(side=Tk.RIGHT, fill=Tk.Y)
+        self.T.pack(side=Tk.TOP, fill=Tk.Y)
+        S.config(command=self.T.yview)
+        self.T.config(yscrollcommand=S.set)
+
+        self.T.insert(Tk.END, self.subplot.GetPlotParam('cmdstr'+str(self.fnum)))
+        miniframe = ttk.Frame(self)
+        ttk.Label(miniframe, text ="1D y-label:").grid(row=0, column =2)
+        self.ylabel = Tk.StringVar()
+        self.ylabel.set(self.subplot.GetPlotParam('yaxis_label')[self.subplot.GetPlotParam('field_type')])
+        ttk.Entry(miniframe, textvariable=self.ylabel, width=15).grid(row = 0, column = 3)
+
+        ttk.Label(miniframe, text ="1D label:").grid(row=0, column =0)
+        self.oneDlabel = Tk.StringVar()
+        self.oneDlabel.set(self.subplot.GetPlotParam('1D_label')[3][self.fnum-1])
+        ttk.Entry(miniframe, textvariable=self.oneDlabel, width=15).grid(row = 0, column = 1)
+
+        ttk.Label(miniframe, text ="2D label:").grid(row=1, column =0)
+        self.twoDlabel = Tk.StringVar()
+        self.twoDlabel.set(self.subplot.GetPlotParam('2D_label')[3][self.fnum-1])
+        ttk.Entry(miniframe, textvariable=self.twoDlabel, width=15).grid(row = 1, column = 1)
+
+        miniframe.pack(side=Tk.TOP)
+        ttk.Button(self, text = 'Save F'+str(self.fnum), command = self.SaveStr).pack(side =Tk.TOP)
+    def SaveStr(self):
+        self.subplot.SetPlotParam('cmdstr'+str(self.fnum),self.T.get(1.0, Tk.END), update_plot=False)
+
+        ### THIS IS SLOPPY!
+        self.subplot.SetPlotParam('yaxis_label',self.subplot.GetPlotParam('yaxis_label')[0:3]+ [self.ylabel.get()], update_plot =False)
+        tmplist = list(self.subplot.GetPlotParam('2D_label')[3])
+        tmplist[self.fnum-1] = self.twoDlabel.get()
+        tmplist2 = list(self.subplot.GetPlotParam('2D_label')[0:3])
+        tmplist2.append(tmplist)
+        self.subplot.SetPlotParam('2D_label',tmplist2, update_plot =False)
+
+        tmplist = self.subplot.GetPlotParam('1D_label')[3]
+        tmplist[self.fnum-1] = self.oneDlabel.get()
+        tmplist2 = list(self.subplot.GetPlotParam('1D_label')[0:3])
+        tmplist2.append(tmplist)
+
+        self.subplot.SetPlotParam('1D_label',tmplist2, update_plot =False)
+        if ~self.subplot.GetPlotParam('twoD'):
+            self.subplot.axes.set_ylabel(self.subplot.GetPlotParam('yaxis_label')[3])
+            self.subplot.anx.set_text(self.subplot.GetPlotParam('1D_label')[3][0])
+            self.subplot.any.set_text(self.subplot.GetPlotParam('1D_label')[3][1])
+            self.subplot.anz.set_text(self.subplot.GetPlotParam('1D_label')[3][2])
+
+        #self.subplot.GetPlotParam('1D_label')[self.subplot.GetPlotParam('field_type')][self.fnum-1] = self.oneDlabel.get()
+        #self.subplot.GetPlotParam('2D_label')[self.subplot.GetPlotParam('field_type')][self.fnum-1] = self.twoDlabel.get()
+        if self.fnum ==1:
+            self.subplot.SetPlotParam('show_x', True)
+            self.parent.ShowXVar.set(True)
+        if self.fnum ==2:
+            self.subplot.SetPlotParam('show_y', True)
+            self.parent.ShowYVar.set(True)
+        if self.fnum ==3:
+            self.subplot.SetPlotParam('show_z', True)
+            self.parent.ShowZVar.set(True)
+        self.OnClosing()
+
+    def OnClosing(self):
+        if self.fnum ==1:
+            self.parent.def1_window = None
+        if self.fnum ==2:
+            self.parent.def2_window = None
+        else:
+            self.parent.def3_window = None
         self.destroy()
