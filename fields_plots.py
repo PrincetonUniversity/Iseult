@@ -304,7 +304,6 @@ class FieldsPanel:
                         else:
                             err_msg += l+'\n'
                     showinfo('Error when evaluating user defined function 2:', err_msg)
-
                     self.fy = np.NAN
                     self.flagy = False
 
@@ -314,6 +313,7 @@ class FieldsPanel:
                     for line in self.GetPlotParam('cmdstr3').splitlines():
                         tmpcstr += line[1:] +'\n'
                     tmpcstr += 'self.fz = FieldFunc(*[self.FigWrap.LoadKey(k) for k in self.f3args])'
+                    eval(compile(tmpcstr, '<string>', 'exec'))
                     self.flagz = True
                 except:
                     tb_lines = traceback.format_exc(sys.exc_info()[2]).splitlines()
@@ -935,7 +935,8 @@ class FieldSettings(Tk.Toplevel):
                 value=i).grid(row = 3+i, sticky =Tk.W)
 
         # the Check boxes for the dimension
-        ttk.Label(self.frm, text='Dimension:').grid(row = 2, column = 1, sticky = Tk.W)
+        self.label = ttk.Label(self.frm, text='Dimension:')
+        self.label.grid(row = 2, column = 1, sticky = Tk.W)
 
         self.ShowXVar = Tk.IntVar(self) # Create a var to track whether or not to show X
         self.ShowXVar.set(self.parent.GetPlotParam('show_x'))
@@ -965,8 +966,11 @@ class FieldSettings(Tk.Toplevel):
             self.df2button.grid(row =4, column =2)
             self.df3button = ttk.Button(self.frm, text = 'Def F3', command = self.OpenDef3)
             self.df3button.grid(row =5, column =2)
-
-
+            # CHANGE LABELS
+            self.cbx.config(text='Show F1')
+            self.cby.config(text='Show F2')
+            self.cbz.config(text='Show F3')
+            self.label.config(text='Choose Function:')
         # Control whether or not Cbar is shown
         self.CbarVar = Tk.IntVar()
         self.CbarVar.set(self.parent.GetPlotParam('show_cbar'))
@@ -1265,6 +1269,7 @@ class FieldSettings(Tk.Toplevel):
                 self.df3button = ttk.Button(self.frm, text = 'Def F3', command = self.OpenDef3)
                 self.df3button.grid(row =5, column =2)
                 # CHANGE THE LABELS OF ALL THE CHECKBUTTONS
+                self.label.config(text='Choose Function:')
                 self.cbx.config(text='Show F1')
                 self.cby.config(text='Show F2')
                 self.cbz.config(text='Show F3')
@@ -1288,6 +1293,7 @@ class FieldSettings(Tk.Toplevel):
                 self.df1button.destroy()
                 self.df2button.destroy()
                 self.df3button.destroy()
+                self.label.config(text='Dimension:')
                 self.cbx.config(text='Show x')
                 self.cby.config(text='Show y')
                 self.cbz.config(text='Show z')
