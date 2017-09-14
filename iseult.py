@@ -2317,6 +2317,20 @@ class MainApp(Tk.Tk):
                     for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['StrList']:
                         if param.lower() in config.options(tmp_str):
                             self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.get(tmp_str, param)
+                    try:
+                        for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['SpecialList']:
+                            if param.lower() in config.options(tmp_str):
+                                if param == 'yaxis_label' and tmpchart_type == 'FieldsPlot':
+                                    tstr = config.get(tmp_str, param)
+                                    self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = tstr.strip('[').strip(']').strip().split(',')
+                                if tmpchart_type == 'FieldsPlot':
+                                    if param == '2D_label' or param =='1D_label':
+                                        tstr = config.get(tmp_str, param)
+                                        flattened_list = tstr.strip('[').strip(']').strip().split(',')
+                                        # NOW MAKE IT A LIST OF LISTs
+                                        self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] =map(list, zip(*[iter(flattened_list)]*3))
+                    except KeyError:
+                        pass
                 else:
                     # The graph isn't specified in the config file, just set it equal to a phase plot
                     self.SubPlotList[i][j].SetGraph('PhasePlot')

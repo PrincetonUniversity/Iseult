@@ -15,23 +15,25 @@ import matplotlib.transforms as mtransforms
 
 class FieldsPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
-    example = """# WHATEVER IS TYPED HERE IS EVALUATED AS PURE PYTHON. THERE IS NO ERROR CHECKING
-# OR ANY SANITIZATION OF USER INPUT. YOU WILL INHERIT THE NAMESPACE OF THE MAIN
-# PROGRAM, BUT YOU CAN IMPORT OTHER LIBRARIES, DEFINE HELPER FUNCTIONS, WHATEVER.
-# JUST BE SURE AT SOME POINT YOU DEFINE A FUNCTION NAMED 'FieldFunc' THAT RETURNS
-# SOMETHING THE SAME SHAPE AS YOUR FIELD ARRAYS. SIMULATION DATA CAN ONLY BE
-# ACCESSED INSIDE OF THE 'FieldFunc' DEFINITION.
-
-# IT'S EASY TO DO BAD THINGS HERE... TYPE CAREFULLY :)
-
-def FieldFunc(bx, by, bz):
-    # Be sure to include all the neccesary data you need to calculate your
-    # derived field quantity as arguments to the 'FieldFunc' function.
-    # The only valid arguments to field function are things saved in the Tristan
-    # HDF5 files: e.g., ui, bx, jz...etc
-
-    return bx**2+by**2+bz**2
-    """
+    example = """## WHATEVER IS TYPED HERE IS EVALUATED AS PURE PYTHON. THERE IS NO ERROR CHECKING
+## OR ANY SANITIZATION OF USER INPUT. YOU WILL INHERIT THE NAMESPACE OF THE MAIN
+## PROGRAM, BUT YOU CAN IMPORT OTHER LIBRARIES, DEFINE HELPER FUNCTIONS, WHATEVER.
+## JUST BE SURE AT SOME POINT YOU DEFINE A FUNCTION NAMED FieldFunc THAT RETURNS
+## SOMETHING THE SAME SHAPE AS YOUR FIELD ARRAYS. SIMULATION DATA CAN ONLY BE
+## ACCESSED INSIDE OF FieldFunc.
+#
+## IT'S EASY TO DO BAD THINGS HERE... TYPE CAREFULLY :)
+#
+#def FieldFunc(bx, by, bz):
+#    # Be sure to include all the neccesary data you need to calculate your
+#    # derived field quantity as arguments to the 'FieldFunc' function.
+#    # The only valid arguments to field function are things saved in the Tristan
+#    # HDF5 files: e.g., ui, bx, jz...etc. The argumes return the raw tristan arrays.
+#
+#    # YOU MUST RETURN AN ARRAY THE SAME SHAPE AS A FIELD ARRAY.
+#
+#    return bx**2+by**2+bz**2
+#    """
     plot_param_dict = {'twoD': 0,
                        'field_type': 0, #0 = B-Field, 1 = E-field, 2 Currents, 3 = UserDefined quantity
                        'cmdstr1': example,
@@ -76,7 +78,8 @@ def FieldFunc(bx, by, bz):
     IntList = ['field_type']
     FloatList = ['v_min', 'v_max', 'cpow_num', 'div_midpoint']
     #StrList = ['interpolation', 'cnorm_type', 'cmap']
-    StrList = ['cnorm_type', 'cmap']
+    StrList = ['cnorm_type', 'cmap', 'cmdstr1', 'cmdstr2', 'cmdstr3']
+    SpecialList = ['yaxis_label', '2D_label', '2D_label']
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))
 
@@ -139,18 +142,18 @@ def FieldFunc(bx, by, bz):
             self.arrs_needed = ['c_omp', 'istep', 'bx']
             if self.GetPlotParam('show_x'):
                 for line in self.GetPlotParam('cmdstr1').splitlines():
-                    if line[0:14] == 'def FieldFunc(':
-                        self.f1args = [elm.strip() for elm in line[14:-2].split(',')]
+                    if line[1:15] == 'def FieldFunc(':
+                        self.f1args = [elm.strip() for elm in line[15:-2].split(',')]
                         self.arrs_needed += self.f1args
             if self.GetPlotParam('show_y'):
                 for line in self.GetPlotParam('cmdstr2').splitlines():
-                    if line[0:14] == 'def FieldFunc(':
-                        self.f2args = [elm.strip() for elm in line[14:-2].split(',')]
+                    if line[1:15] == 'def FieldFunc(':
+                        self.f2args = [elm.strip() for elm in line[15:-2].split(',')]
                         self.arrs_needed += self.f2args
             if self.GetPlotParam('show_z'):
                 for line in self.GetPlotParam('cmdstr3').splitlines():
-                    if line[0:14] == 'def FieldFunc(':
-                        self.f3args = [elm.strip() for elm in line[14:-2].split(',')]
+                    if line[1:15] == 'def FieldFunc(':
+                        self.f3args = [elm.strip() for elm in line[15:-2].split(',')]
                         self.arrs_needed += self.f3args
         return self.arrs_needed
 
@@ -259,7 +262,11 @@ def FieldFunc(bx, by, bz):
         elif self.GetPlotParam('field_type') == 3: # User Defined fields
             if self.GetPlotParam('show_x'):
                 try:
-                    eval(compile(self.GetPlotParam('cmdstr1') + '\rself.fx = FieldFunc(*[self.FigWrap.LoadKey(k) for k in self.f1args])', '<string>', 'exec'))
+                    tmpcstr = ''
+                    for line in self.GetPlotParam('cmdstr1').splitlines():
+                        tmpcstr += line[1:] +'\n'
+                    tmpcstr += 'self.fx = FieldFunc(*[self.FigWrap.LoadKey(k) for k in self.f1args])'
+                    eval(compile(tmpcstr, '<string>', 'exec'))
                     self.flagx = True
                 except:
                     tb_lines = traceback.format_exc(sys.exc_info()[2]).splitlines()
@@ -269,9 +276,9 @@ def FieldFunc(bx, by, bz):
                     for l in tb_lines:
                         if l[0:17] == '  File "<string>"':
                             err_msg += '  User Defined Function,'
-                            err_msg += l[18:] +'\r'
+                            err_msg += l[18:] +'\n'
                         else:
-                            err_msg += l+'\r'
+                            err_msg += l+'\n'
                     showinfo('Error when evaluating user defined function 1:', err_msg)
 
                     self.fx = np.NAN
@@ -279,7 +286,11 @@ def FieldFunc(bx, by, bz):
 
             if self.GetPlotParam('show_y'):
                 try:
-                    eval(compile(self.GetPlotParam('cmdstr2') + '\rself.fy = FieldFunc(*[self.FigWrap.LoadKey(k) for k in self.f2args])', '<string>', 'exec'))
+                    tmpcstr = ''
+                    for line in self.GetPlotParam('cmdstr2').splitlines():
+                        tmpcstr += line[1:] +'\n'
+                    tmpcstr += 'self.fy = FieldFunc(*[self.FigWrap.LoadKey(k) for k in self.f2args])'
+                    eval(compile(tmpcstr, '<string>', 'exec'))
                     self.flagy = True
                 except:
                     tb_lines = traceback.format_exc(sys.exc_info()[2]).splitlines()
@@ -289,9 +300,9 @@ def FieldFunc(bx, by, bz):
                     for l in tb_lines:
                         if l[0:17] == '  File "<string>"':
                             err_msg += '  User Defined Function,'
-                            err_msg += l[18:] +'\r'
+                            err_msg += l[18:] +'\n'
                         else:
-                            err_msg += l+'\r'
+                            err_msg += l+'\n'
                     showinfo('Error when evaluating user defined function 2:', err_msg)
 
                     self.fy = np.NAN
@@ -299,7 +310,10 @@ def FieldFunc(bx, by, bz):
 
             if self.GetPlotParam('show_z'):
                 try:
-                    eval(compile(self.GetPlotParam('cmdstr3') + '\rself.fz = FieldFunc(*[self.FigWrap.LoadKey(k) for k in self.f3args])', '<string>', 'exec'))
+                    tmpcstr = ''
+                    for line in self.GetPlotParam('cmdstr3').splitlines():
+                        tmpcstr += line[1:] +'\n'
+                    tmpcstr += 'self.fz = FieldFunc(*[self.FigWrap.LoadKey(k) for k in self.f3args])'
                     self.flagz = True
                 except:
                     tb_lines = traceback.format_exc(sys.exc_info()[2]).splitlines()
@@ -309,9 +323,9 @@ def FieldFunc(bx, by, bz):
                     for l in tb_lines:
                         if l[0:17] == '  File "<string>"':
                             err_msg += '  User Defined Function,'
-                            err_msg += l[18:] +'\r'
+                            err_msg += l[18:] +'\n'
                         else:
-                            err_msg += l+'\r'
+                            err_msg += l+'\n'
                     showinfo('Error when evaluating user defined function 3:', err_msg)
 
                     self.fz = np.NAN
@@ -1427,7 +1441,10 @@ class UserDefSettings(Tk.Toplevel):
         S.config(command=self.T.yview)
         self.T.config(yscrollcommand=S.set)
 
-        self.T.insert(Tk.END, self.subplot.GetPlotParam('cmdstr'+str(self.fnum)))
+        tmpstr = ''
+        for line in self.subplot.GetPlotParam('cmdstr'+str(self.fnum)).splitlines():
+            tmpstr += line[1:] +'\n'
+        self.T.insert(Tk.END, tmpstr)
         miniframe = ttk.Frame(self)
         ttk.Label(miniframe, text ="1D y-label:").grid(row=0, column =2)
         self.ylabel = Tk.StringVar()
@@ -1447,7 +1464,11 @@ class UserDefSettings(Tk.Toplevel):
         miniframe.pack(side=Tk.TOP)
         ttk.Button(self, text = 'Save F'+str(self.fnum), command = self.SaveStr).pack(side =Tk.TOP)
     def SaveStr(self):
-        self.subplot.SetPlotParam('cmdstr'+str(self.fnum),self.T.get(1.0, Tk.END), update_plot=False)
+        tmpstr = ''
+        for line in self.T.get(1.0, Tk.END).splitlines():
+            tmpstr += '#' + line + '\n'
+
+        self.subplot.SetPlotParam('cmdstr'+str(self.fnum), tmpstr, update_plot=False)
 
         ### THIS IS SLOPPY!
         self.subplot.SetPlotParam('yaxis_label',self.subplot.GetPlotParam('yaxis_label')[0:3]+ [self.ylabel.get()], update_plot =False)
