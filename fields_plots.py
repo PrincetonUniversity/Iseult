@@ -403,9 +403,9 @@ class FieldsPanel:
                 # make sure z is loaded, (something has to be)
                 # set the other plot values to zero in the PlotParams
                 if self.parent.MainParamDict['ImageAspect']:
-                    self.cax = self.axes.imshow(self.fy[self.parent.MainParamDict['2DSlice'],:,:], norm = self.norm(), origin = 'lower')
+                    self.cax = self.axes.imshow(self.fz[self.parent.MainParamDict['2DSlice'],:,:], norm = self.norm(), origin = 'lower')
                 else:
-                    self.cax = self.axes.imshow(self.fy[self.parent.MainParamDict['2DSlice'],:,:], origin = 'lower', norm = self.norm(),
+                    self.cax = self.axes.imshow(self.fz[self.parent.MainParamDict['2DSlice'],:,:], origin = 'lower', norm = self.norm(),
                                                 aspect= 'auto')
                 self.plotFlag = 2
                 self.SetPlotParam('show_x', 0, update_plot = False)
