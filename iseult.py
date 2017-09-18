@@ -54,8 +54,137 @@ class MyCustomToolbar(NavigationToolbar2TkAgg):
         # plotCanvas is the tk Canvas we want to link to the toolbar,
         # parent is the iseult main app
         NavigationToolbar2TkAgg.__init__(self, plotCanvas, parent)
+        self.parent = parent
+
+    def release_zoom(self, event):
+        """Callback for mouse button release in zoom to rect mode."""
+        for zoom_id in self._ids_zoom:
+            self.canvas.mpl_disconnect(zoom_id)
+        self._ids_zoom = []
+
+        self.remove_rubberband()
+
+        if not self._xypress:
+            return
+
+        last_a = []
+
+        for cur_xypress in self._xypress:
+            x, y = event.x, event.y
+
+            '''After being clicked, we should use the x and y of the cursor to
+            determine what subplot was clicked'''
+
+            fig_size = self.parent.f.get_size_inches()*self.parent.f.dpi # Fig size in px
 
 
+
+            lastx, lasty, a, ind, view = cur_xypress
+            # ignore singular clicks - 5 pixels is a threshold
+            # allows the user to "cancel" a zoom action
+            # by zooming by less than 5 pixels
+            if ((abs(x - lastx) < 5 and self._zoom_mode!="y") or
+                    (abs(y - lasty) < 5 and self._zoom_mode!="x")):
+                self._xypress = None
+                self.release(event)
+                self.draw()
+                return
+
+
+            x_loc = event.x/fig_size[0] # The relative x position of the mouse in the figure
+            y_loc = event.y/fig_size[1] # The relative y position of the mouse in the figure
+
+            sub_plots = self.parent.gs0.get_grid_positions(self.parent.f)
+            row_array = np.sort(np.append(sub_plots[0], sub_plots[1]))
+            col_array = np.sort(np.append(sub_plots[2], sub_plots[3]))
+            i = (len(row_array)-row_array.searchsorted(y_loc))/2
+            j = col_array.searchsorted(x_loc)/2
+            # Is the x-axis spatial???
+            # convert the x-zooms to data args
+            Xmin, Xmax = a.get_xlim()
+            Ymin, Ymax = a.get_ylim()
+            inverse = a.transData.inverted()
+            lastx, lasty = inverse.transform_point((lastx, lasty))
+            x, y = inverse.transform_point((x, y))
+
+            ### DON'T LET IT FLIP data
+            if self.parent.SubPlotList[i][j].GetPlotParam('twoD') and self.parent.MainParamDict['ImageAspect']:
+                # we can only force 2 points. I choose x & lastx.
+                xl = min(x,lastx)
+                if xl<Xmin:
+                    xl = Xmin
+                xr = max(x,lastx)
+                if xr > Xmax:
+                    xr = Xmax
+
+                a._set_view((xl,xr,None,None))
+                if self.parent.MainParamDict['LinkSpatial'] !=0:
+                    for i in range(self.parent.MainParamDict['NumOfRows']):
+                        for j in range(self.parent.MainParamDict['NumOfCols']):
+                            if self.parent.MainParamDict['LinkSpatial'] == 1:
+                                if self.parent.SubPlotList[i][j].chartType in ['PhasePlot' ,'EnergyPlot','DensityPlot','MagPlots','Moments', 'FieldsPlot']:
+                                    self.parent.SubPlotList[i][j].graph.axes.set_xlim(xl,xr)
+                            if self.parent.MainParamDict['LinkSpatial'] == 2:
+                                if self.parent.SubPlotList[i][j].chartType in ['DensityPlot','MagPlots','Moments', 'FieldsPlot']:
+                                    self.parent.SubPlotList[i][j].graph.axes.set_xlim(xl,xr)
+                            elif self.parent.SubPlotList[i][j].chartType in ['DensityPlot','MagPlots','FieldsPlot'] and self.parent.SubPlotList[i][j].GetPlotParam('twoD'):
+                                self.parent.SubPlotList[i][j].graph.axes.set_xlim(xl,xr)
+            else:
+                xl = min(x,lastx)
+                if xl<Xmin:
+                    xl = Xmin
+                xr = max(x,lastx)
+                if xr > Xmax:
+                    xr = Xmax
+                yb = min(y,lasty)
+                if yb<Ymin:
+                    yb = Ymin
+                yt = max(y, lasty)
+                if yt>Ymax:
+                    yt = Ymax
+                a._set_view((xl,xr,yb,yt))
+                savey = self.parent.SubPlotList[i][j].GetPlotParam('spatial_y')
+                if self.parent.MainParamDict['LinkSpatial'] !=0 and self.parent.SubPlotList[i][j].GetPlotParam('spatial_x'):
+                    for i in range(self.parent.MainParamDict['NumOfRows']):
+                        for j in range(self.parent.MainParamDict['NumOfCols']):
+                            if self.parent.MainParamDict['LinkSpatial'] == 1:
+                                if self.parent.SubPlotList[i][j].chartType in ['PhasePlot' ,'EnergyPlot','DensityPlot','MagPlots','Moments', 'FieldsPlot']:
+                                    self.parent.SubPlotList[i][j].graph.axes.set_xlim(xl,xr)
+                            if self.parent.MainParamDict['LinkSpatial'] == 2:
+                                if self.parent.SubPlotList[i][j].chartType in ['DensityPlot','MagPlots','Moments', 'FieldsPlot']:
+                                    self.parent.SubPlotList[i][j].graph.axes.set_xlim(xl,xr)
+                                    if savey and self.parent.SubPlotList[i][j].GetPlotParam('spatial_y'):
+                                        self.parent.SubPlotList[i][j].graph.axes.set_ylim(yb,yt)
+                            elif self.parent.SubPlotList[i][j].chartType in ['DensityPlot','MagPlots','FieldsPlot'] and self.parent.SubPlotList[i][j].GetPlotParam('twoD'):
+                                self.parent.SubPlotList[i][j].graph.axes.set_xlim(xl,xr)
+                                if savey:
+                                    self.parent.SubPlotList[i][j].graph.axes.set_ylim(yb,yt)
+
+            ###
+            #See where we ended up.
+
+            # SEE IF ANYTHING SHOULD BE SHARED
+            #if self.parent.MainParamDict['LinkSpatial'] != 0:
+            #    if
+            #    a._set_view_from_bbox((lastx, lasty, x, y), 'in',
+            #                        self._zoom_mode, False, False)
+            #if self.parent.MainParamDict['LinkSpatial'] == 1:
+            #    sharey = False
+            #    if self.parent.SubPlotList[i][j].GetPlotParam('spatial_y'):
+            #        sharey = True
+                #Convert from pixels into datalims
+            #    a._set_view_from_bbox((lastx, lasty, x, y), 'in',
+            #                        self._zoom_mode, False, False)
+
+
+        self.draw()
+        self._xypress = None
+        self._button_pressed = None
+
+        self._zoom_mode = None
+
+        self.push_current()
+        self.release(event)
 class Spinbox(ttk.Entry):
     def __init__(self, master=None, **kw):
         ttk.Entry.__init__(self, master, "ttk::spinbox", **kw)
