@@ -55,7 +55,7 @@ class MyCustomToolbar(NavigationToolbar2TkAgg):
         # parent is the iseult main app
         NavigationToolbar2TkAgg.__init__(self, plotCanvas, parent)
         self.parent = parent
-
+    '''
     def release_zoom(self, event):
         """Callback for mouse button release in zoom to rect mode."""
         for zoom_id in self._ids_zoom:
@@ -72,8 +72,8 @@ class MyCustomToolbar(NavigationToolbar2TkAgg):
         for cur_xypress in self._xypress:
             x, y = event.x, event.y
 
-            '''After being clicked, we should use the x and y of the cursor to
-            determine what subplot was clicked'''
+            """After being clicked, we should use the x and y of the cursor to
+            determine what subplot was clicked"""
 
             fig_size = self.parent.f.get_size_inches()*self.parent.f.dpi # Fig size in px
 
@@ -118,17 +118,20 @@ class MyCustomToolbar(NavigationToolbar2TkAgg):
                     xr = Xmax
 
                 a._set_view((xl,xr,None,None))
-                if self.parent.MainParamDict['LinkSpatial'] !=0:
-                    for i in range(self.parent.MainParamDict['NumOfRows']):
-                        for j in range(self.parent.MainParamDict['NumOfCols']):
-                            if self.parent.MainParamDict['LinkSpatial'] == 1:
-                                if self.parent.SubPlotList[i][j].chartType in ['PhasePlot' ,'EnergyPlot','DensityPlot','MagPlots','Moments', 'FieldsPlot']:
-                                    self.parent.SubPlotList[i][j].graph.axes.set_xlim(xl,xr)
-                            if self.parent.MainParamDict['LinkSpatial'] == 2:
-                                if self.parent.SubPlotList[i][j].chartType in ['DensityPlot','MagPlots','Moments', 'FieldsPlot']:
-                                    self.parent.SubPlotList[i][j].graph.axes.set_xlim(xl,xr)
-                            elif self.parent.SubPlotList[i][j].chartType in ['DensityPlot','MagPlots','FieldsPlot'] and self.parent.SubPlotList[i][j].GetPlotParam('twoD'):
-                                self.parent.SubPlotList[i][j].graph.axes.set_xlim(xl,xr)
+                bbox = self.parent.SubPlotList[i][j].graph.axC.get_window_extent().transformed(self.parent.f.dpi_scale_trans.inverted())
+                width, height = bbox.width, bbox.height
+                print width, height
+                #if self.parent.MainParamDict['LinkSpatial'] !=0:
+                for i in range(self.parent.MainParamDict['NumOfRows']):
+                    for j in range(self.parent.MainParamDict['NumOfCols']):
+                        #if self.parent.MainParamDict['LinkSpatial'] == 1:
+                        if self.parent.SubPlotList[i][j].chartType in ['PhasePlot' ,'EnergyPlot','DensityPlot','MagPlots','Moments', 'FieldsPlot']:
+                            self.parent.SubPlotList[i][j].graph.axes.set_xlim(xl,xr)
+                        #if self.parent.MainParamDict['LinkSpatial'] == 2:
+                            #if self.parent.SubPlotList[i][j].chartType in ['DensityPlot','MagPlots','Moments', 'FieldsPlot']:
+                                #self.parent.SubPlotList[i][j].graph.axes.set_xlim(xl,xr)
+                        #elif self.parent.SubPlotList[i][j].chartType in ['DensityPlot','MagPlots','FieldsPlot'] and self.parent.SubPlotList[i][j].GetPlotParam('twoD'):
+                        #    self.parent.SubPlotList[i][j].graph.axes.set_xlim(xl,xr)
             else:
                 xl = min(x,lastx)
                 if xl<Xmin:
@@ -185,6 +188,7 @@ class MyCustomToolbar(NavigationToolbar2TkAgg):
 
         self.push_current()
         self.release(event)
+        '''
 class Spinbox(ttk.Entry):
     def __init__(self, master=None, **kw):
         ttk.Entry.__init__(self, master, "ttk::spinbox", **kw)
@@ -3067,6 +3071,7 @@ class MainApp(Tk.Tk):
         self.first_y = None
         self.first_k = None
         k = 0
+        # find the first spatial x and y
         for i in range(self.MainParamDict['NumOfRows']):
             for j in range(self.MainParamDict['NumOfCols']):
 
@@ -3102,6 +3107,7 @@ class MainApp(Tk.Tk):
 
                 # Now... We can draw the graph.
                 self.SubPlotList[i][j].DrawGraph()
+
         if self.MainParamDict['ShowTitle']:
             tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].split('.')[-1]
             self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time'][0]), size = 15)
