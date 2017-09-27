@@ -185,13 +185,13 @@ class DensPanel:
                 self.zval = self.rho
                 self.two_d_label = r'$\rho$'
 
-            if self.parent.MainParamDict['2DSlice'] ==0: # x-y plane
+            if self.parent.MainParamDict['2DSlicePlane'] ==0: # x-y plane
                 if self.parent.MainParamDict['ImageAspect']:
                     self.cax = self.axes.imshow(self.zval[self.parent.zSlice,:,:], norm = self.norm(), origin = 'lower')
                 else:
                     self.cax = self.axes.imshow(self.zval[self.parent.zSlice,:,:], norm = self.norm(), origin = 'lower',
                                                 aspect = 'auto')
-            elif self.parent.MainParamDict['2DSlice'] ==1: # x-z plane
+            elif self.parent.MainParamDict['2DSlicePlane'] ==1: # x-z plane
                 if self.parent.MainParamDict['ImageAspect']:
                     self.cax = self.axes.imshow(self.zval[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower')
                 else:

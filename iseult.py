@@ -1458,11 +1458,11 @@ class SettingsFrame(Tk.Toplevel):
             self.parent.RenewCanvas(ForceRedraw = True)
     def RadioPlane(self, *args):
         # If the shared axes are changed, the whole plot must be redrawn
-        if self.PlaneVar.get() == self.parent.MainParamDict['2DSlicePlanel']:
+        if self.PlaneVar.get() == self.parent.MainParamDict['2DSlicePlane']:
             pass
         else:
             self.parent.MainParamDict['2DSlicePlane'] = self.PlaneVar.get()
-            self.parent.RenewCanvas()
+            self.parent.RenewCanvas(    )
 
 
     def LinkKChanged(self, *args):
