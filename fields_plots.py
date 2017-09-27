@@ -191,13 +191,6 @@ class FieldsPanel:
                 self.xaxis_values = np.arange(self.FigWrap.LoadKey('jx').shape[2])/self.c_omp*self.istep
             self.parent.DataDict['xaxis_values'] = np.copy(self.xaxis_values)
 
-        ##### SOON I SHOULD DELETE THIS AND MAKE 1D SLICE A TUNABLE PARAMETER
-        if self.GetPlotParam('field_type') ==0 or self.GetPlotParam('field_type') == 3:
-            self.oneDslice = int(self.FigWrap.LoadKey('bx').shape[1]/2)
-        elif self.GetPlotParam('field_type') ==1:
-            self.oneDslice = int(self.FigWrap.LoadKey('ex').shape[1]/2)
-        elif self.GetPlotParam('field_type') ==2:
-            self.oneDslice = int(self.FigWrap.LoadKey('jx').shape[1]/2)
         self.flagx = False
         self.flagy = False
         self.flagz = False
@@ -379,21 +372,37 @@ class FieldsPanel:
             # First choose the 'zval' to plot, we can only do one because it is 2-d.
             self.plotFlag = -1
             if self.GetPlotParam('show_x') and self.flagx:
-                if self.parent.MainParamDict['ImageAspect']:
-                    self.cax = self.axes.imshow(self.fx[self.parent.MainParamDict['2DSlice'],:,:], norm = self.norm(), origin = 'lower')
-                else:
-                    self.cax = self.axes.imshow(self.fx[self.parent.MainParamDict['2DSlice'],:,:], origin = 'lower', norm = self.norm(),
-                                                aspect= 'auto')
+                if self.parent.MainParamDict['2DSlicePlane'] == 0: # Show the x-y plane
+                    if self.parent.MainParamDict['ImageAspect']:
+                        self.cax = self.axes.imshow(self.fx[self.parent.zSlice,:,:], norm = self.norm(), origin = 'lower')
+                    else:
+                        self.cax = self.axes.imshow(self.fx[self.parent.zSlice,:,:], origin = 'lower', norm = self.norm(),
+                                                    aspect= 'auto')
+
+                elif self.parent.MainParamDict['2DSlicePlane'] == 1: # Show the x-z plane
+                    if self.parent.MainParamDict['ImageAspect']:
+                        self.cax = self.axes.imshow(self.fx[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower')
+                    else:
+                        self.cax = self.axes.imshow(self.fx[:,self.parent.ySlice,:], origin = 'lower', norm = self.norm(),
+                                                    aspect= 'auto')
+
                 self.plotFlag = 0
                 self.SetPlotParam('show_y', 0, update_plot = False)
                 self.SetPlotParam('show_z', 0, update_plot = False)
 
             elif self.GetPlotParam('show_y') and self.flagy:
-                if self.parent.MainParamDict['ImageAspect']:
-                    self.cax = self.axes.imshow(self.fy[self.parent.MainParamDict['2DSlice'],:,:], norm = self.norm(), origin = 'lower')
-                else:
-                    self.cax = self.axes.imshow(self.fy[self.parent.MainParamDict['2DSlice'],:,:], origin = 'lower', norm = self.norm(),
-                                                aspect= 'auto')
+                if self.parent.MainParamDict['2DSlicePlane'] == 0: # Show the x-y plane
+                    if self.parent.MainParamDict['ImageAspect']:
+                        self.cax = self.axes.imshow(self.fy[self.parent.zSlice,:,:], norm = self.norm(), origin = 'lower')
+                    else:
+                        self.cax = self.axes.imshow(self.fy[self.parent.zSlice,:,:], origin = 'lower', norm = self.norm(),
+                                                    aspect= 'auto')
+                elif self.parent.MainParamDict['2DSlicePlane'] == 1: # Show the x-z plane
+                    if self.parent.MainParamDict['ImageAspect']:
+                        self.cax = self.axes.imshow(self.fy[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower')
+                    else:
+                        self.cax = self.axes.imshow(self.fy[:,self.parent.ySlice,:], origin = 'lower', norm = self.norm(),
+                                                    aspect= 'auto')
                 self.plotFlag = 1
                 self.SetPlotParam('show_x', 0, update_plot = False)
                 self.SetPlotParam('show_z', 0, update_plot = False)
@@ -402,11 +411,19 @@ class FieldsPanel:
             elif self.GetPlotParam('show_z') and self.flagz:
                 # make sure z is loaded, (something has to be)
                 # set the other plot values to zero in the PlotParams
-                if self.parent.MainParamDict['ImageAspect']:
-                    self.cax = self.axes.imshow(self.fz[self.parent.MainParamDict['2DSlice'],:,:], norm = self.norm(), origin = 'lower')
-                else:
-                    self.cax = self.axes.imshow(self.fz[self.parent.MainParamDict['2DSlice'],:,:], origin = 'lower', norm = self.norm(),
-                                                aspect= 'auto')
+                if self.parent.MainParamDict['2DSlicePlane'] == 0: # Show the x-y plane
+                    if self.parent.MainParamDict['ImageAspect']:
+                        self.cax = self.axes.imshow(self.fz[self.parent.zSlice,:,:], norm = self.norm(), origin = 'lower')
+                    else:
+                        self.cax = self.axes.imshow(self.fz[self.parent.zSlice,:,:], origin = 'lower', norm = self.norm(),
+                                                    aspect= 'auto')
+                elif self.parent.MainParamDict['2DSlicePlane'] == 1: # Show the x-z plane
+                    if self.parent.MainParamDict['ImageAspect']:
+                        self.cax = self.axes.imshow(self.fz[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower')
+                    else:
+                        self.cax = self.axes.imshow(self.fz[:,self.parent.ySlice,:], origin = 'lower', norm = self.norm(),
+                                                    aspect= 'auto')
+
                 self.plotFlag = 2
                 self.SetPlotParam('show_x', 0, update_plot = False)
                 self.SetPlotParam('show_y', 0, update_plot = False)
@@ -539,10 +556,12 @@ class FieldsPanel:
 
             min_max = [np.inf, -np.inf]
             if self.flagx and self.GetPlotParam('show_x'):
-                self.linex = self.axes.plot(self.xaxis_values, self.fx[self.parent.MainParamDict['2DSlice'],self.oneDslice,:], color = self.xcolor)
+                if self.parent.MainParamDict['Average1D']:
+                    self.linex = self.axes.plot(self.xaxis_values, np.average(self.fx.reshape(-1,self.fx.shape[-1]), axis =0), color = self.xcolor)
+                else:
+                    self.linex = self.axes.plot(self.xaxis_values, self.fx[self.parent.zSlice,self.parent.ySlice,:], color = self.xcolor)
                 min_max[0]=min(min_max[0],self.linex[0].get_data()[1].min())
                 min_max[1]=max(min_max[1],self.linex[0].get_data()[1].max())
-
             else:
                 self.linex = self.axes.plot(np.arange(10), np.arange(10), color = self.xcolor)
                 self.linex[0].set_visible(False)
@@ -555,7 +574,11 @@ class FieldsPanel:
 
             self.annotate_pos[0] += .08
             if self.flagy and self.GetPlotParam('show_y'):
-                self.liney = self.axes.plot(self.xaxis_values, self.fy[self.parent.MainParamDict['2DSlice'],self.oneDslice,:], color = self.ycolor)
+                if self.parent.MainParamDict['Average1D']:
+                    self.liney = self.axes.plot(self.xaxis_values, np.average(self.fy.reshape(-1,self.fy.shape[-1]), axis = 0), color = self.ycolor)
+                else:
+                    self.liney = self.axes.plot(self.xaxis_values, self.fy[self.parent.zSlice,self.parent.ySlice,:], color = self.ycolor)
+
                 min_max[0]=min(min_max[0],self.liney[0].get_data()[1].min())
                 min_max[1]=max(min_max[1],self.liney[0].get_data()[1].max())
             else:
@@ -571,7 +594,10 @@ class FieldsPanel:
             self.annotate_pos[0] += .08
 
             if self.flagz and self.GetPlotParam('show_z'):
-                self.linez = self.axes.plot(self.xaxis_values, self.fz[self.parent.MainParamDict['2DSlice'],self.oneDslice,:], color = self.zcolor)
+                if self.parent.MainParamDict['Average1D']:
+                    self.linez = self.axes.plot(self.xaxis_values, np.average(self.fz.reshape(-1,self.fz.shape[-1]), axis = 0), color = self.zcolor)
+                else: # In the x-y plane
+                    self.linez = self.axes.plot(self.xaxis_values, self.fz[self.parent.zSlice,self.parent.ySlice,:], color = self.zcolor)
                 min_max[0]=min(min_max[0],self.linez[0].get_data()[1].min())
                 min_max[1]=max(min_max[1],self.linez[0].get_data()[1].max())
 
@@ -686,22 +712,30 @@ class FieldsPanel:
         if self.GetPlotParam('twoD') == 0:
             min_max = [np.inf, -np.inf]
             if self.GetPlotParam('show_x') and self.flagx:
-                self.linex[0].set_data(self.xaxis_values, self.fx[self.parent.MainParamDict['2DSlice'],self.oneDslice,:])
+                if self.parent.MainParamDict['Average1D']:
+                    self.linex[0].set_data(self.xaxis_values, np.average(self.fx.reshape(-1,self.fx.shape[-1]), axis =0))
+                else: # In the x-y plane
+                    self.linex[0].set_data(self.xaxis_values, self.fx[self.parent.zSlice,self.parent.ySlice,:])
                 self.linex[0].set_visible(True)
                 self.anx.set_visible(True)
                 min_max[0]=min(min_max[0],self.linex[0].get_data()[1].min())
                 min_max[1]=max(min_max[1],self.linex[0].get_data()[1].max())
 
             if self.GetPlotParam('show_y') and self.flagy:
-                self.liney[0].set_data(self.xaxis_values, self.fy[self.parent.MainParamDict['2DSlice'],self.oneDslice,:])
+                if self.parent.MainParamDict['Average1D']:
+                    self.liney[0].set_data(self.xaxis_values, np.average(self.fy.reshape(-1,self.fx.shape[-1]), axis =0))
+                else:
+                    self.liney[0].set_data(self.xaxis_values, self.fy[self.parent.zSlice,self.parent.ySlice,:])
                 self.liney[0].set_visible(True)
                 self.any.set_visible(True)
-
                 min_max[0]=min(min_max[0],self.liney[0].get_data()[1].min())
                 min_max[1]=max(min_max[1],self.liney[0].get_data()[1].max())
 
             if self.GetPlotParam('show_z'):
-                self.linez[0].set_data(self.xaxis_values, self.fz[self.parent.MainParamDict['2DSlice'],self.oneDslice,:])
+                if self.parent.MainParamDict['Average1D']:
+                    self.linez[0].set_data(self.xaxis_values, np.average(self.fz.reshape(-1,self.fx.shape[-1]), axis =0))
+                else:
+                    self.linez[0].set_data(self.xaxis_values, self.fz[self.parent.zSlice,self.parent.ySlice,:])
                 self.linez[0].set_visible(True)
                 self.anz.set_visible(True)
                 min_max[0]=min(min_max[0],self.linez[0].get_data()[1].min())
@@ -738,35 +772,36 @@ class FieldsPanel:
 
             if self.GetPlotParam('show_x') and self.flagx:
                 self.plotFlag = 0
-                self.cax.set_data(self.fx[self.parent.MainParamDict['2DSlice'],:,:])
-                self.ymin = 0
-                self.ymax =  self.fx.shape[1]/self.c_omp*self.istep
-                self.xmin = 0
-                self.xmax = self.xaxis_values[-1]
-                self.clims = [self.fx[self.parent.MainParamDict['2DSlice'],:,:].min(),self.fx[self.parent.MainParamDict['2DSlice'],:,:].max()]
+                if self.parent.MainParamDict['2DSlicePlane'] == 0: #x-y plane
+                    self.cax.set_data(self.fx[self.parent.zSlice,:,:])
+                elif self.parent.MainParamDict['2DSlicePlane'] == 1: #x-z plane
+                    self.cax.set_data(self.fx[:,self.parent.ySlice,:])
 
             elif self.GetPlotParam('show_y') and self.flagy:
                 self.plotFlag = 1
-                self.cax.set_data(self.fy[self.parent.MainParamDict['2DSlice'],:,:])
-                self.ymin = 0
-                self.ymax =  self.fy.shape[1]/self.c_omp*self.istep
-                self.xmin = 0
-                self.xmax = self.xaxis_values[-1]
-                self.clims = [self.fy[self.parent.MainParamDict['2DSlice'],:,:].min(),self.fy[self.parent.MainParamDict['2DSlice'],:,:].max()]
+                if self.parent.MainParamDict['2DSlicePlane'] == 0: #x-y plane
+                    self.cax.set_data(self.fy[self.parent.zSlice,:,:])
+                elif self.parent.MainParamDict['2DSlicePlane'] == 1: #x-z plane
+                    self.cax.set_data(self.fy[:,self.parent.ySlice,:])
 
             elif self.GetPlotParam('show_z') and self.flagz:
                 self.plotFlag = 2
-                self.cax.set_data(self.fz[self.parent.MainParamDict['2DSlice'],:,:])
-                self.ymin = 0
-                self.ymax =  self.fz.shape[1]/self.c_omp*self.istep
-                self.xmin = 0
-                self.xmax =  self.xaxis_values[-1]
-                self.clims = [self.fz[self.parent.MainParamDict['2DSlice'],:,:].min(),self.fz[self.parent.MainParamDict['2DSlice'],:,:].max()]
+                if self.parent.MainParamDict['2DSlicePlane'] == 0: #x-y plane
+                    self.cax.set_data(self.fz[self.parent.zSlice,:,:])
+                elif self.parent.MainParamDict['2DSlicePlane'] == 1: #x-z plane
+                    self.cax.set_data(self.fz[:,self.parent.ySlice,:])
             else:
                 self.cax.set_data(np.ma.masked_array(np.empty([2,2]), mask = np.ones([2,2])))
                 self.clims = [None, None]
 
             self.axC.set_visible(self.plotFlag !=-1)
+            if self.plotFlag != -1:
+                self.ymin = 0
+                self.ymax =  self.cax.get_array().shape[0]/self.c_omp*self.istep
+                self.xmin = 0
+                self.xmax =  self.xaxis_values[-1]
+                self.clims = [self.cax.get_array().min(), self.cax.get_array().max()]
+
 
             if self.parent.MainParamDict['SetxLim']:
                 if self.parent.MainParamDict['xLimsRelative']:

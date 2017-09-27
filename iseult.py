@@ -1217,39 +1217,91 @@ class SettingsFrame(Tk.Toplevel):
         ttk.Checkbutton(frm, text = "x limits & zooms relative to shock",
                         variable = self.xRelVar).grid(row = 11, columnspan = 3, sticky = Tk.W)
 
-        new_frame = ttk.Frame(frm)
-        self.TwoDSliceVar = Tk.StringVar()
-        self.TwoDSliceVar.set(str(self.parent.MainParamDict['2DSlice']))
+        framecb = ttk.Frame(frm)
 
-        self.units_list = []
-        for i in range(self.parent.MaxInd +1):
-            self.units_list.append(str(i*self.parent.istep/self.parent.c_omp))
-        self.TwoDSliceVarC_omp = Tk.StringVar()
-        self.TwoDSliceVarC_omp.set(self.units_list[self.parent.MainParamDict['2DSlice']])
+        ttk.Label(framecb, text='Choose 2D plane:').pack(side = Tk.LEFT, expand = 0)
+        self.PlaneVar = Tk.IntVar()
+        self.PlaneVar.set(self.parent.MainParamDict['2DSlicePlane'])
+        self.xybutton = ttk.Radiobutton(framecb,
+                            text='x-y',
+                            variable=self.PlaneVar,
+                            command = self.RadioPlane,
+                            value=0)
+        self.xybutton.pack(side = Tk.LEFT, expand = 0)
+        self.xzbutton = ttk.Radiobutton(framecb,
+                            text='x-z',
+                            variable=self.PlaneVar,
+                            command = self.RadioPlane,
+                            value=1)
+        self.xzbutton.pack(side = Tk.LEFT, expand = 0)
+        framecb.grid(row = 12, columnspan = 4)
+        framey = ttk.Frame(frm)
+        self.ySliceVar = Tk.IntVar()
+        self.ySliceVar.set(self.parent.ySlice)
+        self.units_listy = []
+        for i in range(self.parent.MaxYInd+1):
+            self.units_listy.append(str(i*self.parent.istep/self.parent.c_omp))
 
-        # An entry box that will let us choose the time-step
-        ttk.Label(new_frame, text='2d slice [c_omp]').pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+        self.ySliceVarC_omp = Tk.StringVar()
+        self.ySliceVarC_omp.set(self.units_listy[self.ySliceVar.get()])
+
+        labely = ttk.Label(framey, text='y-slice')#
+        labely.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+
 
         # A slider that will select the 2D slice in the simulation
-        self.slider = ttk.Scale(new_frame, from_=0, to=self.parent.MaxInd, command = self.ScaleHandler)
-        self.slider.set(self.TwoDSliceVar.get())
-        self.slider.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
+        self.slidery = ttk.Scale(framey, from_=0, to=self.parent.MaxYInd, command = self.yScaleHandler)
+        self.slidery.set(self.ySliceVar.get())
+        self.slidery.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
 
-        self.txtEnter = ttk.Entry(new_frame, textvariable=self.TwoDSliceVarC_omp, width=6)
-        self.txtEnter.pack(side=Tk.RIGHT, fill = Tk.BOTH, expand = 0)
 
+        self.txtEntery = ttk.Entry(framey, textvariable=self.ySliceVarC_omp, width=6)
+        self.txtEntery.pack(side=Tk.LEFT, fill = Tk.BOTH, expand = 0)
+        if self.parent.MaxYInd ==0:
+            self.txtEntery.state(['disabled'])
+            self.slidery.state(['disabled'])
+        ttk.Label(framey, text='[c_omp]').pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
         # bind releasing the moust button to updating the plots.
-        self.slider.bind("<ButtonRelease-1>", self.UpdateValue)
+        self.slidery.bind("<ButtonRelease-1>", self.yUpdateValue)
 
 
-        new_frame.grid(row = 12, columnspan =4)
+        framey.grid(row = 13, columnspan =4)
+
+        framez = ttk.Frame(frm)
+        self.zSliceVar = Tk.IntVar()
+        self.zSliceVar.set(int(np.around(self.parent.MainParamDict['zSlice']*self.parent.MaxZInd)))
+
+        self.units_listz = []
+        for i in range(self.parent.MaxZInd+1):
+            self.units_listz.append(str(i*self.parent.istep/self.parent.c_omp))
+
+        self.zSliceVarC_omp = Tk.StringVar()
+        self.zSliceVarC_omp.set(self.units_listz[self.zSliceVar.get()])
+
+        # An entry box that will let us choose the time-step
+        ttk.Label(framez, text='z-slice').pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+
+        # A slider that will select the 2D slice in the simulation
+        self.sliderz = ttk.Scale(framez, from_=0, to=self.parent.MaxZInd, command = self.zScaleHandler)
+        self.sliderz.set(self.zSliceVar.get())
+        self.sliderz.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
+
+        self.txtEnterz = ttk.Entry(framez, textvariable=self.zSliceVarC_omp, width=6)
+        self.txtEnterz.pack(side=Tk.LEFT, fill = Tk.BOTH, expand = 0)
+        ttk.Label(framez, text='[c_omp]').pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+        # bind releasing the moust button to updating the plots.
+        self.sliderz.bind("<ButtonRelease-1>", self.zUpdateValue)
+        if self.parent.MaxZInd ==0:
+            self.xzbutton.state(['disabled'])
+            self.txtEnterz.state(['disabled'])
+            self.sliderz.state(['disabled'])
 
 
-
+        framez.grid(row = 14, columnspan =4)
 
         cb = ttk.Checkbutton(frm, text = "Show Title",
                         variable = self.TitleVar)
-        cb.grid(row = 13, sticky = Tk.W)
+        cb.grid(row = 15, sticky = Tk.W)
         # Control whether or not axes are shared with a radio box:
         self.toLinkList = ['None', 'All spatial', 'All non p-x', 'All 2-D spatial']
         self.LinkedVar = Tk.IntVar()
@@ -1270,7 +1322,7 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Aspect = 1",
                                 variable = self.AspectVar)
-        cb.grid(row = 13, column = 1, sticky = Tk.W)
+        cb.grid(row = 15, column = 1, sticky = Tk.W)
 
         self.ConstantShockVar = Tk.IntVar()
         self.ConstantShockVar.set(self.parent.MainParamDict['ConstantShockVel'])
@@ -1278,8 +1330,12 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Constant Shock v",
                                 variable = self.ConstantShockVar)
-        cb.grid(row = 13, column = 2, sticky = Tk.W)
+        cb.grid(row = 15, column = 2, sticky = Tk.W)
 
+        self.Average1DVar = Tk.IntVar()
+        self.Average1DVar.set(self.parent.MainParamDict['Average1D'])
+        self.Average1DVar.trace('w', self.AverageChanged)
+        ttk.Checkbutton(frm, text='1D Average',variable = self.Average1DVar).grid(row = 16, column = 2, sticky = Tk.W)
 
         self.CbarOrientation = Tk.IntVar()
         self.CbarOrientation.set(self.parent.MainParamDict['HorizontalCbars'])
@@ -1287,7 +1343,7 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Horizontal Cbars",
                                 variable = self.CbarOrientation)
-        cb.grid(row = 14, sticky = Tk.W)
+        cb.grid(row = 16, sticky = Tk.W)
 
 
         self.LinkKVar = Tk.IntVar()
@@ -1296,32 +1352,46 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Share k-axes",
                                 variable = self.LinkKVar)
-        cb.grid(row = 14, column =1, sticky = Tk.W)
+        cb.grid(row = 16, column =1, sticky = Tk.W)
 
 
 
         self.LorentzBoostVar = Tk.IntVar()
         self.LorentzBoostVar.set(self.parent.MainParamDict['DoLorentzBoost'])
         self.LorentzBoostVar.trace('w', self.LorentzBoostChanged)
-        cb = ttk.Checkbutton(frm, text='Boost PhasePlots', variable =  self.LorentzBoostVar).grid(row = 15, sticky = Tk.W)
-        ttk.Label(frm, text='Gamma/Beta = \r (- for left boost)').grid(row= 15, rowspan = 2,column =1, sticky = Tk.E)
+        cb = ttk.Checkbutton(frm, text='Boost PhasePlots', variable =  self.LorentzBoostVar).grid(row = 17, sticky = Tk.W)
+        ttk.Label(frm, text='Gamma/Beta = \r (- for left boost)').grid(row= 17, rowspan = 2,column =1, sticky = Tk.E)
         self.GammaVar = Tk.StringVar()
         self.GammaVar.set(str(self.parent.MainParamDict['GammaBoost']))
-        ttk.Entry(frm, textvariable=self.GammaVar, width = 7).grid(row = 15, column = 2, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.GammaVar, width = 7).grid(row = 17, column = 2, sticky = Tk.N)
 
-    def ScaleHandler(self, e):
+    def yScaleHandler(self, e):
         # if changing the scale will change the value of the parameter, do so
-        if int(self.TwoDSliceVar.get()) != int(self.slider.get()):
-            self.TwoDSliceVar.set(str(int(self.slider.get())))
-            self.TwoDSliceVarC_omp.set(self.units_list[int(self.slider.get())])
+        if int(self.ySliceVar.get()) != int(self.slidery.get()):
+            self.ySliceVar.set(int(self.slidery.get()))
+            self.ySliceVarC_omp.set(self.units_listy[self.ySliceVar.get()])
+    def zScaleHandler(self, e):
+        # if changing the scale will change the value of the parameter, do so
+        if int(self.zSliceVar.get()) != int(self.sliderz.get()):
+            self.zSliceVar.set(int(self.sliderz.get()))
+            self.zSliceVarC_omp.set(self.units_listz[self.zSliceVar.get()])
 
-    def UpdateValue(self, e):
-        if int(self.TwoDSliceVar.get()) == self.parent.MainParamDict['2DSlice']:
+    def zUpdateValue(self, e):
+        if self.zSliceVar.get() == self.parent.zSlice:
             pass
 
         else:
-            self.parent.MainParamDict['2DSlice'] = int(self.TwoDSliceVar.get())
-            self.TwoDSliceVarC_omp.set(self.units_list[self.parent.MainParamDict['2DSlice']])
+            self.parent.MainParamDict['zSlice'] = float(self.zSliceVar.get())/self.parent.MaxZInd
+            self.zSliceVarC_omp.set(self.units_listz[self.zSliceVar.get()])
+            self.parent.RenewCanvas()
+
+    def yUpdateValue(self, e):
+        if self.ySliceVar.get() == self.parent.ySlice:
+            pass
+
+        else:
+            self.parent.MainParamDict['ySlice'] = float(self.ySliceVar.get())/self.parent.MaxYInd
+            self.ySliceVarC_omp.set(self.units_listy[self.ySliceVar.get()])
             self.parent.RenewCanvas()
 
 
@@ -1335,8 +1405,13 @@ class SettingsFrame(Tk.Toplevel):
 
 
     def ShockSpeedVarChanged(self, *args):
-        self.parent.MainParamDict['ConstantShockVel'] = self.ConstantShockVar.get()
-        self.parent.RenewCanvas(ForceRedraw = True)
+        if self.parent.MainParamDict['ConstantShockVel'] != self.ConstantShockVar.get():
+            self.parent.MainParamDict['ConstantShockVel'] = self.ConstantShockVar.get()
+            self.parent.RenewCanvas(ForceRedraw = True)
+    def AverageChanged(self, *args):
+        if self.parent.MainParamDict['Average1D'] != self.Average1DVar.get():
+            self.parent.MainParamDict['Average1D'] = self.Average1DVar.get()
+            self.parent.RenewCanvas()
 
     def OrientationChanged(self, *args):
         if self.CbarOrientation.get() == self.parent.MainParamDict['HorizontalCbars']:
@@ -1381,6 +1456,13 @@ class SettingsFrame(Tk.Toplevel):
         else:
             self.parent.MainParamDict['LinkSpatial'] = self.LinkedVar.get()
             self.parent.RenewCanvas(ForceRedraw = True)
+    def RadioPlane(self, *args):
+        # If the shared axes are changed, the whole plot must be redrawn
+        if self.PlaneVar.get() == self.parent.MainParamDict['2DSlicePlanel']:
+            pass
+        else:
+            self.parent.MainParamDict['2DSlicePlane'] = self.PlaneVar.get()
+            self.parent.RenewCanvas()
 
 
     def LinkKChanged(self, *args):
@@ -1529,26 +1611,43 @@ class SettingsFrame(Tk.Toplevel):
             #if they type in random stuff, just set it to the param value
             self.PrtlStrideVar.set(str(self.parent.MainParamDict['PrtlStride']))
         return to_reload
+
     def CheckIfSliceChanged(self):
         to_reload = False
+        try:
+            #make sure the user types in a float
+            self.ySliceVar.set(int(np.around(float(self.ySliceVarC_omp.get())*self.parent.c_omp/self.parent.istep)))
+            if int(self.ySliceVar.get()) < 0:
+                self.ySliceVar.set(0)
+
+            elif int(self.ySliceVar.get()) > self.parent.MaxYInd:
+                self.ySliceVar.set(self.parent.MaxYInd)
+            self.ySliceVarC_omp.set(self.units_listy[self.ySliceVar.get()])
+            if self.ySliceVar.get() != int(np.around(self.parent.MainParamDict['ySlice']*self.parent.MaxYInd)):
+                self.parent.MainParamDict['ySlice'] = float(self.ySliceVar.get())/self.parent.MaxYInd
+                self.slidery.set(self.ySliceVar.get())
+                to_reload += True
+        except ValueError:
+            #if they type in random stuff, just set it to the param value
+            self.ySliceVarC_omp.set(self.units_listy[self.ySliceVar.get()])
 
         try:
-            #make sure the user types in a int
-            self.TwoDSliceVar.set(int(int(self.TwoDSliceVarC_omp.get())*self.parent.c_omp/self.parent.istep))
-            if int(self.TwoDSliceVar.get()) < 0:
-                self.TwoDSliceVar.set('0')
+            #make sure the user types in a float
+            self.zSliceVar.set(int(np.around(float(self.zSliceVarC_omp.get())*self.parent.c_omp/self.parent.istep)))
+            if int(self.zSliceVar.get()) < 0:
+                self.zSliceVar.set(0)
 
-            elif int(self.TwoDSliceVar.get()) > self.parent.MaxInd:
-                self.TwoDSliceVar.set(str(self.parent.MaxInd))#*self.parent.istep/self.parent.c_omp))
-
-            if int(self.TwoDSliceVar.get()) != self.parent.MainParamDict['2DSlice']:
-                self.parent.MainParamDict['2DSlice'] = int(self.TwoDSliceVar.get())
-                self.TwoDSliceVarC_omp.set(self.units_list[self.parent.MainParamDict['2DSlice']])
+            elif int(self.zSliceVar.get()) > self.parent.MaxZInd:
+                self.zSliceVar.set(self.parent.MaxZInd)
+            self.zSliceVarC_omp.set(self.units_listz[self.zSliceVar.get()])
+            if self.zSliceVar.get() != int(np.around(self.parent.MainParamDict['zSlice']*self.parent.MaxZInd)):
+                self.parent.MainParamDict['zSlice'] = float(self.OneDSliceVar.get())/self.parent.MaxZInd
+                self.sliderz.set(self.zSliceVar.get())
                 to_reload += True
 
         except ValueError:
             #if they type in random stuff, just set it to the param value
-            self.TwoDSliceVar.set(str(int(self.parent.MainParamDict['2DSlice']*self.parent.istep/self.parent.c_omp)))
+            self.TwoDSliceVarC_omp.set(self.units_list2D[self.TwoDSliceVar.get()])
         return to_reload
 
 
@@ -1976,8 +2075,10 @@ class MainApp(Tk.Tk):
         # First create MainParamDict with the default parameters,
         # the dictionary that will hold the parameters for the program.
         # See ./iseult_configs/Default.cfg for a description of what each parameter does.
-        self.MainParamDict = {'2DSlice': 0,
+        self.MainParamDict = {'zSlice': 0, # THIS IS A FLOAT WHICH IS THE RELATIVE POSITION OF THE 2D SLICE 0->1
                               '2DSlicePlane': 0, # 0 = x-y plane, 1 == x-z plane
+                              'Average1D': 0,
+                              'ySlice': 0.5, # THIS IS A FLOAT WHICH IS THE RELATIVE POSITION OF THE 1D SLICE 0->1
                               'WindowSize': '1200x700',
                               'yTop': 100.0,
                               'yBottom': 0.0,
@@ -2038,7 +2139,7 @@ class MainApp(Tk.Tk):
         BoolList = ['Reload2End', 'ClearFig', 'ShowTitle', 'DoLorentzBoost',
                     'HorizontalCbars', 'SetxLim', 'SetyLim', 'SetkLim', 'LinkK',
                     'LoopPlayback', 'Recording', 'FFTRelative', 'xLimsRelative',
-                    'ConstantShockVel']
+                    'ConstantShockVel', 'Average1D']
 
 
         for elm in BoolList:
@@ -2063,7 +2164,7 @@ class MainApp(Tk.Tk):
                     #'ElectronLeft', 'ElectronRight', 'IonLeft', 'IonRight',
                     'FFTLeft', 'FFTRight',
                     'xLeft', 'xRight', 'yBottom', 'yTop', 'kLeft', 'kRight',
-                    'WaitTime']
+                    'WaitTime', 'ySlice', 'zSlice']
 
         for elm in FloatList:
             if elm.lower() in config.options('main'):
@@ -2524,15 +2625,16 @@ class MainApp(Tk.Tk):
         with h5py.File(os.path.join(self.dirname,self.PathDict['Param'][self.TimeStep.value-1]), 'r') as f:
             self.c_omp = f['c_omp'][0]
             self.istep = f['istep'][0]
+
+        # FIND THE SLICE
         with h5py.File(os.path.join(self.dirname,self.PathDict['Flds'][self.TimeStep.value-1]), 'r') as f:
-            self.MaxInd = f['bx'].shape[0]-1
-            if self.MainParamDict['2DSlice'] > self.MaxInd:
-                #the 2d slice is too big... set to Maximum.
-                self.MainParamDict['2DSlice'] = self.MaxInd
-                if self.settings_window is None:
-                    pass
-                else:
-                    self.settings_window.TwoDSliceVar.set(str(self.MainParamDict['2DSlice']*self.istep/self.c_omp))
+            self.MaxZInd = f['bx'].shape[0]-1
+            self.MaxYInd = f['bx'].shape[1]-1
+
+            self.ySlice = int(np.around(self.MainParamDict['ySlice']*self.MaxYInd))
+            self.zSlice = int(np.around(self.MainParamDict['zSlice']*self.MaxZInd))
+
+
         # See if we are in a new Directory
         if self.NewDirectory:
             # Create a new Dictionary that will have StateHashes of visited steps

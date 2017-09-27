@@ -14,7 +14,7 @@ class BPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
 
     plot_param_dict = {'twoD': 0,
-                       'mag_plot_type':0, # 0 = theta_b, 1 = xi_perp, 2 = |deltaB|/B0, 3 = |deltaB_perp|/B0, 4 = |deltaB_para|/b0
+                       'mag_plot_type':0, # 0 = theta_b, 2 = |deltaB|/B0, 3 = |deltaB_perp|/B0, 4 = |deltaB_para|/b0
                        'show_cbar': True,
                        'v_min': 0,
                        'v_max' : 10,
@@ -85,7 +85,6 @@ class BPanel:
         self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
         self.istep = self.FigWrap.LoadKey('istep')[0]
         self.mag_color = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.5)
-        self.ind = self.parent.MainParamDict['2DSlice']
 
         if self.GetPlotParam('cmap') == 'None':
             if self.GetPlotParam('mag_plot_type')==1:
@@ -107,50 +106,43 @@ class BPanel:
         if self.GetPlotParam('mag_plot_type') == 0: # set f to thetaB
             self.ylabel = r'$\theta_B$'
             self.ann_label = r'$\theta_B$'
-            if 'thetaB'+str(self.ind) in self.parent.DataDict.keys():
-                self.f = self.parent.DataDict['thetaB'+str(self.ind)]
+            if 'thetaB' in self.parent.DataDict.keys():
+                self.f = self.parent.DataDict['thetaB']
             else:
-                bx = self.FigWrap.LoadKey('bx')[self.ind,:,:]
-                by = self.FigWrap.LoadKey('by')[self.ind,:,:]
+                bx = self.FigWrap.LoadKey('bx')
+                by = self.FigWrap.LoadKey('by')
+                #bz = self.FigWrap.LoadKey('bz')
+                #self.f = np.rad2deg(np.arctan2(np.sqrt(by**2+bz**2),bx))
                 self.f = np.rad2deg(np.arctan2(by,bx))
-                self.parent.DataDict['thetaB'+str(self.ind)] = self.f
+                self.parent.DataDict['thetaB'] = self.f
+        #removing this field
+        #if self.GetPlotParam('mag_plot_type') == 1: # set f to xi_perp the phase of the perpendicular magnetic field
+        #    self.ylabel = r'$\xi_\perp$'
+        #    self.ann_label = r'$\xi_\perp$'
+        #
+        #    if 'xi_perp'+str(self.ind) in self.parent.DataDict.keys():
+        #        self.f = self.parent.DataDict['xi_perp'+str(self.ind)]
+        #    else:
+        #        if np.abs(self.parent.bz0) <= 1E-6:
 
-            self.oneDslice = self.f.shape[0]/2
-            # Have we already calculated min/max?
-            if 'thetamin_max'+str(self.ind) in self.parent.DataDict.keys():
-                self.min_max = self.parent.DataDict['thetamin_max'+str(self.ind)]
+        #            sign = np.sign(self.FigWrap.LoadKey('bx')[self.ind,:,:]*np.tan(self.parent.btheta)-self.FigWrap.LoadKey('by')[self.ind,:,:])
+        #            delta_bx_perp = (self.FigWrap.LoadKey('bx')[self.ind,:,:]-self.parent.bx0)*np.sin(self.parent.btheta)
+        #            delta_by_perp = (self.FigWrap.LoadKey('by')[self.ind,:,:]-self.parent.by0)*np.cos(self.parent.btheta)
+        #            delta_b_perp = sign*np.sqrt(delta_bx_perp**2+delta_by_perp**2)
+        #            self.f = np.rad2deg(np.arctan2(self.FigWrap.LoadKey('bz')[0,:,:],delta_b_perp))
+        #            self.parent.DataDict['xi_perp'] = self.f
+        #        else:
+        #            self.f = 0
+        #    self.oneDslice = self.f.shape[0]/2
+        #    # Have we already calculated min/max?
+        #    if 'xi_perpmin_max'+str(self.ind) in self.parent.DataDict.keys():
+        #    self.min_max = self.parent.DataDict['xi_perpmin_max'+str(self.ind)]
 
-            else:
-                self.min_max =  self.min_max_finder(self.f)
-                self.parent.DataDict['thetamin_max'+str(self.ind)] = list(self.min_max)
+        #    else:
+        #        self.min_max =  self.min_max_finder(self.f)
+        #        self.parent.DataDict['xi_perpmin_max'+str(self.ind)] = list(self.min_max)
 
-        if self.GetPlotParam('mag_plot_type') == 1: # set f to xi_perp the phase of the perpendicular magnetic field
-            self.ylabel = r'$\xi_\perp$'
-            self.ann_label = r'$\xi_\perp$'
-            if 'xi_perp'+str(self.ind) in self.parent.DataDict.keys():
-                self.f = self.parent.DataDict['xi_perp'+str(self.ind)]
-            else:
-                if np.abs(self.parent.bz0) <= 1E-6:
-
-                    sign = np.sign(self.FigWrap.LoadKey('bx')[self.ind,:,:]*np.tan(self.parent.btheta)-self.FigWrap.LoadKey('by')[self.ind,:,:])
-                    delta_bx_perp = (self.FigWrap.LoadKey('bx')[self.ind,:,:]-self.parent.bx0)*np.sin(self.parent.btheta)
-                    delta_by_perp = (self.FigWrap.LoadKey('by')[self.ind,:,:]-self.parent.by0)*np.cos(self.parent.btheta)
-                    delta_b_perp = sign*np.sqrt(delta_bx_perp**2+delta_by_perp**2)
-                    self.f = np.rad2deg(np.arctan2(self.FigWrap.LoadKey('bz')[0,:,:],delta_b_perp))
-                    self.parent.DataDict['xi_perp'] = self.f
-                else:
-                    self.f = 0
-            self.oneDslice = self.f.shape[0]/2
-            # Have we already calculated min/max?
-            if 'xi_perpmin_max'+str(self.ind) in self.parent.DataDict.keys():
-                self.min_max = self.parent.DataDict['xi_perpmin_max'+str(self.ind)]
-
-            else:
-                self.min_max =  self.min_max_finder(self.f)
-                self.parent.DataDict['xi_perpmin_max'+str(self.ind)] = list(self.min_max)
-
-
-        if self.GetPlotParam('mag_plot_type') == 2: # Set f to deltaB/B0
+        if self.GetPlotParam('mag_plot_type') == 1: # Set f to deltaB/B0
             if ~np.isnan(self.parent.btheta):
                 self.ylabel = r'$|\delta B|/B_0$'
                 self.ann_label = r'$|\delta B|/B_0$'
@@ -158,9 +150,9 @@ class BPanel:
                 self.ylabel = r'$|\delta B|$'
                 self.ann_label = r'$|\delta B|$'
 
-            bx = self.FigWrap.LoadKey('bx')[self.ind,:,:]
-            by = self.FigWrap.LoadKey('by')[self.ind,:,:]
-            bz = self.FigWrap.LoadKey('bz')[self.ind,:,:]
+            bx = self.FigWrap.LoadKey('bx')
+            by = self.FigWrap.LoadKey('by')
+            bz = self.FigWrap.LoadKey('bz')
 
             deltaB = (bx-self.parent.bx0)**2
             deltaB += (by-self.parent.by0)**2
@@ -168,49 +160,28 @@ class BPanel:
             self.f = np.sqrt(deltaB)/self.parent.b0
 
 
-            self.oneDslice = self.f.shape[0]/2
-
-            # Have we already calculated min/max?
-            if 'deltaBmin_max'+str(self.ind) in self.parent.DataDict.keys():
-                self.min_max = self.parent.DataDict['deltaBmin_max'+str(self.ind)]
-
-            else:
-                self.min_max = self.min_max_finder(self.f)
-                self.parent.DataDict['deltaBmin_max'+str(self.ind)] = list(self.min_max)
-
-        if self.GetPlotParam('mag_plot_type') == 3: # Set f to deltaB_perp/B0
+        if self.GetPlotParam('mag_plot_type') == 2: # Set f to deltaB_perp/B0
             if ~np.isnan(self.parent.btheta):
                 self.ylabel = r'$|\delta B_\perp|/B_0$'
                 self.ann_label = r'$|\delta B_\perp|/B_0$'
             else:
                 self.ylabel = r'$|\delta B_\perp|$'
                 self.ann_label = r'$|\delta B_\perp|$'
-            if 'delta_b_perp'+str(self.ind) in self.parent.DataDict.keys():
-                self.f = self.parent.DataDict['delta_b_perp'+str(self.ind)]
+            if 'deltaB_perp' in self.parent.DataDict.keys():
+                self.f = self.parent.DataDict['deltaB_perp']
             elif np.isnan(self.parent.btheta):
                 self.f = 1.0
             else:
                 if np.abs(self.parent.bz0) <= 1E-6:
-                # Decompose the perpendicular components of the magnetic fields into two parts
-                # one is bz, the other is the in plane components
-
-                    #delta_bx_perp = (self.FigWrap.LoadKey('bx')[0,:,:]-self.parent.bx0)*np.sin(self.parent.btheta)
-                    delta_by_perp = (self.FigWrap.LoadKey('by')[self.ind,:,:]-self.parent.by0)#*np.cos(self.parent.btheta)
-                    #self.f = np.sqrt(delta_bx_perp**2+delta_by_perp**2+self.FigWrap.LoadKey('bz')[0,:,:]**2)/self.parent.b0
-                    self.f = np.sqrt(delta_by_perp**2+self.FigWrap.LoadKey('bz')[self.ind,:,:]**2)/self.parent.b0
+                    # Decompose the perpendicular components of the magnetic fields into two parts
+                    # one is bz, the other is the in plane components
+                    delta_by_perp = (self.FigWrap.LoadKey('by')-self.parent.by0)#*np.cos(self.parent.btheta)
+                    self.f = np.sqrt(delta_by_perp**2+(self.FigWrap.LoadKey('bz')-self.parent.bz0)**2)/self.parent.b0
                     self.parent.DataDict['delta_b_perp'] = self.f
 
-            self.oneDslice = self.f.shape[0]/2
+                self.parent.DataDict['deltaB_perp'] = self.f
 
-            # Have we already calculated min/max?
-            if 'deltaB_perp_min_max' in self.parent.DataDict.keys():
-                self.min_max = self.parent.DataDict['deltaB_perp_min_max']
-
-            else:
-                self.min_max = self.min_max_finder(self.f)
-                self.parent.DataDict['deltaB_perp_min_max'] = list(self.min_max)
-
-        if self.GetPlotParam('mag_plot_type') == 4: # Set f to deltaB_para/B0
+        if self.GetPlotParam('mag_plot_type') == 3: # Set f to deltaB_para/B0
             if ~np.isnan(self.parent.btheta):
                 self.ylabel = r'$\delta B_\parallel/B_0$'
                 self.ann_label = r'$\delta B_\parallel/B_0$'
@@ -218,8 +189,8 @@ class BPanel:
                 self.ylabel = r'$\delta B_\parallel$'
                 self.ann_label = r'$\delta B_\parallel$'
 
-            if 'delta_b_para'+str(self.ind) in self.parent.DataDict.keys():
-                self.f = self.parent.DataDict['delta_b_para'+str(self.ind)]
+            if 'deltaB_para' in self.parent.DataDict.keys():
+                self.f = self.parent.DataDict['deltaB_para']
             elif np.isnan(self.parent.btheta):
                 self.f = 1.0
             else:
@@ -228,31 +199,10 @@ class BPanel:
                 # one is bz, the other is the in plane components
 
                     # First take the dot product:
-                    b_para = self.FigWrap.LoadKey('bx')[self.ind,:,:]#*self.parent.bx0+self.FigWrap.LoadKey('by')[0,:,:]*self.parent.by0
+                    b_para = self.FigWrap.LoadKey('bx')#*self.parent.bx0+self.FigWrap.LoadKey('by')[0,:,:]*self.parent.by0
                     #b_para *= self.parent.b0**(-1)
                     self.f = (b_para-self.parent.b0)/self.parent.b0
-                    self.parent.DataDict['delta_b_para'+str(self.ind)] = self.f
-
-            self.oneDslice = self.f.shape[0]/2
-
-            # Have we already calculated min/max?
-            if 'deltaB_para_min_max'+str(self.ind) in self.parent.DataDict.keys():
-                self.min_max = self.parent.DataDict['deltaB_para_min_max'+str(self.ind)]
-
-            else:
-                self.min_max = self.min_max_finder(self.f)
-                self.parent.DataDict['deltaB_para_min_max'+str(self.ind)] = list(self.min_max)
-
-
-    def min_max_finder(self, arr):
-        # find 1d lims
-        oneD_lims = [arr[self.oneDslice,:].min(), arr[self.oneDslice,:].max()]
-        # now give it a bit of spacing, a 2% percent difference of the distance
-        dist = oneD_lims[1]-oneD_lims[0]
-        oneD_lims[0] -= 0.04*dist
-        oneD_lims[1] += 0.04*dist
-        twoD_lims = [arr.min(), arr.max()]
-        return [oneD_lims, twoD_lims]
+                    self.parent.DataDict['deltaB_para'] = self.f
 
     def draw(self):
 
@@ -299,25 +249,31 @@ class BPanel:
             else:
                 self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
 
-            self.ymin = 0
-            self.ymax =  self.f.shape[0]/self.c_omp*self.istep
-            self.xmin = 0
-            self.xmax =  self.f.shape[1]/self.c_omp*self.istep
+            if self.parent.MainParamDict['2DSlicePlane'] == 0: # x-y plane
+                if self.parent.MainParamDict['ImageAspect']:
+                    self.cax = self.axes.imshow(self.f[self.parent.zSlice,:,:], origin = 'lower', norm = self.norm())
+                else:
+                    self.cax = self.axes.imshow(self.f[self.parent.zSlice,:,:], origin = 'lower', norm = self.norm(),
+                                            aspect= 'auto')
+            elif self.parent.MainParamDict['2DSlicePlane'] == 1: # x-y plane
+                if self.parent.MainParamDict['ImageAspect']:
+                    self.cax = self.axes.imshow(self.f[:, self.parent.ySlice,:], origin = 'lower', norm = self.norm())
+                else:
+                    self.cax = self.axes.imshow(self.f[:,self.parent.ySlice,:], origin = 'lower', norm = self.norm(),
+                                            aspect= 'auto')
 
-            self.vmin = self.f.min()
+            self.ymin = 0
+            self.ymax =  self.cax.get_array().shape[0]/self.c_omp*self.istep
+            self.xmin = 0
+            self.xmax =  self.cax.get_array().shape[1]/self.c_omp*self.istep
+
+            self.vmin = self.cax.get_array().min()
             if self.GetPlotParam('set_v_min'):
                 self.vmin = self.GetPlotParam('v_min')
-            self.vmax = self.f.max()
+            self.vmax = self.cax.get_array().max()
             if self.GetPlotParam('set_v_max'):
                 self.vmax = self.GetPlotParam('v_max')
-
-            if self.parent.MainParamDict['ImageAspect']:
-                self.cax = self.axes.imshow(self.f, origin = 'lower', norm = self.norm())
-            else:
-                self.cax = self.axes.imshow(self.f, origin = 'lower', norm = self.norm(),
-                                            aspect= 'auto')
             self.cax.set_cmap(new_cmaps.cmaps[self.cmap])
-
             self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
             self.cax.norm.vmin = self.vmin
             self.cax.norm.vmax = self.vmax
@@ -397,7 +353,10 @@ class BPanel:
             else:
                 self.axes.set_ylim(self.ymin, self.ymax)
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
-            self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            if self.parent.MainParamDict['2DSlicePlane'] == 0:
+                self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            if self.parent.MainParamDict['2DSlicePlane'] == 1:
+                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
         else:
             if self.parent.MainParamDict['LinkSpatial'] != 0 and self.parent.MainParamDict['LinkSpatial'] != 3:
@@ -410,7 +369,18 @@ class BPanel:
                 self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
 
             self.annotate_pos = [0.8,0.9]
-            self.line = self.axes.plot(self.xaxis_values, self.f[self.oneDslice,:], color = self.mag_color)
+            # Make the 1-D plots
+            if self.parent.MainParamDict['Average1D']:
+                self.line = self.axes.plot(self.xaxis_values, np.average(self.f.reshape(-1,self.f.shape[-1]), axis = 0), color = self.mag_color)
+            else:
+                self.line = self.axes.plot(self.xaxis_values, self.f[self.parent.zSlice,self.parent.ySlice,:], color = self.mag_color)
+
+            # Set the Ymin/Ymax. Unnecessary.
+            min_max = [self.line[0].get_data()[1].min(), self.line[0].get_data()[1].max()]
+            dist = min_max[1]-min_max[0]
+            min_max[0] -= 0.04*dist
+            min_max[1] += 0.04*dist
+            self.axes.set_ylim(min_max)
 
             self.shock_line = self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
                         PathEffects.Normal()])
@@ -488,8 +458,16 @@ class BPanel:
 
         # First do the 1D plots, because it is simpler
         if self.GetPlotParam('twoD') == 0:
-            self.line[0].set_data(self.xaxis_values, self.f[self.oneDslice,:])
-            self.axes.set_ylim(self.min_max[0])
+            if self.parent.MainParamDict['Average1D']:
+                self.line[0].set_data(self.xaxis_values, np.average(self.f.reshape(-1,self.f.shape[-1]), axis = 0))
+            else:
+                self.line[0].set_data(self.xaxis_values, self.f[self.parent.zSlice,self.parent.ySlice,:])
+
+            min_max = [self.line[0].get_data()[1].min(), self.line[0].get_data()[1].max()]
+            dist = min_max[1]-min_max[0]
+            min_max[0] -= 0.04*dist
+            min_max[1] += 0.04*dist
+            self.axes.set_ylim(min_max)
             if self.GetPlotParam('show_shock'):
                 self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
             # xlims
@@ -509,13 +487,17 @@ class BPanel:
             self.axes.set_ylabel(self.ylabel, size = self.parent.MainParamDict['AxLabelSize'])
 
         else: # Now refresh the plot if it is 2D
-            self.cax.set_data(self.f)
+            if self.parent.MainParamDict['2DSlicePlane'] == 0: # x-y plane
+                self.cax.set_data(self.f[self.parent.zSlice,:,:])
+            elif self.parent.MainParamDict['2DSlicePlane'] == 1: # x-y plane
+                self.cax.set_data(self.f[:,self.parent.ySlice,:])
+
             self.ymin = 0
-            self.ymax =  self.f.shape[0]/self.c_omp*self.istep
+            self.ymax =  self.cax.get_array().shape[0]/self.c_omp*self.istep
             self.xmin = 0
             self.xmax = self.xaxis_values[-1]
             self.TwoDan.set_text(self.ann_label)
-            self.clims = np.copy(self.min_max[1])
+            self.clims = np.copy([self.cax.get_array().min(), self.cax.get_array().max()])
 
             if self.parent.MainParamDict['SetxLim']:
                 if self.parent.MainParamDict['xLimsRelative']:
@@ -539,6 +521,10 @@ class BPanel:
             self.cax.set_clim(self.clims)
 
             self.CbarTickFormatter()
+            if self.parent.MainParamDict['2DSlicePlane'] == 0:
+                self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            if self.parent.MainParamDict['2DSlicePlane'] == 1:
+                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
             if self.GetPlotParam('show_shock'):
                 self.shockline_2d.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
@@ -656,7 +642,7 @@ class BSettings(Tk.Toplevel):
         cb.grid(row = 1, sticky = Tk.W)
 
         # the Radiobox Control to choose the Field Type
-        self.MagList = ['Theta B', 'xi_perp','Delta B/B_0','Delta B_perp', 'Delta B_para']
+        self.MagList = ['Theta B','Delta B/B_0','Delta B_perp', 'Delta B_para']
         self.MagTypeVar  = Tk.IntVar()
         self.MagTypeVar.set(self.parent.GetPlotParam('mag_plot_type'))
 
@@ -860,23 +846,7 @@ class BSettings(Tk.Toplevel):
         if self.MagTypeVar.get() == self.parent.GetPlotParam('mag_plot_type'):
             pass
         else:
-            if self.parent.GetPlotParam('twoD'):
-                if self.parent.GetPlotParam('mag_plot_type') == 1:
-                    if self.parent.GetPlotParam('cmap') == None:
-                        if self.parent.GetPlotParam('UseDivCmap'):
-                            self.parent.cmap = self.parent.parent.MainParamDict['DivColorMap']
-                        else:
-                            self.parent.cmap = self.parent.parent.MainParamDict['ColorMap']
-                        self.parent.cax.set_cmap(new_cmaps.cmaps[self.parent.cmap])
-                        self.parent.cbar.set_cmap(new_cmaps.cmaps[self.parent.cmap])
-                elif self.MagTypeVar.get() == 1:
-                    if self.parent.GetPlotParam('cmap') == None:
-                        self.parent.cmap = 'phase'
-                        self.parent.cax.set_cmap(new_cmaps.cmaps[self.parent.cmap])
-                        self.parent.cbar.set_cmap(new_cmaps.cmaps[self.parent.cmap])
-
             self.parent.SetPlotParam('mag_plot_type', self.MagTypeVar.get())
-
 
     def TxtEnter(self, e):
         self.FieldsCallback()

@@ -114,67 +114,24 @@ class DensPanel:
         # get c_omp and istep to convert cells to physical units
         self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
         self.istep = self.FigWrap.LoadKey('istep')[0]
-
-        if self.parent.MainParamDict['2DSlicePlane'] == 0:
-            self.dens = self.FigWrap.LoadKey('dens')[self.parent.MainParamDict['2DSlice'],:,:]
-        if self.parent.MainParamDict['2DSlicePlane'] == 1:
-            self.dens = np.swapaxes(self.FigWrap.LoadKey('dens'), 0,1)[self.parent.MainParamDict['2DSlice'],:,:]
-
-        self.oneDslice = self.dens.shape[0]/2
-
-        # see if the min/max of all the arrays has aready been calculated.
-        if 'dens_min_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane']) in self.parent.DataDict.keys():
-            self.dens_min_max = self.parent.DataDict['dens_min_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])]
-        else:
-            self.dens_min_max = self.min_max_finder(self.dens)
-            self.parent.DataDict['dens_min_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])] = self.dens_min_max
-
+        self.dens = self.FigWrap.LoadKey('dens')[:,:,:]
 
         # Now calculate rho if needed.
         if self.GetPlotParam('dens_type') == 1:
-
-            if 'rho'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane']) in self.parent.DataDict.keys():
-                self.rho = self.parent.DataDict['rho'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])]
+            if 'rho' in self.parent.DataDict.keys():
+                self.rho = self.parent.DataDict['rho']
             else:
-                if self.parent.MainParamDict['2DSlicePlane'] == 0:
-                    self.rho = 2*self.FigWrap.LoadKey('densi')[self.parent.MainParamDict['2DSlice'],:,:] - self.FigWrap.LoadKey('dens')[self.parent.MainParamDict['2DSlice'],:,:]
-                if self.parent.MainParamDict['2DSlicePlane'] == 1:
-                    self.rho = 2*np.swapaxes(self.FigWrap.LoadKey('densi'),0,1)[self.parent.MainParamDict['2DSlice'],:,:] - np.swapaxes(self.FigWrap.LoadKey('dens'),0,1)[self.parent.MainParamDict['2DSlice'],:,:]
-
-                self.parent.DataDict['rho'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])] = self.rho
-
-            # Handle the min/max
-            if 'rho_min_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane']) in self.parent.DataDict.keys():
-                self.rho_min_max = self.parent.DataDict['rho_min_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])]
-            else:
-                self.rho_min_max = self.min_max_finder(self.rho)
-                self.parent.DataDict['rho_min_max'+str(self.parent.MainParamDict['2DSlice'])+str(self.parent.MainParamDict['2DSlicePlane'])] = self.rho_min_max
-
-
-
+                self.rho = 2*self.FigWrap.LoadKey('densi')[:,:,:] - self.dens
+                self.parent.DataDict['rho'] = self.rho
 
         if 'xaxis_values' in self.parent.DataDict.keys():
             # Generate the x and y axes
             self.xaxis_values = self.parent.DataDict['xaxis_values']
         else:
-            self.xaxis_values = np.arange(self.dens.shape[1])/self.c_omp*self.istep
+            self.xaxis_values = np.arange(self.dens.shape[2])/self.c_omp*self.istep
             self.parent.DataDict['xaxis_values'] = self.xaxis_values
         # y values not needed so commenting out
         # self.y_values =  np.arange(self.zval.shape[0])/self.c_omp*self.istep
-
-    def min_max_finder(self, arr):
-        # find 1d lims
-        oneD_lims = [arr[self.oneDslice,:].min(), arr[self.oneDslice,:].max()]
-        # now give it a bit of spacing, a 2% percent difference of the distance
-        dist = oneD_lims[1]-oneD_lims[0]
-        if oneD_lims[0] <=.01*dist and oneD_lims[0]>=0:
-            # the limit is sufficiently close to zero, do nothing.
-            oneD_lims[0] = 0
-        else:
-            oneD_lims[0] -= 0.04*dist
-        oneD_lims[1] += 0.04*dist
-        twoD_lims = [arr.min(), arr.max()]
-        return [oneD_lims, twoD_lims]
 
     def draw(self):
         if self.GetPlotParam('OutlineText'):
@@ -228,25 +185,31 @@ class DensPanel:
                 self.zval = self.rho
                 self.two_d_label = r'$\rho$'
 
-            self.ymin = 0
-            self.ymax =  self.zval.shape[0]/self.c_omp*self.istep
-            self.xmin = 0
-            self.xmax =  self.zval.shape[1]/self.c_omp*self.istep
+            if self.parent.MainParamDict['2DSlice'] ==0: # x-y plane
+                if self.parent.MainParamDict['ImageAspect']:
+                    self.cax = self.axes.imshow(self.zval[self.parent.zSlice,:,:], norm = self.norm(), origin = 'lower')
+                else:
+                    self.cax = self.axes.imshow(self.zval[self.parent.zSlice,:,:], norm = self.norm(), origin = 'lower',
+                                                aspect = 'auto')
+            elif self.parent.MainParamDict['2DSlice'] ==1: # x-z plane
+                if self.parent.MainParamDict['ImageAspect']:
+                    self.cax = self.axes.imshow(self.zval[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower')
+                else:
+                    self.cax = self.axes.imshow(self.zval[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower',
+                                                aspect = 'auto')
 
-            self.vmin = self.zval.min()
+
+            self.ymin = 0
+            self.ymax =  self.cax.get_array().shape[0]/self.c_omp*self.istep
+            self.xmin = 0
+            self.xmax =  self.cax.get_array().shape[1]/self.c_omp*self.istep
+
+            self.vmin = self.cax.get_array().min()
             if self.GetPlotParam('set_v_min'):
                 self.vmin = self.GetPlotParam('v_min')
-            self.vmax = self.zval.max()
+            self.vmax = self.cax.get_array().max()
             if self.GetPlotParam('set_v_max'):
                 self.vmax = self.GetPlotParam('v_max')
-
-
-            if self.parent.MainParamDict['ImageAspect']:
-                self.cax = self.axes.imshow(self.zval, norm = self.norm(), origin = 'lower')
-            else:
-                self.cax = self.axes.imshow(self.zval, norm = self.norm(), origin = 'lower',
-                                            aspect = 'auto')
-
             self.cax.set_cmap(new_cmaps.cmaps[self.cmap])
             self.cax.set_extent([self.xmin, self.xmax, self.ymin, self.ymax])
             self.cax.norm.vmin = self.vmin
@@ -348,32 +311,27 @@ class DensPanel:
                 self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
 
             # Make the 1-D plots
-            if self.GetPlotParam('normalize_density'):
-                self.linedens = self.axes.plot(self.xaxis_values, self.dens[self.oneDslice,:]/self.ppc0, color = self.dens_color)
+            if self.parent.MainParamDict['Average1D']:
+                self.linedens = self.axes.plot(self.xaxis_values, np.average(self.dens.reshape(-1,self.dens.shape[-1]), axis = 0), color = self.dens_color)
             else:
-                self.linedens = self.axes.plot(self.xaxis_values, self.dens[self.oneDslice,:], color = self.dens_color)
+                self.linedens = self.axes.plot(self.xaxis_values, self.dens[self.parent.zSlice,self.parent.ySlice,:], color = self.dens_color)
 
-            self.linedens[0].set_visible(self.GetPlotParam('dens_type')==0) #visible if dens_type == 0
-
-            self.linerho = self.axes.plot(self.xaxis_values, self.dens[self.oneDslice,:], color = self.dens_color)
-            if self.GetPlotParam('dens_type')==1:
-                self.linerho[0].set_data(self.xaxis_values, self.rho[self.oneDslice,:])
-                self.axes.set_ylim(self.rho_min_max[0])
-                self.linerho[0].set_visible(True)
-            else:
-                self.linerho[0].set_visible(False)
-
-            #### Set the ylims... there is a problem where it scales the ylims for the invisible lines:
             if self.GetPlotParam('dens_type') == 0:
                 if self.GetPlotParam('normalize_density'):
-                    self.axes.set_ylim(self.dens_min_max[0]/self.ppc0)
-                else:
-                    self.axes.set_ylim(self.dens_min_max[0])
-            else:
-                self.axes.set_ylim(self.rho_min_max[0])
+                    self.linedens[0].set_data(self.linedens[0].get_data()[0], self.linedens[0].get_data()[1]*self.ppc0**(-1))
 
+            elif self.GetPlotParam('dens_type')==1:
+                if self.parent.MainParamDict['Average1D']:
+                    self.linedens[0].set_data(self.xaxis_values, np.average(self.rho.reshape(-1,self.rho.shape[-1]), axis = 0))
+                else: # x-y plane
+                    self.linedens[0].set_data(self.xaxis_values, self.rho[self.parent.zSlice,self.parent.ySlice,:])
 
-
+            #### Set the ylims... there is a problem where it scales the ylims for the invisible lines:
+            min_max = [self.linedens[0].get_data()[1].min(), self.linedens[0].get_data()[1].max()]
+            dist = min_max[1]-min_max[0]
+            min_max[0] -= 0.04*dist
+            min_max[1] += 0.04*dist
+            self.axes.set_ylim(min_max)
             self.shock_line =self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
                     PathEffects.Normal()])
             self.shock_line.set_visible(self.GetPlotParam('show_shock'))
@@ -424,19 +382,31 @@ class DensPanel:
         if self.GetPlotParam('twoD') == 0:
             if self.GetPlotParam('dens_type') == 0:
                 if self.GetPlotParam('normalize_density'):
-                    self.linedens[0].set_data(self.xaxis_values, self.dens[self.oneDslice,:]/self.ppc0)
-                    self.axes.set_ylim(self.dens_min_max[0]/self.ppc0)
+                    if self.parent.MainParamDict['Average1D']:
+                        self.linedens[0].set_data(self.xaxis_values, np.average(self.dens.reshape(-1,self.dens.shape[-1]), axis = 0)/self.ppc0)
+                    else:
+                        self.linedens[0].set_data(self.xaxis_values, self.dens[self.parent.zSlice,self.parent.ySlice,:]/self.ppc0)
                 else:
-                    self.linedens[0].set_data(self.xaxis_values, self.dens[self.oneDslice,:])
-                    self.axes.set_ylim(self.dens_min_max[0])
+                    if self.parent.MainParamDict['Average1D']:
+                        self.linedens[0].set_data(self.xaxis_values, np.average(self.dens.reshape(-1,self.dens.shape[-1]), axis = 0))
+                    else: # x-y plane
+                        self.linedens[0].set_data(self.xaxis_values, self.dens[self.parent.zSlice,self.parent.ySlice,:])
 
-            else:
-                self.linerho[0].set_data(self.xaxis_values, self.rho[self.oneDslice,:])
-                self.axes.set_ylim(self.rho_min_max[0])
+            elif self.GetPlotParam('dens_type')==1:
+                if self.parent.MainParamDict['Average1D']:
+                    self.linedens[0].set_data(self.xaxis_values, np.average(self.rho.reshape(-1,self.rho.shape[-1]), axis = 0))
+                else:
+                    self.linedens[0].set_data(self.xaxis_values, self.rho[self.parent.zSlice,self.parent.ySlice,:])
+
+            #### Set the ylims...
+            min_max = [self.linedens[0].get_data()[1].min(),self.linedens[0].get_data()[1].max()]
+            dist = min_max[1]-min_max[0]
+            min_max[0] -= 0.04*dist
+            min_max[1] += 0.04*dist
+            self.axes.set_ylim(min_max)
+
             if self.GetPlotParam('show_shock'):
                 self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
-
-
 
             if self.parent.MainParamDict['SetxLim']:
                 if self.parent.MainParamDict['xLimsRelative']:
@@ -454,27 +424,30 @@ class DensPanel:
                 self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
 
         else: # Now refresh the plot if it is 2D
-            if self.GetPlotParam('dens_type')==0:
+            if self.GetPlotParam('dens_type') == 0:
                 if self.GetPlotParam('normalize_density'):
-                    self.cax.set_data(self.dens/self.ppc0)
-                    self.clims = np.copy(self.dens_min_max[1])/self.ppc0
+                    if self.parent.MainParamDict['2DSlicePlane'] == 0: # x-y plane
+                        self.cax.set_data(self.dens[self.parent.zSlice,:,:]/self.ppc0)
+                    elif self.parent.MainParamDict['2DSlicePlane'] == 1: # x-z plane
+                        self.cax.set_data(self.dens[:,self.parent.ySlice,:]/self.ppc0)
                 else:
-                    self.cax.set_data(self.dens)
-                    self.clims = np.copy(self.dens_min_max[1])
-                self.ymin = 0
-                self.ymax =  self.dens.shape[0]/self.c_omp*self.istep
-                self.xmin = 0
-                self.xmax =  self.xaxis_values[-1]
+                    if self.parent.MainParamDict['2DSlicePlane'] == 0: # x-y plane
+                        self.cax.set_data(self.dens[self.parent.zSlice,:,:])
+                    elif self.parent.MainParamDict['2DSlicePlane'] == 1: # x-z plane
+                        self.cax.set_data(self.dens[:,self.parent.ySlice,:])
+
 
 
             else:
-                self.cax.set_data(self.rho)
-                self.ymin = 0
-                self.ymax =  self.rho.shape[0]/self.c_omp*self.istep
-                self.xmin = 0
-                self.xmax =  self.xaxis_values[-1]
-                self.clims = np.copy(self.rho_min_max[1])
+                if self.parent.MainParamDict['2DSlicePlane'] == 0: # x-y plane
+                    self.cax.set_data(self.rho[self.parent.zSlice,:,:])
+                elif self.parent.MainParamDict['2DSlicePlane'] == 1: # x-z plane
+                    self.cax.set_data(self.rho[:,self.parent.ySlice,:])
 
+            self.ymin = 0
+            self.ymax =  self.cax.get_array().shape[0]/self.c_omp*self.istep
+            self.xmin = 0
+            self.xmax =  self.xaxis_values[-1]
             self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
             if self.parent.MainParamDict['SetxLim']:
                 if self.parent.MainParamDict['xLimsRelative']:
@@ -490,8 +463,12 @@ class DensPanel:
             else:
                 self.axes.set_ylim(self.ymin,self.ymax)
 
+            if self.parent.MainParamDict['2DSlicePlane'] == 0:
+                self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            if self.parent.MainParamDict['2DSlicePlane'] == 1:
+                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
-
+            self.clims = [self.cax.get_array().min(), self.cax.get_array().max()]
             if self.GetPlotParam('set_v_min'):
                 self.clims[0] =  self.GetPlotParam('v_min')
             if self.GetPlotParam('set_v_max'):
@@ -911,8 +888,6 @@ class DensSettings(Tk.Toplevel):
                     self.parent.an_2d.set_text(r'$\rho$')
             else:
                 if self.DensTypeVar.get() == 0:
-                    self.parent.linerho[0].set_visible(False)
-                    self.parent.linedens[0].set_visible(True)
                     if self.parent.GetPlotParam('normalize_density'):
                         self.parent.axes.set_ylabel(r'${\rm density}\ [n_0]$', size = self.parent.parent.MainParamDict['AxLabelSize'])
                     else:
@@ -920,8 +895,6 @@ class DensSettings(Tk.Toplevel):
 
 
                 else:
-                    self.parent.linerho[0].set_visible(True)
-                    self.parent.linedens[0].set_visible(False)
                     self.parent.axes.set_ylabel(r'$\rho$', size = self.parent.parent.MainParamDict['AxLabelSize'])
 
             self.parent.SetPlotParam('dens_type', self.DensTypeVar.get())
