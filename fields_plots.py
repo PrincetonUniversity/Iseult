@@ -30,7 +30,8 @@ class FieldsPanel:
 #    # The only valid arguments to field function are things saved in the Tristan
 #    # HDF5 files: e.g., ui, bx, jz...etc. The argumes return the raw tristan arrays.
 #
-#    # YOU MUST RETURN AN ARRAY THE SAME SHAPE AS A FIELD ARRAY.
+#    # You must return an array the same shape as the fields array, or an array that
+#    # is the same length as the x axis of the simulation (and then checking 1D)
 #
 #    return bx**2+by**2+bz**2
 #    """
@@ -39,6 +40,7 @@ class FieldsPanel:
                        'cmdstr1': example,
                        'cmdstr2': example,
                        'cmdstr3': example,
+                       'OneDOnly': [False, False, False],
                        'yaxis_label': ['$B$','$E$','$J$','$B$'],
                        '2D_label': [['$B_x$','$B_y$','$B_z$'],
                                     ['$E_x$','$E_y$','$E_z$'],
@@ -79,7 +81,7 @@ class FieldsPanel:
     FloatList = ['v_min', 'v_max', 'cpow_num', 'div_midpoint']
     #StrList = ['interpolation', 'cnorm_type', 'cmap']
     StrList = ['cnorm_type', 'cmap', 'cmdstr1', 'cmdstr2', 'cmdstr3']
-    SpecialList = ['yaxis_label', '2D_label', '2D_label']
+    SpecialList = ['yaxis_label', '2D_label', '2D_label', 'OneDOnly']
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))
 
@@ -191,26 +193,26 @@ class FieldsPanel:
                 self.xaxis_values = np.arange(self.FigWrap.LoadKey('jx').shape[2])/self.c_omp*self.istep
             self.parent.DataDict['xaxis_values'] = np.copy(self.xaxis_values)
 
-        self.flagx = False
-        self.flagy = False
-        self.flagz = False
+        self.flagx = 0 # 0 means it didn't plot, 1 means it is 1D only, 2 means it returned a 3d object
+        self.flagy = 0
+        self.flagz = 0
 
         if self.GetPlotParam('field_type') == 0: # Load the B-Field
             if self.GetPlotParam('show_x'):
-                self.flagx = True
+                self.flagx = 2
                 if self.GetPlotParam('normalize_fields'):
                     self.fx = self.FigWrap.LoadKey('bx')*self.parent.b0**-1
                 else:
                     self.fx = self.FigWrap.LoadKey('bx')
             if self.GetPlotParam('show_y'):
-                self.flagy = True
+                self.flagy = 2
                 if self.GetPlotParam('normalize_fields'):
                     self.fy = self.FigWrap.LoadKey('by')*self.parent.b0**-1
                 else:
                     self.fy = self.FigWrap.LoadKey('by')
 
             if self.GetPlotParam('show_z'):
-                self.flagz = True
+                self.flagz = 2
                 if self.GetPlotParam('normalize_fields'):
                     self.fz =self.FigWrap.LoadKey('bz')*self.parent.b0**-1
                 else:
@@ -218,20 +220,20 @@ class FieldsPanel:
 
         if self.GetPlotParam('field_type') == 1: # Load the E-Field
             if self.GetPlotParam('show_x'):
-                self.flagx = True
+                self.flagx = 2
                 if self.GetPlotParam('normalize_fields'):
                     self.fx = self.FigWrap.LoadKey('ex')*self.parent.e0**-1
                 else:
                     self.fx = self.FigWrap.LoadKey('ex')
             if self.GetPlotParam('show_y'):
-                self.flagy = True
+                self.flagy = 2
                 if self.GetPlotParam('normalize_fields'):
                     self.fy = self.FigWrap.LoadKey('ey')*self.parent.e0**-1
                 else:
                     self.fy = self.FigWrap.LoadKey('ey')
 
             if self.GetPlotParam('show_z'):
-                self.flagz = True
+                self.flagz = 2
                 if self.GetPlotParam('normalize_fields'):
                     self.fz =self.FigWrap.LoadKey('ez')*self.parent.e0**-1
                 else:
@@ -242,87 +244,133 @@ class FieldsPanel:
 
             if self.GetPlotParam('show_x'):
                 self.fx = self.FigWrap.LoadKey('jx')
-                self.flagx = True
+                self.flagx = 2
 
             if self.GetPlotParam('show_y'):
                 self.fy = self.FigWrap.LoadKey('jy')
-                self.flagy = True
+                self.flagy = 2
 
             if self.GetPlotParam('show_z'):
                 self.fz = self.FigWrap.LoadKey('jz')
-                self.flagz = True
+                self.flagz = 2
 
         elif self.GetPlotParam('field_type') == 3: # User Defined fields
             if self.GetPlotParam('show_x'):
-                try:
-                    tmpcstr = ''
-                    for line in self.GetPlotParam('cmdstr1').splitlines():
-                        tmpcstr += line[1:] +'\n'
-                    tmpcstr += 'self.fx = FieldFunc(*[self.FigWrap.LoadKey(k) for k in self.f1args])'
-                    eval(compile(tmpcstr, '<string>', 'exec'))
-                    self.flagx = True
-                except:
-                    tb_lines = traceback.format_exc(sys.exc_info()[2]).splitlines()
-                    tb_lines.pop(1)
-                    tb_lines[1] = ''
-                    err_msg = ''
-                    for l in tb_lines:
-                        if l[0:17] == '  File "<string>"':
-                            err_msg += '  User Defined Function,'
-                            err_msg += l[18:] +'\n'
+                if not set(self.f1args).isdisjoint(self.parent.prtl_keys):
+                    keyx = hash(self.GetPlotParam('cmdstr1')+str(self.parent.stride)+str(self.GetPlotParam('OneDOnly')[0]))
+                else:
+                    keyx = hash(self.GetPlotParam('cmdstr1')+str(self.GetPlotParam('OneDOnly')[0]) )
+                if keyx in self.parent.DataDict.keys():
+                    self.fx = self.parent.DataDict[keyx]
+                    if self.GetPlotParam('OneDOnly')[0]:
+                        self.flagx = 1
+                    else:
+                        self.flagx = 2
+                else:
+                    try:
+                        tmpcstr = ''
+                        for line in self.GetPlotParam('cmdstr1').splitlines():
+                            tmpcstr += line[1:] +'\n'
+                        tmpcstr += 'self.fx = FieldFunc(*[self.FigWrap.LoadKey(k) for k in self.f1args])'
+                        eval(compile(tmpcstr, '<string>', 'exec'))
+                        self.parent.DataDict[keyx] = self.fx
+                        if self.GetPlotParam('OneDOnly')[0]:
+                            self.flagx = 1
                         else:
-                            err_msg += l+'\n'
-                    showinfo('Error when evaluating user defined function 1:', err_msg)
+                            self.flagx = 2
+                    except:
+                        tb_lines = traceback.format_exc(sys.exc_info()[2]).splitlines()
+                        tb_lines.pop(1)
+                        tb_lines[1] = ''
+                        err_msg = ''
+                        for l in tb_lines:
+                            if l[0:17] == '  File "<string>"':
+                                err_msg += '  User Defined Function,'
+                                err_msg += l[18:] +'\n'
+                            else:
+                                err_msg += l+'\n'
+                        showinfo('Error when evaluating user defined function 1:', err_msg)
 
-                    self.fx = np.NAN
-                    self.flagx = False
+                        self.fx = np.NAN
+                        self.flagx = 0
 
             if self.GetPlotParam('show_y'):
-                try:
-                    tmpcstr = ''
-                    for line in self.GetPlotParam('cmdstr2').splitlines():
-                        tmpcstr += line[1:] +'\n'
-                    tmpcstr += 'self.fy = FieldFunc(*[self.FigWrap.LoadKey(k) for k in self.f2args])'
-                    eval(compile(tmpcstr, '<string>', 'exec'))
-                    self.flagy = True
-                except:
-                    tb_lines = traceback.format_exc(sys.exc_info()[2]).splitlines()
-                    tb_lines.pop(1)
-                    tb_lines[1] = ''
-                    err_msg = ''
-                    for l in tb_lines:
-                        if l[0:17] == '  File "<string>"':
-                            err_msg += '  User Defined Function,'
-                            err_msg += l[18:] +'\n'
+                if not set(self.f2args).isdisjoint(self.parent.prtl_keys):
+                    keyy = hash(self.GetPlotParam('cmdstr2')+str(self.parent.stride)+str(self.GetPlotParam('OneDOnly')[1]))
+                else:
+                    keyy = hash(self.GetPlotParam('cmdstr2')+str(self.GetPlotParam('OneDOnly')[1]))
+                if keyy in self.parent.DataDict.keys():
+                    self.fy = self.parent.DataDict[keyy]
+                    if self.GetPlotParam('OneDOnly')[0]:
+                        self.flagy = 1
+                    else:
+                        self.flagy = 2
+                else:
+                    try:
+                        tmpcstr = ''
+                        for line in self.GetPlotParam('cmdstr2').splitlines():
+                            tmpcstr += line[1:] +'\n'
+                        tmpcstr += 'self.fy = FieldFunc(*[self.FigWrap.LoadKey(k) for k in self.f2args])'
+                        eval(compile(tmpcstr, '<string>', 'exec'))
+                        self.parent.DataDict[keyy] = self.fy
+                        if self.GetPlotParam('OneDOnly')[1]:
+                            self.flagy = 1
                         else:
-                            err_msg += l+'\n'
-                    showinfo('Error when evaluating user defined function 2:', err_msg)
-                    self.fy = np.NAN
-                    self.flagy = False
+                            self.flagy = 2
+                    except:
+                        tb_lines = traceback.format_exc(sys.exc_info()[2]).splitlines()
+                        tb_lines.pop(1)
+                        tb_lines[1] = ''
+                        err_msg = ''
+                        for l in tb_lines:
+                            if l[0:17] == '  File "<string>"':
+                                err_msg += '  User Defined Function,'
+                                err_msg += l[18:] +'\n'
+                            else:
+                                err_msg += l+'\n'
+                        showinfo('Error when evaluating user defined function 2:', err_msg)
+                        self.fy = np.NAN
+                        self.flagy = 0
 
             if self.GetPlotParam('show_z'):
-                try:
-                    tmpcstr = ''
-                    for line in self.GetPlotParam('cmdstr3').splitlines():
-                        tmpcstr += line[1:] +'\n'
-                    tmpcstr += 'self.fz = FieldFunc(*[self.FigWrap.LoadKey(k) for k in self.f3args])'
-                    eval(compile(tmpcstr, '<string>', 'exec'))
-                    self.flagz = True
-                except:
-                    tb_lines = traceback.format_exc(sys.exc_info()[2]).splitlines()
-                    tb_lines.pop(1)
-                    tb_lines[1] = ''
-                    err_msg = ''
-                    for l in tb_lines:
-                        if l[0:17] == '  File "<string>"':
-                            err_msg += '  User Defined Function,'
-                            err_msg += l[18:] +'\n'
+                if not set(self.f3args).isdisjoint(self.parent.prtl_keys):
+                    keyz = hash(self.GetPlotParam('cmdstr3')+str(self.parent.stride)+str(self.GetPlotParam('OneDOnly')[2]))
+                else:
+                    keyz = hash(self.GetPlotParam('cmdstr3')+str(self.GetPlotParam('OneDOnly')[2]))
+                if keyz in self.parent.DataDict.keys():
+                    self.fz = self.parent.DataDict[keyz]
+                    if self.GetPlotParam('OneDOnly')[2]:
+                        self.flagz = 1
+                    else:
+                        self.flagz = 2
+                else:
+                    try:
+                        tmpcstr = ''
+                        for line in self.GetPlotParam('cmdstr3').splitlines():
+                            tmpcstr += line[1:] +'\n'
+                        tmpcstr += 'self.fz = FieldFunc(*[self.FigWrap.LoadKey(k) for k in self.f3args])'
+                        eval(compile(tmpcstr, '<string>', 'exec'))
+                        self.parent.DataDict[keyz] = self.fz
+                        if self.GetPlotParam('OneDOnly')[2]:
+                            self.flagz = 1
                         else:
-                            err_msg += l+'\n'
-                    showinfo('Error when evaluating user defined function 3:', err_msg)
+                            self.flagz = 2
 
-                    self.fz = np.NAN
-                    self.flagz = False
+                    except:
+                        tb_lines = traceback.format_exc(sys.exc_info()[2]).splitlines()
+                        tb_lines.pop(1)
+                        tb_lines[1] = ''
+                        err_msg = ''
+                        for l in tb_lines:
+                            if l[0:17] == '  File "<string>"':
+                                err_msg += '  User Defined Function,'
+                                err_msg += l[18:] +'\n'
+                            else:
+                                err_msg += l+'\n'
+                        showinfo('Error when evaluating user defined function 3:', err_msg)
+
+                        self.fz = np.NAN
+                        self.flagz = 0
 
     def draw(self):
 
@@ -371,7 +419,7 @@ class FieldsPanel:
 
             # First choose the 'zval' to plot, we can only do one because it is 2-d.
             self.plotFlag = -1
-            if self.GetPlotParam('show_x') and self.flagx:
+            if self.GetPlotParam('show_x') and self.flagx == 2:
                 if self.parent.MainParamDict['2DSlicePlane'] == 0: # Show the x-y plane
                     if self.parent.MainParamDict['ImageAspect']:
                         self.cax = self.axes.imshow(self.fx[self.parent.zSlice,:,:], norm = self.norm(), origin = 'lower')
@@ -390,7 +438,7 @@ class FieldsPanel:
                 self.SetPlotParam('show_y', 0, update_plot = False)
                 self.SetPlotParam('show_z', 0, update_plot = False)
 
-            elif self.GetPlotParam('show_y') and self.flagy:
+            elif self.GetPlotParam('show_y') and self.flagy == 2:
                 if self.parent.MainParamDict['2DSlicePlane'] == 0: # Show the x-y plane
                     if self.parent.MainParamDict['ImageAspect']:
                         self.cax = self.axes.imshow(self.fy[self.parent.zSlice,:,:], norm = self.norm(), origin = 'lower')
@@ -408,7 +456,7 @@ class FieldsPanel:
                 self.SetPlotParam('show_z', 0, update_plot = False)
 
 
-            elif self.GetPlotParam('show_z') and self.flagz:
+            elif self.GetPlotParam('show_z') and self.flagz == 2:
                 # make sure z is loaded, (something has to be)
                 # set the other plot values to zero in the PlotParams
                 if self.parent.MainParamDict['2DSlicePlane'] == 0: # Show the x-y plane
@@ -555,8 +603,10 @@ class FieldsPanel:
             self.xmin, self.xmax = self.xaxis_values[0], self.xaxis_values[-1]
 
             min_max = [np.inf, -np.inf]
-            if self.flagx and self.GetPlotParam('show_x'):
-                if self.parent.MainParamDict['Average1D']:
+            if self.flagx > 0 and self.GetPlotParam('show_x'):
+                if self.flagx == 1 and len(self.fx.shape) == 1:
+                    self.linex = self.axes.plot(self.xaxis_values, self.fx, color = self.xcolor)
+                elif self.parent.MainParamDict['Average1D']:
                     self.linex = self.axes.plot(self.xaxis_values, np.average(self.fx.reshape(-1,self.fx.shape[-1]), axis =0), color = self.xcolor)
                 else:
                     self.linex = self.axes.plot(self.xaxis_values, self.fx[self.parent.zSlice,self.parent.ySlice,:], color = self.xcolor)
@@ -573,8 +623,10 @@ class FieldsPanel:
             self.anx.set_visible(self.GetPlotParam('show_x'))
 
             self.annotate_pos[0] += .08
-            if self.flagy and self.GetPlotParam('show_y'):
-                if self.parent.MainParamDict['Average1D']:
+            if self.flagy >0 and self.GetPlotParam('show_y'):
+                if self.flagy == 1 and len(self.flagy.shape) == 1:
+                    self.liney = self.axes.plot(self.xaxis_values, self.fy, color = self.ycolor)
+                elif self.parent.MainParamDict['Average1D']:
                     self.liney = self.axes.plot(self.xaxis_values, np.average(self.fy.reshape(-1,self.fy.shape[-1]), axis = 0), color = self.ycolor)
                 else:
                     self.liney = self.axes.plot(self.xaxis_values, self.fy[self.parent.zSlice,self.parent.ySlice,:], color = self.ycolor)
@@ -594,6 +646,8 @@ class FieldsPanel:
             self.annotate_pos[0] += .08
 
             if self.flagz and self.GetPlotParam('show_z'):
+                if self.flagx == 1 and len(self.fz.shape) == 1:
+                    self.linez = self.axes.plot(self.xaxis_values, self.fz, color = self.zcolor)
                 if self.parent.MainParamDict['Average1D']:
                     self.linez = self.axes.plot(self.xaxis_values, np.average(self.fz.reshape(-1,self.fz.shape[-1]), axis = 0), color = self.zcolor)
                 else: # In the x-y plane
@@ -712,7 +766,9 @@ class FieldsPanel:
         if self.GetPlotParam('twoD') == 0:
             min_max = [np.inf, -np.inf]
             if self.GetPlotParam('show_x') and self.flagx:
-                if self.parent.MainParamDict['Average1D']:
+                if self.flagx == 1 and len(self.fx.shape) == 1:
+                    self.linex[0].set_data(self.xaxis_values, self.fx)
+                elif self.parent.MainParamDict['Average1D']:
                     self.linex[0].set_data(self.xaxis_values, np.average(self.fx.reshape(-1,self.fx.shape[-1]), axis =0))
                 else: # In the x-y plane
                     self.linex[0].set_data(self.xaxis_values, self.fx[self.parent.zSlice,self.parent.ySlice,:])
@@ -722,7 +778,9 @@ class FieldsPanel:
                 min_max[1]=max(min_max[1],self.linex[0].get_data()[1].max())
 
             if self.GetPlotParam('show_y') and self.flagy:
-                if self.parent.MainParamDict['Average1D']:
+                if self.flagy == 1 and len(self.fy.shape) == 1:
+                    self.liney[0].set_data(self.xaxis_values, self.fy)
+                elif self.parent.MainParamDict['Average1D']:
                     self.liney[0].set_data(self.xaxis_values, np.average(self.fy.reshape(-1,self.fx.shape[-1]), axis =0))
                 else:
                     self.liney[0].set_data(self.xaxis_values, self.fy[self.parent.zSlice,self.parent.ySlice,:])
@@ -732,7 +790,9 @@ class FieldsPanel:
                 min_max[1]=max(min_max[1],self.liney[0].get_data()[1].max())
 
             if self.GetPlotParam('show_z'):
-                if self.parent.MainParamDict['Average1D']:
+                if self.flagz ==1 and len(self.fz.shape) == 1:
+                    self.linez[0].set_data(self.xaxis_values, self.fz)
+                elif self.parent.MainParamDict['Average1D']:
                     self.linez[0].set_data(self.xaxis_values, np.average(self.fz.reshape(-1,self.fx.shape[-1]), axis =0))
                 else:
                     self.linez[0].set_data(self.xaxis_values, self.fz[self.parent.zSlice,self.parent.ySlice,:])
@@ -770,21 +830,21 @@ class FieldsPanel:
         else: # Now refresh the plot if it is 2D
             self.plotFlag = -1
 
-            if self.GetPlotParam('show_x') and self.flagx:
+            if self.GetPlotParam('show_x') and self.flagx >1:
                 self.plotFlag = 0
                 if self.parent.MainParamDict['2DSlicePlane'] == 0: #x-y plane
                     self.cax.set_data(self.fx[self.parent.zSlice,:,:])
                 elif self.parent.MainParamDict['2DSlicePlane'] == 1: #x-z plane
                     self.cax.set_data(self.fx[:,self.parent.ySlice,:])
 
-            elif self.GetPlotParam('show_y') and self.flagy:
+            elif self.GetPlotParam('show_y') and self.flagy >1:
                 self.plotFlag = 1
                 if self.parent.MainParamDict['2DSlicePlane'] == 0: #x-y plane
                     self.cax.set_data(self.fy[self.parent.zSlice,:,:])
                 elif self.parent.MainParamDict['2DSlicePlane'] == 1: #x-z plane
                     self.cax.set_data(self.fy[:,self.parent.ySlice,:])
 
-            elif self.GetPlotParam('show_z') and self.flagz:
+            elif self.GetPlotParam('show_z') and self.flagz>1:
                 self.plotFlag = 2
                 if self.parent.MainParamDict['2DSlicePlane'] == 0: #x-y plane
                     self.cax.set_data(self.fz[self.parent.zSlice,:,:])
@@ -1502,6 +1562,9 @@ class UserDefSettings(Tk.Toplevel):
         self.twoDlabel.set(self.subplot.GetPlotParam('2D_label')[3][self.fnum-1])
         ttk.Entry(miniframe, textvariable=self.twoDlabel, width=15).grid(row = 1, column = 1)
 
+        self.OneDVar = Tk.IntVar()
+        self.OneDVar.set(self.subplot.GetPlotParam('OneDOnly')[self.fnum-1])
+        ttk.Checkbutton(miniframe, text = 'Returns a 1D array along x', variable = self.OneDVar).grid(row = 1, column = 2, columnspan= 2, sticky = Tk.W)
         miniframe.pack(side=Tk.TOP)
         ttk.Button(self, text = 'Save F'+str(self.fnum), command = self.SaveStr).pack(side =Tk.TOP)
     def SaveStr(self):
@@ -1533,6 +1596,7 @@ class UserDefSettings(Tk.Toplevel):
 
         #self.subplot.GetPlotParam('1D_label')[self.subplot.GetPlotParam('field_type')][self.fnum-1] = self.oneDlabel.get()
         #self.subplot.GetPlotParam('2D_label')[self.subplot.GetPlotParam('field_type')][self.fnum-1] = self.twoDlabel.get()
+        self.subplot.GetPlotParam('OneDOnly')[self.fnum -1] = self.OneDVar.get()
         if self.fnum ==1:
             self.subplot.SetPlotParam('show_x', True)
             self.parent.ShowXVar.set(True)

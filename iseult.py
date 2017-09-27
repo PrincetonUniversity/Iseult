@@ -1946,6 +1946,10 @@ class MainApp(Tk.Tk):
                           u'splitratio': 'Param',
                           u'indi': 'Prtl',
                           u'ppc0': 'Param'}
+        self.prtl_keys = []
+        for k, v in self.H5KeyDict.iteritems():
+            if v =='Prtl':
+                self.prtl_keys.append(k)
 
         # Create the figure
         self.f = Figure(figsize = (2,2), dpi = 100, edgecolor = 'none', facecolor = 'w')
@@ -2040,13 +2044,9 @@ class MainApp(Tk.Tk):
         self.TotalElectricEnergy = np.array([])
 
         # figure out all keys that have 'Prtl'
-        prtl_keys = []
-        for k, v in self.H5KeyDict.iteritems():
-            if v =='Prtl':
-                prtl_keys.append(k)
         # now we have to go through the data dictionary and remove the particle info
         for DataDict in self.ListOfDataDict:
-            for k in prtl_keys:
+            for k in self.prtl_keys:
                 DataDict.pop(k, None)
 
 
@@ -2554,9 +2554,10 @@ class MainApp(Tk.Tk):
                     try:
                         for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['SpecialList']:
                             if param.lower() in config.options(tmp_str):
-                                if param == 'yaxis_label' and tmpchart_type == 'FieldsPlot':
-                                    tstr = config.get(tmp_str, param)
-                                    self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = tstr.strip('[').strip(']').strip().split(',')
+                                if tmpchart_type == 'FieldsPlot':
+                                    if param == 'yaxis_label' or 'OneDOnly':
+                                        tstr = config.get(tmp_str, param)
+                                        self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = tstr.strip('[').strip(']').strip().split(',')
                                 if tmpchart_type == 'FieldsPlot':
                                     if param == '2D_label' or param =='1D_label':
                                         tstr = config.get(tmp_str, param)
@@ -3078,8 +3079,6 @@ class MainApp(Tk.Tk):
         for elm in tmp_list:
             self.DataDict.pop(elm, None)
         self.SetLLoc()
-#        self.SaveLLoc()
-
         # Save the image for quick playback later
         self.SaveTmpFig()
 

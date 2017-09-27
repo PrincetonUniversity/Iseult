@@ -33,7 +33,7 @@ class  MomentsPanel:
                        'legend_loc': 'N/A'} # legend_loc is a string that stores the
                                          # location of the legend in figure pixels.
                                          # Unfortunately it is not always up to date.
-                                         # It starts as 'best'.
+                                         # N/A plots it at the 'best' location.
 
     # We need the types of all the parameters for the config file
     BoolList = ['twoD', 'set_v_min', 'set_v_max',
@@ -248,7 +248,7 @@ class  MomentsPanel:
 
 
                 if self.GetPlotParam('m_type') == 0 and not self.GetPlotParam('UpstreamFrame'):
-                    # calculate the velocities in downstream frame from the momenta
+                    # calculate the velocities in lab frame from the momenta
                     vex = ue/ge
                     vey = ve/ge
                     vez = we/ge
@@ -776,7 +776,7 @@ class MomentsSettings(Tk.Toplevel):
         if self.pvar.get() == self.parent.GetPlotParam('m_type'):
             pass
         else:
-            self.parent.axes.set_ylabel(self.parent.ylabel_list[self.pvar.get()][self.parent.GetPlotParam('UpstreamFrame')], labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            self.parent.axes.set_ylabel(self.parent.ylabel_list[self.pvar.get()][self.parent.GetPlotParam('UpstreamFrame')], labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
             self.parent.SetPlotParam('m_type', self.pvar.get())
             self.Selector()
 
@@ -797,7 +797,7 @@ class MomentsSettings(Tk.Toplevel):
         # self.label_suffix = [r'x}\rangle$',r'y\rangle}$',r'z}\rangle$']
 
         # Update current legend position
-        if ' '.join(str(x) for x in self.parent.legend._get_loc()) != self.GetPlotParam('legend_loc'):
+        if self.parent.legend._get_loc() != 1:
             self.parent.SetPlotParam('legend_loc', ' '.join(str(x) for x in self.parent.legend._get_loc()), update_plot = False)
 
         VarList = [self.ShowXVar, self.ShowYVar,  self.ShowZVar]
@@ -831,10 +831,9 @@ class MomentsSettings(Tk.Toplevel):
         self.parent.legend.get_frame().set_facecolor('k')
         self.parent.legend.get_frame().set_linewidth(0.0)
         self.parent.legend.draggable(update = 'loc')
-        if self.parent.GetPlotParam('legend_loc') != '1':
+        if self.parent.GetPlotParam('legend_loc') != 'N/A':
             tmp_tup = float(self.parent.GetPlotParam('legend_loc').split()[0]),float(self.parent.GetPlotParam('legend_loc').split()[1])
             self.parent.legend._set_loc(tmp_tup)
-        self.parent.legend._set_loc(tmp_tup)
 
         # Force a plot refresh
         for i in range(len(VarList)):
