@@ -238,13 +238,15 @@ def CalcPWeightedHists(x, u, v, w, weights, bin_width, xmin, px, py, pz, counts)
 @guvectorize([(float64[:], float64[:], float64[:], float64[:],float64[:],float64[:])], '(m),(m),(m),(m),(m),(m)', cache = True)
 def RestFrameBoost(vx_e, ecounts, vx_i, icounts, vx_avg, boost_g):
     for i in xrange(len(vx_e)):
-        vx_avg[i] = (vx_e[i]*ecounts[i]+vx_i[i]*icounts[i])/(icounts[i]+ecounts[i])
-        boost_g[i] = 1/sqrt(1+vx_avg[i]*vx_avg[i])
+        if ecounts[i] != 0 or icounts[i] != 0:
+            vx_avg[i] = (vx_e[i]*ecounts[i]+vx_i[i]*icounts[i])/(icounts[i]+ecounts[i])
+            boost_g[i] = 1/sqrt(1+vx_avg[i]*vx_avg[i])
 
 @guvectorize([(float64[:], float64[:], float64[:], float64[:], float64[:])], '(m),(m),(m),(m) ->(m)', nopython =True, cache = True)
 def Total(e_arr,  ecounts, i_arr, icounts, ans):
     for i in xrange(len(e_arr)):
-        ans[i] = (e_arr[i]*ecounts[i]+i_arr[i]*icounts[i])/(ecounts[i]+icounts[i])
+        if ecounts[i] != 0 or icounts[i] != 0:
+            ans[i] = (e_arr[i]*ecounts[i]+i_arr[i]*icounts[i])/(ecounts[i]+icounts[i])
 
 @guvectorize([(float64[:], # x
                float64[:], # u
