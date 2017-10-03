@@ -668,15 +668,20 @@ class PlaybackBar(Tk.Frame):
         try:
             #make sure the user types in a int
             if int(self.tstep.get()) != self.param.value:
-                self.param.set(int(self.tstep.get()))
+                self.param.set(int(float(self.tstep.get())))
         except ValueError:
             #if they type in random stuff, just set it ot the param value
             self.tstep.set(str(self.param.value))
 
     def ScaleHandler(self, e):
         # if changing the scale will change the value of the parameter, do so
-        if int(self.tstep.get()) != int(self.slider.get()):
+        try:
+            if int(self.tstep.get()) != int(self.slider.get()):
+                self.tstep.set(str(int(self.slider.get())))
+        except ValueError:
+            #if they type in random stuff, just set it ot the param value
             self.tstep.set(str(int(self.slider.get())))
+
     def UpdateValue(self, *args):
         if int(self.slider.get()) != self.param.value:
             self.param.set(int(self.slider.get()))
@@ -1365,12 +1370,13 @@ class SettingsFrame(Tk.Toplevel):
 
     def yScaleHandler(self, e):
         # if changing the scale will change the value of the parameter, do so
-        if int(self.ySliceVar.get()) != int(self.slidery.get()):
+        if self.ySliceVar.get() != int(self.slidery.get()):
             self.ySliceVar.set(int(self.slidery.get()))
             self.ySliceVarC_omp.set(self.units_listy[self.ySliceVar.get()])
+
     def zScaleHandler(self, e):
         # if changing the scale will change the value of the parameter, do so
-        if int(self.zSliceVar.get()) != int(self.sliderz.get()):
+        if self.zSliceVar.get() != int(self.sliderz.get()):
             self.zSliceVar.set(int(self.sliderz.get()))
             self.zSliceVarC_omp.set(self.units_listz[self.zSliceVar.get()])
 

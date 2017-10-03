@@ -51,19 +51,18 @@ def LorentzFactor(u,v,w, ans):
 def CalcVxEHists(x, u, v, w, bin_width, xmin, g, vx, E, counts):
     bn = bin_width[0]
     minx = xmin[0]
-    maxl = len(vx)-1
+    maxl = len(vx)
     for i in xrange(len(x)):
         l = int((x[i]-minx)//bn)
-        if l > maxl:
-            l = maxl
-        g[i] = u[i]*u[i]+v[i]*v[i]+ w[i]*w[i] + 1
-        g[i] = sqrt(g[i])
-        vx[l] += u[i]*g[i]**-1
-        E[l] += g[i]-1
-        counts[l] += 1
+        if l>=0 and l < maxl:
+            g[i] = u[i]*u[i]+v[i]*v[i]+ w[i]*w[i] + 1
+            g[i] = sqrt(g[i])
+            vx[l] += u[i]*g[i]**-1
+            E[l] += g[i]-1
+            counts[l] += 1
     for l in xrange(len(vx)):
-        c = counts[l]**-1
-        if c != 0:
+        if counts[l] != 0:
+            c = counts[l]**-1
             vx[l] *= c
             E[l] *= c
 
@@ -83,20 +82,19 @@ def CalcVxEHists(x, u, v, w, bin_width, xmin, g, vx, E, counts):
 def CalcVxEWeightedHists(x, u, v, w, weights, bin_width, xmin, g, vx,  E, counts):
     bn = bin_width[0]
     minx = xmin[0]
-    maxl = len(vx)-1
+    maxl = len(vx)
     for i in xrange(len(x)):
         c1 = weights[i]
         l = int((x[i]-minx)//bn)
-        if l > maxl:
-            l = maxl
-        g[i] = u[i]*u[i]+v[i]*v[i]+ w[i]*w[i] + 1
-        g[i] = sqrt(g[i])
-        vx[l] += u[i]*g[i]**-1*c1
-        E[l] += (g[i]-1)*c1
-        counts[l] += c1
+        if 0<= l and l < maxl:
+            g[i] = u[i]*u[i]+v[i]*v[i]+ w[i]*w[i] + 1
+            g[i] = sqrt(g[i])
+            vx[l] += u[i]*g[i]**-1*c1
+            E[l] += (g[i]-1)*c1
+            counts[l] += c1
     for l in xrange(len(vx)):
-        c = counts[l]**-1
-        if c != 0:
+        if counts[l] != 0:
+            c = counts[l]**-1
             vx[l] *= c
             E[l] *= c
 
@@ -115,21 +113,20 @@ def CalcVxEWeightedHists(x, u, v, w, weights, bin_width, xmin, g, vx,  E, counts
 def CalcVHists(x, u, v, w, bin_width, xmin, vx, vy, vz, counts):
     bn = bin_width[0]
     minx = xmin[0]
-    maxl = len(vx)-1
+    maxl = len(vx)
     for i in xrange(len(x)):
         l = int((x[i]-minx)//bn)
-        if l > maxl:
-            l = maxl
-        g = u[i]*u[i]+v[i]*v[i]+ w[i]*w[i] + 1
-        g = sqrt(g)**-1
-        vx[l] += u[i]*g
-        vy[l] += v[i]*g
-        vz[l] += w[i]*g
-        counts[l] += 1
+        if 0<=l and l < maxl:
+            g = u[i]*u[i]+v[i]*v[i]+ w[i]*w[i] + 1
+            g = sqrt(g)**-1
+            vx[l] += u[i]*g
+            vy[l] += v[i]*g
+            vz[l] += w[i]*g
+            counts[l] += 1
     # Normalize
     for l in xrange(len(vx)):
-        c = counts[l]**-1
-        if c != 0:
+        if counts[l] != 0:
+            c = counts[l]**-1
             vx[l] *= c
             vy[l] *= c
             vz[l] *= c
@@ -150,17 +147,17 @@ def CalcVHists(x, u, v, w, bin_width, xmin, vx, vy, vz, counts):
 def CalcVWeightedHists(x, u, v, w, weights, bin_width, xmin, vx, vy, vz, counts):
     bn = bin_width[0]
     minx = xmin[0]
-    maxl = len(vx)-1
+    maxl = len(vx)
     for i in xrange(len(x)):
         l = int((x[i]-minx)//bn)
-        if l > maxl:
+        if 0<= l and l < maxl:
             l = maxl
-        g = u[i]*u[i]+v[i]*v[i]+ w[i]*w[i] + 1
-        g = sqrt(g)**-1*weights[i]
-        vx[l] += u[i]*g
-        vy[l] += v[i]*g
-        vz[l] += w[i]*g
-        counts[l] += weights[i]
+            g = u[i]*u[i]+v[i]*v[i]+ w[i]*w[i] + 1
+            g = sqrt(g)**-1*weights[i]
+            vx[l] += u[i]*g
+            vy[l] += v[i]*g
+            vz[l] += w[i]*g
+            counts[l] += weights[i]
     # Normalize
     for l in xrange(len(vx)):
         c = counts[l]
@@ -187,15 +184,14 @@ def CalcVWeightedHists(x, u, v, w, weights, bin_width, xmin, vx, vy, vz, counts)
 def CalcPHists(x, u, v, w, bin_width, xmin, px, py, pz, counts):
     bn = bin_width[0]
     minx =xmin[0]
-    maxl = len(px)-1
+    maxl = len(px)
     for i in xrange(len(x)):
         l = int(x[i]//bn)
-        if l > maxl:
-            l = maxl
-        px[l] += u[i]
-        py[l] += v[i]
-        pz[l] += w[i]
-        counts[l] += 1
+        if 0<= l  and l < maxl:
+            px[l] += u[i]
+            py[l] += v[i]
+            pz[l] += w[i]
+            counts[l] += 1
     for l in xrange(len(px)):
         c = counts[l]
         if c != 0:
@@ -220,16 +216,16 @@ def CalcPHists(x, u, v, w, bin_width, xmin, px, py, pz, counts):
 def CalcPWeightedHists(x, u, v, w, weights, bin_width, xmin, px, py, pz, counts):
     bn = bin_width[0]
     minx = xmin[0]
-    maxl = len(px)-1
+    maxl = len(px)
     for i in xrange(len(x)):
         c1 = weights[i]
         l = int(x[i]//bn)
-        if l > maxl:
+        if 0<=l and l < maxl:
             l = maxl
-        px[l] += u[i]*c1
-        py[l] += v[i]*c1
-        pz[l] += w[i]*c1
-        counts[l] += c1
+            px[l] += u[i]*c1
+            py[l] += v[i]*c1
+            pz[l] += w[i]*c1
+            counts[l] += c1
     # normalize
     for l in xrange(len(px)):
         c = counts[l]
@@ -269,10 +265,9 @@ def CalcDelGamHists(x, u, v, w, g, vx_avg, boost_g, bin_width, xmin, counts, T):
     minx = xmin[0]
     for i in xrange(len(x)):
         l = int((x[i]-minx)//bn)
-        if l >=lmax:
-            l = lmax - 1
-        c2 = boost_g[l]*(u[i]-g[i]*vx_avg[l]) # boosted
-        T[l] += sqrt(c2*c2+v[i]*v[i]+w[i]*w[i]+1)-1
+        if 0 <= l and l <lmax:
+            c2 = boost_g[l]*(u[i]-g[i]*vx_avg[l]) # boosted
+            T[l] += sqrt(c2*c2+v[i]*v[i]+w[i]*w[i]+1)-1
     for l in xrange(len(counts)):
         c = counts[l]
         if c != 0:
@@ -298,10 +293,9 @@ def CalcDelGamWeightedHists(x, u, v, w, g, weights, vx_avg, boost_g, bin_width, 
     minx = xmin[0]
     for i in xrange(len(x)):
         l = int((x[i]-minx)//bn)
-        if l >=lmax:
-            l = lmax - 1
-        c2 = boost_g[l]*(u[i]-g[i]*vx_avg[l]) # boosted
-        T[l] += (sqrt(c2*c2+v[i]*v[i]+w[i]*w[i]+1)-1)*weights[i]
+        if 0<= l  and l < lmax:
+            c2 = boost_g[l]*(u[i]-g[i]*vx_avg[l]) # boosted
+            T[l] += (sqrt(c2*c2+v[i]*v[i]+w[i]*w[i]+1)-1)*weights[i]
     for l in xrange(len(counts)):
         c = counts[l]
         if c != 0:
