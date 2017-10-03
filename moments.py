@@ -32,6 +32,7 @@ class  MomentsPanel:
                        'spatial_x': True,
                        'show_legend': True,
                        'spatial_y': False,
+                       'logy': False,
                        'legend_loc': 'N/A'} # legend_loc is a string that stores the
                                          # location of the legend in figure pixels.
                                          # Unfortunately it is not always up to date.
@@ -387,7 +388,8 @@ class  MomentsPanel:
                     legend_handles.append(self.t_plot_list[i])
                     legend_labels.append(self.legend_labels[self.GetPlotParam('m_type')][2][i])
 
-
+        if self.GetPlotParam('logy'):
+            self.axes.set_yscale('log')
         self.axes.autoscale()
 
         # now make the legend
@@ -643,6 +645,17 @@ class MomentsSettings(Tk.Toplevel):
         self.VmaxEnter = ttk.Entry(frm, textvariable=self.Vmax, width=7)
         self.VmaxEnter.grid(row = 6, column = 4)
 
+
+        self.LogY = Tk.IntVar()
+        self.LogY.set(self.parent.GetPlotParam('logy'))
+        self.LogY.trace('w', self.LogYChanged)
+        cb = ttk.Checkbutton(frm, text ='Y-axis logscale',
+                        variable = self.LogY)
+        cb.grid(row = 6, column = 0, sticky = Tk.W)
+
+        self.VminEnter = ttk.Entry(frm, textvariable=self.Vmin, width=7)
+        self.VminEnter.grid(row = 5, column = 4)
+
         self.TrueVar = Tk.IntVar()
         self.TrueVar.set(1)
         self.xBins = Tk.StringVar()
@@ -662,6 +675,17 @@ class MomentsSettings(Tk.Toplevel):
         else:
             self.parent.SetPlotParam('show_legend', self.ShowLegVar.get(), update_plot  = 'False')
             self.parent.legend.set_visible(self.parent.GetPlotParam('show_legend'))
+            self.parent.parent.canvas.draw()
+            self.parent.parent.canvas.get_tk_widget().update_idletasks()
+    def LogYChanged(self, *args):
+        if self.LogY.get() == self.parent.GetPlotParam('logy'):
+            pass
+        else:
+            self.parent.SetPlotParam('logy', self.LogY.get(), update_plot  = 'False')
+            if self.parent.GetPlotParam('logy'):
+                self.parent.axes.set_yscale('log')
+            else:
+                self.parent.axes.set_yscale('linear')
             self.parent.parent.canvas.draw()
             self.parent.parent.canvas.get_tk_widget().update_idletasks()
 
