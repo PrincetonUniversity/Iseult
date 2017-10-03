@@ -25,7 +25,6 @@ from energy_plots import EnergyPanel
 from fft_plots import FFTPanel
 from total_energy_plots import TotEnergyPanel
 from moments import MomentsPanel
-#from user_def import UserDefPanel
 from functools import partial
 import subprocess
 #import datetime
@@ -216,7 +215,6 @@ class SubPlotWrapper:
                              'DensityPlot': DensPanel,
                              'SpectraPlot': SpectralPanel,
                              'MagPlots': BPanel,
-                            #'UserDef': UserDefPanel,
                              'FFTPlots': FFTPanel,
                              'TotalEnergyPlot': TotEnergyPanel,
                              'Moments': MomentsPanel
@@ -2782,7 +2780,7 @@ class MainApp(Tk.Tk):
                 TotalElectronKE = np.sum(np.sqrt(TotalElectronKE)-1)
                 #TotalElectronKE += -len(self.DataDict['we'])
 
-                TotalElectronKE *= self.DataDict['stride'][0] # multiply by the stride
+                TotalElectronKE *= self.DataDict['stride'][0]*self.MainParamDict['PrtlStride'] # multiply by the stride.
                 TotalElectronKE *= np.abs(self.DataDict['qi'][0])*self.DataDict['c'][0]**2 # * m_e c^2, mass of particle is its charge, qe/me=1
 
 
@@ -2793,7 +2791,7 @@ class MainApp(Tk.Tk):
                 TotalIonKE = np.sum(np.sqrt(TotalIonKE)-1)
                 #TotalIonKE += -len(self.DataDict['we'])
 
-                TotalIonKE *= self.DataDict['stride'][0] # multiply by the stride
+                TotalIonKE *= self.DataDict['stride'][0]*self.MainParamDict['PrtlStride'] # multiply by the stride
                 TotalIonKE *= self.DataDict['mi'][0]/self.DataDict['me']*np.abs(self.DataDict['qi'][0])*self.DataDict['c'][0]**2 #mass of particle is its charge, qe/me=1
 
                 TotalKE = (TotalElectronKE +TotalIonKE)

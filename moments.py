@@ -9,12 +9,13 @@ import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
 import matplotlib.transforms as mtransforms
+from NumbaMoments import stepify, CalcVxEHists, CalcVHists, CalcVxEWeightedHists, CalcVWeightedHists, CalcPHists, CalcPWeightedHists, RestFrameBoost, Total, CalcDelGamHists, CalcDelGamWeightedHists
 
 class  MomentsPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
 
     plot_param_dict = {'twoD': 0,
-                       'm_type': 0, # 0 = average_velocity, 1 = average_momentum
+                       'm_type': 2, # 0 = average_velocity, 1 = average_momentum, 2 = Energy
                        'v_min': 0,
                        'v_max' : 10,
                        'set_v_min': False,
@@ -24,6 +25,7 @@ class  MomentsPanel:
                        'show_z': False,
                        'show_ions': True,
                        'show_electrons': True,
+                       'show_total': False,
                        'UpstreamFrame': False,
                        'weighted': False,
                        'xbins': 100,
@@ -48,97 +50,50 @@ class  MomentsPanel:
         self.FigWrap = figwrapper
         self.parent = parent
 
-        self.ylabel_list = [[r'$\langle \beta \rangle$',r'$\langle \beta \rangle$' + ' upstream frame'],[r'$\langle m\gamma\beta\rangle/m_i$', r'$\langle m\gamma\beta \rangle/m_i$' + ' upstream frame']]
+        #self.ylabel_list = [[r'$\langle \beta \rangle$',r'$\langle \beta \rangle$' + ' upstream frame'],[r'$\langle m\gamma\beta\rangle/m_i$', r'$\langle m\gamma\beta \rangle/m_i$' + ' upstream frame']]
+        self.ylabel_list = [r'$\langle \beta \rangle$',r'$\langle m\gamma\beta\rangle/m_i$', r'$\langle KE \rangle/m_ic^2$']
         self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
         self.chartType = self.FigWrap.chartType
         self.figure = self.FigWrap.figure
+        self.legend_labels = [[[r'$\langle\beta_{ix}\rangle$',r'$\langle\beta_{ix}\rangle$',r'$\langle\beta_{ix}\rangle$'],
+                               [r'$\langle\beta_{ex}\rangle$',r'$\langle\beta_{ex}\rangle$',r'$\langle\beta_{ex}\rangle$'],
+                               [r'$\langle\beta_x\rangle$',r'$\langle\beta_y\rangle$',r'$\langle\beta_z\rangle$']],
+                              [[r'$\langle p_{ix}\rangle$',r'$\langle p_{ix}\rangle$',r'$\langle p_{ix}\rangle$'],
+                               [r'$\langle p_{ex}\rangle$',r'$\langle p_{ex}\rangle$',r'$\langle p_{ex}\rangle$'],
+                               [r'$\langle p_x \rangle$',r'$\langle p_y \rangle$',r'$\langle p_z \rangle$']],
+                              [[r'$\Delta \gamma_e$',r'$\langle KE_{i}\rangle$', None],
+                               [r'$\Delta \gamma_i$',r'$\langle KE_{e}\rangle$', None],
+                               [r'$\Delta \gamma$',r'$\langle KE \rangle$',None]]]
+
     def ChangePlotType(self, str_arg):
         self.FigWrap.ChangeGraph(str_arg)
-    def stepify(self, bins, hist):
-        # make it a step, there probably is a much better way to do this
-        tmp_hist = np.ones(2*len(hist))
-        tmp_bin = np.ones(2*len(hist))
-        for j in range(len(hist)):
-            tmp_hist[2*j] = hist[j]
-            tmp_hist[2*j+1] = hist[j]
-
-            tmp_bin[2*j] = bins[j]
-            if j != 0:
-                tmp_bin[2*j-1] = bins[j]
-            if j == len(hist)-1:
-                tmp_bin[2*j+1] = bins[j+1]
-        return tmp_bin, tmp_hist
 
     def set_plot_keys(self):
 
         '''A helper function that will insure that each hdf5 file will only be
         opened once per time step'''
-        self.arrs_needed = ['c_omp', 'bx', 'istep', 'me', 'mi', 'gamma0']
-
-        # First see if we will need to know the energy of the particle
-        # (required to Lorentz boost the momentum)
-
-#        self.ShowingSomething = self.GetPlotParam('show_electrons') or self.GetPlotParam('show_ions')
-#        tmp_bool = self.GetPlotParam('show_x') or self.GetPlotParam('show_y') or self.GetPlotParam('show_z')
-
-#        self.ShowingSomething = self.ShowingSomething and tmp_bool
-
-#        if self.ShowingSomething:
+        # To make things easier, we are just going to load and calculate all the moments
+        self.key_name = str(self.GetPlotParam('xbins'))
         if self.GetPlotParam('weighted'):
-            self.arrs_needed.append('chi')
-            self.arrs_needed.append('che')
+            self.key_name += 'W'
+        if self.GetPlotParam('m_type') == 0:
+            self.key_name += 'vel'
+        elif self.GetPlotParam('m_type') == 1:
+            self.key_name += 'mom'
+        elif self.GetPlotParam('m_type') == 2:
+            self.key_name += 'Eng'
+        self.key_name += str(self.parent.MainParamDict['PrtlStride'])
 
-
-        self.arrs_needed.append('xi')
-        self.arrs_needed.append('xe')
-
-        self.arrs_needed.append('ui')
-        self.arrs_needed.append('vi')
-        self.arrs_needed.append('wi')
-
-        self.arrs_needed.append('ue')
-        self.arrs_needed.append('ve')
-        self.arrs_needed.append('we')
-
-
-        '''
-        Needs_All = self.GetPlotParam('m_type') == 1 * self.GetPlotParam('UpstreamFrame')
-        Needs_All = Needs_All or self.GetPlotParam('m_type') == 0
-
-        if self.GetPlotParam('show_ions'):
-            self.arrs_needed.append('xi')
-            if self.GetPlotParam('weighted'):
-                self.arrs_needed.append('chi')
-            if Needs_All:
-                self.arrs_needed.append('ui')
-                self.arrs_needed.append('vi')
-                self.arrs_needed.append('wi')
-
-            else:
-                if self.GetPlotParam('show_x'):
-                    self.arrs_needed.append('ui')
-                if self.GetPlotParam('show_y'):
-                    self.arrs_needed.append('vi')
-                if self.GetPlotParam('show_z'):
-                    self.arrs_needed.append('wi')
-
-        if self.GetPlotParam('show_electrons'):
-            self.arrs_needed.append('xe')
-            if self.GetPlotParam('weighted'):
-                self.arrs_needed.append('che')
-            if Needs_All:
-                self.arrs_needed.append('ue')
-                self.arrs_needed.append('ve')
-                self.arrs_needed.append('we')
-
-            else:
-                if self.GetPlotParam('show_x'):
-                    self.arrs_needed.append('ue')
-                if self.GetPlotParam('show_y'):
-                    self.arrs_needed.append('ve')
-                if self.GetPlotParam('show_z'):
-                    self.arrs_needed.append('we')
-            '''
+        #if self.key_name+'x_bins' in self.parent.DataDict.keys():
+        #    print 'hi'
+        #    self.preloaded = True
+        #    self.arrs_needed = ['c_omp', 'bx', 'istep', 'me', 'mi']
+        if self.GetPlotParam('weighted'):
+            self.preloaded = False
+            self.arrs_needed = ['c_omp', 'bx', 'istep', 'me', 'mi', 'gamma0','xi', 'ui', 'vi', 'wi', 'ue', 've', 'we','chi', 'che']
+        else:
+            self.preloaded = False
+            self.arrs_needed = ['c_omp', 'bx', 'istep', 'me', 'mi', 'gamma0','xi', 'ui', 'vi', 'wi', 'ue', 've', 'we']
         return self.arrs_needed
 
     def LoadData(self):
@@ -148,246 +103,146 @@ class  MomentsPanel:
 
         self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
         self.istep = self.FigWrap.LoadKey('istep')[0]
-        self.gamma0 = self.FigWrap.LoadKey('gamma0')[0]
-        self.mass_ratio = self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
-        self.iweights = None
-        self.eweights = None
-        self.x_bins = None
-        self.ix = None
-        self.iy = None
-        self.iz = None
-        self.ex = None
-        self.ey = None
-        self.ez = None
+        self.memi = self.FigWrap.LoadKey('me')[0]/self.FigWrap.LoadKey('mi')[0]
+
+        self.totalcolor = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.0)
 
         if 'xaxis_values' in self.parent.DataDict.keys():
             self.xaxis_values = self.parent.DataDict['xaxis_values']
         else:
             # x-values haven't been calculated yet, generate them then save them to the dictionary for later.
-            self.xaxis_values = np.arange(self.FigWrap.LoadKey('bx')[0,:,:].shape[1])/self.c_omp*self.istep
+            self.xaxis_values = np.arange(self.FigWrap.LoadKey('bx').shape[-1])/self.c_omp*self.istep
         #            print self.xaxis_values
             self.parent.DataDict['xaxis_values'] = np.copy(self.xaxis_values)
-        self.xmin = 0
-        self.xmax = self.xaxis_values[-1]
-        self.key_name = str(self.GetPlotParam('xbins'))
-        if self.GetPlotParam('UpstreamFrame'):
-            self.key_name += 'Up'
-        if self.GetPlotParam('weighted'):
-            self.key_name += 'Weight'
-        if self.GetPlotParam('m_type') == 0:
-            self.key_name += 'vel'
-        elif self.GetPlotParam('m_type') == 1:
-            self.key_name += 'mom'
-        self.key_name += str(self.parent.MainParamDict['PrtlStride'])
+        self.fxmin = 0
+        self.fxmax = self.xaxis_values[-1]
 
         if self.key_name+'x_bins' in self.parent.DataDict.keys():
             self.x_bins = self.parent.DataDict[self.key_name+'x_bins']
-
             self.ex = self.parent.DataDict[self.key_name+'ex']
             self.ey = self.parent.DataDict[self.key_name+'ey']
             self.ez = self.parent.DataDict[self.key_name+'ez']
-
+            self.ecounts = self.parent.DataDict[self.key_name+'ecounts']
 
             self.ix = self.parent.DataDict[self.key_name+'ix']
             self.iy = self.parent.DataDict[self.key_name+'iy']
             self.iz = self.parent.DataDict[self.key_name+'iz']
+            self.icounts = self.parent.DataDict[self.key_name+'icounts']
 
+        else: #We have to calculate everything
+            xbn = self.GetPlotParam('xbins')
+            self.xe = np.copy(self.FigWrap.LoadKey('xe'))
+            self.ue = self.FigWrap.LoadKey('ue')
+            self.ve = self.FigWrap.LoadKey('ve')
+            self.we = self.FigWrap.LoadKey('we')
+            self.ex = np.zeros(xbn)
+            self.ey = np.zeros(xbn)
+            self.ez = np.zeros(xbn)
+            self.ecounts = np.zeros(xbn)
 
-        else:
-            xi = self.FigWrap.LoadKey('xi')/self.c_omp
-            ui = self.FigWrap.LoadKey('ui')
-            vi = self.FigWrap.LoadKey('vi')
-            wi = self.FigWrap.LoadKey('wi')
+            self.xi = np.copy(self.FigWrap.LoadKey('xi'))
+            self.ui = self.FigWrap.LoadKey('ui')
+            self.vi = self.FigWrap.LoadKey('vi')
+            self.wi = self.FigWrap.LoadKey('wi')
+            self.ix = np.zeros(xbn)
+            self.iy = np.zeros(xbn)
+            self.iz = np.zeros(xbn)
+            self.icounts = np.zeros(xbn)
 
-            xe = self.FigWrap.LoadKey('xe')/self.c_omp
-            ue = self.FigWrap.LoadKey('ue')
-            ve = self.FigWrap.LoadKey('ve')
-            we = self.FigWrap.LoadKey('we')
+            self.xmin = min(np.min(self.xi), np.min(self.xe))/self.c_omp
+            self.xmax = max(np.max(self.xi), np.max(self.xe))/self.c_omp
+            bin_width = (self.xmax-self.xmin)/float(xbn)*self.c_omp
+            self.x_bins = np.linspace(self.xmin, self.xmax, num = xbn+1)
+            self.parent.DataDict[self.key_name+'x_bins'] = self.x_bins
 
-            if self.GetPlotParam('weighted'):
-                i_weights = self.FigWrap.LoadKey('chi')
-                e_weights = self.FigWrap.LoadKey('che')
+            if self.GetPlotParam('m_type') == 0:
+                # Calculate vx, vy, vz
+                if not self.GetPlotParam('weighted'):
+                    CalcVHists(self.xe,self.ue, self.ve, self.we, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
+                    CalcVHists(self.xi,self.ui, self.vi, self.wi, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
+                else:
+                    eweights = self.FigWrap.LoadKey('che')
+                    CalcVWeightedHists(self.xe,self.ue, self.ve, self.we, eweights, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
 
-            else:
-                i_weights = np.ones(len(xi))
-                e_weights = np.ones(len(xe))
-
-            tmp_hist, self.x_bins = np.histogram(xi, bins = self.GetPlotParam('xbins'))
-
-            self.ex = np.zeros(len(tmp_hist))
-            self.ey = np.zeros(len(tmp_hist))
-            self.ez = np.zeros(len(tmp_hist))
-            self.ix = np.zeros(len(tmp_hist))
-            self.iy = np.zeros(len(tmp_hist))
-            self.iz = np.zeros(len(tmp_hist))
-
-            if self.GetPlotParam('m_type') == 1 and not self.GetPlotParam('UpstreamFrame'):
-                # Momentum in the downstream frame. Easiest.
-                for j in range(len(self.x_bins)-1):
-                    i_find_loc = xi>=self.x_bins[j]
-                    i_find_loc *= xi<=self.x_bins[j+1]
-                    e_find_loc = xe>=self.x_bins[j]
-                    e_find_loc *= xe<=self.x_bins[j+1]
-                    i_ind = np.where(i_find_loc)[0]
-                    e_ind = np.where(e_find_loc)[0]
-
-
-                    self.ix[j]=np.sum(ui[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
-                    self.iy[j]=np.sum(vi[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
-                    self.iz[j]=np.sum(wi[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
-
-                    self.ex[j]=np.sum(ue[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))/self.mass_ratio
-                    self.ey[j]=np.sum(ve[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))/self.mass_ratio
-                    self.ez[j]=np.sum(we[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))/self.mass_ratio
-
-
-            else:
-
-                gi= np.sqrt(ui**2+vi**2+wi**2+1)
-                ge= np.sqrt(ue**2+ve**2+we**2+1)
-
-
-                if self.GetPlotParam('m_type') == 0 and not self.GetPlotParam('UpstreamFrame'):
-                    # calculate the velocities in lab frame from the momenta
-                    vex = ue/ge
-                    vey = ve/ge
-                    vez = we/ge
-
-                    vix = ui/gi
-                    viy = vi/gi
-                    viz = wi/gi
-
-                    for j in range(len(self.x_bins)-1):
-                        i_find_loc = xi>=self.x_bins[j]
-                        i_find_loc *= xi<=self.x_bins[j+1]
-                        e_find_loc = xe>=self.x_bins[j]
-                        e_find_loc *= xe<=self.x_bins[j+1]
-                        i_ind = np.where(i_find_loc)[0]
-                        e_ind = np.where(e_find_loc)[0]
-
-
-                        self.ix[j]=np.sum(vix[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
-                        self.iy[j]=np.sum(viy[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
-                        self.iz[j]=np.sum(viz[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
-
-                        self.ex[j]=np.sum(vex[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))
-                        self.ey[j]=np.sum(vey[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))
-                        self.ez[j]=np.sum(vez[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))
-
-                if self.GetPlotParam('m_type') == 0 and self.GetPlotParam('UpstreamFrame'):
-                    # Velocities in the upstream frame
-
-                    # calculate the velocities in downstream frame from the momenta
-                    vex = ue/ge
-                    vey = ve/ge
-                    vez = we/ge
-
-                    vix = ui/gi
-                    viy = vi/gi
-                    viz = wi/gi
-
-                    # Boost into the upstream frame:
-                    betaBoost = -np.sqrt(1-1./self.gamma0**2)
-
-                    # Now calulate the velocities in the boosted frames
-                    tmp_ihelper = 1-vix*betaBoost
-                    vix = (vix-betaBoost)/tmp_ihelper
-                    viy = viy/self.gamma0/tmp_ihelper
-                    viz = viz/self.gamma0/tmp_ihelper
-
-                    tmp_ehelper = 1-vex*betaBoost
-                    vex = (vex-betaBoost)/tmp_ehelper
-                    vey = vey/self.gamma0/tmp_ehelper
-                    vez = vez/self.gamma0/tmp_ehelper
-
-                    for j in range(len(self.x_bins)-1):
-                        i_find_loc = xi>=self.x_bins[j]
-                        i_find_loc *= xi<=self.x_bins[j+1]
-                        e_find_loc = xe>=self.x_bins[j]
-                        e_find_loc *= xe<=self.x_bins[j+1]
-                        i_ind = np.where(i_find_loc)[0]
-                        e_ind = np.where(e_find_loc)[0]
-
-
-                        self.ix[j]=np.sum(vix[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
-                        self.iy[j]=np.sum(viy[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
-                        self.iz[j]=np.sum(viz[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
-
-                        self.ex[j]=np.sum(vex[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))
-                        self.ey[j]=np.sum(vey[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))
-                        self.ez[j]=np.sum(vez[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))
-
-
-                if self.GetPlotParam('m_type') == 1 and self.GetPlotParam('UpstreamFrame'):
-                    # Momentum in the upstream frame
-
-                    # calculate the velocities in downstream frame from the momenta
-                    vex = ue/ge
-                    vey = ve/ge
-                    vez = we/ge
-
-                    vix = ui/gi
-                    viy = vi/gi
-                    viz = wi/gi
-
-                    # Boost into the upstream frame:
-                    betaBoost = -np.sqrt(1-1./self.gamma0**2)
-                    rap_boost = np.arccosh(self.gamma0) #Boost rapidity
-
-                    # Now calulate the velocities in the boosted frames
-                    tmp_ihelper = 1-vix*betaBoost
-                    vix = (vix-betaBoost)/tmp_ihelper
-                    viy = viy/self.gamma0/tmp_ihelper
-                    viz = viz/self.gamma0/tmp_ihelper
-
-                    tmp_ehelper = 1-vex*betaBoost
-                    vex = (vex-betaBoost)/tmp_ehelper
-                    vey = vey/self.gamma0/tmp_ehelper
-                    vez = vez/self.gamma0/tmp_ehelper
-
-                    # Initial rapidity
-                    rap_i = np.arccosh(gi)
-                    rap_e = np.arccosh(ge)
-
-                    gi_up = gi*self.gamma0-np.sign(ui)*np.sign(betaBoost)*np.sinh(rap_i)*np.sinh(rap_boost)/np.sqrt(1+(vi/ui)**2+(wi/ui)**2)
-                    ge_up = ge*self.gamma0-np.sign(ue)*np.sign(betaBoost)*np.sinh(rap_e)*np.sinh(rap_boost)/np.sqrt(1+(ve/ue)**2+(we/ue)**2)
-
-                    vix *= gi_up
-                    viy *= gi_up
-                    viz *= gi_up
-
-                    vex *= ge_up
-                    vey *= ge_up
-                    vez *= ge_up
-
-                    for j in range(len(self.x_bins)-1):
-                        i_find_loc = xi>=self.x_bins[j]
-                        i_find_loc *= xi<=self.x_bins[j+1]
-                        e_find_loc = xe>=self.x_bins[j]
-                        e_find_loc *= xe<=self.x_bins[j+1]
-                        i_ind = np.where(i_find_loc)[0]
-                        e_ind = np.where(e_find_loc)[0]
-
-
-                        self.ix[j]=np.sum(vix[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
-                        self.iy[j]=np.sum(viy[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
-                        self.iz[j]=np.sum(viz[i_ind]*i_weights[i_ind])/(sum(i_weights[i_ind]))
-
-                        self.ex[j]=np.sum(vex[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))/self.mass_ratio
-                        self.ey[j]=np.sum(vey[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))/self.mass_ratio
-                        self.ez[j]=np.sum(vez[e_ind]*e_weights[e_ind])/(sum(e_weights[e_ind]))/self.mass_ratio
-
-
-
-                self.parent.DataDict[self.key_name+'x_bins'] = self.x_bins
-
+                    iweights = self.FigWrap.LoadKey('chi')
+                    CalcVWeightedHists(self.xi,self.ui, self.vi, self.wi, iweights, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
                 self.parent.DataDict[self.key_name+'ex'] = self.ex
                 self.parent.DataDict[self.key_name+'ey'] = self.ey
                 self.parent.DataDict[self.key_name+'ez'] = self.ez
+                self.parent.DataDict[self.key_name+'ecounts'] = self.ecounts
 
                 self.parent.DataDict[self.key_name+'ix'] = self.ix
                 self.parent.DataDict[self.key_name+'iy'] = self.iy
                 self.parent.DataDict[self.key_name+'iz'] = self.iz
+                self.parent.DataDict[self.key_name+'icounts'] = self.icounts
+
+            if self.GetPlotParam('m_type') == 1:
+                # Calculate px, py, pz
+                if not self.GetPlotParam('weighted'):
+                    CalcPHists(self.xe,self.ue, self.ve, self.we, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
+                    CalcPHists(self.xi,self.ui, self.vi, self.wi, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
+                else:
+                    eweights = self.FigWrap.LoadKey('che')
+                    CalcPWeightedHists(self.xe,self.ue, self.ve, self.we, eweights, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
+                    iweights = self.FigWrap.LoadKey('chi')
+                    CalcPWeightedHists(self.xi,self.ui, self.vi, self.wi, iweights, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
+
+                self.ex *= self.memi
+                self.ey *= self.memi
+                self.ez *= self.memi
+                self.parent.DataDict[self.key_name+'ex'] = self.ex
+                self.parent.DataDict[self.key_name+'ey'] = self.ey
+                self.parent.DataDict[self.key_name+'ez'] = self.ez
+                self.parent.DataDict[self.key_name+'ecounts'] = self.ecounts
+
+                self.parent.DataDict[self.key_name+'ix'] = self.ix
+                self.parent.DataDict[self.key_name+'iy'] = self.iy
+                self.parent.DataDict[self.key_name+'iz'] = self.iz
+                self.parent.DataDict[self.key_name+'icounts'] = self.icounts
+
+            if self.GetPlotParam('m_type') == 2:
+                boost_gam = np.zeros(xbn)
+                vx_avg = np.zeros(xbn)
+                vix = np.zeros(xbn)
+                vex = np.zeros(xbn)
+                ge = np.empty(len(self.xe))
+                gi = np.empty(len(self.xi))
+                if not self.GetPlotParam('weighted'):
+                    # We'll put the Energy histograms into ex and ix, and delE intos ey and iy
+                    CalcVxEHists(self.xe,self.ue, self.ve, self.we, bin_width, self.xmin, ge, vex, self.ey, self.ecounts)
+                    CalcVxEHists(self.xi,self.ui, self.vi, self.wi, bin_width, self.xmin, gi, vix, self.iy, self.icounts)
+
+                    RestFrameBoost(vex, self.ecounts, vix,  self.icounts, vx_avg, boost_gam)
+                    CalcDelGamHists(self.xe, self.ue, self.ve, self.we, ge, vx_avg, boost_gam, bin_width, self.xmin, self.ecounts, self.ex)
+                    CalcDelGamHists(self.xi, self.ui, self.vi, self.wi, gi, vx_avg, boost_gam, bin_width, self.xmin, self.icounts, self.ix)
+
+
+                else:
+                    eweights = self.FigWrap.LoadKey('che')
+                    iweights = self.FigWrap.LoadKey('chi')
+                    # We'll put the Temp histograms into ex and ix, and Energy into ey and iy
+                    CalcVxEWeightedHists(self.xe,self.ue, self.ve, self.we, eweights, bin_width, self.xmin, ge, vex, self.ey, self.ecounts)
+                    CalcVxEWeightedHists(self.xi,self.ui, self.vi, self.wi, iweights, bin_width, self.xmin, gi, vix, self.iy, self.icounts)
+
+                    RestFrameBoost(vex, self.ecounts, vix,  self.icounts, vx_avg, boost_gam)
+                    CalcDelGamWeightedHists(self.xe, self.ue, self.ve, self.we, ge, eweights, vx_avg, boost_gam, bin_width, self.xmin, self.ecounts, self.ex)
+                    CalcDelGamWeightedHists(self.xi, self.ui, self.vi, self.wi, gi, iweights, vx_avg, boost_gam, bin_width, self.xmin, self.icounts, self.ix)
+
+                self.ex*=self.memi
+                self.ey*=self.memi
+                self.parent.DataDict[self.key_name+'ex'] = self.ex
+                self.parent.DataDict[self.key_name+'ecounts'] = self.ecounts
+                self.parent.DataDict[self.key_name+'ix'] = self.ix
+                self.parent.DataDict[self.key_name+'icounts'] = self.icounts
+
+                self.parent.DataDict[self.key_name+'ey'] = self.ey
+                self.parent.DataDict[self.key_name+'iy'] = self.iy
+                self.parent.DataDict[self.key_name+'ez'] = None
+                self.parent.DataDict[self.key_name+'iz'] = None
+
+
+
+
 
     def draw(self):
 
@@ -445,12 +300,43 @@ class  MomentsPanel:
 
         self.iz_plot[0].set_dashes([5, 1])
 
-        self.ex_plot[0].set_data(*self.stepify(self.x_bins, self.ex))
-        self.ey_plot[0].set_data(*self.stepify(self.x_bins, self.ey))
-        self.ez_plot[0].set_data(*self.stepify(self.x_bins, self.ez))
-        self.ix_plot[0].set_data(*self.stepify(self.x_bins, self.ix))
-        self.iy_plot[0].set_data(*self.stepify(self.x_bins, self.iy))
-        self.iz_plot[0].set_data(*self.stepify(self.x_bins, self.iz))
+        self.tx_plot = self.axes.plot(0,0,
+                                       ls= '-', #marker = '<', markeredgecolor =  self.parent.ion_color,
+                                       color = self.totalcolor,
+                                       visible =  self.GetPlotParam('show_total')*self.GetPlotParam('show_x'))
+        self.ty_plot = self.axes.plot(0,0,
+                                       ls= '-',# marker = '*',  markersize = 10, markeredgecolor =  self.parent.ion_color,
+                                       color = self.totalcolor,
+                                       visible =  self.GetPlotParam('show_total')*self.GetPlotParam('show_y'))
+        self.ty_plot[0].set_dashes([1, 1])
+
+        self.tz_plot = self.axes.plot(0,0,
+                                     ls= '-', #marker = 's', markeredgecolor  = self.parent.ion_color,
+                                     color = self.totalcolor,
+                                     visible =  self.GetPlotParam('show_total')*self.GetPlotParam('show_z'))
+
+        self.tz_plot[0].set_dashes([5, 1])
+        if self.GetPlotParam('show_electrons'):
+            if self.GetPlotParam('show_x'):
+                self.ex_plot[0].set_data(*stepify(self.x_bins, self.ex))
+            if self.GetPlotParam('show_y'):
+                self.ey_plot[0].set_data(*stepify(self.x_bins, self.ey))
+            if self.GetPlotParam('show_z'):
+                self.ez_plot[0].set_data(*stepify(self.x_bins, self.ez))
+        if self.GetPlotParam('show_ions'):
+            if self.GetPlotParam('show_x'):
+                self.ix_plot[0].set_data(*stepify(self.x_bins, self.ix))
+            if self.GetPlotParam('show_y'):
+                self.iy_plot[0].set_data(*stepify(self.x_bins, self.iy))
+            if self.GetPlotParam('show_z'):
+                self.iz_plot[0].set_data(*stepify(self.x_bins, self.iz))
+        if self.GetPlotParam('show_total'):
+            if self.GetPlotParam('show_x'):
+                self.tx_plot[0].set_data(*stepify(self.x_bins, Total(self.ix, self.icounts, self.ex, self.ecounts)))
+            if self.GetPlotParam('show_y'):
+                self.ty_plot[0].set_data(*stepify(self.x_bins, Total(self.iy, self.icounts, self.ey, self.ecounts)))
+            if self.GetPlotParam('show_z'):
+                self.tz_plot[0].set_data(*stepify(self.x_bins, Total(self.iz, self.icounts, self.ez, self.ecounts)))
 
         if int(matplotlib.__version__[0]) < 2:
             self.axes.set_axis_bgcolor('lightgrey')
@@ -466,9 +352,7 @@ class  MomentsPanel:
         self.key_list = ['show_x', 'show_y', 'show_z']
         self.ion_plot_list = [self.ix_plot[0], self.iy_plot[0], self.iz_plot[0]]
         self.e_plot_list = [self.ex_plot[0], self.ey_plot[0], self.ez_plot[0]]
-        self.label_prefix = [r'$\langle\beta', r'$\langle p']
-        self.label_mid = [r'_{i',r'_{e']
-        self.label_suffix = [r'x}\rangle$',r'y\rangle}$',r'z}\rangle$']
+        self.t_plot_list = [self.tx_plot[0], self.ty_plot[0], self.tz_plot[0]]
 
 
 
@@ -484,7 +368,7 @@ class  MomentsPanel:
                     xy = np.vstack(self.ion_plot_list[i].get_data()).T
                     self.axes.dataLim.update_from_data_xy(xy, ignore=False)
                     legend_handles.append(self.ion_plot_list[i])
-                    legend_labels.append(self.label_prefix[self.GetPlotParam('m_type')]+self.label_mid[0]+self.label_suffix[i])
+                    legend_labels.append(self.legend_labels[self.GetPlotParam('m_type')][0][i])
 
 
         if self.GetPlotParam('show_electrons'):
@@ -493,19 +377,25 @@ class  MomentsPanel:
                     xy = np.vstack(self.e_plot_list[i].get_data()).T
                     self.axes.dataLim.update_from_data_xy(xy, ignore=False)
                     legend_handles.append(self.e_plot_list[i])
-                    legend_labels.append(self.label_prefix[self.GetPlotParam('m_type')]+self.label_mid[1]+self.label_suffix[i])
+                    legend_labels.append(self.legend_labels[self.GetPlotParam('m_type')][1][i])
+
+        if self.GetPlotParam('show_total'):
+            for i in range(len(self.t_plot_list)):
+                if self.GetPlotParam(self.key_list[i]):
+                    xy = np.vstack(self.t_plot_list[i].get_data()).T
+                    self.axes.dataLim.update_from_data_xy(xy, ignore=False)
+                    legend_handles.append(self.t_plot_list[i])
+                    legend_labels.append(self.legend_labels[self.GetPlotParam('m_type')][2][i])
 
 
         self.axes.autoscale()
 
         # now make the legend
-        if self.GetPlotParam('show_ions') and self.GetPlotParam('show_electrons'):
-            self.legend = self.axes.legend(legend_handles, legend_labels,
-            framealpha = .05, fontsize = 11, loc = 1, ncol = 2)#, bbox_transform = self.parent.f.transFigure)
 
-        else:
-            self.legend = self.axes.legend(legend_handles, legend_labels,
-            framealpha = .05, fontsize = 11, loc = 1)#,bbox_transform = self.parent.f.transFigure)
+
+        self.legend = self.axes.legend(legend_handles, legend_labels,
+        framealpha = .05, fontsize = 11, loc = 1, ncol = max(1, self.GetPlotParam('show_ions')+ self.GetPlotParam('show_electrons')+self.GetPlotParam('show_total')))
+
         self.legend.get_frame().set_facecolor('k')
         self.legend.get_frame().set_linewidth(0.0)
         if not self.GetPlotParam('show_legend'):
@@ -528,12 +418,12 @@ class  MomentsPanel:
             else:
                 self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
         else:
-            self.axes.set_xlim(self.xmin,self.xmax)
+            self.axes.set_xlim(self.fxmin,self.fxmax)
 
 
 
         self.axes.set_xlabel(r'$x\  [c/\omega_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
-        self.axes.set_ylabel(self.ylabel_list[self.GetPlotParam('m_type')][self.GetPlotParam('UpstreamFrame')], labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+        self.axes.set_ylabel(self.ylabel_list[self.GetPlotParam('m_type')], labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
     def refresh(self):
 
@@ -543,12 +433,27 @@ class  MomentsPanel:
         between this and last time, is that we won't actually do any drawing in
         the plot. The plot will be redrawn after all subplots are refreshed. '''
 
-        self.ex_plot[0].set_data(*self.stepify(self.x_bins, self.ex))
-        self.ey_plot[0].set_data(*self.stepify(self.x_bins, self.ey))
-        self.ez_plot[0].set_data(*self.stepify(self.x_bins, self.ez))
-        self.ix_plot[0].set_data(*self.stepify(self.x_bins, self.ix))
-        self.iy_plot[0].set_data(*self.stepify(self.x_bins, self.iy))
-        self.iz_plot[0].set_data(*self.stepify(self.x_bins, self.iz))
+        if self.GetPlotParam('show_electrons'):
+            if self.GetPlotParam('show_x'):
+                self.ex_plot[0].set_data(*stepify(self.x_bins, self.ex))
+            if self.GetPlotParam('show_y'):
+                self.ey_plot[0].set_data(*stepify(self.x_bins, self.ey))
+            if self.GetPlotParam('show_z'):
+                self.ez_plot[0].set_data(*stepify(self.x_bins, self.ez))
+        if self.GetPlotParam('show_ions'):
+            if self.GetPlotParam('show_x'):
+                self.ix_plot[0].set_data(*stepify(self.x_bins, self.ix))
+            if self.GetPlotParam('show_y'):
+                self.iy_plot[0].set_data(*stepify(self.x_bins, self.iy))
+            if self.GetPlotParam('show_z'):
+                self.iz_plot[0].set_data(*stepify(self.x_bins, self.iz))
+        if self.GetPlotParam('show_total'):
+            if self.GetPlotParam('show_x'):
+                self.tx_plot[0].set_data(*stepify(self.x_bins, Total(self.ix, self.icounts, self.ex, self.ecounts)))
+            if self.GetPlotParam('show_y'):
+                self.ty_plot[0].set_data(*stepify(self.x_bins, Total(self.iy, self.icounts, self.ey, self.ecounts)))
+            if self.GetPlotParam('show_z'):
+                self.tz_plot[0].set_data(*stepify(self.x_bins, Total(self.iz, self.icounts, self.ez, self.ecounts)))
 
         # fancy code to make sure that matplotlib sets its limits
         # based only on the visible lines.
@@ -563,6 +468,11 @@ class  MomentsPanel:
             for i in range(len(self.e_plot_list)):
                 if self.GetPlotParam(self.key_list[i]):
                     xy = np.vstack(self.e_plot_list[i].get_data()).T
+                    self.axes.dataLim.update_from_data_xy(xy, ignore=False)
+        if self.GetPlotParam('show_total'):
+            for i in range(len(self.t_plot_list)):
+                if self.GetPlotParam(self.key_list[i]):
+                    xy = np.vstack(self.t_plot_list[i].get_data()).T
                     self.axes.dataLim.update_from_data_xy(xy, ignore=False)
 
 
@@ -582,7 +492,7 @@ class  MomentsPanel:
             else:
                 self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
         else:
-            self.axes.set_xlim(self.xmin,self.xmax)
+            self.axes.set_xlim(self.fxmin,self.fxmax)
 
 
     def GetPlotParam(self, keyname):
@@ -621,13 +531,14 @@ class MomentsSettings(Tk.Toplevel):
         ctypeChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
 
         # the Radiobox Control to choose the moment
-        self.momList = ['avg velocity', 'avg momentum']
+        self.momList = ['avg velocity', 'avg momentum', 'Kinetic Energy']
         self.pvar = Tk.IntVar()
         self.pvar.set(self.parent.GetPlotParam('m_type'))
 
         ttk.Label(frm, text='Moment Type:').grid(row = 1, sticky = Tk.W)
         ttk.Label(frm, text='Prtls:').grid(row = 1, column = 1, sticky = Tk.W)
-        ttk.Label(frm, text='Dims:').grid(row = 1, column = 2, sticky = Tk.W)
+        self.Dlabel = ttk.Label(frm, text='Options:')
+        self.Dlabel.grid(row = 1, column = 2, sticky = Tk.W)
 
         for i in range(len(self.momList)):
             ttk.Radiobutton(frm,
@@ -636,18 +547,18 @@ class MomentsSettings(Tk.Toplevel):
                 command = self.RadioMom,
                 value=i).grid(row = 2+i, sticky =Tk.W)
         # the Radiobox Control to choose the moment
-        self.refList = ['downstream', 'upstream']
-        self.framevar = Tk.IntVar()
-        self.framevar.set(self.parent.GetPlotParam('UpstreamFrame'))
+        #self.refList = ['downstream', 'upstream']
+        #self.framevar = Tk.IntVar()
+        #self.framevar.set(self.parent.GetPlotParam('UpstreamFrame'))
 
-        ttk.Label(frm, text='Reference Frame:').grid(row = 5, sticky = Tk.W)
+        #ttk.Label(frm, text='Reference Frame:').grid(row = 5, sticky = Tk.W)
 
-        for i in range(len(self.refList)):
-            ttk.Radiobutton(frm,
-                text=self.refList[i],
-                variable=self.framevar,
-                command = self.RadioRefFrame,
-                value=i).grid(row = 6+i, sticky =Tk.W)
+        #for i in range(len(self.refList)):
+        #    ttk.Radiobutton(frm,
+        #        text=self.refList[i],
+        #        variable=self.framevar,
+        #        command = self.RadioRefFrame,
+        #        value=i).grid(row = 6+i, sticky =Tk.W)
 
 
         self.ShowIonsVar = Tk.IntVar(self) # Create a var to track whether or not to show electrons
@@ -662,23 +573,36 @@ class MomentsSettings(Tk.Toplevel):
             variable = self.ShowElectronsVar,
             command = self.Selector).grid(row = 3, column = 1, sticky = Tk.W)
 
+        self.ShowTotalVar = Tk.IntVar(self) # Create a var to track whether or not to show electrons
+        self.ShowTotalVar.set(self.parent.GetPlotParam('show_total'))
+        ttk.Checkbutton(frm, text = "Total",
+            variable = self.ShowTotalVar,
+            command = self.Selector).grid(row = 4, column = 1, sticky = Tk.W)
+
 
         self.ShowXVar = Tk.IntVar(self) # Create a var to track whether or not to show electrons
         self.ShowXVar.set(self.parent.GetPlotParam('show_x'))
-        ttk.Checkbutton(frm, text = "Show x",
+        self.Xcb = ttk.Checkbutton(frm, text = "Show x",
             variable = self.ShowXVar,
-            command = self.Selector).grid(row = 2, column = 2, sticky = Tk.W)
+            command = self.Selector)
+        self.Xcb.grid(row = 2, column = 2, sticky = Tk.W)
         self.ShowYVar = Tk.IntVar(self) # Create a var to track whether or not to show electrons
         self.ShowYVar.set(self.parent.GetPlotParam('show_y'))
-        ttk.Checkbutton(frm, text = "Show y",
+        self.Ycb = ttk.Checkbutton(frm, text = "Show y",
             variable = self.ShowYVar,
-            command = self.Selector).grid(row = 3, column = 2, sticky = Tk.W)
+            command = self.Selector)
+        self.Ycb.grid(row = 3, column = 2, sticky = Tk.W)
         self.ShowZVar = Tk.IntVar(self) # Create a var to track whether or not to show electrons
         self.ShowZVar.set(self.parent.GetPlotParam('show_z'))
-        ttk.Checkbutton(frm, text = "Show z",
+        self.Zcb = ttk.Checkbutton(frm, text = "Show z",
             variable = self.ShowZVar,
-            command = self.Selector).grid(row = 4, column = 2, sticky = Tk.W)
-
+            command = self.Selector)
+        self.Zcb.grid(row = 4, column = 2, sticky = Tk.W)
+        if self.parent.GetPlotParam('m_type') == 2:
+            self.Zcb.state(['disabled'])
+            self.Zcb.config(text= '')
+            self.Ycb.config(text= 'KE')
+            self.Xcb.config(text= 'Co-moving temp (<vx>=0)')
         # Control if the plot is weightedd
         self.WeightVar = Tk.IntVar()
         self.WeightVar.set(self.parent.GetPlotParam('weighted'))
@@ -723,19 +647,9 @@ class MomentsSettings(Tk.Toplevel):
         self.TrueVar.set(1)
         self.xBins = Tk.StringVar()
         self.xBins.set(str(self.parent.GetPlotParam('xbins')))
-        ttk.Label(frm, text ='# of xbins').grid(row = 8, column = 0, sticky = Tk.W)
-        ttk.Entry(frm, textvariable=self.xBins, width=8).grid(row = 8, column = 1)
+        ttk.Label(frm, text ='# of xbins').grid(row = 7, column = 0, sticky = Tk.W)
+        ttk.Entry(frm, textvariable=self.xBins, width=8).grid(row = 7, column = 1)
 
-        '''
-        # Create the OptionMenu to chooses the Legend location:
-        self.LLocVar = Tk.StringVar(self)
-        self.LLocVar.set(self.parent.GetPlotParam('legend_loc')) # default value
-        self.LLocVar.trace('w', self.LLocChanged)
-
-        ttk.Label(frm, text="Lengend Location:").grid(row=0, column = 2)
-        InterplChooser = apply(ttk.OptionMenu, (frm, self.LLocVar, self.parent.GetPlotParam('legend_loc')) + tuple(self.parent.LegendLocOpts))
-        InterplChooser.grid(row =8, column = 3, sticky = Tk.W + Tk.E)
-        '''
         self.ShowLegVar = Tk.IntVar(self)
         self.ShowLegVar.set(self.parent.GetPlotParam('show_legend'))
         self.ShowLegVar.trace('w', self.ShowLegChanged)
@@ -776,15 +690,30 @@ class MomentsSettings(Tk.Toplevel):
         if self.pvar.get() == self.parent.GetPlotParam('m_type'):
             pass
         else:
-            self.parent.axes.set_ylabel(self.parent.ylabel_list[self.pvar.get()][self.parent.GetPlotParam('UpstreamFrame')], labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
-            self.parent.SetPlotParam('m_type', self.pvar.get())
+            self.parent.axes.set_ylabel(self.parent.ylabel_list[self.pvar.get()], labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
+            self.parent.SetPlotParam('m_type', self.pvar.get(), update_plot=False)
+            if self.parent.GetPlotParam('m_type') == 2:
+                self.Zcb.state(['disabled'])
+                self.Zcb.config(text= '')
+                self.ShowZVar.set(0)
+                self.Dlabel.config(text= 'options')
+                self.Ycb.config(text= 'KE')
+                self.Xcb.config(text= 'Co-moving temp (<vx>=0)')
+            else:
+                self.Zcb.state(['!disabled'])
+                self.Zcb.config(text= 'Show Z')
+                self.Dlabel.config(text= 'options')
+                self.Ycb.config(text= 'Show Y')
+                self.Xcb.config(text= 'Show X')
+
             self.Selector()
 
     def RadioRefFrame(self):
         if self.framevar.get() == self.parent.GetPlotParam('UpstreamFrame'):
             pass
         else:
-            self.parent.axes.set_ylabel(self.parent.ylabel_list[self.parent.GetPlotParam('m_type')][self.framevar.get()], labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+
+            self.parent.axes.set_ylabel(self.parent.ylabel_list[self.parent.GetPlotParam('m_type')][self.framevar.get()], labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
             self.parent.SetPlotParam('UpstreamFrame', self.framevar.get())
 
     def Selector(self):
@@ -810,22 +739,33 @@ class MomentsSettings(Tk.Toplevel):
             self.parent.ion_plot_list[i].set_visible(VarList[i].get() and self.ShowIonsVar.get())
             if VarList[i].get() and self.ShowIonsVar.get():
                 legend_handles.append(self.parent.ion_plot_list[i])
-                legend_labels.append(self.parent.label_prefix[self.parent.GetPlotParam('m_type')]+self.parent.label_mid[0]+self.parent.label_suffix[i])
+                legend_labels.append(self.parent.legend_labels[self.parent.GetPlotParam('m_type')][0][i])
 
         for i in range(len(self.parent.e_plot_list)):
             # Set the visibility to the new value
             self.parent.e_plot_list[i].set_visible(VarList[i].get() and self.ShowElectronsVar.get())
             if VarList[i].get() and self.ShowElectronsVar.get():
                 legend_handles.append(self.parent.e_plot_list[i])
-                legend_labels.append(self.parent.label_prefix[self.parent.GetPlotParam('m_type')]+self.parent.label_mid[1]+self.parent.label_suffix[i])
+                legend_labels.append(self.parent.legend_labels[self.parent.GetPlotParam('m_type')][1][i])
+        for i in range(len(self.parent.t_plot_list)):
+            # Set the visibility to the new value
+            self.parent.t_plot_list[i].set_visible(VarList[i].get() and self.ShowTotalVar.get())
+            if VarList[i].get() and self.ShowTotalVar.get():
+                legend_handles.append(self.parent.t_plot_list[i])
+                legend_labels.append(self.parent.legend_labels[self.parent.GetPlotParam('m_type')][2][i])
 
 
-        if self.ShowElectronsVar.get() and self.ShowIonsVar.get():
-            self.parent.legend = self.parent.axes.legend(legend_handles, legend_labels,
-            framealpha = .05, fontsize = 11, loc = 1, ncol = 2)
-        else:
-            self.parent.legend = self.parent.axes.legend(legend_handles, legend_labels,
-            framealpha = .05, fontsize = 11, loc = 1)
+
+        for i in range(len(VarList)):
+            self.parent.SetPlotParam(self.parent.key_list[i], VarList[i].get(), update_plot = False)
+        self.parent.SetPlotParam('show_ions', self.ShowIonsVar.get(), update_plot = False)
+        self.parent.SetPlotParam('show_electrons', self.ShowElectronsVar.get(), update_plot = False)
+        self.parent.SetPlotParam('show_total', self.ShowTotalVar.get(), update_plot = False)
+
+
+
+        self.parent.legend = self.parent.axes.legend(legend_handles, legend_labels,
+        framealpha = .05, fontsize = 11, loc = 1, ncol = max(1, self.ShowElectronsVar.get()+self.ShowTotalVar.get()+self.ShowIonsVar.get()))
 
         self.parent.legend.set_visible(self.parent.GetPlotParam('show_legend'))
         self.parent.legend.get_frame().set_facecolor('k')
@@ -834,12 +774,7 @@ class MomentsSettings(Tk.Toplevel):
         if self.parent.GetPlotParam('legend_loc') != 'N/A':
             tmp_tup = float(self.parent.GetPlotParam('legend_loc').split()[0]),float(self.parent.GetPlotParam('legend_loc').split()[1])
             self.parent.legend._set_loc(tmp_tup)
-
         # Force a plot refresh
-        for i in range(len(VarList)):
-            self.parent.SetPlotParam(self.parent.key_list[i], VarList[i].get(), update_plot = False)
-        self.parent.SetPlotParam('show_ions', self.ShowIonsVar.get(), update_plot = False)
-        self.parent.SetPlotParam('show_electrons', self.ShowElectronsVar.get(), update_plot = False)
         self.parent.SetPlotParam(self.parent.key_list[0], VarList[0].get(), update_plot = True)
 
 
