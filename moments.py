@@ -15,7 +15,7 @@ class  MomentsPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
 
     plot_param_dict = {'twoD': 0,
-                       'm_type': 2, # 0 = average_velocity, 1 = average_momentum, 2 = Energy
+                       'm_type': 0, # 0 = average_velocity, 1 = average_momentum, 2 = Energy
                        'v_min': 0,
                        'v_max' : 10,
                        'set_v_min': False,
