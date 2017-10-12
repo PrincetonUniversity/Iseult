@@ -1,7 +1,8 @@
 import numpy as np
 from numba import jit, guvectorize, float64, int32
 from math import sqrt
-
+#import os
+#os.environ['NUMBA_WARNINGS'] = '1'
 @jit(nopython=True, cache = True)
 def stepify(bins, hist):
     # make it a step, there probably is a much better way to do this
@@ -27,7 +28,7 @@ def TwiceArr(xarr):
         tmp[2*j+1] = xarr[j]
     return tmp
 
-@guvectorize([(float64[:], float64[:], float64[:],float64[:])], '(n),(n),(n)->(n)', nopython = True, cache = True)
+@guvectorize([(float64[:], float64[:], float64[:],float64[:])], '(n),(n),(n)->(n)', nopython = True, cache = True, target='parallel')
 def LorentzFactor(u,v,w, ans):
     # Iterate over the array, find the min and max and divide by a number
     # Calculate xmin and xmax
@@ -47,7 +48,7 @@ def LorentzFactor(u,v,w, ans):
                float64[:], # E binned
                float64[:] # counts
                )],
-               '(n),(n),(n),(n),(),(), (n), (m), (m), (m)', nopython = True, cache = True)
+               '(n),(n),(n),(n),(),(), (n), (m), (m), (m)', nopython = True, cache = True, target='parallel')
 def CalcVxEHists(x, u, v, w, bin_width, xmin, g, vx, E, counts):
     bn = bin_width[0]
     minx = xmin[0]
@@ -78,7 +79,7 @@ def CalcVxEHists(x, u, v, w, bin_width, xmin, g, vx, E, counts):
                float64[:], # E binned
                float64[:] # counts
                )],
-               '(n),(n),(n),(n),(n), (),(),(n), (m), (m), (m)', nopython = True, cache = True)
+               '(n),(n),(n),(n),(n), (),(),(n), (m), (m), (m)', nopython = True, cache = True, target='parallel')
 def CalcVxEWeightedHists(x, u, v, w, weights, bin_width, xmin, g, vx,  E, counts):
     bn = bin_width[0]
     minx = xmin[0]
@@ -109,7 +110,7 @@ def CalcVxEWeightedHists(x, u, v, w, weights, bin_width, xmin, g, vx,  E, counts
                float64[:], # vz binned
                float64[:] # counts
                )],
-               '(n),(n),(n),(n),(),(), (m),(m), (m), (m)', nopython = True, cache = True)
+               '(n),(n),(n),(n),(),(), (m),(m), (m), (m)', nopython = True, cache = True,target='parallel')
 def CalcVHists(x, u, v, w, bin_width, xmin, vx, vy, vz, counts):
     bn = bin_width[0]
     minx = xmin[0]
@@ -143,7 +144,7 @@ def CalcVHists(x, u, v, w, bin_width, xmin, vx, vy, vz, counts):
                float64[:], # vz binned
                float64[:] # counts
                )],
-               '(n),(n),(n),(n),(n),(),(), (m),(m), (m), (m)', nopython = True, cache = True)
+               '(n),(n),(n),(n),(n),(),(), (m),(m), (m), (m)', nopython = True, cache = True,target='parallel')
 def CalcVWeightedHists(x, u, v, w, weights, bin_width, xmin, vx, vy, vz, counts):
     bn = bin_width[0]
     minx = xmin[0]
@@ -180,7 +181,7 @@ def CalcVWeightedHists(x, u, v, w, weights, bin_width, xmin, vx, vy, vz, counts)
                float64[:], # pz binned
                float64[:] # counts
                )],
-               '(n),(n),(n),(n),(),(),(m),(m), (m), (m)', nopython = True, cache = True)
+               '(n),(n),(n),(n),(),(),(m),(m), (m), (m)', nopython = True, cache = True,target='parallel')
 def CalcPHists(x, u, v, w, bin_width, xmin, px, py, pz, counts):
     bn = bin_width[0]
     minx =xmin[0]
@@ -212,7 +213,7 @@ def CalcPHists(x, u, v, w, bin_width, xmin, px, py, pz, counts):
                float64[:], # pz binned
                float64[:] # counts
                )],
-               '(n),(n),(n),(n),(n),(),(),(m),(m), (m), (m)', nopython = True)
+               '(n),(n),(n),(n),(n),(),(),(m),(m), (m), (m)', nopython = True,target='parallel')
 def CalcPWeightedHists(x, u, v, w, weights, bin_width, xmin, px, py, pz, counts):
     bn = bin_width[0]
     minx = xmin[0]
@@ -235,14 +236,14 @@ def CalcPWeightedHists(x, u, v, w, weights, bin_width, xmin, px, py, pz, counts)
             py[l] *= c
             pz[l] *= c
 
-@guvectorize([(float64[:], float64[:], float64[:], float64[:],float64[:],float64[:])], '(m),(m),(m),(m),(m),(m)', cache = True)
+@guvectorize([(float64[:], float64[:], float64[:], float64[:],float64[:],float64[:])], '(m),(m),(m),(m),(m),(m)', cache = True,target='parallel')
 def RestFrameBoost(vx_e, ecounts, vx_i, icounts, vx_avg, boost_g):
     for i in xrange(len(vx_e)):
         if ecounts[i] != 0 or icounts[i] != 0:
             vx_avg[i] = (vx_e[i]*ecounts[i]+vx_i[i]*icounts[i])/(icounts[i]+ecounts[i])
             boost_g[i] = 1/sqrt(1+vx_avg[i]*vx_avg[i])
 
-@guvectorize([(float64[:], float64[:], float64[:], float64[:], float64[:])], '(m),(m),(m),(m) ->(m)', nopython =True, cache = True)
+@guvectorize([(float64[:], float64[:], float64[:], float64[:], float64[:])], '(m),(m),(m),(m) ->(m)', nopython =True, cache = True,target='parallel')
 def Total(e_arr,  ecounts, i_arr, icounts, ans):
     for i in xrange(len(e_arr)):
         if ecounts[i] != 0 or icounts[i] != 0:
@@ -260,7 +261,7 @@ def Total(e_arr,  ecounts, i_arr, icounts, ans):
                float64[:], # Counts
                float64[:] # T
                )],
-               '(n),(n),(n),(n),(n),(m),(m),(),(),(m),(m)', nopython = True, cache = True)
+               '(n),(n),(n),(n),(n),(m),(m),(),(),(m),(m)', nopython = True, cache = True, target='parallel')
 def CalcDelGamHists(x, u, v, w, g, vx_avg, boost_g, bin_width, xmin, counts, T):
     bn = bin_width[0]
     lmax = len(vx_avg)
@@ -288,7 +289,7 @@ def CalcDelGamHists(x, u, v, w, g, vx_avg, boost_g, bin_width, xmin, counts, T):
                float64[:], # Counts
                float64[:] # T
                )],
-               '(n),(n),(n),(n),(n),(n),(m),(m),(),(),(m),(m)', nopython = True, cache = True)
+               '(n),(n),(n),(n),(n),(n),(m),(m),(),(),(m),(m)', nopython = True, cache = True,target='parallel')
 def CalcDelGamWeightedHists(x, u, v, w, g, weights, vx_avg, boost_g, bin_width, xmin, counts, T):
     bn = bin_width[0]
     lmax = len(vx_avg)

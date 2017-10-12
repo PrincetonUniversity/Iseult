@@ -1830,7 +1830,7 @@ class MainApp(Tk.Tk):
 
 
         fileMenu = Tk.Menu(menubar, tearoff=False)
-        presetMenu = Tk.Menu(menubar, tearoff=False)
+        self.presetMenu = Tk.Menu(menubar, tearoff=False, postcommand=self.ViewUpdate)
         menubar.add_cascade(label="File", underline=0, menu=fileMenu)
         fileMenu.add_command(label= 'Open Directory', command = self.OnOpen, accelerator='Command+o')
 
@@ -2012,20 +2012,13 @@ class MainApp(Tk.Tk):
         self.TimeStep.attach(self)
         self.InitializeCanvas()
 
-
+        menubar.add_cascade(label='Preset Views', underline=0, menu = self.presetMenu)
         self.playbackbar.pack(side=Tk.TOP, fill=Tk.BOTH, expand=0)
         self.update()
         # now root.geometry() returns valid size/placement
         self.minsize(self.winfo_width(), self.winfo_height())
         self.geometry(self.MainParamDict['WindowSize'])
 
-        menubar.add_cascade(label='Preset Views', underline=0, menu = presetMenu)
-        for cfile in os.listdir(os.path.join(self.IseultDir, '.iseult_configs')):
-            if cfile.split('.')[-1]=='cfg':
-                config = ConfigParser.RawConfigParser()
-                config.read(os.path.join(self.IseultDir,'.iseult_configs', cfile))
-                tmpstr = config.get('general', 'ConfigName')
-                presetMenu.add_command(label = tmpstr, command = partial(self.LoadConfig, str(os.path.join(self.IseultDir,'.iseult_configs', cfile))))
 
         self.config(menu=menubar)
 
@@ -2035,6 +2028,17 @@ class MainApp(Tk.Tk):
         self.bind('r', self.playbackbar.OnReload)
         self.bind('<space>', self.playbackbar.PlayHandler)
         self.update()
+    def ViewUpdate(self):
+        for cfile in os.listdir(os.path.join(self.IseultDir, '.iseult_configs')):
+            if cfile.split('.')[-1]=='cfg':
+                config = ConfigParser.RawConfigParser()
+                config.read(os.path.join(self.IseultDir,'.iseult_configs', cfile))
+                tmpstr = config.get('general', 'ConfigName')
+                try:
+                    self.presetMenu.delete(tmpstr)
+                except:
+                    pass
+                self.presetMenu.add_command(label = tmpstr, command = partial(self.LoadConfig, str(os.path.join(self.IseultDir,'.iseult_configs', cfile))))
 
     def StrideChanged(self):
         # first we have to remove the calculated energy time steps
