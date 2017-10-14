@@ -62,8 +62,8 @@ class  MomentsPanel:
                               [[r'$\langle p_{ix}\rangle$',r'$\langle p_{ix}\rangle$',r'$\langle p_{ix}\rangle$'],
                                [r'$\langle p_{ex}\rangle$',r'$\langle p_{ex}\rangle$',r'$\langle p_{ex}\rangle$'],
                                [r'$\langle p_x \rangle$',r'$\langle p_y \rangle$',r'$\langle p_z \rangle$']],
-                              [[r'$\Delta \gamma_e$',r'$\langle KE_{i}\rangle$', None],
-                               [r'$\Delta \gamma_i$',r'$\langle KE_{e}\rangle$', None],
+                              [[r'$\Delta \gamma_i$',r'$\langle KE_{i}\rangle$', None],
+                               [r'$\Delta \gamma_e$',r'$\langle KE_{e}\rangle$', None],
                                [r'$\Delta \gamma$',r'$\langle KE \rangle$',None]]]
 
     def ChangePlotType(self, str_arg):
