@@ -377,6 +377,7 @@ class SpectralPanel:
 
                     fpmommax = self.momentum**4*aconst*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
                     fpmommax *= np.exp(-self.gamma/self.GetPlotParam('DelGami'))/(4*np.pi*self.momentum)/(self.gamma+1.0)
+                    self.fpmommax *= self.GetPlotParam('iNormalizer')
                     self.ion_temp[0].set_data(self.momentum, fpmommax)
 
                 else:
@@ -431,6 +432,7 @@ class SpectralPanel:
 
                     femommax = self.momentum**4*aconst*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
                     femommax *= np.exp(-self.gamma/self.delgame0)/(4*np.pi*self.momentum)/(self.gamma+1.0)
+                    self.femommax *= self.GetPlotParam('eNormalizer')
                     self.electron_temp[0].set_data(self.momentum, femommax)
 
 
@@ -503,8 +505,11 @@ class SpectralPanel:
 
                     femax = aconst*self.gamma*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
                     femax *= np.exp(-self.gamma/self.delgame0)
+                    femax *= self.GetPlotParam('eNormalizer')
                     self.electron_temp[0].set_data(self.gamma, femax)
 
+                else:
+                    self.electron_temp[0].set_visible(False)
 
                 # the power-law
                 self.PowerlawEworked = False
@@ -558,8 +563,10 @@ class SpectralPanel:
 
                     fpmax = aconst*self.gamma*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
                     fpmax *= np.exp(-self.gamma/self.GetPlotParam('DelGami'))
+                    fpmax *= self.GetPlotParam('iNormalizer')
                     self.ion_temp[0].set_data(self.gamma, fpmax)
-
+                else:
+                    self.ion_temp[0].set_visible(False)
                 self.PowerlawPworked = False
                 if not self.GetPlotParam('DoPowerLawFitIon'):
                     self.PLP[0].set_visible(False)
@@ -1077,7 +1084,7 @@ class SpectraSettings(Tk.Toplevel):
         try:
             # make sure the user types in a float
             if np.abs(float(self.delgameVar.get()) - self.parent.GetPlotParam('DelGame')) > 1E-12:
-                self.parent.SetPlotParam('DelGame', float(self.delgameVar.get()))
+                self.parent.SetPlotParam('DelGame', float(self.delgameVar.get()), update_plot = False)
                 self.parent.refresh()
                 self.parent.parent.canvas.draw()
                 self.parent.parent.canvas.get_tk_widget().update_idletasks()
@@ -1092,7 +1099,7 @@ class SpectraSettings(Tk.Toplevel):
         try:
             # make sure the user types in a float
             if np.abs(float(self.delgampVar.get()) - self.parent.GetPlotParam('DelGami')) > 1E-12:
-                self.parent.SetPlotParam('DelGami', float(self.delgampVar.get()))
+                self.parent.SetPlotParam('DelGami', float(self.delgampVar.get()), update_plot=False)
                 self.parent.refresh()
                 self.parent.parent.canvas.draw()
                 self.parent.parent.canvas.get_tk_widget().update_idletasks()
