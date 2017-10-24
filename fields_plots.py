@@ -10,6 +10,7 @@ from tkMessageBox import showinfo
 from new_cnorms import PowerNormWithNeg, PowerNormFunc
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
+from modest_image import imshow
 import matplotlib.patheffects as PathEffects
 import matplotlib.transforms as mtransforms
 
@@ -422,16 +423,16 @@ class FieldsPanel:
             if self.GetPlotParam('show_x') and self.flagx == 2:
                 if self.parent.MainParamDict['2DSlicePlane'] == 0: # Show the x-y plane
                     if self.parent.MainParamDict['ImageAspect']:
-                        self.cax = self.axes.imshow(self.fx[self.parent.zSlice,:,:], norm = self.norm(), origin = 'lower')
+                        self.cax = imshow(self.axes, self.fx[self.parent.zSlice,:,:], norm = self.norm(), origin = 'lower')
                     else:
-                        self.cax = self.axes.imshow(self.fx[self.parent.zSlice,:,:], origin = 'lower', norm = self.norm(),
+                        self.cax = imshow(self.axes,self.fx[self.parent.zSlice,:,:], origin = 'lower', norm = self.norm(),
                                                     aspect= 'auto')
 
                 elif self.parent.MainParamDict['2DSlicePlane'] == 1: # Show the x-z plane
                     if self.parent.MainParamDict['ImageAspect']:
-                        self.cax = self.axes.imshow(self.fx[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower')
+                        self.cax = imshow(self.axes, self.fx[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower')
                     else:
-                        self.cax = self.axes.imshow(self.fx[:,self.parent.ySlice,:], origin = 'lower', norm = self.norm(),
+                        self.cax = imshow(self.axes, self.fx[:,self.parent.ySlice,:], origin = 'lower', norm = self.norm(),
                                                     aspect= 'auto')
 
                 self.plotFlag = 0
@@ -441,15 +442,15 @@ class FieldsPanel:
             elif self.GetPlotParam('show_y') and self.flagy == 2:
                 if self.parent.MainParamDict['2DSlicePlane'] == 0: # Show the x-y plane
                     if self.parent.MainParamDict['ImageAspect']:
-                        self.cax = self.axes.imshow(self.fy[self.parent.zSlice,:,:], norm = self.norm(), origin = 'lower')
+                        self.cax = imshow(self.axes, self.fy[self.parent.zSlice,:,:], norm = self.norm(), origin = 'lower')
                     else:
-                        self.cax = self.axes.imshow(self.fy[self.parent.zSlice,:,:], origin = 'lower', norm = self.norm(),
+                        self.cax = imshow(self.axes, self.fy[self.parent.zSlice,:,:], origin = 'lower', norm = self.norm(),
                                                     aspect= 'auto')
                 elif self.parent.MainParamDict['2DSlicePlane'] == 1: # Show the x-z plane
                     if self.parent.MainParamDict['ImageAspect']:
-                        self.cax = self.axes.imshow(self.fy[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower')
+                        self.cax = imshow(self.axes, self.fy[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower')
                     else:
-                        self.cax = self.axes.imshow(self.fy[:,self.parent.ySlice,:], origin = 'lower', norm = self.norm(),
+                        self.cax = imshow(self.axes,self.fy[:,self.parent.ySlice,:], origin = 'lower', norm = self.norm(),
                                                     aspect= 'auto')
                 self.plotFlag = 1
                 self.SetPlotParam('show_x', 0, update_plot = False)
@@ -461,15 +462,15 @@ class FieldsPanel:
                 # set the other plot values to zero in the PlotParams
                 if self.parent.MainParamDict['2DSlicePlane'] == 0: # Show the x-y plane
                     if self.parent.MainParamDict['ImageAspect']:
-                        self.cax = self.axes.imshow(self.fz[self.parent.zSlice,:,:], norm = self.norm(), origin = 'lower')
+                        self.cax = imshow(self.axes,self.fz[self.parent.zSlice,:,:], norm = self.norm(), origin = 'lower')
                     else:
-                        self.cax = self.axes.imshow(self.fz[self.parent.zSlice,:,:], origin = 'lower', norm = self.norm(),
+                        self.cax = imshow(self.axes, self.fz[self.parent.zSlice,:,:], origin = 'lower', norm = self.norm(),
                                                     aspect= 'auto')
                 elif self.parent.MainParamDict['2DSlicePlane'] == 1: # Show the x-z plane
                     if self.parent.MainParamDict['ImageAspect']:
-                        self.cax = self.axes.imshow(self.fz[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower')
+                        self.cax = imshow(self.axes,self.fz[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower')
                     else:
-                        self.cax = self.axes.imshow(self.fz[:,self.parent.ySlice,:], origin = 'lower', norm = self.norm(),
+                        self.cax = imshow(self.axes,self.fz[:,self.parent.ySlice,:], origin = 'lower', norm = self.norm(),
                                                     aspect= 'auto')
 
                 self.plotFlag = 2

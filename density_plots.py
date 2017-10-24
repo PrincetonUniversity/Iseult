@@ -9,7 +9,7 @@ from new_cnorms import PowerNormWithNeg, PowerNormFunc
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
-#from modest_image import ModestImage
+from modest_image import imshow
 from matplotlib.ticker import FuncFormatter
 
 class DensPanel:
@@ -187,15 +187,15 @@ class DensPanel:
 
             if self.parent.MainParamDict['2DSlicePlane'] ==0: # x-y plane
                 if self.parent.MainParamDict['ImageAspect']:
-                    self.cax = self.axes.imshow(self.zval[self.parent.zSlice,:,:], norm = self.norm(), origin = 'lower')
+                    self.cax = imshow(self.axes, self.zval[self.parent.zSlice,:,:], norm = self.norm(), origin = 'lower')
                 else:
-                    self.cax = self.axes.imshow(self.zval[self.parent.zSlice,:,:], norm = self.norm(), origin = 'lower',
+                    self.cax = imshow(self.axes, self.zval[self.parent.zSlice,:,:], norm = self.norm(), origin = 'lower',
                                                 aspect = 'auto')
             elif self.parent.MainParamDict['2DSlicePlane'] ==1: # x-z plane
                 if self.parent.MainParamDict['ImageAspect']:
-                    self.cax = self.axes.imshow(self.zval[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower')
+                    self.cax = imshow(self.axes, self.zval[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower')
                 else:
-                    self.cax = self.axes.imshow(self.zval[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower',
+                    self.cax = imshow(self.axes,self.zval[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower',
                                                 aspect = 'auto')
 
 
