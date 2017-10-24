@@ -2970,43 +2970,44 @@ class MainApp(Tk.Tk):
         self.toolbar._views.home()
         self.toolbar._positions.home()
         home_view =  list(self.toolbar._views.__call__())
+        try:
+            # Find cbars
+            self.FindCbars(prev=True)
+            # Filter out the colorbar axes
+            for elm in np.where(self.IsCbarList)[0][::-1]:
+                cur_view.pop(elm)
+                home_view.pop(elm)
 
-        # Find cbars
-        self.FindCbars(prev=True)
-        # Filter out the colorbar axes
-        for elm in np.where(self.IsCbarList)[0][::-1]:
-            cur_view.pop(elm)
-            home_view.pop(elm)
+            self.is_changed_list = []
+            self.diff_from_home = []
+            self.old_views = []
+            if cur_view is not None:
+                for i in range(len(cur_view)):
+                    is_changed =[]
+                    diff_list = []
+                    for j in range(4):
+                        num_changed = home_view[i][j]-cur_view[i][j] != 0.0
+                        is_changed.append(num_changed)
+                        if num_changed:
+                            if self.MainParamDict['xLimsRelative'] and j < 2:
+                                #define the difference relative to the shock loc
+                                diff_list.append(cur_view[i][j]-self.shock_loc)
+                            else:
+                                # define the difference relative to the home loc
+                                diff_list.append(cur_view[i][j])
 
-        self.is_changed_list = []
-        self.diff_from_home = []
-        self.old_views = []
-        if cur_view is not None:
-            for i in range(len(cur_view)):
-                is_changed =[]
-                diff_list = []
-                for j in range(4):
-                    num_changed = home_view[i][j]-cur_view[i][j] != 0.0
-                    is_changed.append(num_changed)
-                    if num_changed:
-                        if self.MainParamDict['xLimsRelative'] and j < 2:
-                            #define the difference relative to the shock loc
-                            diff_list.append(cur_view[i][j]-self.shock_loc)
                         else:
-                            # define the difference relative to the home loc
-                            diff_list.append(cur_view[i][j])
-
-                    else:
-                        # They haven't zoomed in, diff should be zero,
-                        # but I'm making it a string so cur_view-shock_loc can be
-                        # equal to zero and the hash still distinguish between the two cases.
-                        diff_list.append('n/a')
+                            # They haven't zoomed in, diff should be zero,
+                            # but I'm making it a string so cur_view-shock_loc can be
+                            # equal to zero and the hash still distinguish between the two cases.
+                            diff_list.append('n/a')
 
 
-                self.is_changed_list.append(is_changed)
-                self.old_views.append(cur_view[i])
-                self.diff_from_home.append(diff_list)
-
+                    self.is_changed_list.append(is_changed)
+                    self.old_views.append(cur_view[i])
+                    self.diff_from_home.append(diff_list)
+        except IndexError:
+            pass
     def LoadView(self):
 
         self.toolbar._views.clear()
@@ -3015,52 +3016,53 @@ class MainApp(Tk.Tk):
 
         # Find the cbars in the current plot
         self.FindCbars()
+        try:
+            # put the parts that have changed from the old view
+            # into the proper place in the next view
+            m = 0 # a counter that allows us to go from labeling the plots in [i][j] to 1d
+            k = 0 # a counter that skips over the colorbars
+            for i in range(self.MainParamDict['NumOfRows']):
+                for j in range(self.MainParamDict['NumOfCols']):
+                    tmp_old_view = list(self.old_views.pop(0))
 
-        # put the parts that have changed from the old view
-        # into the proper place in the next view
-        m = 0 # a counter that allows us to go from labeling the plots in [i][j] to 1d
-        k = 0 # a counter that skips over the colorbars
-        for i in range(self.MainParamDict['NumOfRows']):
-            for j in range(self.MainParamDict['NumOfCols']):
-                tmp_old_view = list(self.old_views.pop(0))
-
-                if self.IsCbarList[k]:
-                    k += 1
-                tmp_new_view = list(cur_view[k])
-                if self.prev_ctype_list[i][j] == self.SubPlotList[i][j].chartType:
-                    # see if the view has changed from the home view
-                    is_changed = self.is_changed_list[m]
-                    if self.SubPlotList[i][j].Changedto2D or self.SubPlotList[i][j].Changedto1D:
-                        # only keep the x values if they have changed
-                        for n in range(2):
-                            if is_changed[n]:
-                                if self.SubPlotList[i][j].PlotParamsDict[self.SubPlotList[i][j].chartType]['spatial_x']:
-                                    tmp_new_view[n] = tmp_old_view[n]+self.MainParamDict['xLimsRelative']*(self.shock_loc-self.prev_shock_loc)
-                                else:
-                                    tmp_new_view[n] = tmp_old_view[n]
-                    else:
-                        # Keep any y or x that is changed
-                        for n in range(4):
-                            if is_changed[n]:
-                                tmp_new_view[n] = tmp_old_view[n]
-                                if n < 2:
+                    if self.IsCbarList[k]:
+                        k += 1
+                    tmp_new_view = list(cur_view[k])
+                    if self.prev_ctype_list[i][j] == self.SubPlotList[i][j].chartType:
+                        # see if the view has changed from the home view
+                        is_changed = self.is_changed_list[m]
+                        if self.SubPlotList[i][j].Changedto2D or self.SubPlotList[i][j].Changedto1D:
+                            # only keep the x values if they have changed
+                            for n in range(2):
+                                if is_changed[n]:
                                     if self.SubPlotList[i][j].PlotParamsDict[self.SubPlotList[i][j].chartType]['spatial_x']:
                                         tmp_new_view[n] = tmp_old_view[n]+self.MainParamDict['xLimsRelative']*(self.shock_loc-self.prev_shock_loc)
                                     else:
                                         tmp_new_view[n] = tmp_old_view[n]
+                        else:
+                            # Keep any y or x that is changed
+                            for n in range(4):
+                                if is_changed[n]:
+                                    tmp_new_view[n] = tmp_old_view[n]
+                                    if n < 2:
+                                        if self.SubPlotList[i][j].PlotParamsDict[self.SubPlotList[i][j].chartType]['spatial_x']:
+                                            tmp_new_view[n] = tmp_old_view[n]+self.MainParamDict['xLimsRelative']*(self.shock_loc-self.prev_shock_loc)
+                                        else:
+                                            tmp_new_view[n] = tmp_old_view[n]
 
-                cur_view[k] = tmp_new_view
-                # Handle the counting of the 'views' array in matplotlib
-                #skip over colorbar axes
-                m += 1
-                k += 1
-                self.SubPlotList[i][j].Changedto1D = False
-                self.SubPlotList[i][j].Changedto2D = False
+                    cur_view[k] = tmp_new_view
+                    # Handle the counting of the 'views' array in matplotlib
+                    #skip over colorbar axes
+                    m += 1
+                    k += 1
+                    self.SubPlotList[i][j].Changedto1D = False
+                    self.SubPlotList[i][j].Changedto2D = False
 
-        self.toolbar._views.push(cur_view)
-        self.toolbar.set_history_buttons()
-        self.toolbar._update_view()
-
+            self.toolbar._views.push(cur_view)
+            self.toolbar.set_history_buttons()
+            self.toolbar._update_view()
+        except IndexError:
+            pass
 
     def RenewCanvas(self, keep_view = True, ForceRedraw = False):
 
