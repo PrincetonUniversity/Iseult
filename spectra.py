@@ -48,8 +48,8 @@ class SpectralPanel:
                        'ElectronLeft': -10000.0,
                        'IonRight': 0.0,
                        'MeasureEpsE': False,
-                       'eNormalizer' : 1.,
-                       'iNormalizer' : 1.,
+                       'eNormalizer' : 0.,
+                       'iNormalizer' : 0.,
                        'T_legend_loc':  'N/A', # location of temperature legend.
                        'PL_legend_loc': 'N/A'} # lcation of power law legend
 
@@ -379,7 +379,7 @@ class SpectralPanel:
 
                     fpmommax = self.momentum**4*aconst*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
                     fpmommax *= np.exp(-self.gamma/self.GetPlotParam('DelGami'))/(4*np.pi*self.momentum)/(self.gamma+1.0)
-                    fpmommax *= self.GetPlotParam('iNormalizer')
+                    fpmommax *= 10**self.GetPlotParam('iNormalizer')
                     self.ion_temp[0].set_data(self.momentum, fpmommax)
 
                 else:
@@ -434,7 +434,7 @@ class SpectralPanel:
 
                     femommax = self.momentum**4*aconst*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
                     femommax *= np.exp(-self.gamma/self.delgame0)/(4*np.pi*self.momentum)/(self.gamma+1.0)
-                    femommax *= self.GetPlotParam('eNormalizer')
+                    femommax *= 10**self.GetPlotParam('eNormalizer')
                     self.electron_temp[0].set_data(self.momentum, femommax)
 
 
@@ -507,7 +507,7 @@ class SpectralPanel:
 
                     femax = aconst*self.gamma*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
                     femax *= np.exp(-self.gamma/self.delgame0)
-                    femax *= self.GetPlotParam('eNormalizer')
+                    femax *= 10**self.GetPlotParam('eNormalizer')
                     self.electron_temp[0].set_data(self.gamma, femax)
 
                 else:
@@ -565,7 +565,7 @@ class SpectralPanel:
 
                     fpmax = aconst*self.gamma*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
                     fpmax *= np.exp(-self.gamma/self.GetPlotParam('DelGami'))
-                    fpmax *= self.GetPlotParam('iNormalizer')
+                    fpmax *= 10**self.GetPlotParam('iNormalizer')
                     self.ion_temp[0].set_data(self.gamma, fpmax)
                 else:
                     self.ion_temp[0].set_visible(False)
@@ -943,6 +943,45 @@ class SpectraSettings(Tk.Toplevel):
         ttk.Entry(frm2, textvariable=self.delgameVar, width = 7).grid(row = 5, column = 2, sticky = Tk.N)
         ttk.Entry(frm2, textvariable=self.delgampVar, width = 7).grid(row = 6, column =2, sticky = Tk.N)
 
+        #####
+        #
+        # ADD NORMALIZERS
+        #
+        #####
+
+        self.eTempNormVar = Tk.StringVar()
+        self.eTempNormVar.set(self.parent.GetPlotParam('eNormalizer'))
+        labele = ttk.Label(frm2, text='log10(Norm)')#
+        labele.grid(row = 5, column = 3)#, expand=0)
+
+
+        # A slider that will select the 2D slice in the simulation
+
+
+        self.txtEnterTe = ttk.Entry(frm2, textvariable=self.eTempNormVar, width=6)
+        self.txtEnterTe.grid(row = 5, column = 4)
+        self.sliderTe = ttk.Scale(frm2, from_=-6, to=6, command = self.TeScaleHandler)
+        self.sliderTe.set(self.eTempNormVar.get())
+        self.sliderTe.grid(row = 5, column = 5)#, expand=1)
+
+        self.iTempNormVar = Tk.StringVar()
+        self.iTempNormVar.set(self.parent.GetPlotParam('iNormalizer'))
+        labeli = ttk.Label(frm2, text='log10(Norm)')#
+        labeli.grid(row = 6, column = 3)#, expand=0)
+
+
+        # A slider that will select the 2D slice in the simulation
+
+
+        self.txtEnterTi = ttk.Entry(frm2, textvariable=self.iTempNormVar, width=6)
+        self.txtEnterTi.grid(row = 6, column = 4)
+        self.sliderTi = ttk.Scale(frm2, from_=-6, to=6, command = self.TiScaleHandler)
+        self.sliderTi.set(self.eTempNormVar.get())
+        self.sliderTi.grid(row = 6, column = 5)#, expand=1)
+
+        # bind releasing the moust button to updating the plots.
+        #self.slidery.bind("<ButtonRelease-1>", self.yUpdateValue)
+
         ttk.Label(frm2, text='Powerlaw fits:').grid(row = 8, sticky = Tk.W)
         ttk.Label(frm2, text='E_min [mc^2]').grid(row = 8, column = 1, sticky = Tk.N)
         ttk.Label(frm2, text='E_max [mc^2]').grid(row = 8, column = 2, sticky = Tk.N)
@@ -1000,6 +1039,23 @@ class SpectraSettings(Tk.Toplevel):
         ttk.Entry(frm2, textvariable=self.EinjEVar, width = 7).grid(row = 13, column = 1, sticky = Tk.N)
         ttk.Entry(frm2, textvariable=self.parent.eps_eVar, width = 7, state = 'readonly').grid(row = 13, column =2, sticky = Tk.N)
 
+    def TeScaleHandler(self, e):
+        # if changing the scale will change the value of the parameter, do so
+        if np.abs(float(self.eTempNormVar.get()) - self.sliderTe.get()) > 1E-4:
+            self.eTempNormVar.set(self.sliderTe.get())
+            self.parent.SetPlotParam('eNormalizer', self.sliderTe.get(), update_plot= False)
+            self.parent.refresh()
+            self.parent.parent.canvas.draw()
+            self.parent.parent.canvas.get_tk_widget().update_idletasks()
+
+    def TiScaleHandler(self, e):
+        # if changing the scale will change the value of the parameter, do so
+        if np.abs(float(self.iTempNormVar.get()) - self.sliderTi.get()) > 1E-4:
+            self.iTempNormVar.set(self.sliderTi.get())
+            self.parent.SetPlotParam('iNormalizer', self.sliderTi.get(), update_plot= False)
+            self.parent.refresh()
+            self.parent.parent.canvas.draw()
+            self.parent.parent.canvas.get_tk_widget().update_idletasks()
 
     def ctypeChanged(self, *args):
         if self.ctypevar.get() == self.parent.chartType:
@@ -1218,6 +1274,17 @@ class SpectraSettings(Tk.Toplevel):
             self.parent.SetPlotParam('PrtlIntegrationRelative', self.RelVar.get())
 
 
+    def CheckIfNormsChanged(self):
+        to_reload = False
+        if np.abs(float(self.eTempNormVar.get()) - self.parent.GetPlotParam('eNormalizer'))>1E-4:
+            self.parent.SetPlotParam('eNormalizer', float(self.eTempNormVar.get()), update_plot = False)
+            self.sliderTe.set(float(self.eTempNormVar.get()))
+            to_reload += self.parent.GetPlotParam('SetTe')
+        if np.abs(float(self.iTempNormVar.get()) - self.parent.GetPlotParam('iNormalizer'))>1E-4:
+            self.parent.SetPlotParam('iNormalizer', float(self.iTempNormVar.get()), update_plot = False)
+            self.sliderTi.set(float(self.iTempNormVar.get()))
+            to_reload += self.parent.GetPlotParam('SetTi')
+        return to_reload
 
     def MeasuresCallback(self):
         tkvarIntList = [self.ileft, self.iright, self.eleft, self.eright]
@@ -1232,8 +1299,10 @@ class SpectraSettings(Tk.Toplevel):
 
         to_reload += self.CheckIfTeChanged()
         to_reload += self.CheckIfTpChanged()
+        to_reload += self.CheckIfNormsChanged()
         to_reload += self.CheckIfPLChanged()
         to_reload += self.CheckIfEpsChanged()
+
         return to_reload
 
     def FieldsCallback(self):
