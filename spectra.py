@@ -48,6 +48,8 @@ class SpectralPanel:
                        'ElectronLeft': -10000.0,
                        'IonRight': 0.0,
                        'MeasureEpsE': False,
+                       'eNormalizer' : 1.,
+                       'iNormalizer' : 1.,
                        'T_legend_loc':  'N/A', # location of temperature legend.
                        'PL_legend_loc': 'N/A'} # lcation of power law legend
 
@@ -62,7 +64,7 @@ class SpectralPanel:
     FloatList = ['y_min', 'y_max', 'x_min', 'x_max',
                  'DelGame', 'DelGami', 'GammaIonInjection', 'GammaElectronInjection',
                  'PowerLawElectronMin', 'PowerLawElectronMax',
-                 'PowerLawIonMin', 'PowerLawIonMax',
+                 'PowerLawIonMin', 'PowerLawIonMax', 'eNormalizer', 'iNormalizer',
                  'ElectronLeft', 'ElectronRight', 'IonLeft', 'IonRight',]
     StrList = ['T_legend_loc', 'PL_legend_loc']
 
@@ -377,7 +379,7 @@ class SpectralPanel:
 
                     fpmommax = self.momentum**4*aconst*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
                     fpmommax *= np.exp(-self.gamma/self.GetPlotParam('DelGami'))/(4*np.pi*self.momentum)/(self.gamma+1.0)
-                    self.fpmommax *= self.GetPlotParam('iNormalizer')
+                    fpmommax *= self.GetPlotParam('iNormalizer')
                     self.ion_temp[0].set_data(self.momentum, fpmommax)
 
                 else:
@@ -432,7 +434,7 @@ class SpectralPanel:
 
                     femommax = self.momentum**4*aconst*(self.gamma+1.0)*np.sqrt((self.gamma+1.0)**2-1)
                     femommax *= np.exp(-self.gamma/self.delgame0)/(4*np.pi*self.momentum)/(self.gamma+1.0)
-                    self.femommax *= self.GetPlotParam('eNormalizer')
+                    femommax *= self.GetPlotParam('eNormalizer')
                     self.electron_temp[0].set_data(self.momentum, femommax)
 
 
