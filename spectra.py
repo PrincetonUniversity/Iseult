@@ -50,7 +50,7 @@ class SpectralPanel:
                        'MeasureEpsE': False,
                        'eNormalizer' : 0.,
                        'iNormalizer' : 0.,
-                       'BoostedIons' : True, #Show a energy boosted ion plot to compare to electrons
+                       'BoostedIons' : False, #Show a energy boosted ion plot to compare to electrons
                        'T_legend_loc':  'N/A', # location of temperature legend.
                        'PL_legend_loc': 'N/A'} # lcation of power law legend
 
@@ -58,7 +58,7 @@ class SpectralPanel:
     BoolList = ['twoD', 'set_ylim', 'set_xlim',
                 'spatial_x', 'spatial_y', 'normalize_spectra',
                 'show_ions', 'show_electrons', 'rest_frame','show_legend',
-                'PrtlIntegrationRelative',
+                'PrtlIntegrationRelative', 'BoostedIons'
                 'SetTe', 'SetTi','MeasureEpsP', 'MeasureEpsE',
                 'DoPowerLawFitElectron', 'DoPowerLawFitIon']
     IntList = ['spectral_type']
