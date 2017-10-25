@@ -50,6 +50,7 @@ class SpectralPanel:
                        'MeasureEpsE': False,
                        'eNormalizer' : 0.,
                        'iNormalizer' : 0.,
+                       'BoostedIons' : True, #Show a energy boosted ion plot to compare to electrons
                        'T_legend_loc':  'N/A', # location of temperature legend.
                        'PL_legend_loc': 'N/A'} # lcation of power law legend
 
@@ -126,7 +127,7 @@ class SpectralPanel:
         self.xsl = self.FigWrap.LoadKey('xsl')/self.c_omp
         # Load gamma-1 of the spectra
         self.gamma = self.FigWrap.LoadKey('gamma')
-
+        self.massRatio = self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
         self.keyname = 'spectra_data'
         if self.GetPlotParam('normalize_spectra'):
             self.keyname +='_normalized_'
@@ -265,9 +266,13 @@ class SpectralPanel:
         self.ion_spect = self.axes.plot(self.momentum, self.mompdist, color = self.parent.ion_color)
         if not self.GetPlotParam('show_ions'):
             self.ion_spect[0].set_visible(False)
+        self.boostedIonSpect = self.axes.plot(self.momentum*self.massRatio, self.mompdist*self.massRatio, color = self.parent.ion_color, ls='-.')
+        if not self.GetPlotParam('BoostedIons'):
+            self.ion_spect[0].set_visible(False)
         self.ion_temp = self.axes.plot(self.momentum, self.mompdist,
                                        color = self.parent.ion_fit_color,
                                        linestyle = '--', linewidth = 1.5) # a placeholder
+
         # See if we want to plot the electron temperature
         if not self.GetPlotParam('SetTi'):
             self.ion_temp[0].set_visible(False)
@@ -359,7 +364,8 @@ class SpectralPanel:
         if self.GetPlotParam('spectral_type') == 0: #Show the momentum dist
             if self.GetPlotParam('show_ions'):
                 self.ion_spect[0].set_data(self.momentum, self.mompdist)
-
+                if self.GetPlotParam('BoostedIons'):
+                    self.boostedIonSpect[0].set_data(self.momentum*self.massRatio, self.mompdist*self.massRatio)
                 if self.GetPlotParam('MeasureEpsP'):
                     self.ion_Einj.set_visible(True)
                     self.ion_Einj.set_xdata([np.sqrt((self.GetPlotParam('GammaIonInjection')+1)**2-1.),np.sqrt((self.GetPlotParam('GammaIonInjection')+1)**2-1.)])
@@ -545,6 +551,8 @@ class SpectralPanel:
 
             if self.GetPlotParam('show_ions'):
                 self.ion_spect[0].set_data(self.gamma, self.pdist)
+                if self.GetPlotParam('BoostedIons'):
+                    self.boostedIonSpect[0].set_data(self.gamma*self.massRatio, self.pdist)
                 if self.GetPlotParam('MeasureEpsP'):
                     self.ion_Einj.set_visible(True)
                     self.ion_Einj.set_xdata([self.GetPlotParam('GammaIonInjection'),self.GetPlotParam('GammaIonInjection') ])
@@ -654,8 +662,12 @@ class SpectralPanel:
     def GetPlotParam(self, keyname):
         return self.FigWrap.GetPlotParam(keyname)
 
-    def SetPlotParam(self, keyname, value, update_plot = True, NeedsRedraw = False):
+    def SetPlotParam(self, keyname, value, update_plot = True, NeedsRedraw = False):#, refresh = False):
         self.FigWrap.SetPlotParam(keyname, value, update_plot = update_plot, NeedsRedraw = NeedsRedraw)
+        #if refresh == True:
+        #    self.refresh()
+        #    self.parent.canvas.draw()
+        #    self.parent.canvas.get_tk_widget().update_idletasks()
 
     def MakeLegend(self):
         ''' A helper function to make the legend'''
@@ -824,6 +836,14 @@ class SpectraSettings(Tk.Toplevel):
                         command = lambda:
                         self.parent.SetPlotParam('rest_frame', self.RestVar.get()))
         cb.grid(row = 7, column = 0, sticky = Tk.W)
+
+        # show in rest frame
+        self.BoostVar = Tk.IntVar()
+        self.BoostVar.set(self.parent.GetPlotParam('BoostedIons'))
+        cb = ttk.Checkbutton(frm, text = "Show ions spect shifted by mi/me",
+                        variable = self.BoostVar,
+                        command =self.BoostHandler)
+        cb.grid(row = 8, column = 0, sticky = Tk.W)
 
         self.xLimVar = Tk.IntVar()
         self.xLimVar.set(self.parent.GetPlotParam('set_xlim'))
@@ -1044,6 +1064,14 @@ class SpectraSettings(Tk.Toplevel):
         if np.abs(float(self.eTempNormVar.get()) - self.sliderTe.get()) > 1E-4:
             self.eTempNormVar.set(self.sliderTe.get())
             self.parent.SetPlotParam('eNormalizer', self.sliderTe.get(), update_plot= False)
+            self.parent.refresh()
+            self.parent.parent.canvas.draw()
+            self.parent.parent.canvas.get_tk_widget().update_idletasks()
+    def BoostHandler(self):
+        # if changing the scale will change the value of the parameter, do so
+        if self.BoostVar.get() != self.parent.GetPlotParam('BoostedIons'):
+            self.parent.boostedIonSpect[0].set_visible(self.BoostVar.get())
+            self.parent.SetPlotParam('BoostedIons', self.BoostVar.get(), update_plot= False)
             self.parent.refresh()
             self.parent.parent.canvas.draw()
             self.parent.parent.canvas.get_tk_widget().update_idletasks()
