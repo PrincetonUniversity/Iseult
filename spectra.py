@@ -268,7 +268,7 @@ class SpectralPanel:
             self.ion_spect[0].set_visible(False)
         self.boostedIonSpect = self.axes.plot(self.momentum*self.massRatio, self.mompdist*self.massRatio, color = self.parent.ion_color, ls='-.')
         if not self.GetPlotParam('BoostedIons'):
-            self.ion_spect[0].set_visible(False)
+            self.boostedIonSpect[0].set_visible(False)
         self.ion_temp = self.axes.plot(self.momentum, self.mompdist,
                                        color = self.parent.ion_fit_color,
                                        linestyle = '--', linewidth = 1.5) # a placeholder
@@ -996,7 +996,7 @@ class SpectraSettings(Tk.Toplevel):
         self.txtEnterTi = ttk.Entry(frm2, textvariable=self.iTempNormVar, width=6)
         self.txtEnterTi.grid(row = 6, column = 4)
         self.sliderTi = ttk.Scale(frm2, from_=-6, to=6, command = self.TiScaleHandler)
-        self.sliderTi.set(self.eTempNormVar.get())
+        self.sliderTi.set(self.iTempNormVar.get())
         self.sliderTi.grid(row = 6, column = 5)#, expand=1)
 
         # bind releasing the moust button to updating the plots.
