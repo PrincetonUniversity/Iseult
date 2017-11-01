@@ -199,7 +199,7 @@ class EnergyPanel:
                 v = self.FigWrap.LoadKey('ve')
                 w = self.FigWrap.LoadKey('we')
 
-            self.y_values = np.sqrt(u**2+v**2+w**2+1)
+            self.y_values = np.sqrt(u**2+v**2+w**2+1)-1
             if self.GetPlotParam('prtl_type') == 1:
                 self.y_values *= self.FigWrap.LoadKey('me')[0]/self.FigWrap.LoadKey('mi')[0]
             self.Ymin = min(self.y_values)
@@ -233,13 +233,13 @@ class EnergyPanel:
 
         if self.GetPlotParam('prtl_type') == 0: #protons
             self.energy_color = self.parent.ion_color
-            self.y_label  = r'$E_p\ [m_i c]$'
+            self.y_label  = r'$E_p\ [m_i c^2]$'
         for line in self.IntRegionLines:
             line.set_color(self.energy_color)
 
         if self.GetPlotParam('prtl_type') == 1: #electons
             self.energy_color = self.parent.electron_color
-            self.y_label  = r'$E_{e}\ [m_i c]$'
+            self.y_label  = r'$E_{e}\ [m_i c^2]$'
 
     def draw(self):
         # In order to speed up the plotting, we only recalculate everything
