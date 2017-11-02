@@ -403,7 +403,7 @@ class SubPlotWrapper:
 
         if self.GetPlotParam('twoD'):
             for i in xrange(len(self.parent.cpu_y_locs)):
-                self.cpu_y_lines[i].set_ydata([self.parent.cpu_x_locs[i],self.parent.cpu_x_locs[i]])
+                self.cpu_y_lines[i].set_ydata([self.parent.cpu_y_locs[i],self.parent.cpu_y_locs[i]])
 
 
     def RemoveCpuDomainLines(self):
