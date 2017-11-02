@@ -655,8 +655,6 @@ class EnergySettings(Tk.Toplevel):
             self.parent.SetPlotParam('prtl_type', self.pvar.get(), update_plot =  False)
             self.parent.UpdateLabelsandColors()
             self.parent.axes.set_ylabel(self.parent.y_label, labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
-            self.parent.lineleft.set_color(self.parent.energy_color)
-            self.parent.lineright.set_color(self.parent.energy_color)
             self.parent.SetPlotParam('prtl_type', self.pvar.get())
 
 
