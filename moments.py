@@ -91,10 +91,10 @@ class  MomentsPanel:
         #    self.arrs_needed = ['c_omp', 'bx', 'istep', 'me', 'mi']
         if self.GetPlotParam('weighted'):
             self.preloaded = False
-            self.arrs_needed = ['c_omp', 'bx', 'istep', 'me', 'mi', 'gamma0','xi', 'ui', 'vi', 'wi', 'ue', 've', 'we','chi', 'che']
+            self.arrs_needed = ['c_omp', 'bx', 'istep', 'me', 'mi', 'gamma0','xi', 'ui', 'vi', 'wi', 'xe','ue', 've', 'we','chi', 'che']
         else:
             self.preloaded = False
-            self.arrs_needed = ['c_omp', 'bx', 'istep', 'me', 'mi', 'gamma0','xi', 'ui', 'vi', 'wi', 'ue', 've', 'we']
+            self.arrs_needed = ['c_omp', 'bx', 'istep', 'me', 'mi', 'gamma0','xi', 'ui', 'vi', 'wi', 'xe','ue', 've', 'we']
         return self.arrs_needed
 
     def LoadData(self):
