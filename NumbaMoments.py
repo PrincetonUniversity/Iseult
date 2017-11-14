@@ -200,7 +200,41 @@ def CalcPHists(x, u, v, w, bin_width, xmin, px, py, pz, counts):
             px[l] *= c
             py[l] *= c
             pz[l] *= c
-
+"""
+@guvectorize([(float64[:], # x
+               float64[:], # y
+               float64[:], # u
+               float64[:], # v
+               float64[:], # w
+               float64[:], # bin_width
+               float64[:], # xmin
+               float64[:], # bin_width
+               float64[:], # xmin
+               float64[:,:], # px binned
+               float64[:,:], # py binned
+               float64[:,:], # pz binned
+               float64[:,:] # counts
+               )],
+               '(n),(n),(n),(n),(n),(),(),(),(),(m,p),(m,p), (m,p), (m,p)', nopython = True, cache = True,target='parallel')
+def CalcP2DHists(x, y, u, v, w, xbin_width, xmin, ybin_width, ymin, px, py, pz, counts):
+    bn = bin_width[0]
+    minx =xmin[0]
+    maxl = len(px)
+    for i in xrange(len(x)):
+        l = int(x[i]//bn)
+        if 0<= l  and l < maxl:
+            px[l] += u[i]
+            py[l] += v[i]
+            pz[l] += w[i]
+            counts[l] += 1
+    for l in xrange(len(px)):
+        c = counts[l]
+        if c != 0:
+            c = c**-1
+            px[l] *= c
+            py[l] *= c
+            pz[l] *= c
+"""
 @guvectorize([(float64[:], # x
                float64[:], # u
                float64[:], # v
@@ -241,7 +275,7 @@ def RestFrameBoost(vx_e, ecounts, vx_i, icounts, vx_avg, boost_g):
     for i in xrange(len(vx_e)):
         if ecounts[i] != 0 or icounts[i] != 0:
             vx_avg[i] = (vx_e[i]*ecounts[i]+vx_i[i]*icounts[i])/(icounts[i]+ecounts[i])
-            boost_g[i] = 1/sqrt(1+vx_avg[i]*vx_avg[i])
+            boost_g[i] = 1/sqrt(1-vx_avg[i]*vx_avg[i])
 
 @guvectorize([(float64[:], float64[:], float64[:], float64[:], float64[:])], '(m),(m),(m),(m) ->(m)', nopython =True, cache = True,target='parallel')
 def Total(e_arr,  ecounts, i_arr, icounts, ans):
