@@ -1341,7 +1341,7 @@ class SpectraSettings(Tk.Toplevel):
         for j in range(len(tkvarLimList)):
             try:
             #make sure the user types in a int
-                if np.abs(float(tkvarLimList[j].get()) - self.parent.GetPlotParam(plot_param_List[j])) > 1E-4:
+                if np.abs(float(tkvarLimList[j].get()) - self.parent.GetPlotParam(plot_param_List[j])) > 1E-8:
                     self.parent.SetPlotParam(plot_param_List[j], float(tkvarLimList[j].get()), update_plot = False)
                     to_reload += True*tkvarSetList[j].get()
 
