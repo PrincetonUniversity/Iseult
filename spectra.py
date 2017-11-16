@@ -1304,11 +1304,11 @@ class SpectraSettings(Tk.Toplevel):
 
     def CheckIfNormsChanged(self):
         to_reload = False
-        if np.abs(float(self.eTempNormVar.get()) - self.parent.GetPlotParam('eNormalizer'))>1E-4:
+        if np.abs(float(self.eTempNormVar.get()) - self.parent.GetPlotParam('eNormalizer'))>1E-8:
             self.parent.SetPlotParam('eNormalizer', float(self.eTempNormVar.get()), update_plot = False)
             self.sliderTe.set(float(self.eTempNormVar.get()))
             to_reload += self.parent.GetPlotParam('SetTe')
-        if np.abs(float(self.iTempNormVar.get()) - self.parent.GetPlotParam('iNormalizer'))>1E-4:
+        if np.abs(float(self.iTempNormVar.get()) - self.parent.GetPlotParam('iNormalizer'))>1E-8:
             self.parent.SetPlotParam('iNormalizer', float(self.iTempNormVar.get()), update_plot = False)
             self.sliderTi.set(float(self.iTempNormVar.get()))
             to_reload += self.parent.GetPlotParam('SetTi')
