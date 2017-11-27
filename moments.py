@@ -150,10 +150,10 @@ class  MomentsPanel:
             self.iz = np.zeros(xbn)
             self.icounts = np.zeros(xbn)
 
-            if len(xi)==0:
+            if len(self.xi)==0:
                 self.xmin = np.min(self.xe)
                 self.xmax = np.max(self.xe)
-            elif len(xe) ==0:
+            elif len(self.xe) ==0:
                 self.xmin = np.min(self.xi)
                 self.xmax = np.max(self.xi)
             else:
