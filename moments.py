@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 import Tkinter as Tk
 import ttk as ttk
@@ -105,7 +106,6 @@ class  MomentsPanel:
         self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
         self.istep = self.FigWrap.LoadKey('istep')[0]
         self.memi = self.FigWrap.LoadKey('me')[0]/self.FigWrap.LoadKey('mi')[0]
-
         self.totalcolor = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.0)
 
         if 'xaxis_values' in self.parent.DataDict.keys():
@@ -150,14 +150,12 @@ class  MomentsPanel:
             self.iz = np.zeros(xbn)
             self.icounts = np.zeros(xbn)
 
-            if len(self.xi)==0:
-                self.xmin = np.min(self.xe)
-                self.xmax = np.max(self.xe)
-                self.mime = 1.0
+            if self.memi==0:
+                self.xmin = np.min(self.xe)/self.c_omp
+                self.xmax = np.max(self.xe)/self.c_omp
+                self.memi = 1.0
+                self.SetPlotParam('show_ions', False, update_plot = False)
                 self.ylabel_list = [r'$\langle \beta \rangle$',r'$\langle \gamma\beta\rangle$', r'$\langle KE \rangle/m_ec^2$']
-            elif len(self.xe) ==0:
-                self.xmin = np.min(self.xi)
-                self.xmax = np.max(self.xi)
             else:
                 self.xmin = min(np.min(self.xi), np.min(self.xe))/self.c_omp
                 self.xmax = max(np.max(self.xi), np.max(self.xe))/self.c_omp
@@ -342,7 +340,7 @@ class  MomentsPanel:
                 self.ey_plot[0].set_data(*stepify(self.x_bins, self.ey))
             if self.GetPlotParam('show_z'):
                 self.ez_plot[0].set_data(*stepify(self.x_bins, self.ez))
-        if self.GetPlotParam('show_ions'):
+        if self.GetPlotParam('show_ions'): 
             if self.GetPlotParam('show_x'):
                 self.ix_plot[0].set_data(*stepify(self.x_bins, self.ix))
             if self.GetPlotParam('show_y'):
@@ -354,7 +352,7 @@ class  MomentsPanel:
                 self.tx_plot[0].set_data(*stepify(self.x_bins, Total(self.ix, self.icounts, self.ex, self.ecounts)))
             if self.GetPlotParam('show_y'):
                 self.ty_plot[0].set_data(*stepify(self.x_bins, Total(self.iy, self.icounts, self.ey, self.ecounts)))
-            if self.GetPlotParam('show_z'):
+            if self.GetPlotParam('show_z') and self.GetPlotParam('m_type')!=2:
                 self.tz_plot[0].set_data(*stepify(self.x_bins, Total(self.iz, self.icounts, self.ez, self.ecounts)))
 
         if int(matplotlib.__version__[0]) < 2:
