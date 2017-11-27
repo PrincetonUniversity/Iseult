@@ -9,7 +9,7 @@ import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
 import matplotlib.transforms as mtransforms
-from NumbaMoments import stepify, CalcVxEHists, CalcVHists, CalcVxEWeightedHists, CalcVWeightedHists, CalcPHists, CalcPWeightedHists, RestFrameBoost, Total, CalcDelGamHists, CalcDelGamWeightedHists
+from NumbaMoments import stepify, CalcVxEHists, CalcVHists, CalcVxEWeightedHists, CalcVWeightedHists, CalcPHists, CalcPWeightedHists, RestFrameBoost, LorentzFactor, Total, CalcDelGamHists, CalcDelGamWeightedHists
 
 class  MomentsPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
@@ -150,23 +150,36 @@ class  MomentsPanel:
             self.iz = np.zeros(xbn)
             self.icounts = np.zeros(xbn)
 
-            self.xmin = min(np.min(self.xi), np.min(self.xe))/self.c_omp
-            self.xmax = max(np.max(self.xi), np.max(self.xe))/self.c_omp
+            if len(xi)==0:
+                self.xmin = np.min(self.xe)
+                self.xmax = np.max(self.xe)
+            elif len(xe) ==0:
+                self.xmin = np.min(self.xi)
+                self.xmax = np.max(self.xi)
+            else:
+                self.xmin = min(np.min(self.xi), np.min(self.xe))/self.c_omp
+                self.xmax = max(np.max(self.xi), np.max(self.xe))/self.c_omp
             bin_width = (self.xmax-self.xmin)/float(xbn)*self.c_omp
             self.x_bins = np.linspace(self.xmin, self.xmax, num = xbn+1)
             self.parent.DataDict[self.key_name+'x_bins'] = self.x_bins
 
             if self.GetPlotParam('m_type') == 0:
                 # Calculate vx, vy, vz
+                # First calculate gamma
+                gi = np.empty(len(self.ui))
+                LorentzFactor(self.ui, self.vi, self.wi, gi)
+                ge = np.empty(len(self.ue))
+                LorentzFactor(self.ue, self.ve, self.we, ge)
                 if not self.GetPlotParam('weighted'):
-                    CalcVHists(self.xe,self.ue, self.ve, self.we, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
-                    CalcVHists(self.xi,self.ui, self.vi, self.wi, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
+                    CalcVHists(self.xe,self.ue, self.ve, self.we, ge, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
+                    CalcVHists(self.xi,self.ui, self.vi, self.wi, gi, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
                 else:
                     eweights = self.FigWrap.LoadKey('che')
-                    CalcVWeightedHists(self.xe,self.ue, self.ve, self.we, eweights, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
+                    CalcVWeightedHists(self.xe,self.ue, self.ve, self.we, ge,eweights, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
 
                     iweights = self.FigWrap.LoadKey('chi')
-                    CalcVWeightedHists(self.xi,self.ui, self.vi, self.wi, iweights, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
+                    CalcVWeightedHists(self.xi,self.ui, self.vi, self.wi, gi, iweights, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
+
                 self.parent.DataDict[self.key_name+'ex'] = self.ex
                 self.parent.DataDict[self.key_name+'ey'] = self.ey
                 self.parent.DataDict[self.key_name+'ez'] = self.ez
@@ -206,12 +219,15 @@ class  MomentsPanel:
                 vx_avg = np.zeros(xbn)
                 vix = np.zeros(xbn)
                 vex = np.zeros(xbn)
-                ge = np.empty(len(self.xe))
-                gi = np.empty(len(self.xi))
+                gi = np.empty(len(self.ui))
+                LorentzFactor(self.ui, self.vi, self.wi, gi)
+                ge = np.empty(len(self.ue))
+                LorentzFactor(self.ue, self.ve, self.we, ge)
+
                 if not self.GetPlotParam('weighted'):
                     # We'll put the Energy histograms into ex and ix, and delE intos ey and iy
-                    CalcVxEHists(self.xe,self.ue, self.ve, self.we, bin_width, self.xmin, ge, vex, self.ey, self.ecounts)
-                    CalcVxEHists(self.xi,self.ui, self.vi, self.wi, bin_width, self.xmin, gi, vix, self.iy, self.icounts)
+                    CalcVxEHists(self.xe,self.ue, ge, bin_width, self.xmin,  vex, self.ey, self.ecounts)
+                    CalcVxEHists(self.xi,self.ui, gi, bin_width, self.xmin, vix, self.iy, self.icounts)
 
                     RestFrameBoost(vex, self.ecounts, vix,  self.icounts, vx_avg, boost_gam)
                     CalcDelGamHists(self.xe, self.ue, self.ve, self.we, ge, vx_avg, boost_gam, bin_width, self.xmin, self.ecounts, self.ex)
@@ -222,8 +238,8 @@ class  MomentsPanel:
                     eweights = self.FigWrap.LoadKey('che')
                     iweights = self.FigWrap.LoadKey('chi')
                     # We'll put the Temp histograms into ex and ix, and Energy into ey and iy
-                    CalcVxEWeightedHists(self.xe,self.ue, self.ve, self.we, eweights, bin_width, self.xmin, ge, vex, self.ey, self.ecounts)
-                    CalcVxEWeightedHists(self.xi,self.ui, self.vi, self.wi, iweights, bin_width, self.xmin, gi, vix, self.iy, self.icounts)
+                    CalcVxEWeightedHists(self.xe,self.ue, ge, eweights, bin_width, self.xmin, vex, self.ey, self.ecounts)
+                    CalcVxEWeightedHists(self.xi,self.ui, gi, iweights, bin_width, self.xmin, vix, self.iy, self.icounts)
 
                     RestFrameBoost(vex, self.ecounts, vix,  self.icounts, vx_avg, boost_gam)
                     CalcDelGamWeightedHists(self.xe, self.ue, self.ve, self.we, ge, eweights, vx_avg, boost_gam, bin_width, self.xmin, self.ecounts, self.ex)
