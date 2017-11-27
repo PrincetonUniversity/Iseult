@@ -3583,7 +3583,7 @@ class MainApp(Tk.Tk):
                     print 'sigma b0', self.b0
                     '''
                     # Normalize by b0
-                if np.abs(f['sigma'][0])<1E-8:
+                if np.abs(f['sigma'][0])==0:
                     self.btheta = np.NaN
                 else:
                     self.btheta = f['btheta'][0]
