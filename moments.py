@@ -153,6 +153,8 @@ class  MomentsPanel:
             if len(self.xi)==0:
                 self.xmin = np.min(self.xe)
                 self.xmax = np.max(self.xe)
+                self.mime = 1.0
+                self.ylabel_list = [r'$\langle \beta \rangle$',r'$\langle \gamma\beta\rangle$', r'$\langle KE \rangle/m_ec^2$']
             elif len(self.xe) ==0:
                 self.xmin = np.min(self.xi)
                 self.xmax = np.max(self.xi)
