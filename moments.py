@@ -57,11 +57,11 @@ class  MomentsPanel:
         self.ChartTypes = self.FigWrap.PlotTypeDict.keys()
         self.chartType = self.FigWrap.chartType
         self.figure = self.FigWrap.figure
-        self.legend_labels = [[[r'$\langle\beta_{ix}\rangle$',r'$\langle\beta_{ix}\rangle$',r'$\langle\beta_{ix}\rangle$'],
-                               [r'$\langle\beta_{ex}\rangle$',r'$\langle\beta_{ex}\rangle$',r'$\langle\beta_{ex}\rangle$'],
+        self.legend_labels = [[[r'$\langle\beta_{ix}\rangle$',r'$\langle\beta_{iy}\rangle$',r'$\langle\beta_{iz}\rangle$'],
+                               [r'$\langle\beta_{ex}\rangle$',r'$\langle\beta_{ey}\rangle$',r'$\langle\beta_{ez}\rangle$'],
                                [r'$\langle\beta_x\rangle$',r'$\langle\beta_y\rangle$',r'$\langle\beta_z\rangle$']],
-                              [[r'$\langle p_{ix}\rangle$',r'$\langle p_{ix}\rangle$',r'$\langle p_{ix}\rangle$'],
-                               [r'$\langle p_{ex}\rangle$',r'$\langle p_{ex}\rangle$',r'$\langle p_{ex}\rangle$'],
+                              [[r'$\langle p_{ix}\rangle$',r'$\langle p_{iy}\rangle$',r'$\langle p_{iz}\rangle$'],
+                               [r'$\langle p_{ex}\rangle$',r'$\langle p_{ey}\rangle$',r'$\langle p_{ez}\rangle$'],
                                [r'$\langle p_x \rangle$',r'$\langle p_y \rangle$',r'$\langle p_z \rangle$']],
                               [[r'$\Delta \gamma_i$',r'$\langle KE_{i}\rangle$', None],
                                [r'$\Delta \gamma_e$',r'$\langle KE_{e}\rangle$', None],
@@ -340,7 +340,7 @@ class  MomentsPanel:
                 self.ey_plot[0].set_data(*stepify(self.x_bins, self.ey))
             if self.GetPlotParam('show_z'):
                 self.ez_plot[0].set_data(*stepify(self.x_bins, self.ez))
-        if self.GetPlotParam('show_ions'): 
+        if self.GetPlotParam('show_ions'):
             if self.GetPlotParam('show_x'):
                 self.ix_plot[0].set_data(*stepify(self.x_bins, self.ix))
             if self.GetPlotParam('show_y'):
