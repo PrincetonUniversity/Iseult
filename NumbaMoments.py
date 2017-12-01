@@ -39,8 +39,9 @@ def LorentzFactor(u,v,w, ans):
 @jit(nopython = True, cache = True)#, target='parallel')
 def CalcVxEHists(x, u, g, bin_width, xmin, vx, E, counts):
     maxl = len(vx)
+    norm = bin_width**-1
     for i in xrange(len(x)):
-        l = int((x[i]-xmin)//bin_width)
+        l = int((x[i]-xmin)*norm)
         if l>=0 and l < maxl:
             vx[l] += u[i]*g[i]**-1
             E[l] += g[i]-1
@@ -54,9 +55,10 @@ def CalcVxEHists(x, u, g, bin_width, xmin, vx, E, counts):
 @jit(nopython = True, cache = True)
 def CalcVxEWeightedHists(x, u, g, weights, bin_width, xmin, vx,  E, counts):
     maxl = len(vx)
+    norm = bin_width**-1
     for i in xrange(len(x)):
         c1 = weights[i]
-        l = int((x[i]-xmin)//bin_width)
+        l = int((x[i]-xmin)*bin_width)
         if 0<= l and l < maxl:
             vx[l] += u[i]*g[i]**-1*c1
             E[l] += (g[i]-1)*c1
@@ -70,8 +72,9 @@ def CalcVxEWeightedHists(x, u, g, weights, bin_width, xmin, vx,  E, counts):
 @jit(nopython = True, cache = True)
 def CalcVHists(x, u, v, w, g, bin_width, xmin, vx, vy, vz, counts):
     maxl = len(vx)
+    norm = bin_width**-1
     for i in xrange(len(x)):
-        l = int((x[i]-xmin)//bin_width)
+        l = int((x[i]-xmin)*norm)
         if 0<=l and l < maxl:
             tmp = g[i]**-1
             vx[l] += u[i]*tmp
@@ -89,8 +92,9 @@ def CalcVHists(x, u, v, w, g, bin_width, xmin, vx, vy, vz, counts):
 @jit(nopython = True, cache = True)
 def CalcVWeightedHists(x, u, v, w, g, weights, bin_width, xmin, vx, vy, vz, counts):
     maxl = len(vx)
+    norm = bin_width**-1
     for i in xrange(len(x)):
-        l = int((x[i]-xmin)//bin_width)
+        l = int((x[i]-xmin)*norm)
         if 0<= l and l < maxl:
             tmp = g[i]**-1*weights[i]
             vx[l] += u[i]*tmp
@@ -111,8 +115,9 @@ def CalcVWeightedHists(x, u, v, w, g, weights, bin_width, xmin, vx, vy, vz, coun
 @jit(nopython = True, cache = True)
 def CalcPHists(x, u, v, w, bin_width, xmin, px, py, pz, counts):
     maxl = len(px)
+    norm = bin_width**-1
     for i in xrange(len(x)):
-        l = int((x[i]-xmin)//bin_width)
+        l = int((x[i]-xmin)*norm)
         if 0<= l  and l < maxl:
             px[l] += u[i]
             py[l] += v[i]
@@ -128,9 +133,10 @@ def CalcPHists(x, u, v, w, bin_width, xmin, px, py, pz, counts):
 @jit(nopython = True, cache = True)
 def CalcPWeightedHists(x, u, v, w, weights, bin_width, xmin, px, py, pz, counts):
     maxl = len(px)
+    norm = bin_width**-1
     for i in xrange(len(x)):
         c1 = weights[i]
-        l = int((x[i]-xmin)//bin_width)
+        l = int((x[i]-xmin)*norm)
         if 0<=l and l < maxl:
             px[l] += u[i]*c1
             py[l] += v[i]*c1
@@ -149,7 +155,7 @@ def CalcPWeightedHists(x, u, v, w, weights, bin_width, xmin, px, py, pz, counts)
 def RestFrameBoost(vx_e, ecounts, vx_i, icounts, vx_avg, boost_g):
     if ecounts[0] != 0 or icounts[0] != 0:
         vx_avg[0] = (vx_e[0]*ecounts[0]+vx_i[0]*icounts[0])/(icounts[0]+ecounts[0])
-        boost_g[0] = 1/sqrt(1-vx_avg[0]*vx_avg[0])
+        boost_g[0] = sqrt(1-vx_avg[0]*vx_avg[0])**-1
 
 @guvectorize([(float64[:], float64[:], float64[:], float64[:], float64[:])], '(),(),(),() ->()', nopython =True, cache = True,target='parallel')
 def Total(e_arr,  ecounts, i_arr, icounts, ans):
@@ -159,8 +165,9 @@ def Total(e_arr,  ecounts, i_arr, icounts, ans):
 @jit(nopython = True, cache = True)
 def CalcDelGamHists(x, u, v, w, g, vx_avg, boost_g, bin_width, xmin, counts, T):
     lmax = len(vx_avg)
+    norm = bin_width**-1
     for i in xrange(len(x)):
-        l = int((x[i]-xmin)//bin_width)
+        l = int((x[i]-xmin)*norm)
         if 0 <= l and l <lmax:
             c2 = boost_g[l]*(u[i]-g[i]*vx_avg[l]) # boosted
             T[l] += sqrt(c2*c2+v[i]*v[i]+w[i]*w[i]+1)-1
@@ -172,8 +179,9 @@ def CalcDelGamHists(x, u, v, w, g, vx_avg, boost_g, bin_width, xmin, counts, T):
 @jit(nopython = True, cache = True)
 def CalcDelGamWeightedHists(x, u, v, w, g, weights, vx_avg, boost_g, bin_width, xmin, counts, T):
     lmax = len(vx_avg)
+    norm = bin_width**-1
     for i in xrange(len(x)):
-        l = int((x[i]-xmin)//bin_width)
+        l = int((x[i]-xmin)*norm)
         if 0<= l  and l < lmax:
             c2 = boost_g[l]*(u[i]-g[i]*vx_avg[l]) # boosted
             T[l] += (sqrt(c2*c2+v[i]*v[i]+w[i]*w[i]+1)-1)*weights[i]

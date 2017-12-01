@@ -6,6 +6,7 @@ import numpy as np
 import numpy.ma as ma
 import new_cmaps
 from new_cnorms import PowerNormWithNeg
+from Numba2DHist import Fast2DHist, Fast2DWeightedHist, vecLog10Norm
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
@@ -93,8 +94,8 @@ class PhasePanel:
 
 
     def IntVarHandler(self, *args):
-        # This should only be called by the user-interactio when all the plots already exist...
-        # so we can take some shortcuts and assume a lot of things are already created.
+        # This should only be called by the user-interaction when all the plots already exist...
+        # so we can take some shortcut  s and assume a lot of things are already created.
         self.SetPlotParam('show_int_region', self.IntRegVar.get(), update_plot = False)
         if self.IntRegVar.get() == True:
             # We need to show the integration region.
@@ -327,27 +328,16 @@ class PhasePanel:
                     inRange = energy <= self.GetPlotParam('E_max')
                 inRange *= ~nan_ind
                 if self.GetPlotParam('weighted'):
-                    self.hist2d = np.histogram2d(self.y_values[inRange], self.x_values[inRange],
-                        bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
-                        range = [[self.pmin,self.pmax],[self.xmin,self.xmax]],
-                        weights = self.weights[inRange])
+                    self.hist2d = Fast2DWeightedHist(self.y_values[inRange], self.x_values[inRange], self.weights[inRange], self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
 
                 else:
-                    self.hist2d = np.histogram2d(self.y_values[inRange], self.x_values[inRange],
-                        bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
-                        range = [[self.pmin,self.pmax],[self.xmin,self.xmax]])
+                    self.hist2d = Fast2DHist(self.y_values[inRange], self.x_values[inRange], self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
 
             else:
                 if self.GetPlotParam('weighted'):
-                    self.hist2d = np.histogram2d(self.y_values[~nan_ind], self.x_values[~nan_ind],
-                        bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
-                        range = [[self.pmin,self.pmax],[self.xmin,self.xmax]],
-                        weights = self.weights[~nan_ind])
+                    self.hist2d = Fast2DWeightedHist(self.y_values, self.x_values, self.weights, self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
                 else:
-                    self.hist2d = np.histogram2d(self.y_values[~nan_ind], self.x_values[~nan_ind],
-                        bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
-                        range = [[self.pmin,self.pmax],[self.xmin,self.xmax]])
-
+                    self.hist2d = Fast2DHist(self.y_values, self.x_values, self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
             if self.GetPlotParam('masked'):
                 zval = ma.masked_array(self.hist2d[0])
                 zval[zval == 0] = ma.masked
@@ -433,16 +423,16 @@ class PhasePanel:
                         inRange *= energy <= self.GetPlotParam('E_max')
                 elif self.GetPlotParam('set_E_max'):
                     inRange = energy <= self.GetPlotParam('E_max')
-
-                self.hist2d = np.histogram2d(self.y_values[inRange], self.x_values[inRange],
-                            bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
-                            range = [[self.pmin,self.pmax],[self.xmin,self.xmax]],
-                            weights = self.weights)
+                if self.GetPlotParam('weighted'):
+                    self.hist2d = Fast2DWeightedHist(self.y_values[inRange], self.x_values[inRange], self.weights[inRange], self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
+                else:
+                    self.hist2d = Fast2DHist(self.y_values[inRange], self.x_values[inRange], self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
             else:
-                self.hist2d = np.histogram2d(self.y_values, self.x_values,
-                            bins = [self.GetPlotParam('pbins'), self.GetPlotParam('xbins')],
-                            range = [[self.pmin,self.pmax],[0,self.xmax]],
-                            weights = self.weights)
+                if self.GetPlotParam('weighted'):
+                    self.hist2d = Fast2DWeightedHist(self.y_values, self.x_values, self.weights, self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
+                else:
+                    self.hist2d = Fast2DHist(self.y_values, self.x_values, self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
+
 
             if self.GetPlotParam('masked'):
                 zval = ma.masked_array(self.hist2d[0])
