@@ -52,13 +52,13 @@ def CalcVxEHists(x, u, g, bin_width, xmin, vx, E, counts):
             vx[l] *= c
             E[l] *= c
 
-@jit(nopython = True, cache = True)
+@jit(nopython = True)
 def CalcVxEWeightedHists(x, u, g, weights, bin_width, xmin, vx,  E, counts):
     maxl = len(vx)
     norm = bin_width**-1
     for i in xrange(len(x)):
         c1 = weights[i]
-        l = int((x[i]-xmin)*bin_width)
+        l = int((x[i]-xmin)*norm)
         if 0<= l and l < maxl:
             vx[l] += u[i]*g[i]**-1*c1
             E[l] += (g[i]-1)*c1
