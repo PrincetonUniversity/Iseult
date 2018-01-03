@@ -3888,4 +3888,4 @@ sequential = ['magma', 'inferno', 'plasma', 'viridis', 'temperature',
                 'Linear_L', 'Blue/Green/Red/Yellow', 'Rainbow + White',
                 'Cube YF', 'gnuplot', 'gnuplot2', 'winter', 'heat']
 
-diverging = ['vort', 'BlGr', 'coolwarm', 'BuYlRd', 'Spectral', 'PiYG', 'RdBu', 'PRGn', 'PuOr','RdYlGn']
+diverging = ['vort', 'BlGr', 'coolwarm', 'BuYlRd', 'Spectral', 'PiYG', 'RdBu', 'PRGn', 'PuOr','RdYlGn', 'Blue/Green/Red/Yellow']
