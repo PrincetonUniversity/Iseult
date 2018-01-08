@@ -210,10 +210,14 @@ class DensPanel:
             self.vmax = self.cax.get_array().max()
             if self.GetPlotParam('set_v_max'):
                 self.vmax = self.GetPlotParam('v_max')
-            self.cax.set_cmap(new_cmaps.cmaps[self.cmap])
-            self.cax.set_extent([self.xmin, self.xmax, self.ymin, self.ymax])
+            if self.GetPlotParam('UseDivCmap') and not self.GetPlotParam('stretch_colors'):
+                self.vmax = max(np.abs(self.vmin), self.vmax)
+                self.vmin = -self.vmax
             self.cax.norm.vmin = self.vmin
             self.cax.norm.vmax = self.vmax
+
+            self.cax.set_cmap(new_cmaps.cmaps[self.cmap])
+            self.cax.set_extent([self.xmin, self.xmax, self.ymin, self.ymax])
 
             self.shockline_2d = self.axes.axvline(self.parent.shock_loc,
                                                     linewidth = 1.5,
@@ -404,7 +408,10 @@ class DensPanel:
             min_max[0] -= 0.04*dist
             min_max[1] += 0.04*dist
             self.axes.set_ylim(min_max)
-
+            if self.GetPlotParam('set_v_min'):
+                self.axes.set_ylim(ymin = self.GetPlotParam('v_min'))
+            if self.GetPlotParam('set_v_max'):
+                self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
             if self.GetPlotParam('show_shock'):
                 self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
 
@@ -417,11 +424,6 @@ class DensPanel:
             else:
                 self.axes.set_xlim(self.xaxis_values[0], self.xaxis_values[-1])
 
-
-            if self.GetPlotParam('set_v_min'):
-                self.axes.set_ylim(ymin = self.GetPlotParam('v_min'))
-            if self.GetPlotParam('set_v_max'):
-                self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
 
         else: # Now refresh the plot if it is 2D
             if self.GetPlotParam('dens_type') == 0:
@@ -467,13 +469,18 @@ class DensPanel:
                 self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             if self.parent.MainParamDict['2DSlicePlane'] == 1:
                 self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
-
-            self.clims = [self.cax.get_array().min(), self.cax.get_array().max()]
+            self.vmin = self.cax.get_array().min()
             if self.GetPlotParam('set_v_min'):
-                self.clims[0] =  self.GetPlotParam('v_min')
+                self.vmin = self.GetPlotParam('v_min')
+            self.vmax = self.cax.get_array().max()
             if self.GetPlotParam('set_v_max'):
-                self.clims[1] =  self.GetPlotParam('v_max')
-            self.cax.set_clim(self.clims)
+                self.vmax = self.GetPlotParam('v_max')
+            if self.GetPlotParam('UseDivCmap') and not self.GetPlotParam('stretch_colors'):
+                self.vmax = max(np.abs(self.vmin), self.vmax)
+                self.vmin = -self.vmax
+            self.cax.norm.vmin = self.vmin
+            self.cax.norm.vmax = self.vmax
+
 
             if self.GetPlotParam('show_cbar'):
                 self.CbarTickFormatter()

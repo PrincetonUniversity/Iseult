@@ -497,6 +497,9 @@ class FieldsPanel:
                 self.vmax = self.cax.get_array().max()
                 if self.GetPlotParam('set_v_max'):
                     self.vmax = self.GetPlotParam('v_max')
+                if self.GetPlotParam('UseDivCmap') and not self.GetPlotParam('stretch_colors'):
+                    self.vmax = max(np.abs(self.vmin), self.vmax)
+                    self.vmin = -self.vmax
                 self.cax.norm.vmin = self.vmin
                 self.cax.norm.vmax = self.vmax
                 self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
@@ -887,11 +890,18 @@ class FieldsPanel:
                 self.TwoDan.set_text(self.anntext)
             else:
                 self.TwoDan.set_text('')
+
+            self.vmin = self.cax.get_array().min()
             if self.GetPlotParam('set_v_min'):
-                self.clims[0] =  self.GetPlotParam('v_min')
+                self.vmin = self.GetPlotParam('v_min')
+            self.vmax = self.cax.get_array().max()
             if self.GetPlotParam('set_v_max'):
-                self.clims[1] =  self.GetPlotParam('v_max')
-            self.cax.set_clim(self.clims)
+                self.vmax = self.GetPlotParam('v_max')
+            if self.GetPlotParam('UseDivCmap') and not self.GetPlotParam('stretch_colors'):
+                self.vmax = max(np.abs(self.vmin), self.vmax)
+                self.vmin = -self.vmax
+            self.cax.norm.vmin = self.vmin
+            self.cax.norm.vmax = self.vmax
 
             self.CbarTickFormatter()
 
