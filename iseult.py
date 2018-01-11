@@ -2029,7 +2029,9 @@ class MainApp(Tk.Tk):
         self.bind('<space>', self.playbackbar.PlayHandler)
         self.update()
     def ViewUpdate(self):
-        for cfile in os.listdir(os.path.join(self.IseultDir, '.iseult_configs')):
+        tmpdir = list(os.listdir(os.path.join(self.IseultDir, '.iseult_configs')))
+        tmpdir.sort()
+        for cfile in tmpdir:
             if cfile.split('.')[-1]=='cfg':
                 config = ConfigParser.RawConfigParser()
                 config.read(os.path.join(self.IseultDir,'.iseult_configs', cfile))
