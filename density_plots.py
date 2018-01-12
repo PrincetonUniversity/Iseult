@@ -45,7 +45,7 @@ class DensPanel:
     IntList = ['dens_type']
     FloatList = ['v_min', 'v_max', 'cpow_num', 'div_midpoint']
     #StrList = ['interpolation', 'cnorm_type', 'cmap']
-    StrList = ['cnorm_type', 'cmap'] # No longer loading interpolation from config files
+    StrList = ['interpolation', 'cnorm_type', 'cmap'] # No longer loading interpolation from config files
 
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))

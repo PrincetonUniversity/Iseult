@@ -42,7 +42,7 @@ class BPanel:
     IntList = ['mag_plot_type']
     FloatList = ['v_min', 'v_max', 'cpow_num', 'div_midpoint']
     #StrList = ['interpolation', 'cnorm_type', 'cmap'] # Not loading interpolation anymore
-    StrList = ['cnorm_type', 'cmap']
+    StrList = ['interpolation','cnorm_type', 'cmap']
 
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))

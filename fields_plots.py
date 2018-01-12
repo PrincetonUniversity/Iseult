@@ -81,7 +81,7 @@ class FieldsPanel:
     IntList = ['field_type']
     FloatList = ['v_min', 'v_max', 'cpow_num', 'div_midpoint']
     #StrList = ['interpolation', 'cnorm_type', 'cmap']
-    StrList = ['cnorm_type', 'cmap', 'cmdstr1', 'cmdstr2', 'cmdstr3']
+    StrList = ['cnorm_type', 'cmap', 'interpolation', 'cmdstr1', 'cmdstr2', 'cmdstr3']
     SpecialList = ['yaxis_label', '2D_label', '2D_label', 'OneDOnly']
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))
