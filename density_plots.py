@@ -857,7 +857,8 @@ class DensSettings(Tk.Toplevel):
         if self.InterpolVar.get() == self.parent.GetPlotParam('interpolation'):
             pass
         else:
-            self.parent.cax.set_interpolation(self.InterpolVar.get())
+            if self.parent.GetPlotParam('twoD'):
+                self.parent.cax.set_interpolation(self.InterpolVar.get())
             self.parent.SetPlotParam('interpolation', self.InterpolVar.get())
 
     def setZminChanged(self, *args):
