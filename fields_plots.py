@@ -582,7 +582,7 @@ class FieldsPanel:
                     self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
             else:
                 self.axes.set_xlim(self.xmin, self.xmax)
-
+            self.cax.set_interpolation(self.GetPlotParam('interpolation'))
             if self.parent.MainParamDict['SetyLim']:
                 self.axes.set_ylim(self.parent.MainParamDict['yBottom'],self.parent.MainParamDict['yTop'])
             else:

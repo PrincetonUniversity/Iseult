@@ -233,7 +233,7 @@ class DensPanel:
                 self.vmin = -self.vmax
             self.cax.norm.vmin = self.vmin
             self.cax.norm.vmax = self.vmax
-
+            self.cax.set_interpolation(self.GetPlotParam('interpolation'))
             self.cax.set_cmap(new_cmaps.cmaps[self.cmap])
             self.cax.set_extent([self.xmin, self.xmax, self.ymin, self.ymax])
 
