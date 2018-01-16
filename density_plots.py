@@ -16,7 +16,7 @@ class DensPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
 
     plot_param_dict = {'twoD': 0,
-                       'dens_type': 0, #0 = n, 1 = n_i, 2 =n_e
+                       'dens_type': 0, #0 = n, 1 = n_i, 2 =n_e, 3=rho
                        'show_cbar': True,
                        'set_color_limits': False,
                        'v_min': 0,
@@ -130,6 +130,13 @@ class DensPanel:
                 self.dense = self.FigWrap.LoadKey('dens')[:,:,:]-self.FigWrap.LoadKey('densi')[:,:,:]
                 self.parent.DataDict['dense'] = self.dense
 
+        if self.GetPlotParam('dens_type')== 3: # rho
+            if 'rho' in self.parent.DataDict.keys():
+                self.rho = self.parent.DataDict['rho']
+            else:
+                self.rho = 2*self.FigWrap.LoadKey('densi')[:,:,:] - self.dens
+                self.parent.DataDict['rho'] = self.rho
+
         if 'xaxis_values' in self.parent.DataDict.keys():
             # Generate the x and y axes
             self.xaxis_values = self.parent.DataDict['xaxis_values']
@@ -193,14 +200,21 @@ class DensPanel:
                     self.two_d_label = r'$n_i/n_0$'
                 else:
                     self.zval = self.densi
-                    self.two_d_label = r'$n_i'
+                    self.two_d_label = r'$n_i$'
             if self.FigWrap.GetPlotParam('dens_type') == 2:
                 if self.FigWrap.GetPlotParam('normalize_density'):
                     self.zval = self.densi*self.ppc0**(-1.0)
                     self.two_d_label = r'$n_e/n_0$'
                 else:
                     self.zval = self.dense
-                    self.two_d_label = r'$n_e'
+                    self.two_d_label = r'$n_e$'
+            if self.FigWrap.GetPlotParam('dens_type') == 3:
+                if self.FigWrap.GetPlotParam('normalize_density'):
+                    self.zval = self.rho*self.ppc0**(-1.0)
+                    self.two_d_label = r'$\rho/n_0$'
+                else:
+                    self.zval = self.rho
+                    self.two_d_label = r'$\rho$'
 
 
             if self.parent.MainParamDict['2DSlicePlane'] ==0: # x-y plane
@@ -385,9 +399,11 @@ class DensPanel:
             # Handle the axes labeling
             tmp_str = r'$\rm density$'
             if self.GetPlotParam('dens_type') == 1:
-                tmp_str = r'$\n_i$'
+                tmp_str = r'$n_i$'
             if self.GetPlotParam('dens_type') == 2:
-                tmp_str = r'$\n_e$'
+                tmp_str = r'$n_e$'
+            if self.GetPlotParam('dens_type') == 3:
+                tmp_str = r'$\rho$'
 
             if self.GetPlotParam('normalize_density'):
                 tmp_str += r'$\ [n_0]$'
@@ -421,9 +437,14 @@ class DensPanel:
                     self.linedens[0].set_data(self.xaxis_values, self.densi[self.parent.zSlice,self.parent.ySlice,:])
             elif self.GetPlotParam('dens_type')==2:
                 if self.parent.MainParamDict['Average1D']:
-                    self.linedens[0].set_data(self.xaxis_values, np.average(self.dense.reshape(-1,self.densi.shape[-1]), axis = 0))
+                    self.linedens[0].set_data(self.xaxis_values, np.average(self.dense.reshape(-1,self.dense.shape[-1]), axis = 0))
                 else:
                     self.linedens[0].set_data(self.xaxis_values, self.dense[self.parent.zSlice,self.parent.ySlice,:])
+            elif self.GetPlotParam('dens_type')==3:
+                if self.parent.MainParamDict['Average1D']:
+                    self.linedens[0].set_data(self.xaxis_values, np.average(self.rho.reshape(-1,self.rho.shape[-1]), axis = 0))
+                else:
+                    self.linedens[0].set_data(self.xaxis_values, self.rho[self.parent.zSlice,self.parent.ySlice,:])
             if self.GetPlotParam('normalize_density'):
                 self.linedens[0].set_data(self.linedens[0].get_data()[0], self.linedens[0].get_data()[1]*self.ppc0**(-1))
 
@@ -452,16 +473,10 @@ class DensPanel:
 
         else: # Now refresh the plot if it is 2D
             if self.GetPlotParam('dens_type') == 0:
-                if self.GetPlotParam('normalize_density'):
-                    if self.parent.MainParamDict['2DSlicePlane'] == 0: # x-y plane
-                        self.cax.set_data(self.dens[self.parent.zSlice,:,:]/self.ppc0)
-                    elif self.parent.MainParamDict['2DSlicePlane'] == 1: # x-z plane
-                        self.cax.set_data(self.dens[:,self.parent.ySlice,:]/self.ppc0)
-                else:
-                    if self.parent.MainParamDict['2DSlicePlane'] == 0: # x-y plane
-                        self.cax.set_data(self.dens[self.parent.zSlice,:,:])
-                    elif self.parent.MainParamDict['2DSlicePlane'] == 1: # x-z plane
-                        self.cax.set_data(self.dens[:,self.parent.ySlice,:])
+                if self.parent.MainParamDict['2DSlicePlane'] == 0: # x-y plane
+                    self.cax.set_data(self.dens[self.parent.zSlice,:,:])
+                elif self.parent.MainParamDict['2DSlicePlane'] == 1: # x-z plane
+                    self.cax.set_data(self.dens[:,self.parent.ySlice,:])
 
 
 
@@ -475,6 +490,16 @@ class DensPanel:
                     self.cax.set_data(self.dense[self.parent.zSlice,:,:])
                 elif self.parent.MainParamDict['2DSlicePlane'] == 1: # x-z plane
                     self.cax.set_data(self.dense[:,self.parent.ySlice,:])
+            elif self.GetPlotParam('dens_type')==3:
+                if self.parent.MainParamDict['2DSlicePlane'] == 0: # x-y plane
+                    self.cax.set_data(self.rho[self.parent.zSlice,:,:])
+                elif self.parent.MainParamDict['2DSlicePlane'] == 1: # x-z plane
+                    self.cax.set_data(self.rho[:,self.parent.ySlice,:])
+
+
+            if self.GetPlotParam('normalize_density'):
+                self.cax.set_data(self.cax.get_array()/self.ppc0)
+
 
             self.ymin = 0
             self.ymax =  self.cax.get_array().shape[0]/self.c_omp*self.istep
@@ -628,7 +653,7 @@ class DensSettings(Tk.Toplevel):
         cb.grid(row = 1, sticky = Tk.W)
 
         # the Radiobox Control to choose the Field Type
-        self.DensList = ['dens', 'dens_i', 'dens_e']
+        self.DensList = ['dens', 'dens_i', 'dens_e', 'rho']
         self.DensTypeVar  = Tk.IntVar()
         self.DensTypeVar.set(self.parent.GetPlotParam('dens_type'))
 
@@ -639,7 +664,7 @@ class DensSettings(Tk.Toplevel):
                 text=self.DensList[i],
                 variable=self.DensTypeVar,
                 command = self.RadioField,
-                value=i).grid(row = 3+i, sticky =Tk.W)
+                value=i).grid(row = 3+i//2, column = i-2*(i//2), sticky =Tk.W)
 
 
         # Control whether or not Cbar is shown
@@ -797,16 +822,22 @@ class DensSettings(Tk.Toplevel):
         if self.parent.GetPlotParam('normalize_density')== self.NormDVar.get():
             pass
         elif np.isnan(self.parent.ppc0):
-            print 'hi'
             self.NormDVar.set(self.parent.GetPlotParam('normalize_density'))
         else:
             # First see if the plot is 2d and change the labels if necessary
             if self.parent.GetPlotParam('twoD')==1:
+                tmp_str = ''
                 if self.parent.GetPlotParam('dens_type') == 0:
-                    if self.NormDVar.get():
-                        self.parent.an_2d.set_text(r'$n/n_0$')
-                    else:
-                        self.parent.an_2d.set_text(r'$n$')
+                    tmp_str += r'$n$'
+                if self.parent.GetPlotParam('dens_type') == 1:
+                    tmp_str += r'$n_i$'
+                if self.parent.GetPlotParam('dens_type') == 2:
+                    tmp_str += r'$n_e$'
+                if self.parent.GetPlotParam('dens_type') == 3:
+                    tmp_str += r'$\rho$'
+                if self.NormDVar.get():
+                    tmp_str += r'$\ [n_0]$'
+                self.parent.an_2d.set_text(tmp_str)
             # Now for the 1d label
             else:
                 if self.parent.GetPlotParam('dens_type') == 0:
@@ -814,8 +845,23 @@ class DensSettings(Tk.Toplevel):
                         self.parent.axes.set_ylabel(r'${\rm density}\ [n_0]$', size = self.parent.parent.MainParamDict['AxLabelSize'])
                     else:
                         self.parent.axes.set_ylabel('density', size = self.parent.parent.MainParamDict['AxLabelSize'])
+                if self.parent.GetPlotParam('dens_type') == 1:
+                    if self.NormDVar.get():
+                        self.parent.axes.set_ylabel(r'$n_i\ [n_0]$', size = self.parent.parent.MainParamDict['AxLabelSize'])
+                    else:
+                        self.parent.axes.set_ylabel(r'$n_i$', size = self.parent.parent.MainParamDict['AxLabelSize'])
+                if self.parent.GetPlotParam('dens_type') == 2:
+                    if self.NormDVar.get():
+                        self.parent.axes.set_ylabel(r'$n_e\ [n_0]$', size = self.parent.parent.MainParamDict['AxLabelSize'])
+                    else:
+                        self.parent.axes.set_ylabel(r'$n_e$', size = self.parent.parent.MainParamDict['AxLabelSize'])
+                if self.parent.GetPlotParam('dens_type') == 3:
+                    if self.NormDVar.get():
+                        self.parent.axes.set_ylabel(r'$\rho\ [n_0]$', size = self.parent.parent.MainParamDict['AxLabelSize'])
+                    else:
+                        self.parent.axes.set_ylabel(r'$\rho$', size = self.parent.parent.MainParamDict['AxLabelSize'])
 
-            self.parent.SetPlotParam('normalize_density', self.NormDVar.get(), update_plot = self.parent.GetPlotParam('dens_type')==0)
+            self.parent.SetPlotParam('normalize_density', self.NormDVar.get())#, update_plot = self.parent.GetPlotParam('dens_type')==0)
 
     def LabelHandler(self, *args):
         if self.parent.GetPlotParam('show_labels')== self.ShowLabels.get():
@@ -933,6 +979,11 @@ class DensSettings(Tk.Toplevel):
                         self.parent.an_2d.set_text(r'$n_e/n_0$')
                     else:
                         self.parent.an_2d.set_text(r'$n_e$')
+                elif self.DensTypeVar.get() == 3:
+                    if self.parent.GetPlotParam('normalize_density'):
+                        self.parent.an_2d.set_text(r'$\rho/n_0$')
+                    else:
+                        self.parent.an_2d.set_text(r'$\rho$')
 
             else:
                 if self.DensTypeVar.get() == 0:
@@ -953,6 +1004,11 @@ class DensSettings(Tk.Toplevel):
                         self.parent.axes.set_ylabel(r'$n_e\ [n_0]$', size = self.parent.parent.MainParamDict['AxLabelSize'])
                     else:
                         self.parent.axes.set_ylabel(r'$n_e$', size = self.parent.parent.MainParamDict['AxLabelSize'])
+                elif self.DensTypeVar.get() ==3:
+                    if self.parent.GetPlotParam('normalize_density'):
+                        self.parent.axes.set_ylabel(r'$\rho\ [n_0]$', size = self.parent.parent.MainParamDict['AxLabelSize'])
+                    else:
+                        self.parent.axes.set_ylabel(r'$\rho$', size = self.parent.parent.MainParamDict['AxLabelSize'])
 
 
             self.parent.SetPlotParam('dens_type', self.DensTypeVar.get())
