@@ -2316,7 +2316,7 @@ class MainApp(Tk.Tk):
             allFour &= set(self.PathDict[key])
         allFour = sorted(allFour)
 
-        if int(self.cmd_args.n) != -1:
+        if int(self.cmd_args.n) != -1 and len(allFour)>0:
             while allFour[-1] > int(self.cmd_args.n) and len(allFour)>0:
                 allFour.pop(-1)
 
@@ -2380,7 +2380,7 @@ class MainApp(Tk.Tk):
             allFour &= set(self.PathDict[key])
         allFour = sorted(allFour)
 
-        if int(self.cmd_args.n) != -1:
+        if int(self.cmd_args.n) != -1 and len(allFour)>0:
             while allFour[-1] > int(self.cmd_args.n) and len(allFour)>0:
                 allFour.pop(-1)
 
