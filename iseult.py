@@ -723,7 +723,7 @@ class SaveDialog(Tk.Toplevel):
 
         self.geometry("+%d+%d" % (parent.winfo_rootx()+50,
                                   parent.winfo_rooty()+50))
-
+        
         self.initial_focus.focus_set()
 
         self.wait_window(self)
@@ -1957,10 +1957,16 @@ class MainApp(Tk.Tk):
 
         # Create the figure
         self.f = Figure(figsize = (2,2), dpi = 100, edgecolor = 'none', facecolor = 'w')
+
         # a tk.DrawingArea
+
         self.canvas = FigureCanvasTkAgg(self.f, master=self)
 
         self.GenMainParamDict()
+        # now root.geometry() returns valid size/placement
+        self.minsize(self.winfo_width(), self.winfo_height())
+        self.geometry(self.MainParamDict['WindowSize'])
+
         if self.MainParamDict['HorizontalCbars']:
             self.axes_extent = self.MainParamDict['HAxesExtent']
             self.cbar_extent = self.MainParamDict['HCbarExtent']
@@ -2015,9 +2021,6 @@ class MainApp(Tk.Tk):
         menubar.add_cascade(label='Preset Views', underline=0, menu = self.presetMenu)
         self.playbackbar.pack(side=Tk.TOP, fill=Tk.BOTH, expand=0)
         self.update()
-        # now root.geometry() returns valid size/placement
-        self.minsize(self.winfo_width(), self.winfo_height())
-        self.geometry(self.MainParamDict['WindowSize'])
 
 
         self.config(menu=menubar)
