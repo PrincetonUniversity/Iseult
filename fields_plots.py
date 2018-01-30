@@ -785,7 +785,7 @@ class FieldsPanel:
                 if self.flagy == 1 and len(self.fy.shape) == 1:
                     self.liney[0].set_data(self.xaxis_values, self.fy)
                 elif self.parent.MainParamDict['Average1D']:
-                    self.liney[0].set_data(self.xaxis_values, np.average(self.fy.reshape(-1,self.fx.shape[-1]), axis =0))
+                    self.liney[0].set_data(self.xaxis_values, np.average(self.fy.reshape(-1,self.fy.shape[-1]), axis =0))
                 else:
                     self.liney[0].set_data(self.xaxis_values, self.fy[self.parent.zSlice,self.parent.ySlice,:])
                 self.liney[0].set_visible(True)
@@ -797,7 +797,7 @@ class FieldsPanel:
                 if self.flagz ==1 and len(self.fz.shape) == 1:
                     self.linez[0].set_data(self.xaxis_values, self.fz)
                 elif self.parent.MainParamDict['Average1D']:
-                    self.linez[0].set_data(self.xaxis_values, np.average(self.fz.reshape(-1,self.fx.shape[-1]), axis =0))
+                    self.linez[0].set_data(self.xaxis_values, np.average(self.fz.reshape(-1,self.fz.shape[-1]), axis =0))
                 else:
                     self.linez[0].set_data(self.xaxis_values, self.fz[self.parent.zSlice,self.parent.ySlice,:])
                 self.linez[0].set_visible(True)
