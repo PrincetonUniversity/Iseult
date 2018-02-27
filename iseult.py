@@ -562,11 +562,17 @@ class PlaybackBar(Tk.Frame):
 
         # a reload button that reloads the files and then refreshes the plot
         ttk.Button(self, text = 'Reload', command = self.OnReload).pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+        # a refresh button that refreshing the current timestep
+        ttk.Button(self, text = 'Refresh', command = self.OnRefresh).pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
         #attach the parameter to the Playbackbar
         self.param.attach(self)
 
     def OnReload(self, *args):
         self.parent.ReloadPath()
+        self.parent.RenewCanvas()
+
+    def OnRefresh(self, *args):
+        self.parent.RefreshTimeStep()
         self.parent.RenewCanvas()
 
     def RecChanged(self, *args):
@@ -723,7 +729,7 @@ class SaveDialog(Tk.Toplevel):
 
         self.geometry("+%d+%d" % (parent.winfo_rootx()+50,
                                   parent.winfo_rooty()+50))
-        
+
         self.initial_focus.focus_set()
 
         self.wait_window(self)
@@ -2898,6 +2904,33 @@ class MainApp(Tk.Tk):
             for j in range(self.MainParamDict['NumOfCols']):
                 self.SubPlotList[i][j].LoadData()
 
+    def RefreshTimeStep(self):
+        ''' A function that will find out will arrays need to be loaded for
+        to draw the graphs. Then it will save all the data necessaru to
+        If the time hasn't changed, it will only load new keys.'''
+        if self.TimeStep.value in self.timestep_visited:
+            cur_ind = self.timestep_visited.index(self.TimeStep.value)
+            self.timestep_visited.pop(cur_ind)
+            self.ListOfDataDict.pop(cur_ind)
+            self.timestep_queue.remove(self.TimeStep.value)
+
+        if self.TimeStep.value in self.TotalEnergyTimeSteps:
+            self.TotalEnergyTimeSteps.remove(self.TimeStep.value)
+            ind = self.TotalEnergyTimes.searchsorted(self.DataDict['time'][0])
+            if ind < len(self.TotalEnergyTimes)-1:
+                self.TotalEnergyTimes = np.append(self.TotalEnergyTimes[0:ind],self.TotalEnergyTimes[ind+1:])
+                self.TotalElectronEnergy = np.append(self.TotalElectronEnergy[0:ind],self.TotalElectronEnergy[ind+1:])
+                self.TotalIonEnergy = np.append(self.TotalIonEnergy[0:ind],self.TotalIonEnergy[ind+1:])
+                self.TotalMagEnergy = np.append(self.TotalMagEnergy[0:ind], self.TotalMagEnergy[ind+1:])
+                self.TotalBzEnergy = np.append(self.TotalBzEnergy[0:ind], self.TotalBzEnergy[ind+1:])
+                self.TotalElectricEnergy = np.append(self.TotalElectricEnergy[0:ind], self.TotalElectricEnergy[ind+1:])
+            else:
+                self.TotalEnergyTimes = self.TotalEnergyTimes[0:ind]
+                self.TotalElectronEnergy = self.TotalElectronEnergy[0:ind]
+                self.TotalIonEnergy = self.TotalIonEnergy[0:ind]
+                self.TotalMagEnergy = self.TotalMagEnergy[0:ind]
+                self.TotalBzEnergy = self.TotalBzEnergy[0:ind]
+                self.TotalElectricEnergy = self.TotalElectricEnergy[0:ind]
 
     def MakePrevCtypeList(self):
         self.prev_ctype_list = []
