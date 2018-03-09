@@ -241,8 +241,8 @@ class  MomentsPanel:
                     CalcVxEWeightedHists(self.xi,self.ui, gi, iweights, bin_width, self.xmin, vix, self.iy, self.icounts)
 
                     RestFrameBoost(vex, self.ecounts, vix,  self.icounts, vx_avg, boost_gam)
-                    CalcDelGamWeightedHists(self.xe, self.ue, self.ve, self.we, ge, eweights, vix,  1/np.sqrt(1-vix**2), bin_width, self.xmin, self.ecounts, self.ex)
-                    CalcDelGamWeightedHists(self.xi, self.ui, self.vi, self.wi, gi, iweights, vex,  1/np.sqrt(1-vex**2), bin_width, self.xmin, self.icounts, self.ix)
+                    CalcDelGamWeightedHists(self.xe, self.ue, self.ve, self.we, ge, eweights, vex,  1/np.sqrt(1-vex**2), bin_width, self.xmin, self.ecounts, self.ex)
+                    CalcDelGamWeightedHists(self.xi, self.ui, self.vi, self.wi, gi, iweights, vix,  1/np.sqrt(1-vix**2), bin_width, self.xmin, self.icounts, self.ix)
 
                 self.ex*=self.memi
                 self.ey*=self.memi
