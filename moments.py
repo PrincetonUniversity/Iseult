@@ -230,7 +230,7 @@ class  MomentsPanel:
                     CalcVxEHists(self.xi,self.ui, gi, bin_width, self.xmin, vix, self.iy, self.icounts)
 
                     CalcDelGamHists(self.xe, self.ue, self.ve, self.we, ge, vix, 1/np.sqrt(1-vix**2), bin_width, self.xmin, self.ecounts, self.ex)
-                    CalcDelGamHists(self.xi, self.ui, self.vi, self.wi, gi, ve, 1/np.sqrt(1-vex**2), bin_width, self.xmin, self.icounts, self.ix)
+                    CalcDelGamHists(self.xi, self.ui, self.vi, self.wi, gi, vex, 1/np.sqrt(1-vex**2), bin_width, self.xmin, self.icounts, self.ix)
 
 
                 else:
