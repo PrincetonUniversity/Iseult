@@ -2650,7 +2650,8 @@ class MainApp(Tk.Tk):
         with h5py.File(os.path.join(self.dirname,self.PathDict['Flds'][self.TimeStep.value-1]), 'r') as f:
             self.MaxZInd = f['bx'].shape[0]-1
             self.MaxYInd = f['bx'].shape[1]-1
-
+            self.MaxXInd = f['bx'].shape[2]-1
+            
             self.ySlice = int(np.around(self.MainParamDict['ySlice']*self.MaxYInd))
             self.zSlice = int(np.around(self.MainParamDict['zSlice']*self.MaxZInd))
 
@@ -2738,9 +2739,12 @@ class MainApp(Tk.Tk):
                                     elif elm == 'ppc0':
                                         self.DataDict[elm] = np.NaN
                                     elif elm == 'my':
-                                        self.DataDict[elm] = np.array([1,1])
+                                        tmpSize = ((self.MaxYInd+1)*f['istep'][0])//(f['my0'][0]-5)
+                                        self.DataDict[elm] = np.ones(tmpSize)*(f['my0'][0])
                                     elif elm == 'mx':
-                                        self.DataDict[elm] = np.array([1,1])
+                                        tmpSize = ((self.MaxXInd+1)*f['istep'][0])//(f['mx0'][0]-5)
+                                        self.DataDict[elm] = np.ones(tmpSize)*(f['mx0'][0])
+
 
                                     else:
                                         raise
@@ -2781,9 +2785,11 @@ class MainApp(Tk.Tk):
                                     elif elm == 'ppc0':
                                         self.DataDict[elm] = np.NaN
                                     elif elm == 'my':
-                                        self.DataDict[elm] = np.array([1,1])
+                                        tmpSize = ((self.MaxYInd+1)*f['istep'][0])//(f['my0'][0]-5)
+                                        self.DataDict[elm] = np.ones(tmpSize)*(f['my0'][0])
                                     elif elm == 'mx':
-                                        self.DataDict[elm] = np.array([1,1])
+                                        tmpSize = ((self.MaxXInd+1)*f['istep'][0])//(f['mx0'][0]-5)
+                                        self.DataDict[elm] = np.ones(tmpSize)*(f['mx0'][0])
 
                                     else:
                                         raise
