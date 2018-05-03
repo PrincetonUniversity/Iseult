@@ -164,7 +164,7 @@ class TotEnergyPanel:
                 legend_handles.append(self.plot_list[i])
                 legend_labels.append(self.label_names[i])
         self.legend = self.axes.legend(legend_handles, legend_labels,
-        framealpha = .05, fontsize = 11, loc = 1)
+        framealpha = .05, fontsize = self.parent.MainParamDict['legendLabelSize'], loc = 1)
         self.legend.get_frame().set_facecolor('k')
         self.legend.get_frame().set_linewidth(0.0)
         if not self.GetPlotParam('show_legend'):
@@ -492,7 +492,7 @@ class TotEnergySettings(Tk.Toplevel):
                 legend_handles.append(self.parent.plot_list[i])
                 legend_labels.append(self.parent.label_names[i])
         self.parent.legend = self.parent.axes.legend(legend_handles, legend_labels,
-        framealpha = .05, fontsize = 11, loc = 1)
+        framealpha = .05, fontsize = self.parent.MainParamDict['legendLabelSize'], loc = 1)
         self.parent.legend.set_visible(self.parent.GetPlotParam('show_legend'))
         self.parent.legend.get_frame().set_facecolor('k')
         self.parent.legend.get_frame().set_linewidth(0.0)

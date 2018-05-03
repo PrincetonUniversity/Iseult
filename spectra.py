@@ -724,7 +724,7 @@ class SpectralPanel:
         #    self.legT.get_frame().set_linewidth(0.0)
 
         if len(Tlegend_handles) > 0:
-            self.legT = self.axes.legend(Tlegend_handles, Tlegend_labels, framealpha = .05, fontsize = 11, loc = 2)
+            self.legT = self.axes.legend(Tlegend_handles, Tlegend_labels, framealpha = .05, fontsize = self.parent.MainParamDict['legendLabelSize'], loc = 2)
             self.legT.get_frame().set_facecolor('k')
             self.legT.get_frame().set_linewidth(0.0)
             self.legT.draggable(update = 'loc')
@@ -737,7 +737,7 @@ class SpectralPanel:
 
         if len(legend_handles)> 0:
             self.legDelta = self.axes.legend(legend_handles, legend_labels,
-            framealpha = .05, fontsize = 11, loc = 'upper right')
+            framealpha = .05, fontsize = self.parent.MainParamDict['legendLabelSize'], loc = 'upper right')
             self.legDelta.get_frame().set_facecolor('k')
             self.legDelta.get_frame().set_linewidth(0.0)
             self.legDelta.draggable()

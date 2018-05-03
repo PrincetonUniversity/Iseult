@@ -240,7 +240,6 @@ class  MomentsPanel:
                     CalcVxEWeightedHists(self.xe,self.ue, ge, eweights, bin_width, self.xmin, vex, self.ey, self.ecounts)
                     CalcVxEWeightedHists(self.xi,self.ui, gi, iweights, bin_width, self.xmin, vix, self.iy, self.icounts)
 
-                    RestFrameBoost(vex, self.ecounts, vix,  self.icounts, vx_avg, boost_gam)
                     CalcDelGamWeightedHists(self.xe, self.ue, self.ve, self.we, ge, eweights, vex,  1/np.sqrt(1-vex**2), bin_width, self.xmin, self.ecounts, self.ex)
                     CalcDelGamWeightedHists(self.xi, self.ui, self.vi, self.wi, gi, iweights, vix,  1/np.sqrt(1-vix**2), bin_width, self.xmin, self.icounts, self.ix)
 
@@ -411,7 +410,7 @@ class  MomentsPanel:
 
 
         self.legend = self.axes.legend(legend_handles, legend_labels,
-        framealpha = .05, fontsize = 11, loc = 1, ncol = max(1, self.GetPlotParam('show_ions')+ self.GetPlotParam('show_electrons')+self.GetPlotParam('show_total')))
+        framealpha = .05, fontsize = self.parent.MainParamDict['legendLabelSize'], loc = 1, ncol = max(1, self.GetPlotParam('show_ions')+ self.GetPlotParam('show_electrons')+self.GetPlotParam('show_total')))
 
         self.legend.get_frame().set_facecolor('k')
         self.legend.get_frame().set_linewidth(0.0)
@@ -440,7 +439,7 @@ class  MomentsPanel:
 
 
         self.axes.set_xlabel(r'$x\  [c/\omega_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
-        self.axes.set_ylabel(self.ylabel_list[self.GetPlotParam('m_type')], labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+        self.axes.set_ylabel(self.ylabel_list[self.GetPlotParam('m_type')], labelpad = self.parent.MainParamDict['yLabel'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
     def refresh(self):
 
@@ -804,7 +803,7 @@ class MomentsSettings(Tk.Toplevel):
 
 
         self.parent.legend = self.parent.axes.legend(legend_handles, legend_labels,
-        framealpha = .05, fontsize = 11, loc = 1, ncol = max(1, self.ShowElectronsVar.get()+self.ShowTotalVar.get()+self.ShowIonsVar.get()))
+        framealpha = .05, fontsize = self.parent.MainParamDict['legendLabelSize'], loc = 1, ncol = max(1, self.ShowElectronsVar.get()+self.ShowTotalVar.get()+self.ShowIonsVar.get()))
 
         self.parent.legend.set_visible(self.parent.GetPlotParam('show_legend'))
         self.parent.legend.get_frame().set_facecolor('k')

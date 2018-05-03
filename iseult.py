@@ -2145,6 +2145,7 @@ class MainApp(Tk.Tk):
                               'HCbarExtent': [0, 4, 0, -1],
                               'Recording': False,
                               'xLabelPad': 0,
+                              'annotateTextSize': 18,
                               'FFTRight': 200.0,
                               'ClearFig': True,
                               'HorizontalCbars': False,
@@ -2153,7 +2154,8 @@ class MainApp(Tk.Tk):
                               'GammaBoost': 0.0,
                               'kLeft': 0.1,
                               'LoopPlayback': True,
-                              'PrtlStride': 5}
+                              'PrtlStride': 5,
+                              'legendLabelSize':11}
 
         # The list of things that should be formatted as booleans.
         BoolList = ['Reload2End', 'ClearFig', 'ShowTitle', 'DoLorentzBoost',
@@ -2168,8 +2170,8 @@ class MainApp(Tk.Tk):
 
         # The list of things that should be formatted as ints.
         IntList = ['NumFontSize', 'AxLabelSize', 'xLabelPad', 'yLabelPad', #'MaxRows','MaxCols',  No longer saving this to config files.
-                   'NumOfRows', 'NumOfCols', 'ImageAspect',
-                   'LinkSpatial', 'SkipSize', 'PrtlStride','cbarLabelPad']
+                   'NumOfRows', 'NumOfCols', 'ImageAspect', 'legendLabelSize'
+                   'LinkSpatial', 'SkipSize', 'PrtlStride','cbarLabelPad', 'annotateTextSize']
 
         for elm in IntList:
             if elm.lower() in config.options('main'):

@@ -216,13 +216,13 @@ class BPanel:
         if self.GetPlotParam('OutlineText'):
             self.annotate_kwargs = {'horizontalalignment': 'right',
             'verticalalignment': 'top',
-            'size' : 18,
+            'size' : self.parent.MainParamDict['annotateTextSize'],
             'path_effects' : [PathEffects.withStroke(linewidth=1.5,foreground="k")]
             }
         else:
             self.annotate_kwargs = {'horizontalalignment' : 'right',
             'verticalalignment' : 'top',
-            'size' : 18}
+            'size' : self.parent.MainParamDict['annotateTextSize']}
 
 
         # Set the tick color
