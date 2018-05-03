@@ -2653,7 +2653,8 @@ class MainApp(Tk.Tk):
         with h5py.File(os.path.join(self.dirname,self.PathDict['Flds'][self.TimeStep.value-1]), 'r') as f:
             self.MaxZInd = f['bx'].shape[0]-1
             self.MaxYInd = f['bx'].shape[1]-1
-
+            self.MaxXInd = f['bx'].shape[2]-1
+            
             self.ySlice = int(np.around(self.MainParamDict['ySlice']*self.MaxYInd))
             self.zSlice = int(np.around(self.MainParamDict['zSlice']*self.MaxZInd))
 
@@ -2736,10 +2737,18 @@ class MainApp(Tk.Tk):
                                 except KeyError:
                                     if elm == 'sizex':
                                         self.DataDict[elm] = 1
-                                    if elm == 'c':
+                                    elif elm == 'c':
                                         self.DataDict[elm]= 0.45
-                                    if elm == 'ppc0':
+                                    elif elm == 'ppc0':
                                         self.DataDict[elm] = np.NaN
+                                    elif elm == 'my':
+                                        tmpSize = ((self.MaxYInd+1)*f['istep'][0])//(f['my0'][0]-5)
+                                        self.DataDict[elm] = np.ones(tmpSize)*(f['my0'][0])
+                                    elif elm == 'mx':
+                                        tmpSize = ((self.MaxXInd+1)*f['istep'][0])//(f['mx0'][0]-5)
+                                        self.DataDict[elm] = np.ones(tmpSize)*(f['mx0'][0])
+
+
                                     else:
                                         raise
 
@@ -2752,7 +2761,7 @@ class MainApp(Tk.Tk):
                 tmplist = list(set(self.ToLoad[pkey])) # get rid of duplicate keys
                 # Load the file
                 if len(tmplist)> 0:
-                    if pkey =='Prtl': # we load partile arrays with a stride because they are expensive
+                    if pkey =='Prtl': # we load particle arrays with a stride because they are expensive
                         with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
                             for elm in tmplist:
                                 try:
@@ -2774,10 +2783,17 @@ class MainApp(Tk.Tk):
                                 except KeyError:
                                     if elm == 'sizex':
                                         self.DataDict[elm] = 1
-                                    if elm == 'c':
+                                    elif elm == 'c':
                                         self.DataDict[elm]= 0.45
-                                    if elm == 'ppc0':
+                                    elif elm == 'ppc0':
                                         self.DataDict[elm] = np.NaN
+                                    elif elm == 'my':
+                                        tmpSize = ((self.MaxYInd+1)*f['istep'][0])//(f['my0'][0]-5)
+                                        self.DataDict[elm] = np.ones(tmpSize)*(f['my0'][0])
+                                    elif elm == 'mx':
+                                        tmpSize = ((self.MaxXInd+1)*f['istep'][0])//(f['mx0'][0]-5)
+                                        self.DataDict[elm] = np.ones(tmpSize)*(f['mx0'][0])
+
                                     else:
                                         raise
 
