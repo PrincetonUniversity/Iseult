@@ -649,9 +649,9 @@ class PhasePanel:
                     self.axC.locator_params(axis='y',nbins=6)
                     self.axC.yaxis.set_label_position("right")
                     if self.GetPlotParam('prtl_type') ==0:
-                        self.axC.set_ylabel(r'$\log{\ \ f_i(p)}$', labelpad =15, rotation = -90, size = self.parent.MainParamDict['AxLabelSize'])
+                        self.axC.set_ylabel(r'$\log{\ \ f_i(p)}$', labelpad = self.parent.MainParamDict['cbarLabelPad'], rotation = -90, size = self.parent.MainParamDict['AxLabelSize'])
                     else:
-                        self.axC.set_ylabel(r'$\log{\ \ f_e(p)}$', labelpad =15, rotation = -90, size = self.parent.MainParamDict['AxLabelSize'])
+                        self.axC.set_ylabel(r'$\log{\ \ f_e(p)}$', labelpad = self.parent.MainParamDict['cbarLabelPad'], rotation = -90, size = self.parent.MainParamDict['AxLabelSize'])
 
             else:# self.GetPlotParam('cnorm_type') == "Linear":
                 if self.parent.MainParamDict['HorizontalCbars']:
@@ -668,9 +668,9 @@ class PhasePanel:
                     self.axC.locator_params(axis='y', nbins=6)
                     self.axC.yaxis.set_label_position("right")
                     if self.GetPlotParam('prtl_type') ==0:
-                        self.axC.set_ylabel(r'$f_i(p)$', labelpad =15, rotation = -90, size = self.parent.MainParamDict['AxLabelSize'])
+                        self.axC.set_ylabel(r'$f_i(p)$', labelpad = self.parent.MainParamDict['cbarLabelPad'], rotation = -90, size = self.parent.MainParamDict['AxLabelSize'])
                     else:
-                        self.axC.set_ylabel(r'$f_e(p)$', labelpad =15, rotation = -90, size = self.parent.MainParamDict['AxLabelSize'])
+                        self.axC.set_ylabel(r'$f_e(p)$', labelpad = self.parent.MainParamDict['cbarLabelPad'], rotation = -90, size = self.parent.MainParamDict['AxLabelSize'])
 
 
 

@@ -2136,6 +2136,7 @@ class MainApp(Tk.Tk):
                                                  'hspace': 0.3,
                                                  'left': 0.06},
                               'yLabelPad': 0,
+                              'cbarLabelPad': 15,
                               'SetxLim': False,
                               'xLimsRelative': False,
                               'ConstantShockVel': True,
@@ -2166,9 +2167,9 @@ class MainApp(Tk.Tk):
                 self.MainParamDict[elm] = config.getboolean('main', elm)
 
         # The list of things that should be formatted as ints.
-        IntList = ['NumFontSize', 'AxLabelSize' 'xLabelPad', 'yLabelPad', #'MaxRows','MaxCols',  No longer saving this to config files.
+        IntList = ['NumFontSize', 'AxLabelSize', 'xLabelPad', 'yLabelPad', #'MaxRows','MaxCols',  No longer saving this to config files.
                    'NumOfRows', 'NumOfCols', 'ImageAspect',
-                   'LinkSpatial', 'SkipSize', 'PrtlStride']
+                   'LinkSpatial', 'SkipSize', 'PrtlStride','cbarLabelPad']
 
         for elm in IntList:
             if elm.lower() in config.options('main'):
