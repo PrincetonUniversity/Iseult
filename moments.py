@@ -803,7 +803,7 @@ class MomentsSettings(Tk.Toplevel):
 
 
         self.parent.legend = self.parent.axes.legend(legend_handles, legend_labels,
-        framealpha = .05, fontsize = self.parent.MainParamDict['legendLabelSize'], loc = 1, ncol = max(1, self.ShowElectronsVar.get()+self.ShowTotalVar.get()+self.ShowIonsVar.get()))
+        framealpha = .05, fontsize = self.parent.parent.MainParamDict['legendLabelSize'], loc = 1, ncol = max(1, self.ShowElectronsVar.get()+self.ShowTotalVar.get()+self.ShowIonsVar.get()))
 
         self.parent.legend.set_visible(self.parent.GetPlotParam('show_legend'))
         self.parent.legend.get_frame().set_facecolor('k')
