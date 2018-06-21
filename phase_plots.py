@@ -389,9 +389,11 @@ class PhasePanel:
 
             self.pmin = min(self.y_values)
             self.pmax = max(self.y_values)
+            self.pmax = self.pmax if (self.pmax != self.pmin) else self.pmin + 1
 
             self.xmin = 0
             self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.istep
+            self.xmax = self.xmax if (self.xmax != self.xmin) else self.xmin + 1
 
             if self.GetPlotParam('set_E_min') or self.GetPlotParam('set_E_max'):
                 # We need to calculate the total energy of each particle in

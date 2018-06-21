@@ -204,11 +204,12 @@ class EnergyPanel:
                 self.y_values *= self.FigWrap.LoadKey('me')[0]/self.FigWrap.LoadKey('mi')[0]
             self.Ymin = min(self.y_values)
             self.Ymax = max(self.y_values)
-
+            self.Ymax = self.Ymax if ( self.Ymin != self.Ymax ) else self.Ymin+1
 
             self.xmin = 0
             self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.istep
-
+            self.xmax = self.xmax if ( self.xmin != self.xmax ) else self.xmin+1
+            
             self.hist2d = np.histogram2d(self.y_values, self.x_values,
                             bins = [self.GetPlotParam('ebins'), self.GetPlotParam('xbins')],
                             range = [[self.Ymin,self.Ymax],[0,self.xmax]],
