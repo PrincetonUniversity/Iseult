@@ -232,7 +232,7 @@ class PhasePanel:
             # x_min & x_max before boostin'
             self.xmin = 0
             self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.istep
-
+            self.xmax = self.xmax if (self.xmax != self.xmin) else self.xmin + 1
 
             # First calculate beta and gamma
             if self.parent.MainParamDict['GammaBoost'] >=1:
@@ -310,6 +310,7 @@ class PhasePanel:
 
             self.pmin = min(self.y_values)
             self.pmax = max(self.y_values)
+            self.pmax = self.pmax if (self.pmax != self.pmin) else self.pmin + 1
 
 
             if self.GetPlotParam('set_E_min') or self.GetPlotParam('set_E_max'):
