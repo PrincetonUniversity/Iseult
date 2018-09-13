@@ -2654,7 +2654,7 @@ class MainApp(Tk.Tk):
             self.MaxZInd = f['bx'].shape[0]-1
             self.MaxYInd = f['bx'].shape[1]-1
             self.MaxXInd = f['bx'].shape[2]-1
-            
+
             self.ySlice = int(np.around(self.MainParamDict['ySlice']*self.MaxYInd))
             self.zSlice = int(np.around(self.MainParamDict['zSlice']*self.MaxZInd))
 
@@ -3731,7 +3731,20 @@ class MainApp(Tk.Tk):
         self.playbackbar.TextCallback()
 
 if __name__ == "__main__":
+    ## Check if there is a new version upstream
+    # Fetch origin
+    subprocess.call(['git', 'fetch', 'origin'])
+    up_hash = subprocess.check_output(['git', 'rev-parse', 'origin/master'])
+    local_hash = subprocess.check_output(['git', 'rev-parse', '@'])
+    base_hash = subprocess.check_output(['git', 'merge-base', '@', 'origin/master'])
 
-
+    if up_hash==local_hash:
+        print 'Iseult is up to date'
+    elif local_hash == base_hash:
+        print 'Please download latest version from git-hub'
+    elif up_hash == base_hash:
+        print 'local version is ahead of upstream'
+    else:
+        print 'Diverged'
     app = MainApp('Iseult')
     app.mainloop()
