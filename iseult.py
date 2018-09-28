@@ -3731,12 +3731,14 @@ class MainApp(Tk.Tk):
         self.playbackbar.TextCallback()
 
 if __name__ == "__main__":
+    '''
     ## Check if there is a new version upstream
     # Fetch origin
-    subprocess.call(['git', 'fetch', 'origin'])
-    up_hash = subprocess.check_output(['git', 'rev-parse', 'origin/master'])
-    local_hash = subprocess.check_output(['git', 'rev-parse', '@'])
-    base_hash = subprocess.check_output(['git', 'merge-base', '@', 'origin/master'])
+    iseultDir = os.path.dirname(__file__)
+    subprocess.call(['git', '--git-dir='+ iseultDir, 'fetch', 'origin'])
+    up_hash = subprocess.check_output(['git', '--git-dir='+ iseultDir, 'rev-parse', 'origin/master'])
+    local_hash = subprocess.check_output(['git','--git-dir='+ iseultDir, 'rev-parse', '@'])
+    base_hash = subprocess.check_output(['git','--git-dir='+ iseultDir, 'merge-base', '@', 'origin/master'])
 
     if up_hash==local_hash:
         print 'Iseult is up to date'
@@ -3746,5 +3748,6 @@ if __name__ == "__main__":
         print 'local version is ahead of upstream'
     else:
         print 'Diverged'
+    '''
     app = MainApp('Iseult')
     app.mainloop()
