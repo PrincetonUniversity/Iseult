@@ -95,7 +95,7 @@ class FFTPanel:
             iR = self.xaxis_values.searchsorted(self.right_loc)
             self.all_min_max = []
             # Calculate K_axis
-            self.k_axis = np.arange(iR-iL)*(2*np.pi/(self.xaxis_values[1]-self.xaxis_values[0]))/(iR-iL-1)-(2*np.pi/(self.xaxis_values[1]-self.xaxis_values[0]))*.5
+            self.k_axis = np.arange(iR-iL)*(2*np.pi/(self.xaxis_values[1]-self.xaxis_values[0]))/(iR-iL)-(2*np.pi/(self.xaxis_values[1]-self.xaxis_values[0]))*.5
             # Calculate all of the FFTs, just simpler to do it this way...
             bz = self.FigWrap.LoadKey('bz')[0,:,:]
             self.oneDslice = bz.shape[0]/2
