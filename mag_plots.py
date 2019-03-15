@@ -113,8 +113,8 @@ class BPanel:
                 bx = self.FigWrap.LoadKey('bx')
                 by = self.FigWrap.LoadKey('by')
                 #bz = self.FigWrap.LoadKey('bz')
-                #self.f = np.rad2deg(np.arctan2(np.sqrt(by**2+bz**2),bx))
-                self.f = np.rad2deg(np.arctan2(by,bx))
+                self.f = np.rad2deg(np.arctan2(np.sqrt(by**2+bz**2),np.abs(bx)))
+                #self.f = np.rad2deg(np.arctan2(by,bx))
                 self.parent.DataDict['thetaB'] = self.f
         #removing this field
         #if self.GetPlotParam('mag_plot_type') == 1: # set f to xi_perp the phase of the perpendicular magnetic field
