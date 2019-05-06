@@ -1,0 +1,9 @@
+*.pyc
+*.pyx
+__pycache__/
+IgnoreME/
+output/
+*~
+build/
+Movie/
+.iseult_configs/
