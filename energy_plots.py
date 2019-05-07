@@ -1,6 +1,6 @@
 #!/usr/bin/env pythonw
-import Tkinter as Tk
-import ttk as ttk
+import tkinter as Tk
+from tkinter import ttk
 import matplotlib
 import numpy as np
 import numpy.ma as ma
@@ -209,7 +209,7 @@ class EnergyPanel:
             self.xmin = 0
             self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.istep
             self.xmax = self.xmax if ( self.xmin != self.xmax ) else self.xmin+1
-            
+
             self.hist2d = np.histogram2d(self.y_values, self.x_values,
                             bins = [self.GetPlotParam('ebins'), self.GetPlotParam('xbins')],
                             range = [[self.Ymin,self.Ymax],[0,self.xmax]],

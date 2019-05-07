@@ -3,17 +3,17 @@
 import re # regular expressions
 import os, sys # Used to make the code portable
 import h5py # Allows us the read the data files
-import time, string, cStringIO
+import time, string, io
 from PIL import Image
 import matplotlib
-import ConfigParser
+import configparser
 matplotlib.use('TkAgg')
 import new_cmaps
 import numpy as np
 from collections import deque
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import matplotlib.animation as manimation
 from matplotlib.figure import Figure
 from phase_plots import PhasePanel
@@ -34,9 +34,8 @@ import subprocess
 # This is a flag that i have so I can mess around trying to get it to work.
 Use_MultiProcess = False # DO NOT SET TO TRUE!
 import time
-import Tkinter as Tk
-import ttk as ttk
-import tkFileDialog, tkMessageBox
+import tkinter as Tk
+from tkinter import ttk, filedialog, messagebox
 
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
@@ -47,12 +46,12 @@ import argparse
 def destroy(e):
     sys.exit()
 
-class MyCustomToolbar(NavigationToolbar2TkAgg):
+class MyCustomToolbar(NavigationToolbar2Tk):
     def __init__(self, plotCanvas, parent):
         # create the default toolbar
         # plotCanvas is the tk Canvas we want to link to the toolbar,
         # parent is the iseult main app
-        NavigationToolbar2TkAgg.__init__(self, plotCanvas, parent)
+        NavigationToolbar2Tk.__init__(self, plotCanvas, parent)
         self.parent = parent
     '''
     def release_zoom(self, event):
@@ -119,7 +118,7 @@ class MyCustomToolbar(NavigationToolbar2TkAgg):
                 a._set_view((xl,xr,None,None))
                 bbox = self.parent.SubPlotList[i][j].graph.axC.get_window_extent().transformed(self.parent.f.dpi_scale_trans.inverted())
                 width, height = bbox.width, bbox.height
-                print width, height
+                print(width, height)
                 #if self.parent.MainParamDict['LinkSpatial'] !=0:
                 for i in range(self.parent.MainParamDict['NumOfRows']):
                     for j in range(self.parent.MainParamDict['NumOfCols']):
@@ -791,7 +790,7 @@ class SaveDialog(Tk.Toplevel):
 #        AlreadyExists = False
 #        os.listdir(os.path.join(self.parent.IseultDir, '.iseult_configs'))
         if Name == '':
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "Field must contain a name, please try again"
             )
@@ -892,7 +891,7 @@ class MaxNDialog(Tk.Toplevel):
         except ValueError:
             self.N = ''
         if self.N == '':
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "Max N must contain an int, please try again"
             )
@@ -1033,50 +1032,50 @@ class MovieDialog(Tk.Toplevel):
             self.EndFrame = len(self.parent.PathDict['Param'])+self.EndFrame + 1
 
         if self.Name == '':
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "Field must contain a name, please try again"
             )
 
         elif self.StartFrame == '':
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "StartFrame must contain an int, please try again"
             )
         elif self.EndFrame == '':
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "EndFrame must contain an int, please try again"
             )
         elif self.StartFrame == 0:
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "Starting frame cannot be zero"
             )
         elif self.EndFrame == 0:
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "Ending frame cannot be zero"
             )
 
 
         elif self.Step == '':
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "Step must contain an int, please try again"
             )
         elif self.Step <=0:
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "Step must be an integer >0, please try again"
             )
         elif self.FPS == '':
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "FPS must contain an int >0, please try again"
             )
         elif self.FPS <= 0:
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "FPS must contain an int >0, please try again"
             )
@@ -1957,7 +1956,7 @@ class MainApp(Tk.Tk):
                           u'indi': 'Prtl',
                           u'ppc0': 'Param'}
         self.prtl_keys = []
-        for k, v in self.H5KeyDict.iteritems():
+        for k, v in self.H5KeyDict.items():
             if v =='Prtl':
                 self.prtl_keys.append(k)
 
@@ -2042,7 +2041,7 @@ class MainApp(Tk.Tk):
         tmpdir.sort()
         for cfile in tmpdir:
             if cfile.split('.')[-1]=='cfg':
-                config = ConfigParser.RawConfigParser()
+                config = configparser.RawConfigParser()
                 config.read(os.path.join(self.IseultDir,'.iseult_configs', cfile))
                 tmpstr = config.get('general', 'ConfigName')
                 try:
@@ -2077,16 +2076,16 @@ class MainApp(Tk.Tk):
         ''' The function that reads in a config file and then makes MainParamDict to hold all of the main iseult parameters.
             It also sets all of the plots parameters.'''
 
-        config = ConfigParser.RawConfigParser()
+        config = configparser.RawConfigParser()
 
         if config_file is None:
             try:
                 config.read(os.path.join(self.IseultDir, '.iseult_configs', self.cmd_args.p.strip().replace(' ', '_') +'.cfg'))
                 config.options('main')
-            except ConfigParser.NoSectionError:
-                print 'Cannot find/load ' +  self.cmd_args.p.strip().replace(' ', '_') +'.cfg in .iseult_configs. If the name of view contains whitespace,'
-                print 'either it must be enclosed in quotation marks or given with whitespace removed.'
-                print 'Name is case sensitive. Reverting to Default view'
+            except configparser.NoSectionError:
+                print('Cannot find/load ' +  self.cmd_args.p.strip().replace(' ', '_') +'.cfg in .iseult_configs. If the name of view contains whitespace,')
+                print('either it must be enclosed in quotation marks or given with whitespace removed.')
+                print('Name is case sensitive. Reverting to Default view')
                 config.read(os.path.join(self.IseultDir, '.iseult_configs', 'Default.cfg'))
         else:
             config.read(config_file)
@@ -2225,7 +2224,7 @@ class MainApp(Tk.Tk):
             self.stride = self.MainParamDict['PrtlStride']
 
     def SaveIseultState(self, cfgfile, cfgname):
-        config = ConfigParser.RawConfigParser()
+        config = configparser.RawConfigParser()
 
         # When adding sections or items, add them in the reverse order of
         # how you want them to be displayed in the actual file.
@@ -2285,7 +2284,7 @@ class MainApp(Tk.Tk):
                     else:
                         self.H5KeyDict[h5key] = pkey
 
-        print self.H5KeyDict
+        print(self.H5KeyDict)
 
     def ReloadPath(self):
         """ This function updates the current pathdictionary"""
@@ -2302,13 +2301,13 @@ class MainApp(Tk.Tk):
         prtl_re = re.compile('prtl.tot.*')
         s_re = re.compile('spect.*')
         param_re = re.compile('param.*')
-        self.PathDict['Flds']= filter(f_re.match, os.listdir(self.dirname))
+        self.PathDict['Flds']= list(filter(f_re.match, os.listdir(self.dirname)))
         self.PathDict['Flds'].sort()
-        self.PathDict['Prtl']= filter(prtl_re.match, os.listdir(self.dirname))
+        self.PathDict['Prtl']= list(filter(prtl_re.match, os.listdir(self.dirname)))
         self.PathDict['Prtl'].sort()
-        self.PathDict['Spect']= filter(s_re.match, os.listdir(self.dirname))
+        self.PathDict['Spect']= list(filter(s_re.match, os.listdir(self.dirname)))
         self.PathDict['Spect'].sort()
-        self.PathDict['Param']= filter(param_re.match, os.listdir(self.dirname))
+        self.PathDict['Param']= list(filter(param_re.match, os.listdir(self.dirname)))
         self.PathDict['Param'].sort()
 
         ### iterate through the Paths and just get the .nnn number
@@ -2366,13 +2365,13 @@ class MainApp(Tk.Tk):
         param_re = re.compile('param.*')
 
 
-        self.PathDict['Flds']= filter(f_re.match, os.listdir(self.dirname))
+        self.PathDict['Flds']= list(filter(f_re.match, os.listdir(self.dirname)))
         self.PathDict['Flds'].sort()
-        self.PathDict['Prtl']= filter(prtl_re.match, os.listdir(self.dirname))
+        self.PathDict['Prtl']= list(filter(prtl_re.match, os.listdir(self.dirname)))
         self.PathDict['Prtl'].sort()
-        self.PathDict['Spect']= filter(s_re.match, os.listdir(self.dirname))
+        self.PathDict['Spect']= list(filter(s_re.match, os.listdir(self.dirname)))
         self.PathDict['Spect'].sort()
-        self.PathDict['Param']= filter(param_re.match, os.listdir(self.dirname))
+        self.PathDict['Param']= list(filter(param_re.match, os.listdir(self.dirname)))
         self.PathDict['Param'].sort()
 
         ### iterate through the Paths and just get the .nnn number
@@ -2421,7 +2420,7 @@ class MainApp(Tk.Tk):
         if self.cmd_args.n != -1:
             self.CheckMaxNPopUp()
 
-        tmpdir = tkFileDialog.askdirectory(title = 'Choose the directory of the output files', **self.dir_opt)
+        tmpdir = filedialog.askdirectory(title = 'Choose the directory of the output files', **self.dir_opt)
         if tmpdir == '':
             self.findDir()
 
@@ -2452,7 +2451,7 @@ class MainApp(Tk.Tk):
         self.dir_opt['parent'] = self
 
         if not self.pathOK():
-            tmpdir = tkFileDialog.askdirectory(title = dlgstr, **self.dir_opt)
+            tmpdir = filedialog.askdirectory(title = dlgstr, **self.dir_opt)
             if tmpdir != '':
                 self.dirname = tmpdir
             if not self.pathOK():
@@ -2464,12 +2463,12 @@ class MainApp(Tk.Tk):
     def InitializeCanvas(self, config_file = None):
         '''Initializes the figure, and then packs it into the main window.
         Should only be called once.'''
-        config = ConfigParser.RawConfigParser()
+        config = configparser.RawConfigParser()
         if config_file is None:
             try:
                 config.read(os.path.join(self.IseultDir, '.iseult_configs', self.cmd_args.p.strip().replace(' ', '_') +'.cfg'))
                 config.options('main')
-            except ConfigParser.NoSectionError:
+            except configparser.NoSectionError:
                 config.read(os.path.join(self.IseultDir, '.iseult_configs', 'Default.cfg'))
 
         else:
@@ -2517,7 +2516,7 @@ class MainApp(Tk.Tk):
 
         # Make a list that will hold the previous ctype
         self.MakePrevCtypeList()
-        self.canvas.show()
+        self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
         self.ReDrawCanvas()
         self.f.canvas.mpl_connect('button_press_event', self.onclick)
@@ -2538,7 +2537,7 @@ class MainApp(Tk.Tk):
                 except:
                     pass
         # Read in the config file
-        config = ConfigParser.RawConfigParser()
+        config = configparser.RawConfigParser()
         config.read(config_file)
 
         # Generate the Main Param Dict
@@ -2893,7 +2892,7 @@ class MainApp(Tk.Tk):
                 # Find the shock by seeing where the density is 1/2 of it's
                 # max value.
 
-                dens_half_max = max(self.DataDict['dens'][0,:,:][self.DataDict['dens'][0,:,:].shape[0]/2,jstart:])*.5
+                dens_half_max = max(self.DataDict['dens'][0,:,:][self.DataDict['dens'][0,:,:].shape[0]//2,jstart:])*.5
 
                 # Find the farthest location where the average density is greater
                 # than half max
@@ -3198,7 +3197,7 @@ class MainApp(Tk.Tk):
             self.SavedHashes[self.TimeStep.value] =  self.StateHash
             self.SavedImgSize[self.TimeStep.value] =int(self.f.get_size_inches()[0]*self.f.dpi), int(self.f.get_size_inches()[1]*self.f.dpi)
 
-            ram = cStringIO.StringIO()
+            ram = io.BytesIO()
             self.f.savefig(ram, format='raw', dpi=self.f.dpi, facecolor=self.f.get_facecolor())
             ram.seek(0)
             self.SavedImgStr[self.TimeStep.value] = ram.read() # Save the image into SavedImgs
@@ -3453,12 +3452,12 @@ class MainApp(Tk.Tk):
 
 
     def recordProblemsPrompt(self):
-        if tkMessageBox.askyesno("Recording Problems", "You do not have write access to " +self.movie_dir + ". Would you like record frames to a different directory?"):
+        if messagebox.askyesno("Recording Problems", "You do not have write access to " +self.movie_dir + ". Would you like record frames to a different directory?"):
             mvdir_opt = {}
             mvdir_opt['initialdir'] = self.dirname
             mvdir_opt['mustexist'] = True
             mvdir_opt['parent'] = self
-            self.movie_dir = tkFileDialog.askdirectory(title = 'Please choose a different directory where you have write access to save images.', **self.dir_opt)
+            self.movie_dir = filedialog.askdirectory(title = 'Please choose a different directory where you have write access to save images.', **self.dir_opt)
             return True
         else:
             return False
@@ -3510,7 +3509,7 @@ class MainApp(Tk.Tk):
                 try:
                     subprocess.call(cmdstring[2:])
                 except OSError:
-                    tkMessageBox.showwarning(
+                    messagebox.showwarning(
                         "Problems saving a movie",
                         "Please make sure that ffmpeg is installedgg on your machine."
                         )
@@ -3684,11 +3683,11 @@ class MainApp(Tk.Tk):
         # Find the shock by seeing where the density is 1/2 of it's
         # max value.
 
-        dens_half_max = max(dens_arr[dens_arr.shape[0]/2,jstart:])*.5
+        dens_half_max = max(dens_arr[dens_arr.shape[0]//2,jstart:])*.5
 
         # Find the farthest location where the average density is greater
         # than half max
-        ishock_final = np.where(dens_arr[dens_arr.shape[0]/2,jstart:]>=dens_half_max)[0][-1]
+        ishock_final = np.where(dens_arr[dens_arr.shape[0]//2,jstart:]>=dens_half_max)[0][-1]
         xshock_final = xaxis_final[ishock_final]
         self.shock_speed = xshock_final/final_time
         self.prev_shock_loc = np.NaN

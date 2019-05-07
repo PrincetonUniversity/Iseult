@@ -141,7 +141,7 @@ if __name__ == '__main__':
     Z1 = (bivariate_normal(X, Y, 1., 1., 1.0, 1.0))**2  \
     - 0.4 * (bivariate_normal(X, Y, 1.0, 1.0, -1.0, 0.0))**2
     Z1 = Z1/0.03
-    print Z1.size
+    print(Z1.size)
 
     fig, ax = plt.subplots(2, 1)
 

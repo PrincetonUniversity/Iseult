@@ -1,12 +1,11 @@
 #!/usr/bin/env python
-import Tkinter as Tk
-import ttk as ttk
+import tkinter as Tk
+from tkinter import ttk, messagebox
 import matplotlib
 import numpy as np
 import numpy.ma as ma
 import new_cmaps
 import sys, traceback
-from tkMessageBox import showinfo
 from new_cnorms import PowerNormWithNeg, PowerNormFunc
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
@@ -290,7 +289,7 @@ class FieldsPanel:
                                 err_msg += l[18:] +'\n'
                             else:
                                 err_msg += l+'\n'
-                        showinfo('Error when evaluating user defined function 1:', err_msg)
+                        messagebox.showinfo('Error when evaluating user defined function 1:', err_msg)
 
                         self.fx = np.NAN
                         self.flagx = 0
@@ -329,7 +328,7 @@ class FieldsPanel:
                                 err_msg += l[18:] +'\n'
                             else:
                                 err_msg += l+'\n'
-                        showinfo('Error when evaluating user defined function 2:', err_msg)
+                        messagebox.showinfo('Error when evaluating user defined function 2:', err_msg)
                         self.fy = np.NAN
                         self.flagy = 0
 
@@ -368,7 +367,7 @@ class FieldsPanel:
                                 err_msg += l[18:] +'\n'
                             else:
                                 err_msg += l+'\n'
-                        showinfo('Error when evaluating user defined function 3:', err_msg)
+                        messagebox.showinfo('Error when evaluating user defined function 3:', err_msg)
 
                         self.fz = np.NAN
                         self.flagz = 0

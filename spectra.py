@@ -1,6 +1,6 @@
 #!/usr/bin/env pythonw
-import Tkinter as Tk
-import ttk as ttk
+import tkinter as Tk
+from tkinter import ttk
 import matplotlib
 import numpy as np
 import numpy.ma as ma
@@ -234,7 +234,7 @@ class SpectralPanel:
                 self.momedist=self.femom*self.momentum**4
 
             else:
-                print 'RUNTIME WARNING: spectra.py can\'t find the electrons in the integration region, spectra will be incorrect'
+                print('RUNTIME WARNING: spectra.py can\'t find the electrons in the integration region, spectra will be incorrect')
                 self.edist = 1E-200*np.ones(len(self.fe))
                 self.momedist = 1E-200*np.ones(len(self.fe))
 
@@ -248,7 +248,7 @@ class SpectralPanel:
                 self.mompdist=self.fpmom*self.momentum**4
 
             else:
-                print 'RUNTIME WARNING: spectra.py can\'t find ions in the integration region, spectra will be incorrect'
+                print('RUNTIME WARNING: spectra.py can\'t find ions in the integration region, spectra will be incorrect')
                 self.pdist = 1E-200*np.ones(len(self.fp))
                 self.mompdist = 1E-200*np.ones(len(self.fp))
 
