@@ -9,7 +9,8 @@ IDL script.
 
 UPDATES:
 -------
-May 8th 2016: Added a really basic movie saving feature. You'll find it in the file menu.
+May 8th 2019: Ported code to python 3.7.x & Matplotlib 3.0.x There may be a few bugs
+here and there, but I think it is working.
 
 The code is now it's beta phase. See the implemented column for what has
 already been implemented.
