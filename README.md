@@ -18,7 +18,7 @@ already been implemented.
 Dependencies:
 -------------
 
-Python packages required: Anaconda 4.4.0, matplotlib 3.0 & its required
+Python packages required: Anaconda 2019/3, matplotlib 3.0 & its required
 dependencies, python 3.7.3,  h5py. Will not work with older versions of anaconda3 and
 matplotlib 2.0 or older.
 
