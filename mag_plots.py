@@ -112,7 +112,7 @@ class BPanel:
             else:
                 bx = self.FigWrap.LoadKey('bx')
                 by = self.FigWrap.LoadKey('by')
-                #bz = self.FigWrap.LoadKey('bz')
+                bz = self.FigWrap.LoadKey('bz')
                 self.f = np.rad2deg(np.arctan2(np.sqrt(by**2+bz**2),np.abs(bx)))
                 #self.f = np.rad2deg(np.arctan2(by,bx))
                 self.parent.DataDict['thetaB'] = self.f
