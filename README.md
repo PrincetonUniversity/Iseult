@@ -1,6 +1,6 @@
 # Iseult
 
-A TKinter python 2.7 GUI for visualizing Tristan-MP plots. A work in progress.
+A TKinter based python 3.7 GUI for visualizing Tristan-MP plots. A work in progress.
 
 Written by:
 
@@ -9,7 +9,8 @@ IDL script.
 
 UPDATES:
 -------
-Dec 10th 2016: Added a really basic movie saving feature. You'll find it in the file menu.
+May 8th 2019: Ported code to python 3.7.x & Matplotlib 3.0.x There may be a few bugs
+here and there, but I think it is working.
 
 The code is now it's beta phase. See the implemented column for what has
 already been implemented.
@@ -17,9 +18,9 @@ already been implemented.
 Dependencies:
 -------------
 
-Python packages required: Anaconda 4.4.0, matplotlib 2.0 & its required
-dependencies, python 2.7.11, h5py. May work for older versions of anaconda and
-matplotlib, but not guaranteed.
+Python packages required: Anaconda 4.4.0, matplotlib 3.0 & its required
+dependencies, python 3.7.3,  h5py. Will not work with older versions of anaconda3 and
+matplotlib 2.0 or older.
 
 To use the movie saving feature: ffmpeg & xterm.
 
@@ -27,8 +28,7 @@ Iseult should work on Windows, MacOS & Linux.
 
 To run Iseult on tigressdata type the following:
 ```bash
-$ module load anaconda/4.4.0
-$ source activate root
+$ module load anaconda3/2019.3
 $ cd /path/to/Iseult/
 $ chmod +x ./iseult.py
 $ ./iseult.py
