@@ -118,7 +118,7 @@ class  MomentsPanel:
         self.fxmin = 0
         self.fxmax = self.xaxis_values[-1]
 
-        if self.key_name+'x_bins' in self.parent.DataDict.keys():
+        if self.key_name+'ex' in self.parent.DataDict.keys():
             self.x_bins = self.parent.DataDict[self.key_name+'x_bins']
             self.ex = self.parent.DataDict[self.key_name+'ex']
             self.ey = self.parent.DataDict[self.key_name+'ey']
@@ -417,7 +417,7 @@ class  MomentsPanel:
         if not self.GetPlotParam('show_legend'):
             self.legend.set_visible(False)
 
-        self.legend.draggable(update = 'loc')
+        self.legend.set_draggable(True,update = 'loc')
         if self.GetPlotParam('legend_loc') != 'N/A':
             tmp_tup = float(self.GetPlotParam('legend_loc').split()[0]),float(self.GetPlotParam('legend_loc').split()[1])
             self.legend._set_loc(tmp_tup)
@@ -808,7 +808,7 @@ class MomentsSettings(Tk.Toplevel):
         self.parent.legend.set_visible(self.parent.GetPlotParam('show_legend'))
         self.parent.legend.get_frame().set_facecolor('k')
         self.parent.legend.get_frame().set_linewidth(0.0)
-        self.parent.legend.draggable(update = 'loc')
+        self.parent.legend.set_draggable(True, update = 'loc')
         if self.parent.GetPlotParam('legend_loc') != 'N/A':
             tmp_tup = float(self.parent.GetPlotParam('legend_loc').split()[0]),float(self.parent.GetPlotParam('legend_loc').split()[1])
             self.parent.legend._set_loc(tmp_tup)
