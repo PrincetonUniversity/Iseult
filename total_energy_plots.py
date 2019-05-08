@@ -170,7 +170,7 @@ class TotEnergyPanel:
         if not self.GetPlotParam('show_legend'):
             self.legend.set_visible(False)
 
-        self.legend.draggable(update = 'loc')
+        self.legend.set_draggable(True, update = 'loc')
         if self.GetPlotParam('legend_loc') != 'N/A':
             tmp_tup = float(self.GetPlotParam('legend_loc').split()[0]),float(self.GetPlotParam('legend_loc').split()[1])
             self.legend._set_loc(tmp_tup)
@@ -496,7 +496,7 @@ class TotEnergySettings(Tk.Toplevel):
         self.parent.legend.set_visible(self.parent.GetPlotParam('show_legend'))
         self.parent.legend.get_frame().set_facecolor('k')
         self.parent.legend.get_frame().set_linewidth(0.0)
-        self.parent.legend.draggable()
+        self.parent.legend.set_draggable(True, update='loc')
         tmp_tup = 1
         if self.parent.GetPlotParam('legend_loc') != 'N/A':
             tmp_tup = float(self.parent.GetPlotParam('legend_loc').split()[0]),float(self.parent.GetPlotParam('legend_loc').split()[1])

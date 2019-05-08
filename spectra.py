@@ -727,7 +727,7 @@ class SpectralPanel:
             self.legT = self.axes.legend(Tlegend_handles, Tlegend_labels, framealpha = .05, fontsize = self.parent.MainParamDict['legendLabelSize'], loc = 2)
             self.legT.get_frame().set_facecolor('k')
             self.legT.get_frame().set_linewidth(0.0)
-            self.legT.draggable(update = 'loc')
+            self.legT.set_draggable(True, update = 'loc')
             if self.GetPlotParam('T_legend_loc') != 'N/A':
                 tmp_tup = float(self.GetPlotParam('T_legend_loc').split()[0]),float(self.GetPlotParam('T_legend_loc').split()[1])
                 self.legT._set_loc(tmp_tup)
@@ -740,7 +740,7 @@ class SpectralPanel:
             framealpha = .05, fontsize = self.parent.MainParamDict['legendLabelSize'], loc = 'upper right')
             self.legDelta.get_frame().set_facecolor('k')
             self.legDelta.get_frame().set_linewidth(0.0)
-            self.legDelta.draggable()
+            self.legDelta.set_draggable(True, update='loc')
             if self.GetPlotParam('PL_legend_loc') != 'N/A':
                 tmp_tup = float(self.GetPlotParam('PL_legend_loc').split()[0]),float(self.GetPlotParam('PL_legend_loc').split()[1])
                 self.legDelta._set_loc(tmp_tup)
