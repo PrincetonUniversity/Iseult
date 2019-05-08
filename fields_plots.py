@@ -272,13 +272,16 @@ class FieldsPanel:
                         for line in self.GetPlotParam('cmdstr1').splitlines():
                             tmpcstr += line[1:] +'\n'
                         tmpcstr += 'self.fx = FieldFunc(*[self.FigWrap.LoadKey(k) for k in self.f1args])'
-                        eval(compile(tmpcstr, '<string>', 'exec'))
+                        exec(compile(tmpcstr,'<string>', 'exec'), locals(), locals())#, '<string>', 'exec'), **{'self':self})
+                        #print(FieldFunc)
                         self.parent.DataDict[keyx] = self.fx
                         if self.GetPlotParam('OneDOnly')[0]:
                             self.flagx = 1
                         else:
                             self.flagx = 2
                     except:
+                        print(sys.exc_info())
+                        """
                         tb_lines = traceback.format_exc(sys.exc_info()[2]).splitlines()
                         tb_lines.pop(1)
                         tb_lines[1] = ''
@@ -289,7 +292,9 @@ class FieldsPanel:
                                 err_msg += l[18:] +'\n'
                             else:
                                 err_msg += l+'\n'
-                        messagebox.showinfo('Error when evaluating user defined function 1:', err_msg)
+
+                        """
+                        messagebox.showinfo('Error when evaluating user defined function 1:', print(sys.exc_info())#(err_msg)
 
                         self.fx = np.NAN
                         self.flagx = 0
@@ -311,24 +316,28 @@ class FieldsPanel:
                         for line in self.GetPlotParam('cmdstr2').splitlines():
                             tmpcstr += line[1:] +'\n'
                         tmpcstr += 'self.fy = FieldFunc(*[self.FigWrap.LoadKey(k) for k in self.f2args])'
-                        eval(compile(tmpcstr, '<string>', 'exec'))
+                        eval(compile(tmpcstr, '<string>', 'exec'), locals(), locals())
                         self.parent.DataDict[keyy] = self.fy
                         if self.GetPlotParam('OneDOnly')[1]:
                             self.flagy = 1
                         else:
                             self.flagy = 2
                     except:
+                        print(sys.exc_info())
+                        """
                         tb_lines = traceback.format_exc(sys.exc_info()[2]).splitlines()
                         tb_lines.pop(1)
                         tb_lines[1] = ''
                         err_msg = ''
                         for l in tb_lines:
-                            if l[0:17] == '  File "<string>"':
-                                err_msg += '  User Defined Function,'
-                                err_msg += l[18:] +'\n'
-                            else:
-                                err_msg += l+'\n'
-                        messagebox.showinfo('Error when evaluating user defined function 2:', err_msg)
+                        if l[0:17] == '  File "<string>"':
+                            err_msg += '  User Defined Function,'
+                            err_msg += l[18:] +'\n'
+                        else:
+                            err_msg += l+'\n'
+
+                        """
+                        messagebox.showinfo('Error when evaluating user defined function 2:', print(sys.exc_info())#(err_msg)
                         self.fy = np.NAN
                         self.flagy = 0
 
@@ -349,7 +358,7 @@ class FieldsPanel:
                         for line in self.GetPlotParam('cmdstr3').splitlines():
                             tmpcstr += line[1:] +'\n'
                         tmpcstr += 'self.fz = FieldFunc(*[self.FigWrap.LoadKey(k) for k in self.f3args])'
-                        eval(compile(tmpcstr, '<string>', 'exec'))
+                        eval(compile(tmpcstr, '<string>', 'exec'), locals(), locals())
                         self.parent.DataDict[keyz] = self.fz
                         if self.GetPlotParam('OneDOnly')[2]:
                             self.flagz = 1
@@ -357,17 +366,21 @@ class FieldsPanel:
                             self.flagz = 2
 
                     except:
+                        print(sys.exc_info())
+                        """
                         tb_lines = traceback.format_exc(sys.exc_info()[2]).splitlines()
                         tb_lines.pop(1)
                         tb_lines[1] = ''
                         err_msg = ''
                         for l in tb_lines:
-                            if l[0:17] == '  File "<string>"':
-                                err_msg += '  User Defined Function,'
-                                err_msg += l[18:] +'\n'
-                            else:
-                                err_msg += l+'\n'
-                        messagebox.showinfo('Error when evaluating user defined function 3:', err_msg)
+                        if l[0:17] == '  File "<string>"':
+                            err_msg += '  User Defined Function,'
+                            err_msg += l[18:] +'\n'
+                        else:
+                            err_msg += l+'\n'
+
+                        """
+                        messagebox.showinfo('Error when evaluating user defined function 3:', print(sys.exc_info())#(err_msg)
 
                         self.fz = np.NAN
                         self.flagz = 0
