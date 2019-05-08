@@ -3,17 +3,17 @@
 import re # regular expressions
 import os, sys # Used to make the code portable
 import h5py # Allows us the read the data files
-import time, string, cStringIO
+import time, string, io
 from PIL import Image
 import matplotlib
-import ConfigParser
+import configparser
 matplotlib.use('TkAgg')
 import new_cmaps
 import numpy as np
 from collections import deque
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import matplotlib.animation as manimation
 from matplotlib.figure import Figure
 from phase_plots import PhasePanel
@@ -34,9 +34,8 @@ import subprocess
 # This is a flag that i have so I can mess around trying to get it to work.
 Use_MultiProcess = False # DO NOT SET TO TRUE!
 import time
-import Tkinter as Tk
-import ttk as ttk
-import tkFileDialog, tkMessageBox
+import tkinter as Tk
+from tkinter import ttk, filedialog, messagebox
 
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
@@ -47,12 +46,13 @@ import argparse
 def destroy(e):
     sys.exit()
 
-class MyCustomToolbar(NavigationToolbar2TkAgg):
+class MyCustomToolbar(NavigationToolbar2Tk):
     def __init__(self, plotCanvas, parent):
         # create the default toolbar
         # plotCanvas is the tk Canvas we want to link to the toolbar,
         # parent is the iseult main app
-        NavigationToolbar2TkAgg.__init__(self, plotCanvas, parent)
+        NavigationToolbar2Tk.__init__(self, plotCanvas, parent)
+        #print(self._nav_stack)
         self.parent = parent
     '''
     def release_zoom(self, event):
@@ -119,7 +119,7 @@ class MyCustomToolbar(NavigationToolbar2TkAgg):
                 a._set_view((xl,xr,None,None))
                 bbox = self.parent.SubPlotList[i][j].graph.axC.get_window_extent().transformed(self.parent.f.dpi_scale_trans.inverted())
                 width, height = bbox.width, bbox.height
-                print width, height
+                print(width, height)
                 #if self.parent.MainParamDict['LinkSpatial'] !=0:
                 for i in range(self.parent.MainParamDict['NumOfRows']):
                     for j in range(self.parent.MainParamDict['NumOfCols']):
@@ -601,8 +601,9 @@ class PlaybackBar(Tk.Frame):
             # pause, turn off clear_fig, and start the play loop.
             self.playPressed = True
             self.parent.RenewCanvas()
+            """
             if not self.parent.MainParamDict['Recording']:
-                self.parent.HashIseultState()
+                #self.parent.HashIseultState()
                 already_saved = False
                 if self.parent.TimeStep.value in self.parent.SavedHashes.keys(): # we have already saved an image for this TimeStep
                     # is the current state of Iseult equal to the state when we saved said image?
@@ -631,8 +632,9 @@ class PlaybackBar(Tk.Frame):
                 self.parent.MovieAx.axis('off')
                 self.parent.MovieIm = self.parent.MovieAx.imshow(im, interpolation = 'nearest')
                 self.parent.MovieCanvas.get_tk_widget().update_idletasks()
-
+            """
             self.playB.config(text='Pause')
+
             self.after(int(self.parent.MainParamDict['WaitTime']*1E3), self.blink)
         else:
             self.parent.resizable(1,1)
@@ -791,7 +793,7 @@ class SaveDialog(Tk.Toplevel):
 #        AlreadyExists = False
 #        os.listdir(os.path.join(self.parent.IseultDir, '.iseult_configs'))
         if Name == '':
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "Field must contain a name, please try again"
             )
@@ -892,7 +894,7 @@ class MaxNDialog(Tk.Toplevel):
         except ValueError:
             self.N = ''
         if self.N == '':
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "Max N must contain an int, please try again"
             )
@@ -1033,50 +1035,50 @@ class MovieDialog(Tk.Toplevel):
             self.EndFrame = len(self.parent.PathDict['Param'])+self.EndFrame + 1
 
         if self.Name == '':
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "Field must contain a name, please try again"
             )
 
         elif self.StartFrame == '':
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "StartFrame must contain an int, please try again"
             )
         elif self.EndFrame == '':
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "EndFrame must contain an int, please try again"
             )
         elif self.StartFrame == 0:
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "Starting frame cannot be zero"
             )
         elif self.EndFrame == 0:
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "Ending frame cannot be zero"
             )
 
 
         elif self.Step == '':
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "Step must contain an int, please try again"
             )
         elif self.Step <=0:
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "Step must be an integer >0, please try again"
             )
         elif self.FPS == '':
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "FPS must contain an int >0, please try again"
             )
         elif self.FPS <= 0:
-            tkMessageBox.showwarning(
+            messagebox.showwarning(
                 "Bad input",
                 "FPS must contain an int >0, please try again"
             )
@@ -1127,7 +1129,7 @@ class SettingsFrame(Tk.Toplevel):
         self.cmapvar.trace('w', self.CmapChanged)
 
         ttk.Label(frm, text="Color map:").grid(row=2)
-        cmapChooser = apply(ttk.OptionMenu, (frm, self.cmapvar, self.parent.MainParamDict['ColorMap']) + tuple(new_cmaps.sequential))
+        cmapChooser = ttk.OptionMenu(frm, self.cmapvar, self.parent.MainParamDict['ColorMap'], *tuple(new_cmaps.sequential))
         cmapChooser.grid(row =2, column = 1, sticky = Tk.W + Tk.E)
 
         # Have a list of the color maps
@@ -1137,7 +1139,7 @@ class SettingsFrame(Tk.Toplevel):
         self.div_cmapvar.trace('w', self.DivCmapChanged)
 
         ttk.Label(frm, text="Diverging Cmap:").grid(row=3)
-        cmapChooser = apply(ttk.OptionMenu, (frm, self.div_cmapvar, self.parent.MainParamDict['DivColorMap']) + tuple(new_cmaps.diverging))
+        cmapChooser = ttk.OptionMenu(frm, self.div_cmapvar, self.parent.MainParamDict['DivColorMap'], *tuple(new_cmaps.diverging))
         cmapChooser.grid(row =3, column = 1, sticky = Tk.W + Tk.E)
 
 
@@ -1860,7 +1862,7 @@ class MainApp(Tk.Tk):
 
 
         # A list that will keep track of whether a given axes is a colorbar or not:
-        self.IsCbarList = []
+        self.cbarList = []
 
         # The dictionary that holdsd the paths
         self.PathDict = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
@@ -1957,7 +1959,7 @@ class MainApp(Tk.Tk):
                           u'indi': 'Prtl',
                           u'ppc0': 'Param'}
         self.prtl_keys = []
-        for k, v in self.H5KeyDict.iteritems():
+        for k, v in self.H5KeyDict.items():
             if v =='Prtl':
                 self.prtl_keys.append(k)
 
@@ -2042,7 +2044,7 @@ class MainApp(Tk.Tk):
         tmpdir.sort()
         for cfile in tmpdir:
             if cfile.split('.')[-1]=='cfg':
-                config = ConfigParser.RawConfigParser()
+                config = configparser.RawConfigParser()
                 config.read(os.path.join(self.IseultDir,'.iseult_configs', cfile))
                 tmpstr = config.get('general', 'ConfigName')
                 try:
@@ -2077,16 +2079,16 @@ class MainApp(Tk.Tk):
         ''' The function that reads in a config file and then makes MainParamDict to hold all of the main iseult parameters.
             It also sets all of the plots parameters.'''
 
-        config = ConfigParser.RawConfigParser()
+        config = configparser.RawConfigParser()
 
         if config_file is None:
             try:
                 config.read(os.path.join(self.IseultDir, '.iseult_configs', self.cmd_args.p.strip().replace(' ', '_') +'.cfg'))
                 config.options('main')
-            except ConfigParser.NoSectionError:
-                print 'Cannot find/load ' +  self.cmd_args.p.strip().replace(' ', '_') +'.cfg in .iseult_configs. If the name of view contains whitespace,'
-                print 'either it must be enclosed in quotation marks or given with whitespace removed.'
-                print 'Name is case sensitive. Reverting to Default view'
+            except configparser.NoSectionError:
+                print('Cannot find/load ' +  self.cmd_args.p.strip().replace(' ', '_') +'.cfg in .iseult_configs. If the name of view contains whitespace,')
+                print('either it must be enclosed in quotation marks or given with whitespace removed.')
+                print('Name is case sensitive. Reverting to Default view')
                 config.read(os.path.join(self.IseultDir, '.iseult_configs', 'Default.cfg'))
         else:
             config.read(config_file)
@@ -2225,7 +2227,7 @@ class MainApp(Tk.Tk):
             self.stride = self.MainParamDict['PrtlStride']
 
     def SaveIseultState(self, cfgfile, cfgname):
-        config = ConfigParser.RawConfigParser()
+        config = configparser.RawConfigParser()
 
         # When adding sections or items, add them in the reverse order of
         # how you want them to be displayed in the actual file.
@@ -2285,7 +2287,7 @@ class MainApp(Tk.Tk):
                     else:
                         self.H5KeyDict[h5key] = pkey
 
-        print self.H5KeyDict
+        print(self.H5KeyDict)
 
     def ReloadPath(self):
         """ This function updates the current pathdictionary"""
@@ -2302,13 +2304,13 @@ class MainApp(Tk.Tk):
         prtl_re = re.compile('prtl.tot.*')
         s_re = re.compile('spect.*')
         param_re = re.compile('param.*')
-        self.PathDict['Flds']= filter(f_re.match, os.listdir(self.dirname))
+        self.PathDict['Flds']= list(filter(f_re.match, os.listdir(self.dirname)))
         self.PathDict['Flds'].sort()
-        self.PathDict['Prtl']= filter(prtl_re.match, os.listdir(self.dirname))
+        self.PathDict['Prtl']= list(filter(prtl_re.match, os.listdir(self.dirname)))
         self.PathDict['Prtl'].sort()
-        self.PathDict['Spect']= filter(s_re.match, os.listdir(self.dirname))
+        self.PathDict['Spect']= list(filter(s_re.match, os.listdir(self.dirname)))
         self.PathDict['Spect'].sort()
-        self.PathDict['Param']= filter(param_re.match, os.listdir(self.dirname))
+        self.PathDict['Param']= list(filter(param_re.match, os.listdir(self.dirname)))
         self.PathDict['Param'].sort()
 
         ### iterate through the Paths and just get the .nnn number
@@ -2366,13 +2368,13 @@ class MainApp(Tk.Tk):
         param_re = re.compile('param.*')
 
 
-        self.PathDict['Flds']= filter(f_re.match, os.listdir(self.dirname))
+        self.PathDict['Flds']= list(filter(f_re.match, os.listdir(self.dirname)))
         self.PathDict['Flds'].sort()
-        self.PathDict['Prtl']= filter(prtl_re.match, os.listdir(self.dirname))
+        self.PathDict['Prtl']= list(filter(prtl_re.match, os.listdir(self.dirname)))
         self.PathDict['Prtl'].sort()
-        self.PathDict['Spect']= filter(s_re.match, os.listdir(self.dirname))
+        self.PathDict['Spect']= list(filter(s_re.match, os.listdir(self.dirname)))
         self.PathDict['Spect'].sort()
-        self.PathDict['Param']= filter(param_re.match, os.listdir(self.dirname))
+        self.PathDict['Param']= list(filter(param_re.match, os.listdir(self.dirname)))
         self.PathDict['Param'].sort()
 
         ### iterate through the Paths and just get the .nnn number
@@ -2421,7 +2423,7 @@ class MainApp(Tk.Tk):
         if self.cmd_args.n != -1:
             self.CheckMaxNPopUp()
 
-        tmpdir = tkFileDialog.askdirectory(title = 'Choose the directory of the output files', **self.dir_opt)
+        tmpdir = filedialog.askdirectory(title = 'Choose the directory of the output files', **self.dir_opt)
         if tmpdir == '':
             self.findDir()
 
@@ -2452,7 +2454,7 @@ class MainApp(Tk.Tk):
         self.dir_opt['parent'] = self
 
         if not self.pathOK():
-            tmpdir = tkFileDialog.askdirectory(title = dlgstr, **self.dir_opt)
+            tmpdir = filedialog.askdirectory(title = dlgstr, **self.dir_opt)
             if tmpdir != '':
                 self.dirname = tmpdir
             if not self.pathOK():
@@ -2464,12 +2466,12 @@ class MainApp(Tk.Tk):
     def InitializeCanvas(self, config_file = None):
         '''Initializes the figure, and then packs it into the main window.
         Should only be called once.'''
-        config = ConfigParser.RawConfigParser()
+        config = configparser.RawConfigParser()
         if config_file is None:
             try:
                 config.read(os.path.join(self.IseultDir, '.iseult_configs', self.cmd_args.p.strip().replace(' ', '_') +'.cfg'))
                 config.options('main')
-            except ConfigParser.NoSectionError:
+            except configparser.NoSectionError:
                 config.read(os.path.join(self.IseultDir, '.iseult_configs', 'Default.cfg'))
 
         else:
@@ -2517,7 +2519,7 @@ class MainApp(Tk.Tk):
 
         # Make a list that will hold the previous ctype
         self.MakePrevCtypeList()
-        self.canvas.show()
+        self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
         self.ReDrawCanvas()
         self.f.canvas.mpl_connect('button_press_event', self.onclick)
@@ -2538,7 +2540,7 @@ class MainApp(Tk.Tk):
                 except:
                     pass
         # Read in the config file
-        config = ConfigParser.RawConfigParser()
+        config = configparser.RawConfigParser()
         config.read(config_file)
 
         # Generate the Main Param Dict
@@ -2893,7 +2895,7 @@ class MainApp(Tk.Tk):
                 # Find the shock by seeing where the density is 1/2 of it's
                 # max value.
 
-                dens_half_max = max(self.DataDict['dens'][0,:,:][self.DataDict['dens'][0,:,:].shape[0]/2,jstart:])*.5
+                dens_half_max = max(self.DataDict['dens'][0,:,:][self.DataDict['dens'][0,:,:].shape[0]//2,jstart:])*.5
 
                 # Find the farthest location where the average density is greater
                 # than half max
@@ -3002,10 +3004,10 @@ class MainApp(Tk.Tk):
                         except:
                             pass
 
-
+    """
     def FindCbars(self, prev = False):
         ''' A function that will find where all the cbars are in the current view '''
-        self.IsCbarList = []
+        self.cbarList = []
         for i in range(self.MainParamDict['NumOfRows']):
             for j in range(self.MainParamDict['NumOfCols']):
                 self.IsCbarList.append(False)
@@ -3018,23 +3020,34 @@ class MainApp(Tk.Tk):
                 elif self.SubPlotList[i][j].GetPlotParam('twoD') == 1:
                     self.IsCbarList.append(True)
 
-
+    """
     def SaveView(self):
         # A function that will make sure our view will stay the same as the
         # plot updates.
-        cur_view =  list(self.toolbar._views.__call__())
-        # Go to the home view
-        self.toolbar._views.home()
-        self.toolbar._positions.home()
-        home_view =  list(self.toolbar._views.__call__())
-        try:
-            # Find cbars
-            self.FindCbars(prev=True)
-            # Filter out the colorbar axes
-            for elm in np.where(self.IsCbarList)[0][::-1]:
-                cur_view.pop(elm)
-                home_view.pop(elm)
 
+        cur_view = []
+        for ax, (view, (pos_orig, pos_active)) in self.toolbar._nav_stack().items():
+            #print(type(ax))
+            if ax in self.cbarList:
+                continue
+            cur_view.append(view)
+        #    Go to the home view
+        self.toolbar._nav_stack.home()
+        #self.toolbar.home()
+        home_view = []
+        for ax, (view, (pos_orig, pos_active)) in self.toolbar._nav_stack().items():
+            #print(type(ax))
+            if ax in self.cbarList:
+                continue
+            home_view.append(view)
+        #home_view =  list(self.toolbar._nav_stack.__call__())
+
+            #print(view, pos_orig)
+            # Find cbars
+            #self.FindCbars(prev=True)
+            # Filter out the colorbar axes
+            #print(self.IsCbarList)
+        try:
             self.is_changed_list = []
             self.diff_from_home = []
             self.old_views = []
@@ -3063,16 +3076,36 @@ class MainApp(Tk.Tk):
                     self.is_changed_list.append(is_changed)
                     self.old_views.append(cur_view[i])
                     self.diff_from_home.append(diff_list)
+
         except IndexError:
             pass
+
     def LoadView(self):
 
-        self.toolbar._views.clear()
-        self.toolbar.push_current()
-        cur_view = list(self.toolbar._views.__call__())
+        #self.toolbar._nav_stack.clear()
+        #self.toolbar.home()
+        #self.set_history_buttons()
+        #self.toolbar._nav_stack.home()
+        #self.toolbar.set_history_buttons()
+        #self.toolbar._update_view()
 
+        #self._update_view()
+
+        self.toolbar.push_current()
+
+        cur_view = []
+        tmpList = []
+        for ax, (view, (pos_orig, pos_active)) in self.toolbar._nav_stack().items():
+
+            tmpList.append(view)
+            if ax in self.cbarList:
+                continue
+
+            cur_view.append(view)
+            #ax._set_view(view)
+            #self.toolbar._update_view()
         # Find the cbars in the current plot
-        self.FindCbars()
+        #self.FindCbars()
         try:
             # put the parts that have changed from the old view
             # into the proper place in the next view
@@ -3081,10 +3114,8 @@ class MainApp(Tk.Tk):
             for i in range(self.MainParamDict['NumOfRows']):
                 for j in range(self.MainParamDict['NumOfCols']):
                     tmp_old_view = list(self.old_views.pop(0))
-
-                    if self.IsCbarList[k]:
-                        k += 1
                     tmp_new_view = list(cur_view[k])
+                    self.SubPlotList[i][j].graph.axes._set_view(cur_view[k])
                     if self.prev_ctype_list[i][j] == self.SubPlotList[i][j].chartType:
                         # see if the view has changed from the home view
                         is_changed = self.is_changed_list[m]
@@ -3108,16 +3139,20 @@ class MainApp(Tk.Tk):
                                             tmp_new_view[n] = tmp_old_view[n]
 
                     cur_view[k] = tmp_new_view
+
+                    self.SubPlotList[i][j].graph.axes._set_view(cur_view[k])
+
                     # Handle the counting of the 'views' array in matplotlib
                     #skip over colorbar axes
                     m += 1
                     k += 1
                     self.SubPlotList[i][j].Changedto1D = False
                     self.SubPlotList[i][j].Changedto2D = False
-
-            self.toolbar._views.push(cur_view)
-            self.toolbar.set_history_buttons()
-            self.toolbar._update_view()
+            self.toolbar.push_current()
+            #self.toolbar._nav_stack.push(cur_view)
+            #print(len(self.toolbar._nav_stack._elements))
+            #self.toolbar.set_history_buttons()
+            #self.toolbar._update_view()
         except IndexError:
             pass
 
@@ -3147,7 +3182,7 @@ class MainApp(Tk.Tk):
             self.DataDict.pop(elm, None)
         self.SetLLoc()
         # Save the image for quick playback later
-        self.SaveTmpFig()
+        #self.SaveTmpFig()
 
 
 
@@ -3198,7 +3233,7 @@ class MainApp(Tk.Tk):
             self.SavedHashes[self.TimeStep.value] =  self.StateHash
             self.SavedImgSize[self.TimeStep.value] =int(self.f.get_size_inches()[0]*self.f.dpi), int(self.f.get_size_inches()[1]*self.f.dpi)
 
-            ram = cStringIO.StringIO()
+            ram = io.BytesIO()
             self.f.savefig(ram, format='raw', dpi=self.f.dpi, facecolor=self.f.get_facecolor())
             ram.seek(0)
             self.SavedImgStr[self.TimeStep.value] = ram.read() # Save the image into SavedImgs
@@ -3216,7 +3251,7 @@ class MainApp(Tk.Tk):
     def ReDrawCanvas(self, keep_view = True):
         #  We need to see if the user has moved around the zoom level in python.
         # First we see if there are any views in the toolbar
-        cur_view =  self.toolbar._views.__call__()
+        cur_view =  self.toolbar._nav_stack.__call__()
         if cur_view is None:
             keep_view = False
         if self.NewDirectory:
@@ -3227,7 +3262,7 @@ class MainApp(Tk.Tk):
         self.f.clf()
         #
         if self.MainParamDict['ClearFig']:
-            self.canvas.show()
+            self.canvas.draw()
 
         self.LoadAllKeys()
 
@@ -3337,7 +3372,7 @@ class MainApp(Tk.Tk):
                         # Choose the right dashes pattern
                         self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines[-1].set_dashes(self.dashes_options[k])
 
-        self.canvas.show()
+        self.canvas.draw()
         self.canvas.get_tk_widget().update_idletasks()
 
 
@@ -3348,7 +3383,7 @@ class MainApp(Tk.Tk):
     def RefreshCanvas(self, keep_view = True):
         #  We need to see if the user has moved around the zoom level in python.
         # First we see if there are any views in the toolbar
-        cur_view =  self.toolbar._views.__call__()
+        cur_view =  self.toolbar._nav_stack.__call__()
         if cur_view is None:
 
             keep_view = False
@@ -3364,7 +3399,7 @@ class MainApp(Tk.Tk):
             self.SaveView()
 
 
-        self.toolbar._views.clear()
+        self.toolbar._nav_stack.clear()
 
         self.LoadAllKeys()
 
@@ -3453,12 +3488,12 @@ class MainApp(Tk.Tk):
 
 
     def recordProblemsPrompt(self):
-        if tkMessageBox.askyesno("Recording Problems", "You do not have write access to " +self.movie_dir + ". Would you like record frames to a different directory?"):
+        if messagebox.askyesno("Recording Problems", "You do not have write access to " +self.movie_dir + ". Would you like record frames to a different directory?"):
             mvdir_opt = {}
             mvdir_opt['initialdir'] = self.dirname
             mvdir_opt['mustexist'] = True
             mvdir_opt['parent'] = self
-            self.movie_dir = tkFileDialog.askdirectory(title = 'Please choose a different directory where you have write access to save images.', **self.dir_opt)
+            self.movie_dir = filedialog.askdirectory(title = 'Please choose a different directory where you have write access to save images.', **self.dir_opt)
             return True
         else:
             return False
@@ -3510,7 +3545,7 @@ class MainApp(Tk.Tk):
                 try:
                     subprocess.call(cmdstring[2:])
                 except OSError:
-                    tkMessageBox.showwarning(
+                    messagebox.showwarning(
                         "Problems saving a movie",
                         "Please make sure that ffmpeg is installedgg on your machine."
                         )
@@ -3590,8 +3625,8 @@ class MainApp(Tk.Tk):
             sub_plots = self.gs0.get_grid_positions(self.f)
             row_array = np.sort(np.append(sub_plots[0], sub_plots[1]))
             col_array = np.sort(np.append(sub_plots[2], sub_plots[3]))
-            i = (len(row_array)-row_array.searchsorted(y_loc))/2
-            j = col_array.searchsorted(x_loc)/2
+            i = int((len(row_array)-row_array.searchsorted(y_loc))/2)
+            j = int(col_array.searchsorted(x_loc)//2)
 
             self.SubPlotList[i][j].OpenSubplotSettings()
 
@@ -3684,17 +3719,18 @@ class MainApp(Tk.Tk):
         # Find the shock by seeing where the density is 1/2 of it's
         # max value.
 
-        dens_half_max = max(dens_arr[dens_arr.shape[0]/2,jstart:])*.5
+        dens_half_max = max(dens_arr[dens_arr.shape[0]//2,jstart:])*.5
 
         # Find the farthest location where the average density is greater
         # than half max
-        ishock_final = np.where(dens_arr[dens_arr.shape[0]/2,jstart:]>=dens_half_max)[0][-1]
+        ishock_final = np.where(dens_arr[dens_arr.shape[0]//2,jstart:]>=dens_half_max)[0][-1]
         xshock_final = xaxis_final[ishock_final]
         self.shock_speed = xshock_final/final_time
         self.prev_shock_loc = np.NaN
 
     def setKnob(self, value):
         # If the time parameter changes update the plots
+        """
         if self.playbackbar.playPressed and not self.MainParamDict['Recording']:
             already_saved = False
             if self.TimeStep.value in self.SavedHashes.keys(): # we have already saved an image for this TimeStep
@@ -3714,11 +3750,12 @@ class MainApp(Tk.Tk):
 
 
         else:
-            self.RenewCanvas()
+        """
+        self.RenewCanvas()
 
-            self.playbackbar.tstep.set(str(value))
-            #set the slider
-            self.playbackbar.slider.set(value)
+        self.playbackbar.tstep.set(str(value))
+        #set the slider
+        self.playbackbar.slider.set(value)
 
     def OpenSettings(self, *args):
         if self.settings_window is None:

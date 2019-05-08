@@ -1,12 +1,11 @@
 #!/usr/bin/env python
-import Tkinter as Tk
-import ttk as ttk
+import tkinter as Tk
+from tkinter import ttk, messagebox
 import matplotlib
 import numpy as np
 import numpy.ma as ma
 import new_cmaps
 import sys, traceback
-from tkMessageBox import showinfo
 from new_cnorms import PowerNormWithNeg, PowerNormFunc
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
@@ -290,7 +289,7 @@ class FieldsPanel:
                                 err_msg += l[18:] +'\n'
                             else:
                                 err_msg += l+'\n'
-                        showinfo('Error when evaluating user defined function 1:', err_msg)
+                        messagebox.showinfo('Error when evaluating user defined function 1:', err_msg)
 
                         self.fx = np.NAN
                         self.flagx = 0
@@ -329,7 +328,7 @@ class FieldsPanel:
                                 err_msg += l[18:] +'\n'
                             else:
                                 err_msg += l+'\n'
-                        showinfo('Error when evaluating user defined function 2:', err_msg)
+                        messagebox.showinfo('Error when evaluating user defined function 2:', err_msg)
                         self.fy = np.NAN
                         self.flagy = 0
 
@@ -368,7 +367,7 @@ class FieldsPanel:
                                 err_msg += l[18:] +'\n'
                             else:
                                 err_msg += l+'\n'
-                        showinfo('Error when evaluating user defined function 3:', err_msg)
+                        messagebox.showinfo('Error when evaluating user defined function 3:', err_msg)
 
                         self.fz = np.NAN
                         self.flagz = 0
@@ -522,6 +521,7 @@ class FieldsPanel:
                         **self.annotate_kwargs)
 
             self.axC = self.figure.add_subplot(self.gs[self.parent.cbar_extent[0]:self.parent.cbar_extent[1], self.parent.cbar_extent[2]:self.parent.cbar_extent[3]])
+            self.parent.cbarList.append(self.axC)
             if self.parent.MainParamDict['HorizontalCbars']:
                 self.cbar = self.axC.imshow(self.gradient, aspect='auto',
                                             cmap=new_cmaps.cmaps[self.cmap])
@@ -530,14 +530,14 @@ class FieldsPanel:
                 self.cbar.set_extent([0, 1.0, 0, 1.0])
                 self.axC.tick_params(axis='x',
                                     which = 'both', # bothe major and minor ticks
-                                    top = 'off', # turn off top ticks
+                                    top = False, # turn off top ticks
                                     labelsize=self.parent.MainParamDict['NumFontSize'])
 
                 self.axC.tick_params(axis='y',          # changes apply to the y-axis
                                     which='both',      # both major and minor ticks are affected
-                                    left='off',      # ticks along the bottom edge are off
-                                    right='off',         # ticks along the top edge are off
-                                    labelleft='off')
+                                    left=False,      # ticks along the bottom edge are off
+                                    right=False,         # ticks along the top edge are off
+                                    labelleft=False)
             else:
                 self.cbar = self.axC.imshow(np.transpose(self.gradient)[::-1], aspect='auto',
                                             cmap=new_cmaps.cmaps[self.cmap])
@@ -546,17 +546,17 @@ class FieldsPanel:
                 self.cbar.set_extent([0, 1.0, 0, 1.0])
                 self.axC.tick_params(axis='x',
                                 which = 'both', # bothe major and minor ticks
-                                top = 'off', # turn off top ticks
-                                bottom = 'off',
-                                labelbottom = 'off',
+                                top = False, # turn off top ticks
+                                bottom = False,
+                                labelbottom = False,
                                 labelsize=self.parent.MainParamDict['NumFontSize'])
 
                 self.axC.tick_params(axis='y',          # changes apply to the y-axis
                                 which='both',      # both major and minor ticks are affected
-                                left='off',      # ticks along the bottom edge are off
-                                right='on',         # ticks along the top edge are off
-                                labelleft = 'off',
-                                labelright  = 'on',
+                                left=False,      # ticks along the bottom edge are off
+                                right=True,         # ticks along the top edge are off
+                                labelleft = False,
+                                labelright  = True,
                                 labelsize=self.parent.MainParamDict['NumFontSize'])
 
             if self.GetPlotParam('show_cbar') == 0 or self.plotFlag == -1:
@@ -1005,7 +1005,7 @@ class FieldSettings(Tk.Toplevel):
         self.InterpolVar.trace('w', self.InterpolChanged)
 
         ttk.Label(self.frm, text="Interpolation Method:").grid(row=0, column = 2)
-        InterplChooser = apply(ttk.OptionMenu, (self.frm, self.InterpolVar, self.parent.GetPlotParam('interpolation')) + tuple(self.parent.InterpolationMethods))
+        InterplChooser = ttk.OptionMenu(self.frm, self.InterpolVar, self.parent.GetPlotParam('interpolation'), *tuple(self.parent.InterpolationMethods))
         InterplChooser.grid(row =0, column = 3, sticky = Tk.W + Tk.E)
 
         # Create the OptionMenu to chooses the Chart Type:
@@ -1014,7 +1014,7 @@ class FieldSettings(Tk.Toplevel):
         self.ctypevar.trace('w', self.ctypeChanged)
 
         ttk.Label(self.frm, text="Choose Chart Type:").grid(row=0, column = 0)
-        ctypeChooser = apply(ttk.OptionMenu, (self.frm, self.ctypevar, self.parent.chartType) + tuple(self.parent.ChartTypes))
+        ctypeChooser = ttk.OptionMenu(self.frm, self.ctypevar, self.parent.chartType, *tuple(self.parent.ChartTypes))
         ctypeChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
 
 
@@ -1107,7 +1107,7 @@ class FieldSettings(Tk.Toplevel):
         self.cnormvar.trace('w', self.cnormChanged)
 
         ttk.Label(self.frm, text="Choose Color Norm:").grid(row=6, column = 3)
-        cnormChooser = apply(ttk.OptionMenu, (self.frm, self.cnormvar, self.parent.GetPlotParam('cnorm_type')) + tuple(['Pow', 'Linear']))
+        cnormChooser = ttk.OptionMenu(self.frm, self.cnormvar, self.parent.GetPlotParam('cnorm_type'), *tuple(['Pow', 'Linear']))
         cnormChooser.grid(row =6, column = 4, sticky = Tk.W + Tk.E)
 
         # Now the gamma of the pow norm

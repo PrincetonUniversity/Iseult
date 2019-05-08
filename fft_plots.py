@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-import Tkinter as Tk
-import ttk as ttk
+import tkinter as Tk
+from tkinter import ttk
 import matplotlib
 import numpy as np
 import numpy.ma as ma
@@ -276,7 +276,7 @@ class FFTSettings(Tk.Toplevel):
         self.ctypevar.trace('w', self.ctypeChanged)
 
         ttk.Label(frm, text="Choose Chart Type:").grid(row=0, column = 0)
-        ctypeChooser = apply(ttk.OptionMenu, (frm, self.ctypevar, self.parent.chartType) + tuple(self.parent.ChartTypes))
+        ctypeChooser = ttk.OptionMenu(frm, self.ctypevar, self.parent.chartType, *tuple(self.parent.ChartTypes))
         ctypeChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
 
 
