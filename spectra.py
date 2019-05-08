@@ -785,7 +785,7 @@ class SpectraSettings(Tk.Toplevel):
         self.ctypevar.trace('w', self.ctypeChanged)
 
         ttk.Label(frm, text="Choose Chart Type:").grid(row=0, column = 0)
-        cmapChooser = apply(ttk.OptionMenu, (frm, self.ctypevar, self.parent.chartType) + tuple(self.parent.ChartTypes))
+        cmapChooser = ttk.OptionMenu(frm, self.ctypevar, self.parent.chartType, *tuple(self.parent.ChartTypes))
         cmapChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
 
 

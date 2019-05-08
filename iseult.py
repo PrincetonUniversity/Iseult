@@ -52,6 +52,7 @@ class MyCustomToolbar(NavigationToolbar2Tk):
         # plotCanvas is the tk Canvas we want to link to the toolbar,
         # parent is the iseult main app
         NavigationToolbar2Tk.__init__(self, plotCanvas, parent)
+        #print(self._nav_stack)
         self.parent = parent
     '''
     def release_zoom(self, event):
@@ -600,8 +601,9 @@ class PlaybackBar(Tk.Frame):
             # pause, turn off clear_fig, and start the play loop.
             self.playPressed = True
             self.parent.RenewCanvas()
+            """
             if not self.parent.MainParamDict['Recording']:
-                self.parent.HashIseultState()
+                #self.parent.HashIseultState()
                 already_saved = False
                 if self.parent.TimeStep.value in self.parent.SavedHashes.keys(): # we have already saved an image for this TimeStep
                     # is the current state of Iseult equal to the state when we saved said image?
@@ -630,8 +632,9 @@ class PlaybackBar(Tk.Frame):
                 self.parent.MovieAx.axis('off')
                 self.parent.MovieIm = self.parent.MovieAx.imshow(im, interpolation = 'nearest')
                 self.parent.MovieCanvas.get_tk_widget().update_idletasks()
-
+            """
             self.playB.config(text='Pause')
+
             self.after(int(self.parent.MainParamDict['WaitTime']*1E3), self.blink)
         else:
             self.parent.resizable(1,1)
@@ -1126,7 +1129,7 @@ class SettingsFrame(Tk.Toplevel):
         self.cmapvar.trace('w', self.CmapChanged)
 
         ttk.Label(frm, text="Color map:").grid(row=2)
-        cmapChooser = apply(ttk.OptionMenu, (frm, self.cmapvar, self.parent.MainParamDict['ColorMap']) + tuple(new_cmaps.sequential))
+        cmapChooser = ttk.OptionMenu(frm, self.cmapvar, self.parent.MainParamDict['ColorMap'], *tuple(new_cmaps.sequential))
         cmapChooser.grid(row =2, column = 1, sticky = Tk.W + Tk.E)
 
         # Have a list of the color maps
@@ -1136,7 +1139,7 @@ class SettingsFrame(Tk.Toplevel):
         self.div_cmapvar.trace('w', self.DivCmapChanged)
 
         ttk.Label(frm, text="Diverging Cmap:").grid(row=3)
-        cmapChooser = apply(ttk.OptionMenu, (frm, self.div_cmapvar, self.parent.MainParamDict['DivColorMap']) + tuple(new_cmaps.diverging))
+        cmapChooser = ttk.OptionMenu(frm, self.div_cmapvar, self.parent.MainParamDict['DivColorMap'], *tuple(new_cmaps.diverging))
         cmapChooser.grid(row =3, column = 1, sticky = Tk.W + Tk.E)
 
 
@@ -1859,7 +1862,7 @@ class MainApp(Tk.Tk):
 
 
         # A list that will keep track of whether a given axes is a colorbar or not:
-        self.IsCbarList = []
+        self.cbarList = []
 
         # The dictionary that holdsd the paths
         self.PathDict = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
@@ -3001,10 +3004,10 @@ class MainApp(Tk.Tk):
                         except:
                             pass
 
-
+    """
     def FindCbars(self, prev = False):
         ''' A function that will find where all the cbars are in the current view '''
-        self.IsCbarList = []
+        self.cbarList = []
         for i in range(self.MainParamDict['NumOfRows']):
             for j in range(self.MainParamDict['NumOfCols']):
                 self.IsCbarList.append(False)
@@ -3017,23 +3020,34 @@ class MainApp(Tk.Tk):
                 elif self.SubPlotList[i][j].GetPlotParam('twoD') == 1:
                     self.IsCbarList.append(True)
 
-
+    """
     def SaveView(self):
         # A function that will make sure our view will stay the same as the
         # plot updates.
-        cur_view =  list(self.toolbar._views.__call__())
-        # Go to the home view
-        self.toolbar._views.home()
-        self.toolbar._positions.home()
-        home_view =  list(self.toolbar._views.__call__())
-        try:
-            # Find cbars
-            self.FindCbars(prev=True)
-            # Filter out the colorbar axes
-            for elm in np.where(self.IsCbarList)[0][::-1]:
-                cur_view.pop(elm)
-                home_view.pop(elm)
 
+        cur_view = []
+        for ax, (view, (pos_orig, pos_active)) in self.toolbar._nav_stack().items():
+            #print(type(ax))
+            if ax in self.cbarList:
+                continue
+            cur_view.append(view)
+        #    Go to the home view
+        self.toolbar._nav_stack.home()
+        #self.toolbar.home()
+        home_view = []
+        for ax, (view, (pos_orig, pos_active)) in self.toolbar._nav_stack().items():
+            #print(type(ax))
+            if ax in self.cbarList:
+                continue
+            home_view.append(view)
+        #home_view =  list(self.toolbar._nav_stack.__call__())
+
+            #print(view, pos_orig)
+            # Find cbars
+            #self.FindCbars(prev=True)
+            # Filter out the colorbar axes
+            #print(self.IsCbarList)
+        try:
             self.is_changed_list = []
             self.diff_from_home = []
             self.old_views = []
@@ -3062,16 +3076,36 @@ class MainApp(Tk.Tk):
                     self.is_changed_list.append(is_changed)
                     self.old_views.append(cur_view[i])
                     self.diff_from_home.append(diff_list)
+
         except IndexError:
             pass
+
     def LoadView(self):
 
-        self.toolbar._views.clear()
-        self.toolbar.push_current()
-        cur_view = list(self.toolbar._views.__call__())
+        #self.toolbar._nav_stack.clear()
+        #self.toolbar.home()
+        #self.set_history_buttons()
+        #self.toolbar._nav_stack.home()
+        #self.toolbar.set_history_buttons()
+        #self.toolbar._update_view()
 
+        #self._update_view()
+
+        self.toolbar.push_current()
+
+        cur_view = []
+        tmpList = []
+        for ax, (view, (pos_orig, pos_active)) in self.toolbar._nav_stack().items():
+
+            tmpList.append(view)
+            if ax in self.cbarList:
+                continue
+
+            cur_view.append(view)
+            #ax._set_view(view)
+            #self.toolbar._update_view()
         # Find the cbars in the current plot
-        self.FindCbars()
+        #self.FindCbars()
         try:
             # put the parts that have changed from the old view
             # into the proper place in the next view
@@ -3080,10 +3114,8 @@ class MainApp(Tk.Tk):
             for i in range(self.MainParamDict['NumOfRows']):
                 for j in range(self.MainParamDict['NumOfCols']):
                     tmp_old_view = list(self.old_views.pop(0))
-
-                    if self.IsCbarList[k]:
-                        k += 1
                     tmp_new_view = list(cur_view[k])
+                    self.SubPlotList[i][j].graph.axes._set_view(cur_view[k])
                     if self.prev_ctype_list[i][j] == self.SubPlotList[i][j].chartType:
                         # see if the view has changed from the home view
                         is_changed = self.is_changed_list[m]
@@ -3107,16 +3139,20 @@ class MainApp(Tk.Tk):
                                             tmp_new_view[n] = tmp_old_view[n]
 
                     cur_view[k] = tmp_new_view
+
+                    self.SubPlotList[i][j].graph.axes._set_view(cur_view[k])
+
                     # Handle the counting of the 'views' array in matplotlib
                     #skip over colorbar axes
                     m += 1
                     k += 1
                     self.SubPlotList[i][j].Changedto1D = False
                     self.SubPlotList[i][j].Changedto2D = False
-
-            self.toolbar._views.push(cur_view)
-            self.toolbar.set_history_buttons()
-            self.toolbar._update_view()
+            self.toolbar.push_current()
+            #self.toolbar._nav_stack.push(cur_view)
+            #print(len(self.toolbar._nav_stack._elements))
+            #self.toolbar.set_history_buttons()
+            #self.toolbar._update_view()
         except IndexError:
             pass
 
@@ -3146,7 +3182,7 @@ class MainApp(Tk.Tk):
             self.DataDict.pop(elm, None)
         self.SetLLoc()
         # Save the image for quick playback later
-        self.SaveTmpFig()
+        #self.SaveTmpFig()
 
 
 
@@ -3215,7 +3251,7 @@ class MainApp(Tk.Tk):
     def ReDrawCanvas(self, keep_view = True):
         #  We need to see if the user has moved around the zoom level in python.
         # First we see if there are any views in the toolbar
-        cur_view =  self.toolbar._views.__call__()
+        cur_view =  self.toolbar._nav_stack.__call__()
         if cur_view is None:
             keep_view = False
         if self.NewDirectory:
@@ -3226,7 +3262,7 @@ class MainApp(Tk.Tk):
         self.f.clf()
         #
         if self.MainParamDict['ClearFig']:
-            self.canvas.show()
+            self.canvas.draw()
 
         self.LoadAllKeys()
 
@@ -3336,7 +3372,7 @@ class MainApp(Tk.Tk):
                         # Choose the right dashes pattern
                         self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines[-1].set_dashes(self.dashes_options[k])
 
-        self.canvas.show()
+        self.canvas.draw()
         self.canvas.get_tk_widget().update_idletasks()
 
 
@@ -3347,7 +3383,7 @@ class MainApp(Tk.Tk):
     def RefreshCanvas(self, keep_view = True):
         #  We need to see if the user has moved around the zoom level in python.
         # First we see if there are any views in the toolbar
-        cur_view =  self.toolbar._views.__call__()
+        cur_view =  self.toolbar._nav_stack.__call__()
         if cur_view is None:
 
             keep_view = False
@@ -3363,7 +3399,7 @@ class MainApp(Tk.Tk):
             self.SaveView()
 
 
-        self.toolbar._views.clear()
+        self.toolbar._nav_stack.clear()
 
         self.LoadAllKeys()
 
@@ -3589,8 +3625,8 @@ class MainApp(Tk.Tk):
             sub_plots = self.gs0.get_grid_positions(self.f)
             row_array = np.sort(np.append(sub_plots[0], sub_plots[1]))
             col_array = np.sort(np.append(sub_plots[2], sub_plots[3]))
-            i = (len(row_array)-row_array.searchsorted(y_loc))/2
-            j = col_array.searchsorted(x_loc)/2
+            i = int((len(row_array)-row_array.searchsorted(y_loc))/2)
+            j = int(col_array.searchsorted(x_loc)//2)
 
             self.SubPlotList[i][j].OpenSubplotSettings()
 
@@ -3694,6 +3730,7 @@ class MainApp(Tk.Tk):
 
     def setKnob(self, value):
         # If the time parameter changes update the plots
+        """
         if self.playbackbar.playPressed and not self.MainParamDict['Recording']:
             already_saved = False
             if self.TimeStep.value in self.SavedHashes.keys(): # we have already saved an image for this TimeStep
@@ -3713,11 +3750,12 @@ class MainApp(Tk.Tk):
 
 
         else:
-            self.RenewCanvas()
+        """
+        self.RenewCanvas()
 
-            self.playbackbar.tstep.set(str(value))
-            #set the slider
-            self.playbackbar.slider.set(value)
+        self.playbackbar.tstep.set(str(value))
+        #set the slider
+        self.playbackbar.slider.set(value)
 
     def OpenSettings(self, *args):
         if self.settings_window is None:

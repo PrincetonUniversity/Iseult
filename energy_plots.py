@@ -297,6 +297,7 @@ class EnergyPanel:
             self.shock_line.set_visible(False)
 
         self.axC = self.figure.add_subplot(self.gs[self.parent.cbar_extent[0]:self.parent.cbar_extent[1], self.parent.cbar_extent[2]:self.parent.cbar_extent[3]])
+        self.parent.cbarList.append(self.axC)
         # Technically I should use the colorbar class here,
         # but I found it annoying in some of it's limitations.
         if self.parent.MainParamDict['HorizontalCbars']:
@@ -305,14 +306,14 @@ class EnergyPanel:
             # Make the colobar axis more like the real colorbar
             self.axC.tick_params(axis='x',
                                 which = 'both', # bothe major and minor ticks
-                                top = 'off', # turn off top ticks
+                                top = False, # turn off top ticks
                                 labelsize=self.parent.MainParamDict['NumFontSize'])
 
             self.axC.tick_params(axis='y',          # changes apply to the y-axis
                                 which='both',      # both major and minor ticks are affected
-                                left='off',      # ticks along the bottom edge are off
-                                right='off',         # ticks along the top edge are off
-                                labelleft='off')
+                                left=False,      # ticks along the bottom edge are off
+                                right=False,         # ticks along the top edge are off
+                                labelleft=False)
 
         else:
             self.cbar = self.axC.imshow(np.transpose(self.gradient)[::-1], aspect='auto',
@@ -320,17 +321,17 @@ class EnergyPanel:
             # Make the colobar axis more like the real colorbar
             self.axC.tick_params(axis='x',
                                 which = 'both', # bothe major and minor ticks
-                                top = 'off', # turn off top ticks
-                                bottom = 'off',
-                                labelbottom = 'off',
+                                top = False, # turn off top ticks
+                                bottom = False,
+                                labelbottom = False,
                                 labelsize=self.parent.MainParamDict['NumFontSize'])
 
             self.axC.tick_params(axis='y',          # changes apply to the y-axis
                                 which='both',      # both major and minor ticks are affected
-                                left='off',      # ticks along the bottom edge are off
-                                right='on',         # ticks along the top edge are off
-                                labelleft='off',
-                                labelright='on',
+                                left= False,      # ticks along the bottom edge are off
+                                right= True,         # ticks along the top edge are off
+                                labelleft= False,
+                                labelright=True,
                                 labelsize=self.parent.MainParamDict['NumFontSize'])
 
 
@@ -484,7 +485,7 @@ class EnergySettings(Tk.Toplevel):
         self.InterpolVar.trace('w', self.InterpolChanged)
 
         ttk.Label(frm, text="Interpolation Method:").grid(row=0, column = 2)
-        InterplChooser = apply(ttk.OptionMenu, (frm, self.InterpolVar, self.parent.GetPlotParam('interpolation')) + tuple(self.parent.InterpolationMethods))
+        InterplChooser = ttk.OptionMenu(frm, self.InterpolVar, self.parent.GetPlotParam('interpolation'), *tuple(self.parent.InterpolationMethods))
         InterplChooser.grid(row =0, column = 3, sticky = Tk.W + Tk.E)
 
         # Create the OptionMenu to chooses the Chart Type:
@@ -493,7 +494,7 @@ class EnergySettings(Tk.Toplevel):
         self.ctypevar.trace('w', self.ctypeChanged)
 
         ttk.Label(frm, text="Choose Chart Type:").grid(row=0, column = 0)
-        cmapChooser = apply(ttk.OptionMenu, (frm, self.ctypevar, self.parent.chartType) + tuple(self.parent.ChartTypes))
+        cmapChooser = ttk.OptionMenu(frm, self.ctypevar, self.parent.chartType, *tuple(self.parent.ChartTypes))
         cmapChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
 
 
