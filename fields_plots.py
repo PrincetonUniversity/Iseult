@@ -294,7 +294,7 @@ class FieldsPanel:
                                 err_msg += l+'\n'
 
                         """
-                        messagebox.showinfo('Error when evaluating user defined function 1:', print(sys.exc_info())#(err_msg)
+                        messagebox.showinfo('Error when evaluating user defined function 1:', print(sys.exc_info()))#(err_msg)
 
                         self.fx = np.NAN
                         self.flagx = 0
@@ -337,7 +337,7 @@ class FieldsPanel:
                             err_msg += l+'\n'
 
                         """
-                        messagebox.showinfo('Error when evaluating user defined function 2:', print(sys.exc_info())#(err_msg)
+                        messagebox.showinfo('Error when evaluating user defined function 2:', print(sys.exc_info()))#(err_msg)
                         self.fy = np.NAN
                         self.flagy = 0
 
@@ -380,7 +380,7 @@ class FieldsPanel:
                             err_msg += l+'\n'
 
                         """
-                        messagebox.showinfo('Error when evaluating user defined function 3:', print(sys.exc_info())#(err_msg)
+                        messagebox.showinfo('Error when evaluating user defined function 3:', print(sys.exc_info()))#(err_msg)
 
                         self.fz = np.NAN
                         self.flagz = 0
