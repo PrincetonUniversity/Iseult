@@ -1,7 +1,7 @@
 # Iseult
 
 A TKinter based python 3.7 GUI for visualizing Tristan-MP plots. A work in progress.
-
+![useful image]({{ site.url }}/_docs/IseultPanels.png)
 Written by:
 
 Patrick Crumley, patrick.crumley@gmail.com, based on Jaehong's Tristan analysis
