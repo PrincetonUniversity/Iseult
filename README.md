@@ -2,6 +2,9 @@
 
 A TKinter based python 3.7 GUI for visualizing Tristan-MP plots. A work in progress.
 ![Iseult Setup](/images/IseultPanels.png)
+
+An example visualization of a Tristan-MP simulation.
+
 Written by:
 
 Patrick Crumley, patrick.crumley@gmail.com, based on Jaehong's Tristan analysis
