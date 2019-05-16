@@ -3,7 +3,27 @@
 A TKinter based python 3.7 GUI for visualizing Tristan-MP plots. A work in progress.
 ![Iseult Setup](/images/IseultPanels.png)
 
-An example visualization of a Tristan-MP simulation.
+An example visualization of a Tristan-MP simulation. It's basically a skinned version 
+of the interactive matplotlib figure, where you can go through your timesteps by 
+pressing the arrows left and right on the bottom. All graphs (and graph types)
+are configureble by right clicking on the subplot
+![Iseult Setup](/images/panelSettings.png)
+
+Things like the number of rows and columns can be changed by clicking the settings
+button on the bottom:
+![Iseult Setup](/images/generalSettings.png)
+
+If you get a set-up you like and want to save for the future, go to the file menu
+and click 'Save Current State.' This saves a config file in the .iseult_configs file.
+The config files are directly editable (you have access to change things that you can't
+in the GUI), and they can be loaded in future using 'Preset Views' menu.
+
+![Iseult Setup](/images/fileOpts.png)
+
+Also in the file menu is the option to save movies using ffmpeg. If ffmpeg is not 
+installed, you can make a movie by using the 'record' checkbox on the bottom and click
+play. This creates a 'Movie' folder and saves pngs everytime Iseult reloads a plot. 
+You can then put these together into a movie/gif/whatever.
 
 Written by:
 
