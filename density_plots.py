@@ -393,9 +393,9 @@ class DensPanel:
                 self.axes.set_xlim(self.xaxis_values[0],self.xaxis_values[-1])
 
             if self.GetPlotParam('set_v_min'):
-                self.axes.set_ylim(ymin = self.GetPlotParam('v_min'))
+                self.axes.set_ylim(bottom = self.GetPlotParam('v_min'))
             if self.GetPlotParam('set_v_max'):
-                self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
+                self.axes.set_ylim(top = self.GetPlotParam('v_max'))
 
             # Handle the axes labeling
             tmp_str = r'$\rm density$'
@@ -456,9 +456,9 @@ class DensPanel:
             min_max[1] += 0.04*dist
             self.axes.set_ylim(min_max)
             if self.GetPlotParam('set_v_min'):
-                self.axes.set_ylim(ymin = self.GetPlotParam('v_min'))
+                self.axes.set_ylim(bottom = self.GetPlotParam('v_min'))
             if self.GetPlotParam('set_v_max'):
-                self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
+                self.axes.set_ylim(top = self.GetPlotParam('v_max'))
             if self.GetPlotParam('show_shock'):
                 self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
 

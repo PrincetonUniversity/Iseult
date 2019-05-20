@@ -423,9 +423,9 @@ class  MomentsPanel:
             self.legend._set_loc(tmp_tup)
 
         if self.GetPlotParam('set_v_min'):
-            self.axes.set_ylim(ymin = self.GetPlotParam('v_min'))
+            self.axes.set_ylim(bottom = self.GetPlotParam('v_min'))
         if self.GetPlotParam('set_v_max'):
-            self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
+            self.axes.set_ylim(top = self.GetPlotParam('v_max'))
 
         if self.parent.MainParamDict['SetxLim']:
             if self.parent.MainParamDict['xLimsRelative']:
@@ -496,9 +496,9 @@ class  MomentsPanel:
 
         # Set new lims if the user chooses to do so.
         if self.GetPlotParam('set_v_min'):
-            self.axes.set_ylim(ymin = self.GetPlotParam('v_min'))
+            self.axes.set_ylim(bottom = self.GetPlotParam('v_min'))
         if self.GetPlotParam('set_v_max'):
-            self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
+            self.axes.set_ylim(top = self.GetPlotParam('v_max'))
 
 
         if self.parent.MainParamDict['SetxLim']:

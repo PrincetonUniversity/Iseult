@@ -715,9 +715,9 @@ class FieldsPanel:
 
 
             if self.GetPlotParam('set_v_min'):
-                self.axes.set_ylim(ymin = self.GetPlotParam('v_min'))
+                self.axes.set_ylim(bottom = self.GetPlotParam('v_min'))
             if self.GetPlotParam('set_v_max'):
-                self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
+                self.axes.set_ylim(top = self.GetPlotParam('v_max'))
 
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             tmplblstr = self.GetPlotParam('yaxis_label')[self.GetPlotParam('field_type')]
@@ -839,9 +839,9 @@ class FieldsPanel:
                 self.axes.set_xlim(self.xaxis_values[0], self.xaxis_values[-1])
 
             if self.GetPlotParam('set_v_min'):
-                self.axes.set_ylim(ymin = self.GetPlotParam('v_min'))
+                self.axes.set_ylim(bottom = self.GetPlotParam('v_min'))
             if self.GetPlotParam('set_v_max'):
-                self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
+                self.axes.set_ylim(top = self.GetPlotParam('v_max'))
 
 
         else: # Now refresh the plot if it is 2D
@@ -1527,7 +1527,7 @@ class FieldSettings(Tk.Toplevel):
                 if self.parent.GetPlotParam('twoD'):
                     self.parent.cax.norm.vmin = self.parent.GetPlotParam('v_min')
                 else:
-                    self.parent.axes.set_ylim(ymin = self.parent.GetPlotParam('v_min') )
+                    self.parent.axes.set_ylim(bottom = self.parent.GetPlotParam('v_min') )
         except ValueError:
             #if they type in random stuff, just set it ot the param value
             self.Zmin.set(str(self.parent.GetPlotParam('v_min')))
@@ -1539,7 +1539,7 @@ class FieldSettings(Tk.Toplevel):
                 if self.parent.GetPlotParam('twoD'):
                     self.parent.cax.norm.vmax = self.parent.GetPlotParam('v_max')
                 else:
-                    self.parent.axes.set_ylim(ymax = self.parent.GetPlotParam('v_max') )
+                    self.parent.axes.set_ylim(top = self.parent.GetPlotParam('v_max') )
         except ValueError:
             #if they type in random stuff, just set it ot the param value
             self.Zmax.set(str(self.parent.GetPlotParam('v_max')))

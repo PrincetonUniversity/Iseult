@@ -209,9 +209,9 @@ class FFTPanel:
             self.axes.set_yscale('log')
 
         if self.GetPlotParam('set_y_min'):
-            self.axes.set_ylim(ymin = self.GetPlotParam('y_min'))
+            self.axes.set_ylim(bottom = self.GetPlotParam('y_min'))
         if self.GetPlotParam('set_y_max'):
-            self.axes.set_ylim(ymax = self.GetPlotParam('y_max'))
+            self.axes.set_ylim(top = self.GetPlotParam('y_max'))
 
         self.axes.set_xlabel(r'$k \ [\omega_{pe}/c]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size  = self.parent.MainParamDict['AxLabelSize'])
         self.axes.set_ylabel(self.ylabel, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])

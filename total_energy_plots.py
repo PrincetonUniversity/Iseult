@@ -147,14 +147,14 @@ class TotEnergyPanel:
         self.axes.autoscale()
 
         if self.GetPlotParam('set_y_min'):
-            self.axes.set_ylim(ymin = self.GetPlotParam('y_min'))
+            self.axes.set_ylim(bottom = self.GetPlotParam('y_min'))
         if self.GetPlotParam('set_y_max'):
-            self.axes.set_ylim(ymax = self.GetPlotParam('y_max'))
+            self.axes.set_ylim(top = self.GetPlotParam('y_max'))
 
         if self.GetPlotParam('set_x_min'):
-            self.axes.set_xlim(xmin = self.GetPlotParam('x_min'))
+            self.axes.set_xlim(left = self.GetPlotParam('x_min'))
         if self.GetPlotParam('set_x_max'):
-            self.axes.set_xlim(xmax = self.GetPlotParam('x_max'))
+            self.axes.set_xlim(right = self.GetPlotParam('x_max'))
 
         # now make the total energy legend
         legend_handles = []
@@ -209,15 +209,15 @@ class TotEnergyPanel:
 
         # Set a new lims if the user chooses to do so.
         if self.GetPlotParam('set_y_min'):
-            self.axes.set_ylim(ymin = self.GetPlotParam('y_min'))
+            self.axes.set_ylim(bottom = self.GetPlotParam('y_min'))
         if self.GetPlotParam('set_y_max'):
-            self.axes.set_ylim(ymax = self.GetPlotParam('y_max'))
+            self.axes.set_ylim(top = self.GetPlotParam('y_max'))
 
 #        self.axes.set_xlim(self.LimFinder(self.parent.TotalEnergyTimes))
         if self.GetPlotParam('set_x_min'):
-            self.axes.set_xlim(xmin = self.GetPlotParam('x_min'))
+            self.axes.set_xlim(left = self.GetPlotParam('x_min'))
         if self.GetPlotParam('set_x_max'):
-            self.axes.set_xlim(xmax = self.GetPlotParam('x_max'))
+            self.axes.set_xlim(right = self.GetPlotParam('x_max'))
 
     def GetPlotParam(self, keyname):
         return self.FigWrap.GetPlotParam(keyname)

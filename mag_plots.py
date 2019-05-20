@@ -411,9 +411,9 @@ class BPanel:
 
 
             if self.GetPlotParam('set_v_min'):
-                self.axes.set_ylim(ymin = self.GetPlotParam('v_min'))
+                self.axes.set_ylim(bottom = self.GetPlotParam('v_min'))
             if self.GetPlotParam('set_v_max'):
-                self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
+                self.axes.set_ylim(top = self.GetPlotParam('v_max'))
 
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             self.axes.set_ylabel(self.ylabel, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
@@ -487,9 +487,9 @@ class BPanel:
                 self.axes.set_xlim(self.xaxis_values[0], self.xaxis_values[-1])
 
             if self.GetPlotParam('set_v_min'):
-                self.axes.set_ylim(ymin = self.GetPlotParam('v_min'))
+                self.axes.set_ylim(bottom = self.GetPlotParam('v_min'))
             if self.GetPlotParam('set_v_max'):
-                self.axes.set_ylim(ymax = self.GetPlotParam('v_max'))
+                self.axes.set_ylim(top = self.GetPlotParam('v_max'))
             self.axes.set_ylabel(self.ylabel, size = self.parent.MainParamDict['AxLabelSize'])
 
         else: # Now refresh the plot if it is 2D
