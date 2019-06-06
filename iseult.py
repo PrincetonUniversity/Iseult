@@ -1579,7 +1579,7 @@ class SettingsFrame(Tk.Toplevel):
         limkeys = ['xLeft', 'xRight', 'yBottom', 'yTop', 'kLeft', 'kRight']
         setKeys = ['SetxLim', 'SetyLim', 'SetkLim']
         for j in range(6):
-            setlims = self.parent.MainParamDict[setKeys[j/2]]
+            setlims = self.parent.MainParamDict[setKeys[j//2]]
             tmpkey = limkeys[j]
 
             try:
