@@ -6,7 +6,6 @@ import h5py # Allows us the read the data files
 import time, string, io
 from PIL import Image
 import matplotlib
-import configparser
 matplotlib.use('TkAgg')
 import new_cmaps
 import numpy as np
@@ -26,7 +25,7 @@ from fft_plots import FFTPanel
 from total_energy_plots import TotEnergyPanel
 from moments import MomentsPanel
 from functools import partial
-import subprocess
+import subprocess, yaml
 #import datetime
 #from ThreeD_mag_plots import ThreeDBPanel STILL TESTING
 
@@ -54,140 +53,7 @@ class MyCustomToolbar(NavigationToolbar2Tk):
         NavigationToolbar2Tk.__init__(self, plotCanvas, parent)
         #print(self._nav_stack)
         self.parent = parent
-    '''
-    def release_zoom(self, event):
-        """Callback for mouse button release in zoom to rect mode."""
-        for zoom_id in self._ids_zoom:
-            self.canvas.mpl_disconnect(zoom_id)
-        self._ids_zoom = []
 
-        self.remove_rubberband()
-
-        if not self._xypress:
-            return
-
-        last_a = []
-
-        for cur_xypress in self._xypress:
-            x, y = event.x, event.y
-
-            """After being clicked, we should use the x and y of the cursor to
-            determine what subplot was clicked"""
-
-            fig_size = self.parent.f.get_size_inches()*self.parent.f.dpi # Fig size in px
-
-
-
-            lastx, lasty, a, ind, view = cur_xypress
-            # ignore singular clicks - 5 pixels is a threshold
-            # allows the user to "cancel" a zoom action
-            # by zooming by less than 5 pixels
-            if ((abs(x - lastx) < 5 and self._zoom_mode!="y") or
-                    (abs(y - lasty) < 5 and self._zoom_mode!="x")):
-                self._xypress = None
-                self.release(event)
-                self.draw()
-                return
-
-
-            x_loc = event.x/fig_size[0] # The relative x position of the mouse in the figure
-            y_loc = event.y/fig_size[1] # The relative y position of the mouse in the figure
-
-            sub_plots = self.parent.gs0.get_grid_positions(self.parent.f)
-            row_array = np.sort(np.append(sub_plots[0], sub_plots[1]))
-            col_array = np.sort(np.append(sub_plots[2], sub_plots[3]))
-            i = (len(row_array)-row_array.searchsorted(y_loc))/2
-            j = col_array.searchsorted(x_loc)/2
-            # Is the x-axis spatial???
-            # convert the x-zooms to data args
-            Xmin, Xmax = a.get_xlim()
-            Ymin, Ymax = a.get_ylim()
-            inverse = a.transData.inverted()
-            lastx, lasty = inverse.transform_point((lastx, lasty))
-            x, y = inverse.transform_point((x, y))
-
-            ### DON'T LET IT FLIP data
-            if self.parent.SubPlotList[i][j].GetPlotParam('twoD') and self.parent.MainParamDict['ImageAspect']:
-                # we can only force 2 points. I choose x & lastx.
-                xl = min(x,lastx)
-                if xl<Xmin:
-                    xl = Xmin
-                xr = max(x,lastx)
-                if xr > Xmax:
-                    xr = Xmax
-
-                a._set_view((xl,xr,None,None))
-                bbox = self.parent.SubPlotList[i][j].graph.axC.get_window_extent().transformed(self.parent.f.dpi_scale_trans.inverted())
-                width, height = bbox.width, bbox.height
-                print(width, height)
-                #if self.parent.MainParamDict['LinkSpatial'] !=0:
-                for i in range(self.parent.MainParamDict['NumOfRows']):
-                    for j in range(self.parent.MainParamDict['NumOfCols']):
-                        #if self.parent.MainParamDict['LinkSpatial'] == 1:
-                        if self.parent.SubPlotList[i][j].chartType in ['PhasePlot' ,'EnergyPlot','DensityPlot','MagPlots','Moments', 'FieldsPlot']:
-                            self.parent.SubPlotList[i][j].graph.axes.set_xlim(xl,xr)
-                        #if self.parent.MainParamDict['LinkSpatial'] == 2:
-                            #if self.parent.SubPlotList[i][j].chartType in ['DensityPlot','MagPlots','Moments', 'FieldsPlot']:
-                                #self.parent.SubPlotList[i][j].graph.axes.set_xlim(xl,xr)
-                        #elif self.parent.SubPlotList[i][j].chartType in ['DensityPlot','MagPlots','FieldsPlot'] and self.parent.SubPlotList[i][j].GetPlotParam('twoD'):
-                        #    self.parent.SubPlotList[i][j].graph.axes.set_xlim(xl,xr)
-            else:
-                xl = min(x,lastx)
-                if xl<Xmin:
-                    xl = Xmin
-                xr = max(x,lastx)
-                if xr > Xmax:
-                    xr = Xmax
-                yb = min(y,lasty)
-                if yb<Ymin:
-                    yb = Ymin
-                yt = max(y, lasty)
-                if yt>Ymax:
-                    yt = Ymax
-                a._set_view((xl,xr,yb,yt))
-                savey = self.parent.SubPlotList[i][j].GetPlotParam('spatial_y')
-                if self.parent.MainParamDict['LinkSpatial'] !=0 and self.parent.SubPlotList[i][j].GetPlotParam('spatial_x'):
-                    for i in range(self.parent.MainParamDict['NumOfRows']):
-                        for j in range(self.parent.MainParamDict['NumOfCols']):
-                            if self.parent.MainParamDict['LinkSpatial'] == 1:
-                                if self.parent.SubPlotList[i][j].chartType in ['PhasePlot' ,'EnergyPlot','DensityPlot','MagPlots','Moments', 'FieldsPlot']:
-                                    self.parent.SubPlotList[i][j].graph.axes.set_xlim(xl,xr)
-                            if self.parent.MainParamDict['LinkSpatial'] == 2:
-                                if self.parent.SubPlotList[i][j].chartType in ['DensityPlot','MagPlots','Moments', 'FieldsPlot']:
-                                    self.parent.SubPlotList[i][j].graph.axes.set_xlim(xl,xr)
-                                    if savey and self.parent.SubPlotList[i][j].GetPlotParam('spatial_y'):
-                                        self.parent.SubPlotList[i][j].graph.axes.set_ylim(yb,yt)
-                            elif self.parent.SubPlotList[i][j].chartType in ['DensityPlot','MagPlots','FieldsPlot'] and self.parent.SubPlotList[i][j].GetPlotParam('twoD'):
-                                self.parent.SubPlotList[i][j].graph.axes.set_xlim(xl,xr)
-                                if savey:
-                                    self.parent.SubPlotList[i][j].graph.axes.set_ylim(yb,yt)
-
-            ###
-            #See where we ended up.
-
-            # SEE IF ANYTHING SHOULD BE SHARED
-            #if self.parent.MainParamDict['LinkSpatial'] != 0:
-            #    if
-            #    a._set_view_from_bbox((lastx, lasty, x, y), 'in',
-            #                        self._zoom_mode, False, False)
-            #if self.parent.MainParamDict['LinkSpatial'] == 1:
-            #    sharey = False
-            #    if self.parent.SubPlotList[i][j].GetPlotParam('spatial_y'):
-            #        sharey = True
-                #Convert from pixels into datalims
-            #    a._set_view_from_bbox((lastx, lasty, x, y), 'in',
-            #                        self._zoom_mode, False, False)
-
-
-        self.draw()
-        self._xypress = None
-        self._button_pressed = None
-
-        self._zoom_mode = None
-
-        self.push_current()
-        self.release(event)
-        '''
 class Spinbox(ttk.Entry):
     def __init__(self, master=None, **kw):
         ttk.Entry.__init__(self, master, "ttk::spinbox", **kw)
@@ -386,10 +252,10 @@ class SubPlotWrapper:
         # This could change if we decide to add the ability to show transverse 1D slices
         self.cpu_x_lines = []
         self.cpu_y_lines = []
-        for i in xrange(len(self.parent.cpu_x_locs)):
+        for i in range(len(self.parent.cpu_x_locs)):
             self.cpu_x_lines.append(self.graph.axes.axvline(self.parent.cpu_x_locs[i], linewidth = 1, linestyle = ':',color = 'w') )
         if self.GetPlotParam('twoD'):
-            for i in xrange(len(self.parent.cpu_y_locs)):
+            for i in range(len(self.parent.cpu_y_locs)):
                 self.cpu_y_lines.append(self.graph.axes.axhline(self.parent.cpu_y_locs[i], linewidth = 1, linestyle = ':',color = 'w'))
 
     def UpdateCpuDomainLines(self):
@@ -398,11 +264,11 @@ class SubPlotWrapper:
         created.'''
         # regardless if it is 1D or 2D we'll show the x_domains...
         # This could change if we decide to add the ability to show transverse 1D slices
-        for i in xrange(len(self.cpu_x_lines)):
+        for i in range(len(self.cpu_x_lines)):
             self.cpu_x_lines[i].set_xdata([self.parent.cpu_x_locs[i],self.parent.cpu_x_locs[i]])
 
         if self.GetPlotParam('twoD'):
-            for i in xrange(len(self.parent.cpu_y_locs)):
+            for i in range(len(self.parent.cpu_y_locs)):
                 self.cpu_y_lines[i].set_ydata([self.parent.cpu_y_locs[i],self.parent.cpu_y_locs[i]])
 
 
@@ -410,9 +276,9 @@ class SubPlotWrapper:
         '''This removes the Cpu lines. It should only be called
         when the user unselects show CPU domains.'''
         # iterate over the line list and destroy the objects
-        for i in xrange(len(self.cpu_x_lines)):
+        for i in range(len(self.cpu_x_lines)):
             self.cpu_x_lines.pop().remove()
-        for i in xrange(len(self.cpu_y_lines)):
+        for i in range(len(self.cpu_y_lines)):
             self.cpu_y_lines.pop().remove()
 class Knob:
     """
@@ -802,7 +668,7 @@ class SaveDialog(Tk.Toplevel):
 
     def apply(self):
         ''' Save the config file'''
-        self.parent.SaveIseultState(os.path.join(self.parent.IseultDir, '.iseult_configs', str(self.e1.get()).strip().replace(' ', '_') +'.cfg'), str(self.e1.get()).strip())
+        self.parent.SaveIseultState(os.path.join(self.parent.IseultDir, '.iseult_configs', str(self.e1.get()).strip().replace(' ', '_') +'.yml'), str(self.e1.get()).strip())
 class MaxNDialog(Tk.Toplevel):
 
     def __init__(self, parent, title = None):
@@ -2043,15 +1909,17 @@ class MainApp(Tk.Tk):
         tmpdir = list(os.listdir(os.path.join(self.IseultDir, '.iseult_configs')))
         tmpdir.sort()
         for cfile in tmpdir:
-            if cfile.split('.')[-1]=='cfg':
-                config = configparser.RawConfigParser()
-                config.read(os.path.join(self.IseultDir,'.iseult_configs', cfile))
-                tmpstr = config.get('general', 'ConfigName')
-                try:
-                    self.presetMenu.delete(tmpstr)
-                except:
-                    pass
-                self.presetMenu.add_command(label = tmpstr, command = partial(self.LoadConfig, str(os.path.join(self.IseultDir,'.iseult_configs', cfile))))
+            if cfile.split('.')[-1]=='yml':
+                with open(os.path.join(os.path.join(self.IseultDir, '.iseult_configs'), cfile), 'r') as f:
+                    cfgDict=yaml.safe_load(f)
+                if 'general' in cfgDict.keys():
+                    if 'ConfigName'  in cfgDict['general'].keys():
+                        tmpstr = cfgDict['general']['ConfigName']
+                        try:
+                            self.presetMenu.delete(tmpstr)
+                        except:
+                            pass
+                        self.presetMenu.add_command(label = tmpstr, command = partial(self.LoadConfig, str(os.path.join(self.IseultDir,'.iseult_configs', cfile))))
 
     def StrideChanged(self):
         # first we have to remove the calculated energy time steps
@@ -2079,24 +1947,27 @@ class MainApp(Tk.Tk):
         ''' The function that reads in a config file and then makes MainParamDict to hold all of the main iseult parameters.
             It also sets all of the plots parameters.'''
 
-        config = configparser.RawConfigParser()
+        #config = configparser.RawConfigParser()
 
         if config_file is None:
             try:
-                config.read(os.path.join(self.IseultDir, '.iseult_configs', self.cmd_args.p.strip().replace(' ', '_') +'.cfg'))
-                config.options('main')
-            except configparser.NoSectionError:
-                print('Cannot find/load ' +  self.cmd_args.p.strip().replace(' ', '_') +'.cfg in .iseult_configs. If the name of view contains whitespace,')
+                with open(os.path.join(self.IseultDir, '.iseult_configs', self.cmd_args.p.strip().replace(' ', '_') +'.yml')) as f:
+                    cfgDict = yaml.safe_load(f)
+            except:
+                print('Cannot find/load ' +  self.cmd_args.p.strip().replace(' ', '_') +'.yml in .iseult_configs. If the name of view contains whitespace,')
                 print('either it must be enclosed in quotation marks or given with whitespace removed.')
                 print('Name is case sensitive. Reverting to Default view')
-                config.read(os.path.join(self.IseultDir, '.iseult_configs', 'Default.cfg'))
+                with open(os.path.join(self.IseultDir, '.iseult_configs', self.cmd_args.p.strip().replace(' ', '_') +'.yml')) as f:
+                    cfgDict = yaml.safe_load(f)
         else:
-            config.read(config_file)
+            with open(config_file) as f:
+                cfgDict = yaml.safe_load(f)
+
         # Since configparser reads in strings we have to format the data.
         # First create MainParamDict with the default parameters,
         # the dictionary that will hold the parameters for the program.
         # See ./iseult_configs/Default.cfg for a description of what each parameter does.
-        self.MainParamDict = {'zSlice': 0, # THIS IS A FLOAT WHICH IS THE RELATIVE POSITION OF THE 2D SLICE 0->1
+        self.MainParamDict = {'zSlice': 0.0, # THIS IS A float WHICH IS THE RELATIVE POSITION OF THE 2D SLICE 0->1
                               '2DSlicePlane': 0, # 0 = x-y plane, 1 == x-z plane
                               'Average1D': 0,
                               'ySlice': 0.5, # THIS IS A FLOAT WHICH IS THE RELATIVE POSITION OF THE 1D SLICE 0->1
@@ -2158,7 +2029,7 @@ class MainApp(Tk.Tk):
                               'LoopPlayback': True,
                               'PrtlStride': 5,
                               'legendLabelSize':11}
-
+        """
         # The list of things that should be formatted as booleans.
         BoolList = ['Reload2End', 'ClearFig', 'ShowTitle', 'DoLorentzBoost',
                     'HorizontalCbars', 'SetxLim', 'SetyLim', 'SetkLim', 'LinkK',
@@ -2221,13 +2092,14 @@ class MainApp(Tk.Tk):
                 self.MainParamDict[elm]['bottom'] = float(tmplist[3])
                 self.MainParamDict[elm]['wspace'] = float(tmplist[4])
                 self.MainParamDict[elm]['hspace'] = float(tmplist[5])
-
+        """
+        self.MainParamDict = cfgDict['MainParamDict'].copy()
         # if stride is 0 that means it has only been initialized... set to default
         if self.stride == 0:
             self.stride = self.MainParamDict['PrtlStride']
 
     def SaveIseultState(self, cfgfile, cfgname):
-        config = configparser.RawConfigParser()
+        #config = configparser.RawConfigParser()
 
         # When adding sections or items, add them in the reverse order of
         # how you want them to be displayed in the actual file.
@@ -2236,44 +2108,49 @@ class MainApp(Tk.Tk):
         # non-string values to keys internally, but will receive an error
         # when attempting to write to a file or when you get it in non-raw
         # mode. SafeConfigParser does not allow such assignments to take place.
-        config.add_section('general')
-        config.set('general', 'ConfigName', cfgname)
+        #config.add_section('general')
+        cfgDict = {}
+        #config.set('general', 'ConfigName', cfgname)
 
-        config.add_section('main')
-
-        DictList = ['HSubPlotParams', 'VSubPlotParams']
-        IntListsList = ['HAxesExtent', 'HCbarExtent', 'VAxesExtent', 'VCbarExtent']
+        #config.add_section('main')
+        cfgDict['general'] = {'ConfigName': cfgname}
+        #DictList = ['HSubPlotParams', 'VSubPlotParams']
+        #IntListsList = ['HAxesExtent', 'HCbarExtent', 'VAxesExtent', 'VCbarExtent']
 
         # Update the 'WindowSize' attribute to the current window size
         self.MainParamDict['WindowSize'] = str(self.winfo_width())+'x'+str(self.winfo_height())
+        # Update the current subplot params
 
-        for key in self.MainParamDict.keys():
 
-            if key in DictList:
-                tmp_str = str(self.MainParamDict[key]['left']) + ','
-                tmp_str += str(self.MainParamDict[key]['right']) + ','
-                tmp_str += str(self.MainParamDict[key]['top']) + ','
-                tmp_str += str(self.MainParamDict[key]['bottom']) + ','
-                tmp_str += str(self.MainParamDict[key]['wspace']) + ','
-                tmp_str += str(self.MainParamDict[key]['hspace'])
-                config.set('main', key, tmp_str)
-            elif key in IntListsList:
-                config.set('main', key, str(self.MainParamDict[key])[1:-1])
-            else:
-                config.set('main', key, str(self.MainParamDict[key]))
+        tmp_param_str = 'HSubPlotParams' if self.MainParamDict['HorizontalCbars'] else 'VSubPlotParams'
+        try:
+            self.MainParamDict[tmp_param_str]['left']=float(self.f.subplotpars.left)
+            self.MainParamDict[tmp_param_str]['right']=float(self.f.subplotpars.right)
+            self.MainParamDict[tmp_param_str]['top']=float(self.f.subplotpars.top)
+            self.MainParamDict[tmp_param_str]['bottom']=float(self.f.subplotpars.bottom)
+            self.MainParamDict[tmp_param_str]['wspace']=float(self.f.subplotpars.wspace)
+            self.MainParamDict[tmp_param_str]['hspace']=float(self.f.subplotpars.hspace)
 
+            print(self.MainParamDict[tmp_param_str])
+        except:
+            pass
+        cfgDict['MainParamDict'] = self.MainParamDict
         for i in range(self.MainParamDict['NumOfRows']):
             for j in range(self.MainParamDict['NumOfCols']):
-                tmp_str = 'Chart' + str(i) + ',' + str(j)
-                config.add_section(tmp_str)
+                tmp_str = 'Chart' + str(i) + '_' + str(j)
+                #config.add_section(tmp_str)
                 tmp_ctype = self.SubPlotList[i][j].chartType
-                config.set(tmp_str, 'ChartType', tmp_ctype)
-                for key in self.SubPlotList[i][j].PlotParamsDict[tmp_ctype].keys():
-                    config.set(tmp_str, key, str(self.SubPlotList[i][j].PlotParamsDict[tmp_ctype][key]))
+                #$config.set(tmp_str, 'ChartType', tmp_ctype)
+                #for key in self.SubPlotList[i][j].PlotParamsDict[tmp_ctype].keys():
+                    #config.set(tmp_str, key, str(s[key]))
+                cfgDict[tmp_str] = self.SubPlotList[i][j].PlotParamsDict[tmp_ctype]
+                cfgDict[tmp_str]['ChartType'] = tmp_ctype
+
+        #print(yaml.dump(cfgDict))
         # Writing our configuration file to 'example.cfg'
 
-        with open(cfgfile, 'wb') as configfile:
-            config.write(configfile)
+        with open(cfgfile, 'w') as cfgFile:
+            cfgFile.write(yaml.safe_dump(cfgDict))
 
     def GenH5Dict(self):
         '''Loads all of the files and then finds all of the keys in
@@ -2466,21 +2343,20 @@ class MainApp(Tk.Tk):
     def InitializeCanvas(self, config_file = None):
         '''Initializes the figure, and then packs it into the main window.
         Should only be called once.'''
-        config = configparser.RawConfigParser()
         if config_file is None:
             try:
-                config.read(os.path.join(self.IseultDir, '.iseult_configs', self.cmd_args.p.strip().replace(' ', '_') +'.cfg'))
-                config.options('main')
-            except configparser.NoSectionError:
-                config.read(os.path.join(self.IseultDir, '.iseult_configs', 'Default.cfg'))
-
+                with open(os.path.join(self.IseultDir, '.iseult_configs', self.cmd_args.p.strip().replace(' ', '_') +'.yml')) as f:
+                    cfgDict = yaml.safe_load(f)
+            except:
+                print('Cannot find/load ' +  self.cmd_args.p.strip().replace(' ', '_') +'.yml in .iseult_configs. If the name of view contains whitespace,')
+                print('either it must be enclosed in quotation marks or given with whitespace removed.')
+                print('Name is case sensitive. Reverting to Default view')
+                with open(os.path.join(self.IseultDir, '.iseult_configs', self.cmd_args.p.strip().replace(' ', '_') +'.yml')) as f:
+                    cfgDict = yaml.safe_load(f)
         else:
-            config.read(config_file)
-        # figsize (w,h tuple in inches) dpi (dots per inch)
-        #f = Figure(figsize=(5,4), dpi=100)
+            with open(config_file) as f:
+                cfgDict = yaml.safe_load(f)
 
-        # Generate all of the subplot wrappers. They are stored in a 2D list
-        # where the index [i][j] corresponds to the ith row, jth column
 
         # divy up the figure into a bunch of subplots using GridSpec.
         self.gs0 = gridspec.GridSpec(self.MainParamDict['NumOfRows'],self.MainParamDict['NumOfCols'])
@@ -2492,26 +2368,12 @@ class MainApp(Tk.Tk):
             self.SubPlotList.append(tmplist)
         for i in range(self.MainParamDict['MaxRows']):
             for j in range(self.MainParamDict['MaxCols']):
-                tmp_str = 'Chart' + str(i) + ',' + str(j)
-                if tmp_str in config.sections():
-                    tmpchart_type = config.get(tmp_str, 'ChartType')
+                tmp_str = f"Chart{i}_{j}"
+                if tmp_str in cfgDict.keys():
+                    tmpchart_type = cfgDict[tmp_str]['ChartType']
                     self.SubPlotList[i][j].SetGraph(tmpchart_type)
-                    #Now load in all the parameters from the config file
-                    for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['BoolList']:
-                        if param.lower() in config.options(tmp_str):
-                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.getboolean(tmp_str, param)
+                    self.SubPlotList[i][j].PlotParamsDict[tmpchart_type]=cfgDict[tmp_str].copy()
 
-                    for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['IntList']:
-                        if param.lower() in config.options(tmp_str):
-                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = int(config.getfloat(tmp_str, param))
-
-                    for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['FloatList']:
-                        if param.lower() in config.options(tmp_str):
-                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.getfloat(tmp_str, param)
-
-                    for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['StrList']:
-                        if param.lower() in config.options(tmp_str):
-                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.get(tmp_str, param)
                 else:
                     # The graph isn't specifiedin the config file, just set it equal to phase plots
                     self.SubPlotList[i][j].SetGraph('PhasePlot')
@@ -2540,9 +2402,11 @@ class MainApp(Tk.Tk):
                 except:
                     pass
         # Read in the config file
-        config = configparser.RawConfigParser()
-        config.read(config_file)
-
+        #config = configparser.RawConfigParser()
+        #config.read(config_file)
+        cfgDict = {}
+        with open(config_file, 'r') as f:
+            cfgDict = yaml.safe_load(f)
         # Generate the Main Param Dict
         self.GenMainParamDict(config_file)
 
@@ -2553,43 +2417,13 @@ class MainApp(Tk.Tk):
         # Load in all the subplot params
         for i in range(self.MainParamDict['NumOfRows']):
             for j in range(self.MainParamDict['NumOfCols']):
-                tmp_str = 'Chart' + str(i) + ',' + str(j)
+                tmp_str = 'Chart' + str(i) + '_' + str(j)
 
-                if tmp_str in config.sections():
+                if tmp_str in cfgDict.keys():
 
-                    tmpchart_type = config.get(tmp_str, 'ChartType')
+                    tmpchart_type = cfgDict[tmp_str]['ChartType']
                     self.SubPlotList[i][j].SetGraph(tmpchart_type)
-                    #Now load in all the parameters from the config file
-                    for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['BoolList']:
-                        if param.lower() in config.options(tmp_str):
-                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.getboolean(tmp_str, param)
 
-                    for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['IntList']:
-                        if param.lower() in config.options(tmp_str):
-                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = int(config.getfloat(tmp_str, param))
-
-                    for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['FloatList']:
-                        if param.lower() in config.options(tmp_str):
-                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.getfloat(tmp_str, param)
-
-                    for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['StrList']:
-                        if param.lower() in config.options(tmp_str):
-                            self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = config.get(tmp_str, param)
-                    try:
-                        for param in self.SubPlotList[i][j].ParamsTypeDict[tmpchart_type]['SpecialList']:
-                            if param.lower() in config.options(tmp_str):
-                                if tmpchart_type == 'FieldsPlot':
-                                    if param == 'yaxis_label' or 'OneDOnly':
-                                        tstr = config.get(tmp_str, param)
-                                        self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] = tstr.strip('[').strip(']').strip().split(',')
-                                if tmpchart_type == 'FieldsPlot':
-                                    if param == '2D_label' or param =='1D_label':
-                                        tstr = config.get(tmp_str, param)
-                                        flattened_list = tstr.strip('[').strip(']').strip().split(',')
-                                        # NOW MAKE IT A LIST OF LISTs
-                                        self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][param] =map(list, zip(*[iter(flattened_list)]*3))
-                    except KeyError:
-                        pass
                 else:
                     # The graph isn't specified in the config file, just set it equal to a phase plot
                     self.SubPlotList[i][j].SetGraph('PhasePlot')
@@ -2598,7 +2432,18 @@ class MainApp(Tk.Tk):
         self.playbackbar.LoopVar.set(self.MainParamDict['LoopPlayback'])
 
         # refresh the geometry
+        print(self.MainParamDict['WindowSize'])
         self.geometry(self.MainParamDict['WindowSize'])
+        if self.MainParamDict['HorizontalCbars']:
+            self.axes_extent = self.MainParamDict['HAxesExtent']
+            self.cbar_extent = self.MainParamDict['HCbarExtent']
+            self.SubPlotParams = self.MainParamDict['HSubPlotParams']
+
+        else:
+            self.axes_extent = self.MainParamDict['VAxesExtent']
+            self.cbar_extent = self.MainParamDict['VCbarExtent']
+            self.SubPlotParams = self.MainParamDict['VSubPlotParams']
+        self.f.subplots_adjust( **self.SubPlotParams)
         # refresh the gridspec and re-draw all of the subplots
         self.UpdateGridSpec()
 
