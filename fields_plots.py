@@ -71,17 +71,9 @@ class FieldsPanel:
                        'cmap': 'None', # If cmap is none, the plot will inherit the parent's cmap
                        'UseDivCmap': True, # Use a diverging cmap for the 2d plots
                        'stretch_colors': False, # If stretch colors is false, then for a diverging cmap the plot ensures -b and b are the same distance from the midpoint of the cmap.
-                       'show_cpu_domains': False # plots lines showing how the CPUs are divvying up the computational region
-                       }
-    BoolList = ['twoD', 'show_cbar', 'set_v_min', 'set_v_max',
-             'show_shock', 'OutlineText', 'spatial_x', 'spatial_y',
-             'Show_FFT_region', 'UseDivCmap', 'stretch_colors', 'normalize_fields',
-             'show_x', 'show_y', 'show_z', 'show_cpu_domains']
-    IntList = ['field_type']
-    FloatList = ['v_min', 'v_max', 'cpow_num', 'div_midpoint']
-    #StrList = ['interpolation', 'cnorm_type', 'cmap']
-    StrList = ['cnorm_type', 'cmap', 'interpolation', 'cmdstr1', 'cmdstr2', 'cmdstr3']
-    SpecialList = ['yaxis_label', '2D_label', '2D_label', 'OneDOnly']
+                       'show_cpu_domains': False, # plots lines showing how the CPUs are divvying up the computational region
+                       'face_color': 'gainsboro' }
+
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))
 
@@ -582,9 +574,9 @@ class FieldsPanel:
                                     PathEffects.Normal()])
             self.shockline_2d.set_visible(self.GetPlotParam('show_shock'))
             if int(matplotlib.__version__[0]) < 2:
-                self.axes.set_axis_bgcolor('lightgrey')
+                self.axes.set_axis_bgcolor(self.GetPlotParam('face_color'))
             else:
-                self.axes.set_facecolor('lightgrey')
+                self.axes.set_facecolor(self.GetPlotParam('face_color'))
             self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 
             if self.parent.MainParamDict['SetxLim']:
@@ -698,9 +690,9 @@ class FieldsPanel:
             self.shock_line.set_visible(self.GetPlotParam('show_shock'))
 
             if int(matplotlib.__version__[0]) < 2:
-                self.axes.set_axis_bgcolor('lightgrey')
+                self.axes.set_axis_bgcolor(self.GetPlotParam('face_color'))
             else:
-                self.axes.set_facecolor('lightgrey')
+                self.axes.set_facecolor(self.GetPlotParam('face_color'))
             self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 
 

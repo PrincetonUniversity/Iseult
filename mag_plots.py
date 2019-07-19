@@ -33,16 +33,10 @@ class BPanel:
                        'UseDivCmap': True,
                        'stretch_colors': False,
                        'cmap': 'None', # If cmap is none, the plot will inherit the parent's cmap,
-                       'show_cpu_domains': False # plots lines showing how the CPUs are divvying up the computational region
+                       'show_cpu_domains': False, # plots lines showing how the CPUs are divvying up the computational region
+                       'face_color': 'gainsboro'
                        }
     # We need the types of all the parameters for the config file
-    BoolList = ['twoD', 'show_cbar', 'set_v_min', 'set_v_max',
-             'show_shock', 'OutlineText', 'spatial_x', 'spatial_y', 'Show_FFT_region',
-             'UseDivCmap', 'stretch_colors']
-    IntList = ['mag_plot_type']
-    FloatList = ['v_min', 'v_max', 'cpow_num', 'div_midpoint']
-    #StrList = ['interpolation', 'cnorm_type', 'cmap'] # Not loading interpolation anymore
-    StrList = ['interpolation','cnorm_type', 'cmap']
 
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))
@@ -340,9 +334,9 @@ class BPanel:
             self.shockline_2d.set_visible(self.GetPlotParam('show_shock'))
 
             if int(matplotlib.__version__[0]) < 2:
-                self.axes.set_axis_bgcolor('lightgrey')
+                self.axes.set_axis_bgcolor(self.GetPlotParam('face_color'))
             else:
-                self.axes.set_facecolor('lightgrey')
+                self.axes.set_facecolor(self.GetPlotParam('face_color'))
 
             self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 
@@ -394,9 +388,9 @@ class BPanel:
             self.shock_line.set_visible(self.GetPlotParam('show_shock'))
 
             if int(matplotlib.__version__[0]) < 2:
-                self.axes.set_axis_bgcolor('lightgrey')
+                self.axes.set_axis_bgcolor(self.GetPlotParam('face_color'))
             else:
-                self.axes.set_facecolor('lightgrey')
+                self.axes.set_facecolor(self.GetPlotParam('face_color'))
 
             self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)#, tick1On= False, tick2On= False)
 

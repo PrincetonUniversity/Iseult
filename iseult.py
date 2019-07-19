@@ -159,15 +159,10 @@ class SubPlotWrapper:
 
         self.PlotParamsDict = {plot_type: '' for plot_type in self.PlotTypeDict.keys()}
         for elm in self.PlotTypeDict.keys():
+
             self.PlotParamsDict[elm] = {key: self.PlotTypeDict[elm].plot_param_dict[key] for key in self.PlotTypeDict[elm].plot_param_dict.keys()}
 
-        # Now we need a dictionary that stores the types of all the PlotParamsDict, for the config file
-        self.ParamsTypeDict = {plot_type: {} for plot_type in self.PlotTypeDict.keys()}
-        for elm in self.ParamsTypeDict.keys():
-            self.ParamsTypeDict[elm]['BoolList'] = list(self.PlotTypeDict[elm].BoolList)
-            self.ParamsTypeDict[elm]['IntList'] = list(self.PlotTypeDict[elm].IntList)
-            self.ParamsTypeDict[elm]['FloatList'] = list(self.PlotTypeDict[elm].FloatList)
-            self.ParamsTypeDict[elm]['StrList'] = list(self.PlotTypeDict[elm].StrList)
+
 
 
     def RestoreDefaultPlotParams(self, ctype = None, RestoreAll = False):
@@ -753,7 +748,7 @@ class MaxNDialog(Tk.Toplevel):
     # command hooks
 
     def validate(self):
-        ''' Check to make sure the user put a good intput in as max file'''
+        ''' Check to make sure the user put a good input in as max file'''
         self.N = str(self.e1.get())
         try:
             self.N = int(self.e1.get())
@@ -2131,7 +2126,6 @@ class MainApp(Tk.Tk):
             self.MainParamDict[tmp_param_str]['wspace']=float(self.f.subplotpars.wspace)
             self.MainParamDict[tmp_param_str]['hspace']=float(self.f.subplotpars.hspace)
 
-            print(self.MainParamDict[tmp_param_str])
         except:
             pass
         cfgDict['MainParamDict'] = self.MainParamDict
@@ -2372,7 +2366,8 @@ class MainApp(Tk.Tk):
                 if tmp_str in cfgDict.keys():
                     tmpchart_type = cfgDict[tmp_str]['ChartType']
                     self.SubPlotList[i][j].SetGraph(tmpchart_type)
-                    self.SubPlotList[i][j].PlotParamsDict[tmpchart_type]=cfgDict[tmp_str].copy()
+                    for key, val in cfgDict[tmp_str].items():
+                        self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][key] = val
 
                 else:
                     # The graph isn't specifiedin the config file, just set it equal to phase plots
@@ -2423,7 +2418,8 @@ class MainApp(Tk.Tk):
 
                     tmpchart_type = cfgDict[tmp_str]['ChartType']
                     self.SubPlotList[i][j].SetGraph(tmpchart_type)
-
+                    for key, val in cfgDict[tmp_str].items():
+                        self.SubPlotList[i][j].PlotParamsDict[tmpchart_type][key] = val
                 else:
                     # The graph isn't specified in the config file, just set it equal to a phase plot
                     self.SubPlotList[i][j].SetGraph('PhasePlot')

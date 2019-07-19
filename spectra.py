@@ -52,22 +52,8 @@ class SpectralPanel:
                        'iNormalizer' : 0.,
                        'BoostedIons' : False, #Show a energy boosted ion plot to compare to electrons
                        'T_legend_loc':  'N/A', # location of temperature legend.
-                       'PL_legend_loc': 'N/A'} # lcation of power law legend
-
-    # We need the types of all the parameters for the config file
-    BoolList = ['twoD', 'set_ylim', 'set_xlim',
-                'spatial_x', 'spatial_y', 'normalize_spectra',
-                'show_ions', 'show_electrons', 'rest_frame','show_legend',
-                'PrtlIntegrationRelative', 'BoostedIons'
-                'SetTe', 'SetTi','MeasureEpsP', 'MeasureEpsE',
-                'DoPowerLawFitElectron', 'DoPowerLawFitIon']
-    IntList = ['spectral_type']
-    FloatList = ['y_min', 'y_max', 'x_min', 'x_max',
-                 'DelGame', 'DelGami', 'GammaIonInjection', 'GammaElectronInjection',
-                 'PowerLawElectronMin', 'PowerLawElectronMax',
-                 'PowerLawIonMin', 'PowerLawIonMax', 'eNormalizer', 'iNormalizer',
-                 'ElectronLeft', 'ElectronRight', 'IonLeft', 'IonRight',]
-    StrList = ['T_legend_loc', 'PL_legend_loc']
+                       'PL_legend_loc': 'N/A',
+                       'face_color': 'gainsboro'} # lcation of power law legend
 
     def __init__(self, parent, figwrapper):
         self.settings_window = None
@@ -317,9 +303,9 @@ class SpectralPanel:
         self.axes.set_yscale("log")
 
         if int(matplotlib.__version__[0]) < 2:
-            self.axes.set_axis_bgcolor('lightgrey')
+            self.axes.set_axis_bgcolor(self.GetPlotParam('face_color'))
         else:
-            self.axes.set_facecolor('lightgrey')
+            self.axes.set_facecolor(self.GetPlotParam('face_color'))
 
         if self.GetPlotParam('set_xlim'):
             self.axes.set_xlim(self.GetPlotParam('x_min'), self.GetPlotParam('x_max'))

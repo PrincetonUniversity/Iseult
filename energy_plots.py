@@ -33,15 +33,9 @@ class EnergyPanel:
                        'y_max': 200.0,
                        'spatial_x': True,
                        'spatial_y': False,
-                       'interpolation': 'nearest'}
+                       'interpolation': 'nearest',
+                       'face_color': 'gainsboro'}
 
-    # We need the types of all the parameters for the config file
-    BoolList = ['twoD', 'masked', 'weighted', 'show_cbar', 'show_shock', 'show_int_region', 'set_color_limits',
-                'set_v_min', 'set_v_max', 'set_y_min', 'set_y_max', 'spatial_x', 'spatial_y']
-    IntList = ['prtl_type', 'xbins', 'ebins']
-    FloatList = ['v_min', 'v_max', 'y_min', 'y_max', 'cpow_num']
-    #StrList = ['interpolation', 'cnorm_type']
-    StrList = ['cnorm_type'] # No longer loading interpolation from config files
 
     prtl_opts = ['proton', 'electron']
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
@@ -340,9 +334,9 @@ class EnergyPanel:
 
 
         if int(matplotlib.__version__[0]) < 2:
-            self.axes.set_axis_bgcolor('lightgrey')
+            self.axes.set_axis_bgcolor(self.GetPlotParam('face_color'))
         else:
-            self.axes.set_facecolor('lightgrey')
+            self.axes.set_facecolor(self.GetPlotParam('face_color'))
 
         self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=self.tick_color)
 

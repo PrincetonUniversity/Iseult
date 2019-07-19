@@ -34,18 +34,14 @@ class  MomentsPanel:
                        'show_legend': True,
                        'spatial_y': False,
                        'logy': False,
-                       'legend_loc': 'N/A'} # legend_loc is a string that stores the
+                       'legend_loc': 'N/A',
+                       'face_color': 'gainsboro'
+                       } # legend_loc is a string that stores the
                                          # location of the legend in figure pixels.
                                          # Unfortunately it is not always up to date.
                                          # N/A plots it at the 'best' location.
 
     # We need the types of all the parameters for the config file
-    BoolList = ['twoD', 'set_v_min', 'set_v_max',
-                'UpstreamFrame', 'show_ions', 'show_electrons', 'show_x',
-                'show_y', 'show_z', 'spatial_x', 'spatial_y', 'weighted', 'show_legend']
-    IntList = ['m_type','xbins']
-    FloatList = ['v_min', 'v_max']
-    StrList = ['legend_loc']
 
     def __init__(self, parent, figwrapper):
         self.settings_window = None
@@ -354,9 +350,9 @@ class  MomentsPanel:
                 self.tz_plot[0].set_data(*stepify(self.x_bins, Total(self.iz, self.icounts, self.ez, self.ecounts)))
 
         if int(matplotlib.__version__[0]) < 2:
-            self.axes.set_axis_bgcolor('lightgrey')
+            self.axes.set_axis_bgcolor(self.GetPlotParam('face_color'))
         else:
-            self.axes.set_facecolor('lightgrey')
+            self.axes.set_facecolor(self.GetPlotParam('face_color'))
 
         self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 

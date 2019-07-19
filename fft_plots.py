@@ -21,14 +21,10 @@ class FFTPanel:
                        'xLog': True,
                        'yLog': True,
                        'spatial_x': False,
-                       'spatial_y': False}
+                       'spatial_y': False,
+                       'face_color': 'gainsboro'}
 
     # We need the types of all the parameters for the config file
-    BoolList = ['twoD', 'set_y_min', 'set_y_max',
-                'xLog', 'yLog', 'spatial_x', 'spatial_y']
-    IntList = ['FFT_type']
-    FloatList = ['y_min', 'y_max']
-    StrList = []
 
     def __init__(self, parent, figwrapper):
         self.settings_window = None
@@ -98,8 +94,8 @@ class FFTPanel:
             self.k_axis = np.arange(iR-iL)*(2*np.pi/(self.xaxis_values[1]-self.xaxis_values[0]))/(iR-iL)-(2*np.pi/(self.xaxis_values[1]-self.xaxis_values[0]))*.5
             # Calculate all of the FFTs, just simpler to do it this way...
             bz = self.FigWrap.LoadKey('bz')[0,:,:]
-            self.oneDslice = bz.shape[0]/2
-            self.BzFFT = np.fft.fft(bz[self.oneDslice,iL:iR]*self.parent.b0**(-1.0))
+
+            self.BzFFT = np.fft.fft(bz[self.parent.ySlice,iL:iR]*self.parent.b0**(-1.0))
             # Shift the fft so it is centered
             self.BzFFT = np.fft.fftshift(self.BzFFT)
             self.all_min_max.append(self.LimFinder(np.abs(self.BzFFT)))
@@ -107,13 +103,13 @@ class FFTPanel:
             bx = self.FigWrap.LoadKey('bx')[0,:,:]
             by = self.FigWrap.LoadKey('by')[0,:,:]
             b_perp_in_plane = by*self.parent.b0**(-1.0)
-            self.BperpFFT = np.fft.fft(b_perp_in_plane[self.oneDslice,iL:iR])
+            self.BperpFFT = np.fft.fft(b_perp_in_plane[self.parent.ySlice,iL:iR])
             # Shift the fft so it is centered
             self.BperpFFT = np.fft.fftshift(self.BperpFFT)
 
             self.all_min_max.append(self.LimFinder(np.abs(self.BperpFFT)))
             ex = self.FigWrap.LoadKey('ex')[0,:,:]
-            self.ExFFT = np.fft.fft(ex[self.oneDslice,iL:iR]*self.parent.e0**(-1.0))
+            self.ExFFT = np.fft.fft(ex[self.parent.ySlice,iL:iR]*self.parent.e0**(-1.0))
             self.ExFFT = np.fft.fftshift(self.ExFFT)
             self.all_min_max.append(self.LimFinder(np.abs(self.ExFFT)))
 
@@ -191,9 +187,9 @@ class FFTPanel:
         self.line = self.axes.plot(self.k_axis, self.y, color = self.line_color)
 
         if int(matplotlib.__version__[0]) < 2:
-            self.axes.set_axis_bgcolor('lightgrey')
+            self.axes.set_axis_bgcolor(self.GetPlotParam('face_color'))
         else:
-            self.axes.set_facecolor('lightgrey')
+            self.axes.set_facecolor(self.GetPlotParam('face_color'))
 
         self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 

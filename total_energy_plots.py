@@ -36,15 +36,10 @@ class TotEnergyPanel:
                        'yLog': True,
                        'spatial_x': False,
                        'spatial_y': False,
-                       'legend_loc': 'N/A'}
+                       'legend_loc': 'N/A',
+                       'face_color': 'gainsboro'}
 
     # We need the types of all the parameters for the config file
-    BoolList = ['twoD', 'set_y_min', 'set_y_max','show_prtl_KE', 'show_field_E','show_B_E', 'show_E_E',
-                'show_ion_E', 'show_electron_E', 'show_total_E', 'yLog', 'set_x_min',
-                'set_x_max', 'show_legend','show_current_time', 'show_Bz_energy'] # spatial_x and spatial_y should never be true, remove from boollist
-    IntList = ['E_type']
-    FloatList = ['y_min', 'y_max','x_min', 'x_max']
-    StrList = ['legend_loc']
 
     def __init__(self, parent, figwrapper):
         self.settings_window = None
@@ -121,9 +116,9 @@ class TotEnergyPanel:
 
 
         if int(matplotlib.__version__[0]) < 2:
-            self.axes.set_axis_bgcolor('lightgrey')
+            self.axes.set_axis_bgcolor(self.GetPlotParam('face_color'))
         else:
-            self.axes.set_facecolor('lightgrey')
+            self.axes.set_facecolor(self.GetPlotParam('face_color'))
 
         self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)
 
