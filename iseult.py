@@ -3579,6 +3579,7 @@ if __name__ == "__main__":
     if cmd_args.wait:
         " try to parse stdin"
         slurm_num = sys.stdin.line().split[-1]
+        print(slurm_num)
         num = 0
         done = False
         while num < 2000 and not done:
