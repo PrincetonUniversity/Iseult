@@ -1652,7 +1652,7 @@ class MeasureFrame(Tk.Toplevel):
 
 class MainApp(Tk.Tk):
     """ We simply derive a new class of Frame as the man frame of our app"""
-    def __init__(self, name):
+    def __init__(self, name,cmd_args):
 
         Tk.Tk.__init__(self)
         self.update_idletasks()
@@ -1660,28 +1660,9 @@ class MainApp(Tk.Tk):
         self.wm_title(name)
         self.settings_window = None
         self.measure_window = None
-        parser = argparse.ArgumentParser(description='Plotting program for Tristan-MP files.')
-#        parser.add_argument('integers', metavar='N', type=int, nargs='+',
-#                        help='The maximum file number to consider')
-#        parser.add_argument('--foo', nargs='?', const='c', default='d')
-#        parser.add_argument('bar', nargs='?', default='d')
-        parser.add_argument('-n', nargs = '?',# dest='accumulate', action='store_const',
-                    const=-1, default=-1,
-                    help='Maximum file # to consider')
-
-        parser.add_argument('-O', nargs = '?',# dest='accumulate', action='store_const',
-                    const='', default='',
-                    help='Directory Iseult will open. Default is output')
-
-        parser.add_argument('-p', nargs = '?',# dest='accumulate', action='store_const',
-                    const='Default', default='Default',
-                    help='''Open Iseult with the given saved view.
-                          If the name of view contains whitespace,
-                          either it must be enclosed in quotation marks or given
-                          with whitespace removed. Name is case sensitive.''')
 
 
-        self.cmd_args = parser.parse_args()
+        self.cmd_args = cmd_args
 #        if self.cmd_args.r:
 #            self.iconify()
         # A variable that keeps track of the first graph with spatial x & y axes
@@ -1899,6 +1880,9 @@ class MainApp(Tk.Tk):
         self.bind('<Right>', self.playbackbar.SkipRight)
         self.bind('r', self.playbackbar.OnReload)
         self.bind('<space>', self.playbackbar.PlayHandler)
+        if self.cmd_args.b :
+            self.after(0,self.MakeAMovie('out.mov', 1, -1, 1, 10))
+            self.after(1, self.quit())
         self.update()
     def ViewUpdate(self):
         tmpdir = list(os.listdir(os.path.join(self.IseultDir, '.iseult_configs')))
@@ -1950,7 +1934,7 @@ class MainApp(Tk.Tk):
                     cfgDict = yaml.safe_load(f)
             except:
                 print('Cannot find/load ' +  self.cmd_args.p.strip().replace(' ', '_') +'.yml in .iseult_configs. If the name of view contains whitespace,')
-                print('either it must be enclosed in quotation marks or given with whitespace removed.')
+                print('either it must be enclosed in quotation marks or given with whitespace replaced by _.')
                 print('Name is case sensitive. Reverting to Default view')
                 with open(os.path.join(self.IseultDir, '.iseult_configs', self.cmd_args.p.strip().replace(' ', '_') +'.yml')) as f:
                     cfgDict = yaml.safe_load(f)
@@ -2024,71 +2008,8 @@ class MainApp(Tk.Tk):
                               'LoopPlayback': True,
                               'PrtlStride': 5,
                               'legendLabelSize':11}
-        """
-        # The list of things that should be formatted as booleans.
-        BoolList = ['Reload2End', 'ClearFig', 'ShowTitle', 'DoLorentzBoost',
-                    'HorizontalCbars', 'SetxLim', 'SetyLim', 'SetkLim', 'LinkK',
-                    'LoopPlayback', 'Recording', 'FFTRelative', 'xLimsRelative',
-                    'ConstantShockVel', 'Average1D']
-
-
-        for elm in BoolList:
-            if elm.lower() in config.options('main'):
-                self.MainParamDict[elm] = config.getboolean('main', elm)
-
-        # The list of things that should be formatted as ints.
-        IntList = ['NumFontSize', 'AxLabelSize', 'xLabelPad', 'yLabelPad', #'MaxRows','MaxCols',  No longer saving this to config files.
-                   'NumOfRows', 'NumOfCols', 'ImageAspect', 'legendLabelSize'
-                   'LinkSpatial', 'SkipSize', 'PrtlStride','cbarLabelPad', 'annotateTextSize']
-
-        for elm in IntList:
-            if elm.lower() in config.options('main'):
-                self.MainParamDict[elm] = int(config.getfloat('main', elm))
-
-
-        # The list of things that should be formatted as Floats.
-        FloatList = [#'DelGame', 'DelGami', 'GammaIonInjection', 'GammaElectronInjection',
-                    #'PowerLawElectronMin', 'PowerLawElectronMax',
-                    #'PowerLawIonMin', 'PowerLawIonMax',
-                    'GammaBoost',
-                    #'ElectronLeft', 'ElectronRight', 'IonLeft', 'IonRight',
-                    'FFTLeft', 'FFTRight',
-                    'xLeft', 'xRight', 'yBottom', 'yTop', 'kLeft', 'kRight',
-                    'WaitTime', 'ySlice', 'zSlice']
-
-        for elm in FloatList:
-            if elm.lower() in config.options('main'):
-                self.MainParamDict[elm] = config.getfloat('main', elm)
-
-        StrList = ['ColorMap', 'DivColorMap', 'WindowSize']
-
-        for elm in StrList:
-            if elm.lower() in config.options('main'):
-                self.MainParamDict[elm] = config.get('main', elm)
-
-        # Some special parsing rules. First some lists
-        IntListsList = ['HAxesExtent', 'HCbarExtent', 'VAxesExtent', 'VCbarExtent']
-        for elm in IntListsList:
-            if elm.lower() in config.options('main'):
-                tmplist = config.get('main', elm).split(',')
-                for i in range(len(tmplist)):
-                    tmplist[i] = int(tmplist[i])
-                self.MainParamDict[elm] = list(tmplist)
-
-        # Now some dicts
-        DictList = ['HSubPlotParams', 'VSubPlotParams']
-        for elm in DictList:
-            if elm.lower() in config.options('main'):
-                self.MainParamDict[elm] = {}
-                tmplist = config.get('main', elm).split(',')
-                self.MainParamDict[elm]['left'] = float(tmplist[0])
-                self.MainParamDict[elm]['right'] = float(tmplist[1])
-                self.MainParamDict[elm]['top'] = float(tmplist[2])
-                self.MainParamDict[elm]['bottom'] = float(tmplist[3])
-                self.MainParamDict[elm]['wspace'] = float(tmplist[4])
-                self.MainParamDict[elm]['hspace'] = float(tmplist[5])
-        """
-        self.MainParamDict = cfgDict['MainParamDict'].copy()
+        for key, val in cfgDict['MainParamDict'].items():
+            self.MainParamDict[key] = val
         # if stride is 0 that means it has only been initialized... set to default
         if self.stride == 0:
             self.stride = self.MainParamDict['PrtlStride']
@@ -2129,6 +2050,7 @@ class MainApp(Tk.Tk):
         except:
             pass
         cfgDict['MainParamDict'] = self.MainParamDict
+        cfgDict['MainParamDict']['electron_color'] = self.electron_color
         for i in range(self.MainParamDict['NumOfRows']):
             for j in range(self.MainParamDict['NumOfCols']):
                 tmp_str = 'Chart' + str(i) + '_' + str(j)
@@ -3309,10 +3231,10 @@ class MainApp(Tk.Tk):
 
             if MakingMovie and os.path.isdir(self.movie_dir):
                 try:
-                    os.makedirs(os.path.join(self.movie_dir, '.tmp_erase'))
+                    os.makedirs(os.path.join(self.movie_dir, '../tmp_erase'))
 
                 except (OSError, IOError):
-                    if not os.path.isdir(os.path.join(self.movie_dir, '.tmp_erase')):
+                    if not os.path.isdir(os.path.join(self.movie_dir, '../tmp_erase')):
                         self.PrintFig(MakingMovie = MakingMovie, Flag = self.recordProblemsPrompt())
 
             fname = 'iseult_img_'+ str(self.TimeStep.value).zfill(3)+'.png'
@@ -3323,7 +3245,7 @@ class MainApp(Tk.Tk):
                     self.PrintFig(MakingMovie = MakingMovie, Flag = self.recordProblemsPrompt())
             if MakingMovie:
                 try:
-                    self.f.savefig(os.path.join(self.movie_dir, '.tmp_erase', fname))#, dpi = 300)#, facecolor=self.f.get_facecolor())#, edgecolor='none')
+                    self.f.savefig(os.path.join(self.movie_dir, '../tmp_erase', fname))#, dpi = 300)#, facecolor=self.f.get_facecolor())#, edgecolor='none')
                 except (OSError, IOError):
                     self.PrintFig(MakingMovie = MakingMovie, Flag = self.recordProblemsPrompt())
 
@@ -3346,9 +3268,9 @@ class MainApp(Tk.Tk):
         # Where-ever you are create a hidden file and then delete that directory:
         self.PrintFig(MakingMovie= True)
         # Delete all the images in that subdirectory
-        if os.path.isdir(os.path.join(self.movie_dir, '.tmp_erase')):
-            for name in os.listdir(os.path.join(self.movie_dir, '.tmp_erase')):
-                os.remove(os.path.join(self.movie_dir, '.tmp_erase', name))
+        if os.path.isdir(os.path.join(self.movie_dir, '../tmp_erase')):
+            for name in os.listdir(os.path.join(self.movie_dir, '../tmp_erase')):
+                os.remove(os.path.join(self.movie_dir, '../tmp_erase', name))
 
             # First find the last frame is stop is -1:
 
@@ -3376,9 +3298,9 @@ class MainApp(Tk.Tk):
             cmdstring = ['xterm', '-e','ffmpeg',
                         '-y', '-f', 'image2', # overwrite, image2 is a colorspace thing.
                         '-framerate', str(int(FPS)), # Set framerate to the the user selected option
-                        '-pattern_type', 'glob', '-i', os.path.join(self.movie_dir, '.tmp_erase','*.png'), # Not sure what this does... I am going to get rid of it
+                        '-pattern_type', 'glob', '-i', os.path.join(self.movie_dir, '../tmp_erase','*.png'), # Not sure what this does... I am going to get rid of it
                         '-codec', 'copy',  # save as a *.mov
-                        os.path.join(self.movie_dir,fname)]#, '&']#, # output name,
+                        os.path.join(os.path.join(self.movie_dir,'..'),fname)]#, '&']#, # output name,
                         #'<dev/null', '>dev/null', '2>/var/log/ffmpeg.log', '&'] # run in background
             try:
                 subprocess.call(cmdstring)
@@ -3391,9 +3313,9 @@ class MainApp(Tk.Tk):
                         "Please make sure that ffmpeg is installedgg on your machine."
                         )
 
-            for name in os.listdir(os.path.join(self.movie_dir, '.tmp_erase')):
-                os.remove(os.path.join(self.movie_dir, '.tmp_erase', name))
-            os.rmdir(os.path.join(self.movie_dir, '.tmp_erase'))
+            for name in os.listdir(os.path.join(self.movie_dir, '../tmp_erase')):
+                os.remove(os.path.join(self.movie_dir, '../tmp_erase', name))
+            os.rmdir(os.path.join(self.movie_dir, '../tmp_erase'))
             '''
             #THIS METHOD TRIES TO USE SUBPROCCESS AND PIPING TO OUTPUT... LEAVING THIS HERE
             #FOR LATER....
@@ -3627,5 +3549,44 @@ if __name__ == "__main__":
     else:
         print 'Diverged'
     '''
-    app = MainApp('Iseult')
+    parser = argparse.ArgumentParser(description='Plotting program for Tristan-MP files.')
+    #        parser.add_argument('integers', metavar='N', type=int, nargs='+',
+    #                        help='The maximum file number to consider')
+    #        parser.add_argument('--foo', nargs='?', const='c', default='d')
+    #        parser.add_argument('bar', nargs='?', default='d')
+    parser.add_argument('-n', nargs = '?',# dest='accumulate', action='store_const',
+                        const=-1, default=-1,
+                        help='Maximum file # to consider')
+
+    parser.add_argument('-O', nargs = '?',# dest='accumulate', action='store_const',
+                        const='', default='',
+                        help='Directory Iseult will open. Default is output')
+
+    parser.add_argument('-p', nargs = '?',# dest='accumulate', action='store_const',
+                        const='Default', default='Default',
+                        help='''Open Iseult with the given saved view.
+                              If the name of view contains whitespace,
+                              either it must be enclosed in quotation marks or given
+                              with whitespace removed. Name is case sensitive.''')
+    parser.add_argument("-b", help="Run Iseult from bash script. Makes a movie.",
+                        action="store_true")
+
+    parser.add_argument("--wait", help="Wait until current simulation is finished before making movie.",
+                        action="store_true")
+
+    cmd_args = parser.parse_args()
+    import sys
+    if cmd_args.wait:
+        " try to parse stdin"
+        slurm_num = sys.stdin.line().split[-1]
+        num = 0
+        done = False
+        while num < 2000 and not done:
+            slurm_queue = subprocess.check_output(["squeue"])
+            if slurm_queue.find(slurm_num) != -1:
+                num += 1
+                time.sleep(3E5)
+    app = MainApp('Iseult', cmd_args)
+
+
     app.mainloop()

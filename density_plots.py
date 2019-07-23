@@ -195,7 +195,7 @@ class DensPanel:
                     self.two_d_label = r'$n_i$'
             if self.FigWrap.GetPlotParam('dens_type') == 2:
                 if self.FigWrap.GetPlotParam('normalize_density'):
-                    self.zval = self.densi*self.ppc0**(-1.0)
+                    self.zval = self.dense*self.ppc0**(-1.0)
                     self.two_d_label = r'$n_e/n_0$'
                 else:
                     self.zval = self.dense
@@ -352,9 +352,14 @@ class DensPanel:
                     self.linedens[0].set_data(self.xaxis_values, self.densi[self.parent.zSlice,self.parent.ySlice,:])
             if self.GetPlotParam('dens_type')==2:
                 if self.parent.MainParamDict['Average1D']:
-                    self.linedens[0].set_data(self.xaxis_values, np.average(self.dense.reshape(-1,self.densi.shape[-1]), axis = 0))
+                    self.linedens[0].set_data(self.xaxis_values, np.average(self.dense.reshape(-1,self.dense.shape[-1]), axis = 0))
                 else: # x-y plane
                     self.linedens[0].set_data(self.xaxis_values, self.dense[self.parent.zSlice,self.parent.ySlice,:])
+            if self.GetPlotParam('dens_type')==2:
+                if self.parent.MainParamDict['Average1D']:
+                    self.linedens[0].set_data(self.xaxis_values, np.average(self.rho.reshape(-1,self.rho.shape[-1]), axis = 0))
+                else: # x-y plane
+                    self.linedens[0].set_data(self.xaxis_values, self.rho[self.parent.zSlice,self.parent.ySlice,:])
             if self.GetPlotParam('normalize_density'):
                 self.linedens[0].set_data(self.linedens[0].get_data()[0], self.linedens[0].get_data()[1]*self.ppc0**(-1))
 
