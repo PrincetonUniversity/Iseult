@@ -4,6 +4,7 @@ Chart0_0:
   E_min: 1.0
   cnorm_type: Log
   cpow_num: 0.6
+  face_color: gainsboro
   interpolation: nearest
   masked: 1
   mom_dim: 0
@@ -33,6 +34,7 @@ Chart0_1:
   E_min: 1.0
   cnorm_type: Log
   cpow_num: 0.6
+  face_color: gainsboro
   interpolation: nearest
   masked: 1
   mom_dim: 0
@@ -65,6 +67,7 @@ Chart1_0:
   cpow_num: 0.6
   dens_type: 0
   div_midpoint: 0.0
+  face_color: gainsboro
   interpolation: none
   normalize_density: true
   set_color_limits: false
@@ -244,6 +247,7 @@ Chart1_1:
   cnorm_type: Linear
   cpow_num: 1.0
   div_midpoint: 0.0
+  face_color: gainsboro
   field_type: 0
   interpolation: none
   normalize_fields: true
@@ -292,6 +296,7 @@ Chart2_0:
   SetTi: false
   T_legend_loc: N/A
   eNormalizer: 0.0
+  face_color: gainsboro
   iNormalizer: 0.0
   normalize_spectra: true
   rest_frame: false
@@ -316,6 +321,7 @@ Chart2_1:
   cnorm_type: Linear
   cpow_num: 0.6
   div_midpoint: 0.0
+  face_color: gainsboro
   interpolation: none
   mag_plot_type: 0
   set_v_max: false
@@ -342,6 +348,10 @@ MainParamDict:
   FFTLeft: 0.0
   FFTRelative: true
   FFTRight: 200.0
+  FFT_color: k
+  FigSize:
+  - 12.0
+  - 6.22
   GammaBoost: 0.0
   HAxesExtent:
   - 18
@@ -399,9 +409,15 @@ MainParamDict:
   WindowSize: 1200x700
   annotateTextSize: 18
   cbarLabelPad: 15
+  dpi: 100
+  electron_color: '#fca636'
+  electron_fit_color: yellow
+  ion_color: '#d6556d'
+  ion_fit_color: r
   kLeft: 0.1
   kRight: 1.0
   legendLabelSize: 11
+  shock_color: w
   xLabelPad: 0
   xLeft: 0.0
   xLimsRelative: false
@@ -411,5 +427,5 @@ MainParamDict:
   ySlice: 0.5
   yTop: 100.0
   zSlice: 0.0
-main:
+general:
   ConfigName: Default

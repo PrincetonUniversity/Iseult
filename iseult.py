@@ -39,6 +39,7 @@ from tkinter import ttk, filedialog, messagebox
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
 matplotlib.rcParams['image.resample'] = False
+matplotlib.rcParams['image.origin'] = 'upper'
 
 import argparse
 
@@ -1362,14 +1363,16 @@ class SettingsFrame(Tk.Toplevel):
         else:
             self.parent.MainParamDict['ColorMap'] = self.cmapvar.get()
             if self.parent.MainParamDict['ColorMap'] in self.parent.cmaps_with_green:
-                self.parent.ion_color =  new_cmaps.cmaps['plasma'](0.55)
-                self.parent.electron_color = new_cmaps.cmaps['plasma'](0.8)
+                self.parent.ion_color = "#{0:02x}{1:02x}{2:02x}".format(int(np.round(new_cmaps.cmaps['plasma'](0.55)[0]*255)), int(np.round(new_cmaps.cmaps['plasma'](0.55)[1]*255)), int(np.round(new_cmaps.cmaps['plasma'](0.55)[2]*255)))
+                self.parent.electron_color ="#{0:02x}{1:02x}{2:02x}".format(int(np.round(new_cmaps.cmaps['plasma'](0.8)[0]*255)), int(np.round(new_cmaps.cmaps['plasma'](0.8)[1]*255)), int(np.round(new_cmaps.cmaps['plasma'](0.8)[2]*255)))
+
                 self.parent.ion_fit_color = 'r'
                 self.parent.electron_fit_color = 'yellow'
 
             else:
-                self.parent.ion_color = new_cmaps.cmaps['viridis'](0.45)
-                self.parent.electron_color = new_cmaps.cmaps['viridis'](0.75)
+                self.parent.ion_color = "#{0:02x}{1:02x}{2:02x}".format(int(np.round(new_cmaps.cmaps['viridis'](0.45)[0]*255)), int(np.round(new_cmaps.cmaps['viridis'](0.45)[1]*255)), int(np.round(new_cmaps.cmaps['viridis'](0.45)[2]*255)))
+                self.parent.electron_color ="#{0:02x}{1:02x}{2:02x}".format(int(np.round(new_cmaps.cmaps['viridis'](0.75)[0]*255)), int(np.round(new_cmaps.cmaps['viridis'](0.75)[1]*255)), int(np.round(new_cmaps.cmaps['viridis'](0.75)[2]*255)))
+
                 self.parent.ion_fit_color = 'mediumturquoise'
                 self.parent.electron_fit_color = 'lime'
 
@@ -1813,6 +1816,7 @@ class MainApp(Tk.Tk):
         self.canvas = FigureCanvasTkAgg(self.f, master=self)
 
         self.GenMainParamDict()
+
         # now root.geometry() returns valid size/placement
         self.minsize(self.winfo_width(), self.winfo_height())
         self.geometry(self.MainParamDict['WindowSize'])
@@ -1847,23 +1851,6 @@ class MainApp(Tk.Tk):
 
         self.findDir()
 
-        # Set the particle colors
-        if self.MainParamDict['ColorMap'] in self.cmaps_with_green:
-            self.shock_color = 'w'
-            self.ion_color =  new_cmaps.cmaps['plasma'](0.55)
-            self.electron_color = new_cmaps.cmaps['plasma'](0.8)
-            self.ion_fit_color = 'r'
-            self.electron_fit_color = 'yellow'
-            self.FFT_color = 'k'
-
-        else:
-            self.shock_color = 'w'
-            self.ion_color = new_cmaps.cmaps['viridis'](0.45)
-            self.electron_color = new_cmaps.cmaps['viridis'](0.75)
-            self.ion_fit_color = 'mediumturquoise'
-            self.electron_fit_color = 'limegreen'
-            self.FFT_color = 'k'
-
 
         self.TimeStep.attach(self)
         self.InitializeCanvas()
@@ -1891,15 +1878,17 @@ class MainApp(Tk.Tk):
             if cfile.split('.')[-1]=='yml':
                 with open(os.path.join(os.path.join(self.IseultDir, '.iseult_configs'), cfile), 'r') as f:
                     cfgDict=yaml.safe_load(f)
-                if 'general' in cfgDict.keys():
-                    if 'ConfigName'  in cfgDict['general'].keys():
-                        tmpstr = cfgDict['general']['ConfigName']
-                        try:
-                            self.presetMenu.delete(tmpstr)
-                        except:
-                            pass
-                        self.presetMenu.add_command(label = tmpstr, command = partial(self.LoadConfig, str(os.path.join(self.IseultDir,'.iseult_configs', cfile))))
-
+                try:
+                    if 'general' in cfgDict.keys():
+                        if 'ConfigName'  in cfgDict['general'].keys():
+                            tmpstr = cfgDict['general']['ConfigName']
+                            try:
+                                self.presetMenu.delete(tmpstr)
+                            except:
+                                pass
+                            self.presetMenu.add_command(label = tmpstr, command = partial(self.LoadConfig, str(os.path.join(self.IseultDir,'.iseult_configs', cfile))))
+                except:
+                    pass
     def StrideChanged(self):
         # first we have to remove the calculated energy time steps
         self.TotalEnergyTimeSteps = []
@@ -1936,7 +1925,7 @@ class MainApp(Tk.Tk):
                 print('Cannot find/load ' +  self.cmd_args.p.strip().replace(' ', '_') +'.yml in .iseult_configs. If the name of view contains whitespace,')
                 print('either it must be enclosed in quotation marks or given with whitespace replaced by _.')
                 print('Name is case sensitive. Reverting to Default view')
-                with open(os.path.join(self.IseultDir, '.iseult_configs', self.cmd_args.p.strip().replace(' ', '_') +'.yml')) as f:
+                with open(os.path.join(self.IseultDir, '.iseult_configs', 'Default.yml')) as f:
                     cfgDict = yaml.safe_load(f)
         else:
             with open(config_file) as f:
@@ -2007,9 +1996,22 @@ class MainApp(Tk.Tk):
                               'kLeft': 0.1,
                               'LoopPlayback': True,
                               'PrtlStride': 5,
+                              'electron_color': '#fca636',
+                              'electron_fit_color': 'yellow',
+                              'ion_color': '#d6556d',
+                              'ion_fit_color': 'r',
+                              'shock_color': 'w',
+                              'FFT_color': 'k',
                               'legendLabelSize':11}
         for key, val in cfgDict['MainParamDict'].items():
             self.MainParamDict[key] = val
+        self.electron_color = self.MainParamDict['electron_color']
+        self.ion_color = self.MainParamDict['ion_color']
+        self.shock_color = self.MainParamDict['shock_color']
+        self.ion_fit_color = self.MainParamDict['ion_fit_color']
+        self.electron_fit_color = self.MainParamDict['electron_fit_color']
+        self.FFT_color = self.MainParamDict['FFT_color']
+
         # if stride is 0 that means it has only been initialized... set to default
         if self.stride == 0:
             self.stride = self.MainParamDict['PrtlStride']
@@ -2035,6 +2037,13 @@ class MainApp(Tk.Tk):
 
         # Update the 'WindowSize' attribute to the current window size
         self.MainParamDict['WindowSize'] = str(self.winfo_width())+'x'+str(self.winfo_height())
+        # Get figsize and dpi
+
+        self.MainParamDict['FigSize'] = [float(self.f.get_size_inches()[0]),float(self.f.get_size_inches()[1])]
+
+        #print(self.MainParamDict['FigSize'], type(self.MainParamDict['FigSize']))
+        self.MainParamDict['dpi'] = self.f.dpi
+        #print(self.MainParamDict['FigSize'], self.MainParamDict['dpi'] )
         # Update the current subplot params
 
 
@@ -2051,6 +2060,12 @@ class MainApp(Tk.Tk):
             pass
         cfgDict['MainParamDict'] = self.MainParamDict
         cfgDict['MainParamDict']['electron_color'] = self.electron_color
+        cfgDict['MainParamDict']['ion_color'] = self.ion_color
+        cfgDict['MainParamDict']['shock_color'] = self.shock_color
+        cfgDict['MainParamDict']['ion_fit_color'] = self.ion_fit_color
+        cfgDict['MainParamDict']['electron_fit_color'] = self.electron_fit_color
+        cfgDict['MainParamDict']['FFT_color'] = self.FFT_color
+        self.SaveLLoc()
         for i in range(self.MainParamDict['NumOfRows']):
             for j in range(self.MainParamDict['NumOfCols']):
                 tmp_str = 'Chart' + str(i) + '_' + str(j)
@@ -2267,7 +2282,7 @@ class MainApp(Tk.Tk):
                 print('Cannot find/load ' +  self.cmd_args.p.strip().replace(' ', '_') +'.yml in .iseult_configs. If the name of view contains whitespace,')
                 print('either it must be enclosed in quotation marks or given with whitespace removed.')
                 print('Name is case sensitive. Reverting to Default view')
-                with open(os.path.join(self.IseultDir, '.iseult_configs', self.cmd_args.p.strip().replace(' ', '_') +'.yml')) as f:
+                with open(os.path.join(self.IseultDir, '.iseult_configs', 'Default.yml')) as f:
                     cfgDict = yaml.safe_load(f)
         else:
             with open(config_file) as f:
@@ -3571,22 +3586,22 @@ if __name__ == "__main__":
     parser.add_argument("-b", help="Run Iseult from bash script. Makes a movie.",
                         action="store_true")
 
-    parser.add_argument("--wait", help="Wait until current simulation is finished before making movie.",
-                        action="store_true")
+    #parser.add_argument("--wait", help="Wait until current simulation is finished before making movie.",
+    #                    action="store_true")
 
     cmd_args = parser.parse_args()
-    import sys
-    if cmd_args.wait:
-        " try to parse stdin"
-        slurm_num = sys.stdin.line().split[-1]
-        print(slurm_num)
-        num = 0
-        done = False
-        while num < 2000 and not done:
-            slurm_queue = subprocess.check_output(["squeue"])
-            if slurm_queue.find(slurm_num) != -1:
-                num += 1
-                time.sleep(3E5)
+    #import sys
+    #if cmd_args.wait:
+    #    " try to parse stdin"
+    #    slurm_num = sys.stdin.read().split[-1]
+    #    print(slurm_num)
+    #    num = 0
+    #    done = False
+    #    while num < 2000 and not done:
+    #        slurm_queue = subprocess.check_output(["squeue"]    )
+    #        if slurm_queue.find(slurm_num) != -1:
+    #            num += 1
+    #            time.sleep(3E5)
     app = MainApp('Iseult', cmd_args)
 
 
