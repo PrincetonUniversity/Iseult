@@ -1,5 +1,4 @@
 import os,sys, subprocess, yaml
-sys.path.append('./src/')
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -66,7 +65,7 @@ class Oengus():
         self.cmd_args = cmd_args
 #        if self.cmd_args.r:
 #            self.iconify()
-        self.IseultDir = os.path.dirname(__file__)
+        self.IseultDir = os.path.join(os.path.dirname(__file__),'..')
         self.dirname = os.curdir
 
         # Read Config File
@@ -97,6 +96,7 @@ class Oengus():
 
         # Make the object hold the timestep info
         # Some options to set the way the spectral lines are dashed
+        self.spect_plot_counter = 0
         self.dashes_options = [[],[3,1],[5,1],[1,1]]
 
         # divy up the figure into a bunch of subplots using GridSpec.
@@ -295,8 +295,7 @@ class Oengus():
         self.TotalMagEnergy = np.array(list(map(lambda o: np.sum(o.bz*o.bz+o.bx*o.bx+o.by*o.by)*o.istep**2*.5, self.sim)))
         self.TotalElectricEnergy = np.array(list(map(lambda o: np.sum(o.ez*o.ez+o.ex*o.ex+o.ey*o.ey)*o.istep**2*.5, self.sim)))
         self.TotalBzEnergy = np.array(list(map(lambda o: np.sum(o.bz*o.bz)*o.istep**2*.5, self.sim)))
-        print(self.TotalEnergyTimes)
-        print(self.TotalIonEnergy)
+
     def draw_output(self, n):
         o = self.sim[n]
         # FIND THE SLICE
@@ -391,41 +390,7 @@ class Oengus():
                         # Choose the right dashes pattern
                         self.SubPlotList[pos[0]][pos[1]].IntRegionLines[-1].set_dashes(self.dashes_options[k])
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Plotting program for Tristan-MP files.')
-    parser.add_argument('-n', nargs = '?',# dest='accumulate', action='store_const',
-                    const=-1, default=-1,
-                    help='Maximum file # to consider')
-
-    parser.add_argument('-O', nargs = '?',# dest='accumulate', action='store_const',
-                    const='', default='',
-                    help='Directory Iseult will open. Default is output')
-
-    parser.add_argument('-p', nargs = '?',# dest='accumulate', action='store_const',
-                    const='Default', default='Default',
-                    help='''Open Iseult with the given saved view.
-                          If the name of view contains whitespace,
-                          either it must be enclosed in quotation marks or given
-                          with whitespace removed. Name is case sensitive.''')
-    parser.add_argument("-b", help="Run Iseult from bash script. Makes a movie.",
-                    action="store_true")
-
-    #parser.add_argument("--wait", help="Wait until current simulation is finished before making movie.",
-    #                    action="store_true")
-
-    cmd_args = parser.parse_args()
-    #import sys
-    #if cmd_args.wait:
-    #    " try to parse stdin"
-    #    slurm_num = sys.stdin.read().split[-1]
-    #    print(slurm_num)
-    #    num = 0
-    #    done = False
-    #    while num < 2000 and not done:
-    #        slurm_queue = subprocess.check_output(["squeue"]    )
-    #        if slurm_queue.find(slurm_num) != -1:
-    #            num += 1
-    #            time.sleep(3E5)
+def runMe(cmd_args):
     test = Oengus(cmd_args)
     test.draw_output(-1)
     plt.savefig('test.png', dpi = test.MainParamDict['dpi'])

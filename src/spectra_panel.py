@@ -69,7 +69,8 @@ class SpectralPanel:
 
         # When the plot is initialized it will look to see if there are other spectral plots.
         #self.spect_num = -1 #it will count itself so we have to correct for an off by one error.
-        self.spect_num = 0 #it will count itself so we have to correct for an off by one error.
+        self.spect_num = self.parent.spect_plot_counter #it will count itself so we have to correct for an off by one error.
+        self.parent.spect_plot_counter += 1
         #for i in range(self.parent.MainParamDict['NumOfRows']):
         #    for j in range(self.parent.MainParamDict['NumOfCols']):
         #        if self.parent.SubPlotList[i][j].chartType == 'SpectraPlot':
