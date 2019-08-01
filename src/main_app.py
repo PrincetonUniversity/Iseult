@@ -1846,8 +1846,8 @@ class MainApp(Tk.Tk):
         # Look for the tristan output files and load the file paths into
         # previous objects
         self.dirname = os.curdir
-        if len(self.cmd_args.O)>0:
-            self.dirname = os.path.join(self.dirname, self.cmd_args.O)
+        if len(self.cmd_args.O[0])>0:
+            self.dirname = os.path.join(self.dirname, self.cmd_args.O[0])
 
         self.findDir()
 

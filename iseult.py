@@ -10,9 +10,16 @@ if __name__ == '__main__':
     parser.add_argument('-n', nargs = '?',# dest='accumulate', action='store_const',
                             const=-1, default=-1,
                             help='Maximum file # to consider')
+    parser.add_argument('-framerate', nargs = '?',# dest='accumulate', action='store_const',
+                        const=10, default=10,
+                        help='FPS for the movie')
 
-    parser.add_argument('-O', nargs = '?',# dest='accumulate', action='store_const',
-                            const='', default='',
+    parser.add_argument('-outmovie', nargs = '?',# dest='accumulate', action='store_const',
+                        const='out.mov', default='out.mov',
+                        help='FPS for the movie')
+
+    parser.add_argument('-O', nargs = '+',# dest='accumulate', action='store_const',
+                            default=[''],
                             help='Directory Iseult will open. Default is output')
 
     parser.add_argument('-p', nargs = '?',# dest='accumulate', action='store_const',
@@ -23,6 +30,11 @@ if __name__ == '__main__':
                                   with whitespace removed. Name is case sensitive.''')
     parser.add_argument("-b", help="Run Iseult from bash script. Makes a movie.",
                             action="store_true")
+
+    parser.add_argument("-name", nargs = '+',# dest='accumulate', action='store_const',
+                         default=[''],
+                            help='Plot Title')
+
 
     #parser.add_argument("--wait", help="Wait until current simulation is finished before making movie.",
     #                    action="store_true")
@@ -36,4 +48,5 @@ if __name__ == '__main__':
         runMe(cmd_args)
     else:
         from oengus import runMe
+        print(cmd_args.name, cmd_args.O)
         runMe(cmd_args)

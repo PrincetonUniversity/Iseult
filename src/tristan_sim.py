@@ -31,7 +31,6 @@ class TristanSim(object):
 
         self._name = os.path.split(self.dir)[0]
         self._name = os.path.split(self.dir)[-1]
-        self.getFileNums()
         self.xtraStride = xtraStride
         self._h5Key2FileDict = {}
         self._fnum = self.getFileNums()
@@ -87,7 +86,7 @@ class TristanSim(object):
             allThere = list(sorted(allThere, key = lambda x: int(x)))
             if hasStar == len(self._pathDict.keys()):
                 allThere.append('***')
-            
+
             return allThere
 
         except OSError:
@@ -150,10 +149,10 @@ class OutputPoint(ObjectMapper):
     '''A object that provides an API to access data from Tristan-mp
     particle-in-cell simulations. The specifics of your simulation should be
     defined as a class that extends this object.'''
-    def __init__(self, sim, n=0):
+    def __init__(self, sim, n='001'):
         self._sim = sim
         self.__myKeys = []
-
+        self.fnum = n
 
         for key, fname, h5KeyList in zip(sim._outputFileKey, sim._outputFileNames, sim._outputFileH5Keys):
             self.__myKeys.append(key)

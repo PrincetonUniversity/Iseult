@@ -19,6 +19,8 @@ from energy_panel import EnergyPanel
 from fft_panel import FFTPanel
 from total_energy_panel import TotEnergyPanel
 from moments_panel import MomentsPanel
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+from PIL import Image
 
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
@@ -28,52 +30,24 @@ import argparse
 
 """
 ### NEED THIS!
-def SetCpuDomainLines(self):
-    '''This function sets the Cpu lines up. It should only be called when
-    redrawing the axes and after the axes is creates as it creates all of
-    the line objects.'''
 
-    # regardless if it is 1D or 2D we'll show the x_domains...
-    # This could change if we decide to add the ability to show transverse 1D slices
-    self.cpu_x_lines = []
-    self.cpu_y_lines = []
-    for i in range(len(self.parent.cpu_x_locs)):
-        self.cpu_x_lines.append(self.graph.axes.axvline(self.parent.cpu_x_locs[i], linewidth = 1, linestyle = ':',color = 'w') )
-    if self.GetPlotParam('twoD'):
-        for i in range(len(self.parent.cpu_y_locs)):
-            self.cpu_y_lines.append(self.graph.axes.axhline(self.parent.cpu_y_locs[i], linewidth = 1, linestyle = ':',color = 'w'))
-
-def UpdateCpuDomainLines(self):
-    '''This updates the location of the Cpu lines. It should only be called
-    when refreshing the axes as it requires the line objects to already be
-        created.'''
-        # regardless if it is 1D or 2D we'll show the x_domains...
-        # This could change if we decide to add the ability to show transverse 1D slices
-        for i in range(len(self.cpu_x_lines)):
-            self.cpu_x_lines[i].set_xdata([self.parent.cpu_x_locs[i],self.parent.cpu_x_locs[i]])
-
-        if self.GetPlotParam('twoD'):
-            for i in range(len(self.parent.cpu_y_locs)):
-                self.cpu_y_lines[i].set_ydata([self.parent.cpu_y_locs[i],self.parent.cpu_y_locs[i]])
 """
 
 
 class Oengus():
     """ We simply derive a new class of Frame as the man frame of our app"""
-    def __init__(self, cmd_args, name =''):
+    def __init__(self, preset_view='Default', sim=None, name =''):
         self.sim_name = name
-        self.cmd_args = cmd_args
-#        if self.cmd_args.r:
-#            self.iconify()
-        self.IseultDir = os.path.join(os.path.dirname(__file__),'..')
-        self.dirname = os.curdir
+        self.sim = sim
+        self.IseultDir = os.path.join(os.path.dirname(__file__), '..')
+        self.dirname = sim.dir
 
         # Read Config File
         try:
-            with open(os.path.join(self.IseultDir, '.iseult_configs', self.cmd_args.p.strip().replace(' ', '_') +'.yml')) as f:
+            with open(os.path.join(self.IseultDir, '.iseult_configs', preset_view.strip().replace(' ', '_') +'.yml')) as f:
                 self.cfgDict = yaml.safe_load(f)
         except:
-            print('Cannot find/load ' +  self.cmd_args.p.strip().replace(' ', '_') +'.yml in .iseult_configs. If the name of view contains whitespace,')
+            print('Cannot find/load ' +  preset_view.strip().replace(' ', '_') +'.yml in .iseult_configs. If the name of view contains whitespace,')
             print('either it must be enclosed in quotation marks or given with whitespace replaced by _.')
             print('Name is case sensitive. Reverting to Default view')
             with open(os.path.join(self.IseultDir, '.iseult_configs', 'Default.yml')) as f:
@@ -92,7 +66,10 @@ class Oengus():
             self.cbar_extent = self.MainParamDict['VCbarExtent']
             self.SubPlotParams = self.MainParamDict['VSubPlotParams']
         self.figure = plt.figure(figsize = self.MainParamDict['FigSize'], dpi = self.MainParamDict['dpi'], edgecolor = 'none', facecolor = 'w')
+
         self.figure.subplots_adjust( **self.SubPlotParams)
+        self.canvas = FigureCanvasAgg(self.figure)
+
 
         # Make the object hold the timestep info
         # Some options to set the way the spectral lines are dashed
@@ -140,13 +117,7 @@ class Oengus():
         #
         ##
 
-        dirlist = os.listdir(self.dirname)
-        if len(self.cmd_args.O)>0:
-            self.dirname = os.path.join(self.dirname, self.cmd_args.O)
-        elif 'output' in dirlist:
-            self.dirname = os.path.join(self.dirname, 'output')
 
-        self.sim = TristanSim(self.dirname)
         # previous objects
         if self.showingTotEnergy:
             self.calc_total_energy()
@@ -193,6 +164,7 @@ class Oengus():
         # than half max
         ishock_final = np.where(dens_arr[dens_arr.shape[0]//2,jstart:]>=dens_half_max)[0][-1]
         xshock_final = xaxis_final[ishock_final]
+        xshock_final -= np.min(self.sim[-1].xe[self.sim[-1].xe!=0])/self.sim[-1].c_omp
         self.shock_speed = xshock_final/final_time
 
     def GenMainParamDict(self, config_file = None):
@@ -288,15 +260,27 @@ class Oengus():
 
 
     def calc_total_energy(self):
-        self.TotalEnergyTimes = [o.time for o in self.sim]
-        self.TotalElectronEnergy = np.array(list(map(lambda o: np.sum(np.sqrt(o.ue*o.ue + o.ve*o.ve + o.we*o.we +1)-1)*o.stride*abs(o.qi)*o.c**2, self.sim)))
-        self.TotalIonEnergy = np.array(list(map(lambda o: np.sum(np.sqrt(o.ui*o.ui + o.vi*o.vi + o.wi*o.wi +1)-1)*o.stride*abs(o.qi)*o.mi/o.me*o.c**2, self.sim)))
-
-        self.TotalMagEnergy = np.array(list(map(lambda o: np.sum(o.bz*o.bz+o.bx*o.bx+o.by*o.by)*o.istep**2*.5, self.sim)))
-        self.TotalElectricEnergy = np.array(list(map(lambda o: np.sum(o.ez*o.ez+o.ex*o.ex+o.ey*o.ey)*o.istep**2*.5, self.sim)))
-        self.TotalBzEnergy = np.array(list(map(lambda o: np.sum(o.bz*o.bz)*o.istep**2*.5, self.sim)))
-
+        self.TotalEnergyTimes = []
+        self.TotalElectronEnergy = []
+        self.TotalIonEnergy = []#
+        self.TotalMagEnergy = []
+        self.TotalElectricEnergy =[]
+        self.TotalBzEnergy = []
+        for o in self.sim:
+            self.TotalEnergyTimes.append(o.time)
+            self.TotalElectronEnergy.append(np.sum(np.sqrt(o.ue*o.ue + o.ve*o.ve + o.we*o.we +1)-1)*o.stride*abs(o.qi)*o.c**2)
+            self.TotalIonEnergy.append(np.sum(np.sqrt(o.ui*o.ui + o.vi*o.vi + o.wi*o.wi +1)-1)*o.stride*abs(o.qi)*o.mi/o.me*o.c**2)
+            self.TotalMagEnergy.append(np.sum(o.bz*o.bz+o.bx*o.bx+o.by*o.by)*o.istep**2*.5)
+            self.TotalElectricEnergy.append(np.sum(o.ez*o.ez+o.ex*o.ex+o.ey*o.ey)*o.istep**2*.5)
+            self.TotalBzEnergy.append(np.sum(o.bz*o.bz)*o.istep**2*.5)
+            o.clear()
+        self.TotalElectronEnergy = np.array(self.TotalElectronEnergy)
+        self.TotalIonEnergy = np.array(self.TotalIonEnergy)
+        self.TotalMagEnergy = np.array(self.TotalMagEnergy)
+        self.TotalElectricEnergy = np.array(self.TotalElectricEnergy)
+        self.TotalBzEnergy = np.array(self.TotalBzEnergy)
     def draw_output(self, n):
+        self.figure.clf()
         o = self.sim[n]
         # FIND THE SLICE
         self.MaxZInd = o.bx.shape[0]-1
@@ -307,6 +291,7 @@ class Oengus():
         self.zSlice = int(np.around(self.MainParamDict['zSlice']*self.MaxZInd))
         if self.MainParamDict['ConstantShockVel']:
             self.shock_loc = o.time*self.shock_speed
+            self.shock_loc += np.min(o.xe[o.xe!=0])/o.c_omp
         else:
             jstart = int(min(10*o.c_omp/o.istep, o.dens[0,:,:].shape[1]))
             cur_xaxis = np.arange(o.dens[0,:,:].shape[1])/o.c_omp*o.istep
@@ -320,8 +305,6 @@ class Oengus():
             ishock = np.where(o.dens[0,:,:][o.dens[0,:,:].shape[0]/2,jstart:]>=dens_half_max)[0][-1]
             self.shock_loc = cur_xaxis[ishock]
 
-        if self.showingCPUs:
-            print('do something here')
             #self.cpu_x_locs = np.cumsum(self.DataDict['mx']-5)/self.DataDict['c_omp'][0]
             #self.cpu_y_locs = np.cumsum(self.DataDict['my']-5)/self.DataDict['c_omp'][0]
 
@@ -330,12 +313,36 @@ class Oengus():
         for i in range(self.MainParamDict['NumOfRows']):
             for j in range(self.MainParamDict['NumOfCols']):
                 self.SubPlotList[i][j].draw(o)
+        if self.showingCPUs:
+            if 'my' in self.sim._h5Key2FileDict.keys():
+                cpu_y_locs = np.cumsum(o.my-5)/o.c_omp
+            else:
+                tmpSize = ((self.MaxYInd+1)*o.istep)//(o.my0-5)
+                cpu_y_locs = np.cumsum(np.ones(tmpSize)*(o.my0)-5)/o.c_omp
+            if 'mx' in self.sim._h5Key2FileDict.keys():
+                cpu_x_locs = np.cumsum(o.mx-5)/o.c_omp
+            else:
+                tmpSize = ((self.MaxXInd+1)*o.istep)//(o.mx0-5)
+                cpu_x_locs = np.cumsum(np.ones(tmpSize)*(o.mx0)-5)/o.c_omp
 
+
+            for i in range(self.MainParamDict['NumOfRows']):
+                for j in range(self.MainParamDict['NumOfCols']):
+                    try:
+                        if self.SubPlotList[i][j].param_dict['show_cpu_domains']:
+                            for k in range(len(self.parent.cpu_x_locs)):
+                                self.SubPlotList[i][j].axes.axvline(cpu_x_locs[k], linewidth = 1, linestyle = ':',color = 'w')
+                            for k in range(len(self.parent.cpu_y_locs)):
+                                self.SubPlotList[i][j].axes.axvline(cpu_y_locs[k], linewidth = 1, linestyle = ':',color = 'w')
+
+                    except KeyError:
+                        pass
 
         if self.MainParamDict['ShowTitle']:
-            #tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].split('.')[-1]
-            tmpstr = 'test'
-            self.figure.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+' at time t = %d $\omega_{pe}^{-1}$'  % round(o.time), size = 15)
+            if len(self.sim_name) == 0:
+                self.figure.suptitle(os.path.abspath(self.dirname)+ '/*.'+o.fnum+' at time t = %d $\omega_{pe}^{-1}$'  % round(o.time), size = 15)
+            else:
+                self.figure.suptitle(self.sim_name +', t = %d $\omega_{pe}^{-1}$'  % round(o.time), size = 15)
         ####
         #
         # Write the lines to the phase plots
@@ -390,10 +397,62 @@ class Oengus():
                         # Choose the right dashes pattern
                         self.SubPlotList[pos[0]][pos[1]].IntRegionLines[-1].set_dashes(self.dashes_options[k])
 
+        self.canvas.draw()
+        s, (width, height) = self.canvas.print_to_buffer()
+        return Image.frombytes('RGBA', (width, height), s)
 def runMe(cmd_args):
-    test = Oengus(cmd_args)
-    test.draw_output(-1)
-    plt.savefig('test.png', dpi = test.MainParamDict['dpi'])
+    cmdout = ['ffmpeg',
+                '-y', '-f', 'image2pipe', # overwrite, image2 is a colorspace thing.
+                '-framerate', str(int(cmd_args.framerate)), # Set framerate to the the user selected option
+                 '-pattern_type', 'glob', '-i', '-', # Not sure what this does... I am going to get rid of it
+                 '-codec', 'copy',  # save as a *.mov
+                 cmd_args.outmovie]#, '&']#, # output name,
+
+    pipe = subprocess.Popen(cmdout, stdin=subprocess.PIPE)
+    sims = []
+    iseult_figs = []
+    for i in range(len(cmd_args.O)):
+        dirname= os.curdir
+        dirlist = os.listdir(dirname)
+        if len(cmd_args.O[i])>0:
+            dirname = os.path.join(dirname, cmd_args.O[i])
+        elif 'output' in dirlist:
+            dirname = os.path.join(dirname, 'output')
+        curname = ''
+        if i<len(cmd_args.name):
+            curname = cmd_args.name[i]
+        curSim = TristanSim(dirname)
+
+        cntxt = {'preset_view':cmd_args.p,
+            'sim': curSim,
+            'name':curname
+            }
+        sims.append(curSim)
+        iseult_figs.append(Oengus(**cntxt))
+    for s in sims:
+        s.tlist = np.array([o.time for o in s])
+    tSteps= []
+    for s in sims:
+        if len(tSteps) < len(s.tlist):
+            # list(s.tlist) instead of s.tlist here is to force a deep copy. quirk of python.
+            tSteps = list(s.tlist)
+    for t in tSteps:
+        imgs = []
+        for s, ifig in zip(sims, iseult_figs):
+            n = np.where(np.min(np.abs(s.tlist-t)) == np.abs(s.tlist-t))[0][0]
+            imgs.append(ifig.draw_output(n))
+
+        imgs_comb = np.vstack(list(np.asarray(i) for i in imgs))
+
+        # save that beautiful picture
+        imgs_comb = Image.fromarray(imgs_comb)
+        imgs_comb.save(pipe.stdin, 'PNG')
+    pipe.stdin.close()
+    pipe.wait()
+
+    # Make sure all went well
+    if pipe.returncode != 0:
+        raise sp.CalledProcessError(pipe.returncode, cmd_out)
 """
 # list of tuples containing directories we want to analyze, and the
 # name of the simulations
