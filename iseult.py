@@ -40,8 +40,8 @@ if __name__ == '__main__':
     #                    action="store_true")
 
     cmd_args = parser.parse_args()
-    import sys
-    sys.path.append('./src')
+    import sys, os
+    sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
     if not cmd_args.b:
         from main_app import runMe
