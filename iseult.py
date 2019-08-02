@@ -5,10 +5,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='Plotting program for Tristan-MP files.')
-    #        parser.add_argument('integers', metavar='N', type=int, nargs='+',
-    #                        help='The maximum file number to consider')
-    #        parser.add_argument('--foo', nargs='?', const='c', default='d')
-    #        parser.add_argument('bar', nargs='?', default='d')
+
     parser.add_argument('-n', nargs = '?',# dest='accumulate', action='store_const',
                             const=-1, default=-1,
                             help='Maximum file # to consider')
@@ -38,8 +35,8 @@ if __name__ == '__main__':
                             help='Plot Title')
 
 
-    #parser.add_argument("--wait", help="Wait until current simulation is finished before making movie.",
-    #                    action="store_true")
+    parser.add_argument("--wait", help="Wait until current simulation is finished before making movie.",
+                        action="store_true")
 
     cmd_args = parser.parse_args()
 
@@ -50,6 +47,17 @@ if __name__ == '__main__':
         from main_app import runMe
         runMe(cmd_args)
     else:
+        if cmd_args.wait:
+            slurm_num = sys.stdin.read().split[-1]
+            print(slurm_num)
+            num = 0
+            done = False
+            while num < 2000 and not done:
+                    slurm_queue = subprocess.check_output(["squeue"])
+                    if slurm_queue.find(slurm_num) != -1:
+                        num += 1
+                        time.sleep(3E5)
+
         from oengus import runMe
         print(cmd_args.name, cmd_args.O)
         runMe(cmd_args)
