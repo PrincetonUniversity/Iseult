@@ -160,7 +160,7 @@ class OutputPoint(ObjectMapper):
             for elm in fname.split('.')[:-1]:
                 tmpStr += elm +'.'
             tmpStr += n
-            setattr(self, '_'+key, h5Wrapper(os.path.join(sim.dir, tmpStr), h5KeyList))
+            setattr(self, '_'+key, h5Wrapper(os.path.join(sim.dir, tmpStr), h5KeyList), self.xtraStride)
 
     def __getattribute__(self, name):
         if name in super().getKeys():
@@ -194,19 +194,25 @@ class OutputPoint(ObjectMapper):
             pass
 
 class h5Wrapper(object):
-    def __init__(self, fname, h5Keys):
+    def __init__(self, fname, h5Keys, stride):
         self._fname = fname
         self.__h5Keys = h5Keys
+        self.stride = stride
         self.clear()
 
     def __getattribute__(self, name):
         if object.__getattribute__(self, name) is None:
             if name in self.__h5Keys:
-                with h5py.File(self._fname, 'r') as f:
-                    if np.sum([x for x in f[name].shape])!= 1:
-                        setattr(self, name, f[name][:])
-                    else:
-                        setattr(self, name, f[name][0])
+                if self._fname.split('.')[0] == 'prtl':
+                    with h5py.File(self._fname, 'r') as f:
+                        setattr(self, name, f[name][::self.stride])
+                else:
+                    with h5py.File(self._fname, 'r') as f:
+                        if np.sum([x for x in f[name].shape])!= 1:
+                            setattr(self, name, f[name][:])
+                        else:
+                            setattr(self, name, f[name][0])
+
         return object.__getattribute__(self, name)
 
     def keys(self):

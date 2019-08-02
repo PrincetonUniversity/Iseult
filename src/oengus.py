@@ -539,6 +539,17 @@ def runMe(cmd_args):
     pipe = subprocess.Popen(cmdout, stdin=subprocess.PIPE)
     sims = []
     iseult_figs = []
+    iseultDir = os.path.join(os.path.dirname(__file__), '..')
+    try:
+        with open(os.path.join(iseultDir, '.iseult_configs', cmd_args.p.strip().replace(' ', '_') +'.yml')) as f:
+            cfgDict = yaml.safe_load(f)
+    except:
+        print('Cannot find/load ' +  preset_view.strip().replace(' ', '_') +'.yml in .iseult_configs. If the name of view contains whitespace,')
+        print('either it must be enclosed in quotation marks or given with whitespace replaced by _.')
+        print('Name is case sensitive. Reverting to Default view')
+        with open(os.path.join(iseultDir, '.iseult_configs', 'Default.yml')) as f:
+            cfgDict = yaml.safe_load(f)
+
 
     for i in range(len(cmd_args.O)):
         dirname= os.curdir
@@ -550,7 +561,7 @@ def runMe(cmd_args):
         curname = ''
         if i<len(cmd_args.name):
             curname = cmd_args.name[i]
-        curSim = TristanSim(dirname)
+        curSim = TristanSim(dirname, xtraStride = cfgDict['MainParamDict']['PrtlStride'])
 
         cntxt = {'preset_view':cmd_args.p,
             'sim': curSim,
