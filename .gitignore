@@ -4,6 +4,7 @@ __pycache__/
 IgnoreME/
 output/
 *~
+*.prof
 build/
 Movie/
 .iseult_configs/
