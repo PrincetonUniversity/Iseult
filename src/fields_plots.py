@@ -966,11 +966,9 @@ class FieldsPanel:
 
             else:# self.GetPlotParam('cnorm_type') == "Linear":
                 if self.parent.MainParamDict['HorizontalCbars']:
-#                    self.cbar.set_data(self.gradient)
                     self.cbar.set_extent([clim[0],clim[1],0,1])
                     self.axC.set_xlim(clim[0],clim[1])
                 else:
-#                    self.cbar.set_data(np.transpose(self.gradient)[::-1])
                     self.cbar.set_extent([0,1,clim[0],clim[1]])
                     self.axC.set_ylim(clim[0],clim[1])
                     self.axC.locator_params(axis='y',nbins=6)

@@ -108,8 +108,7 @@ class PhasePanel:
             self.x_label = r'$x\ [c/\omega_{\rm pe}]$'
         #set the ylabel
         self.y_label  = self.ylabel_list[self.parent.MainParamDict['DoLorentzBoost']][self.GetPlotParam('prtl_type')][self.GetPlotParam('mom_dim')]
-
-    def draw(self, output):
+    def update_data(self, output):
         if self.parent.MainParamDict['DoLorentzBoost'] and np.abs(self.parent.MainParamDict['GammaBoost'])>1E-8:
             # Gotta boost it
             self.c_omp = getattr(output,'c_omp')
@@ -336,6 +335,8 @@ class PhasePanel:
                 tmplist = [zval.min(), zval.max()]
 
             self.hist2d = zval, self.hist2d[1], self.hist2d[2], tmplist
+
+    def draw(self):
         # In order to speed up the plotting, we only recalculate everything
         # if necessary.
         self.IntRegionLines = []

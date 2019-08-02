@@ -83,8 +83,7 @@ class EnergyPanel:
         if self.GetPlotParam('prtl_type') == 1: #electons
             self.energy_color = self.parent.electron_color
             self.y_label  = r'$E_{e}\ [m_i c^2]$'
-
-    def draw(self, output):
+    def update_data(self, output):
         # Generate the X-axis values
         self.c_omp = getattr(output,'c_omp')
         self.istep = getattr(output,'istep')
@@ -142,6 +141,7 @@ class EnergyPanel:
 
         self.hist2d = zval, self.hist2d[1], self.hist2d[2], tmplist
 
+    def draw(self):
         self.IntRegionLines = []
 
         self.UpdateLabelsandColors()

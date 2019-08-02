@@ -1,4 +1,4 @@
-import os,sys, subprocess, yaml
+import os,sys, subprocess, yaml, time
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -166,7 +166,7 @@ class Oengus():
         xshock_final = xaxis_final[ishock_final]
         xshock_final -= np.min(self.sim[-1].xe[self.sim[-1].xe!=0])/self.sim[-1].c_omp
         self.shock_speed = xshock_final/final_time
-
+        self.create_graphs()
     def GenMainParamDict(self, config_file = None):
         ''' The function that reads in a config file and then makes MainParamDict to hold all of the main iseult parameters.
             It also sets all of the plots parameters.'''
@@ -279,8 +279,130 @@ class Oengus():
         self.TotalMagEnergy = np.array(self.TotalMagEnergy)
         self.TotalElectricEnergy = np.array(self.TotalElectricEnergy)
         self.TotalBzEnergy = np.array(self.TotalBzEnergy)
+
+    def create_graphs(self):
+        o = self.sim[0]
+        # FIND THE SLICE
+        self.MaxZInd = o.bx.shape[0]-1
+        self.MaxYInd = o.bx.shape[1]-1
+        self.MaxXInd = o.bx.shape[2]-1
+
+        self.ySlice = int(np.around(self.MainParamDict['ySlice']*self.MaxYInd))
+        self.zSlice = int(np.around(self.MainParamDict['zSlice']*self.MaxZInd))
+        if self.MainParamDict['ConstantShockVel']:
+            self.shock_loc = o.time*self.shock_speed
+            self.shock_loc += np.min(o.xe[o.xe!=0])/o.c_omp
+        else:
+            jstart = int(min(10*o.c_omp/o.istep, o.dens[0,:,:].shape[1]))
+            cur_xaxis = np.arange(o.dens[0,:,:].shape[1])/o.c_omp*o.istep
+            # Find the shock by seeing where the density is 1/2 of it's
+            # max value.
+
+            dens_half_max = max(o.dens[0,:,:][o.dens[0,:,:].shape[0]//2,jstart:])*.5
+
+            # Find the farthest location where the average density is greater
+            # than half max
+            ishock = np.where(o.dens[0,:,:][o.dens[0,:,:].shape[0]/2,jstart:]>=dens_half_max)[0][-1]
+            self.shock_loc = cur_xaxis[ishock]
+
+            #self.cpu_x_locs = np.cumsum(self.DataDict['mx']-5)/self.DataDict['c_omp'][0]
+            #self.cpu_y_locs = np.cumsum(self.DataDict['my']-5)/self.DataDict['c_omp'][0]
+
+        # Now that the DataDict is created, iterate over all the subplots and
+        # load the data into them:
+        for i in range(self.MainParamDict['NumOfRows']):
+            for j in range(self.MainParamDict['NumOfCols']):
+                self.SubPlotList[i][j].update_data(o)
+
+        for i in range(self.MainParamDict['NumOfRows']):
+            for j in range(self.MainParamDict['NumOfCols']):
+                self.SubPlotList[i][j].draw()
+        if self.showingCPUs:
+            if 'my' in self.sim._h5Key2FileDict.keys():
+                cpu_y_locs = np.cumsum(o.my-5)/o.c_omp
+            else:
+                tmpSize = ((self.MaxYInd+1)*o.istep)//(o.my0-5)
+                cpu_y_locs = np.cumsum(np.ones(tmpSize)*(o.my0)-5)/o.c_omp
+            if 'mx' in self.sim._h5Key2FileDict.keys():
+                cpu_x_locs = np.cumsum(o.mx-5)/o.c_omp
+            else:
+                tmpSize = ((self.MaxXInd+1)*o.istep)//(o.mx0-5)
+                cpu_x_locs = np.cumsum(np.ones(tmpSize)*(o.mx0)-5)/o.c_omp
+
+
+            for i in range(self.MainParamDict['NumOfRows']):
+                for j in range(self.MainParamDict['NumOfCols']):
+                    try:
+                        if self.SubPlotList[i][j].param_dict['show_cpu_domains']:
+                            for k in range(len(self.parent.cpu_x_locs)):
+                                self.SubPlotList[i][j].axes.axvline(cpu_x_locs[k], linewidth = 1, linestyle = ':',color = 'w')
+                            for k in range(len(self.parent.cpu_y_locs)):
+                                self.SubPlotList[i][j].axes.axvline(cpu_y_locs[k], linewidth = 1, linestyle = ':',color = 'w')
+
+                    except KeyError:
+                        pass
+
+        if self.MainParamDict['ShowTitle']:
+            if len(self.sim_name) == 0:
+                self.figure.suptitle(os.path.abspath(self.dirname)+ '/*.'+o.fnum+' at time t = %d $\omega_{pe}^{-1}$'  % round(o.time), size = 15)
+            else:
+                self.figure.suptitle(self.sim_name +', t = %d $\omega_{pe}^{-1}$'  % round(o.time), size = 15)
+        ####
+        #
+        # Write the lines to the phase plots
+        #
+        ####
+
+        # first find all the phase plots that need writing to
+        self.phase_plot_list = []
+        self.spectral_plot_list = []
+
+        for i in range(self.MainParamDict['NumOfRows']):
+            for j in range(self.MainParamDict['NumOfCols']):
+                if self.SubPlotList[i][j].chartType =='PhasePlot' or self.SubPlotList[i][j].chartType =='EnergyPlot':
+                    if self.SubPlotList[i][j].GetPlotParam('show_int_region'):
+                        self.phase_plot_list.append([i,j])
+                if self.SubPlotList[i][j].chartType =='SpectraPlot':
+                    self.spectral_plot_list.append([i,j])
+
+        for pos in self.phase_plot_list:
+            if self.SubPlotList[pos[0]][pos[1]].GetPlotParam('prtl_type') == 0:
+                for spos in self.spectral_plot_list:
+                    if self.SubPlotList[spos[0]][spos[1]].GetPlotParam('show_ions'):
+                        k = min(self.SubPlotList[spos[0]][spos[1]].spect_num, len(self.dashes_options)-1)
+                        # Append the left line to the list
+                        self.SubPlotList[pos[0]][pos[1]].IntRegionLines.append(self.SubPlotList[pos[0]][pos[1]].axes.axvline(
+                        max(self.SubPlotList[spos[0]][spos[1]].i_left_loc, self.SubPlotList[pos[0]][pos[1]].xmin+1),
+                        linewidth = 1.5, linestyle = '-', color = self.ion_color))
+                        # Choose the left dashes pattern
+                        self.SubPlotList[pos[0]][pos[1]].IntRegionLines[-1].set_dashes(self.dashes_options[k])
+
+                        # Append the right line to the list
+                        self.SubPlotList[pos[0]][pos[1]].IntRegionLines.append(self.SubPlotList[pos[0]][pos[1]].axes.axvline(
+                        min(self.SubPlotList[spos[0]][spos[1]].i_right_loc, self.SubPlotList[pos[0]][pos[1]].xmax+1),
+                        linewidth = 1.5, linestyle = '-', color = self.ion_color))
+                        # Choose the right dashes pattern
+                        self.SubPlotList[pos[0]][pos[1]].IntRegionLines[-1].set_dashes(self.dashes_options[k])
+            else:
+                for spos in self.spectral_plot_list:
+                    if self.SubPlotList[spos[0]][spos[1]].GetPlotParam('show_electrons'):
+                        k = min(self.SubPlotList[spos[0]][spos[1]].spect_num, len(self.dashes_options)-1)
+                        # Append the left line to the list
+                        self.SubPlotList[pos[0]][pos[1]].IntRegionLines.append(self.SubPlotList[pos[0]][pos[1]].axes.axvline(
+                        max(self.SubPlotList[spos[0]][spos[1]].e_left_loc, self.SubPlotList[pos[0]][pos[1]].xmin+1),
+                        linewidth = 1.5, linestyle = '-', color = self.electron_color))
+                        # Choose the left dashes pattern
+                        self.SubPlotList[pos[0]][pos[1]].IntRegionLines[-1].set_dashes(self.dashes_options[k])
+
+                        # Append the right line to the list
+                        self.SubPlotList[pos[0]][pos[1]].IntRegionLines.append(self.SubPlotList[pos[0]][pos[1]].axes.axvline(
+                        min(self.SubPlotList[spos[0]][spos[1]].e_right_loc, self.SubPlotList[pos[0]][pos[1]].xmax+1),
+                        linewidth = 1.5, linestyle = '-', color = self.electron_color))
+                        # Choose the right dashes pattern
+                        self.SubPlotList[pos[0]][pos[1]].IntRegionLines[-1].set_dashes(self.dashes_options[k])
+        self.canvas.draw()
+
     def draw_output(self, n):
-        self.figure.clf()
         o = self.sim[n]
         # FIND THE SLICE
         self.MaxZInd = o.bx.shape[0]-1
@@ -312,7 +434,11 @@ class Oengus():
         # load the data into them:
         for i in range(self.MainParamDict['NumOfRows']):
             for j in range(self.MainParamDict['NumOfCols']):
-                self.SubPlotList[i][j].draw(o)
+                self.SubPlotList[i][j].update_data(o)
+
+        for i in range(self.MainParamDict['NumOfRows']):
+            for j in range(self.MainParamDict['NumOfCols']):
+                self.SubPlotList[i][j].refresh()
         if self.showingCPUs:
             if 'my' in self.sim._h5Key2FileDict.keys():
                 cpu_y_locs = np.cumsum(o.my-5)/o.c_omp
@@ -398,9 +524,11 @@ class Oengus():
                         self.SubPlotList[pos[0]][pos[1]].IntRegionLines[-1].set_dashes(self.dashes_options[k])
 
         self.canvas.draw()
+
         s, (width, height) = self.canvas.print_to_buffer()
         return Image.frombytes('RGBA', (width, height), s)
 def runMe(cmd_args):
+    tic = time.time()
     cmdout = ['ffmpeg',
                 '-y', '-f', 'image2pipe', # overwrite, image2 is a colorspace thing.
                 '-framerate', str(int(cmd_args.framerate)), # Set framerate to the the user selected option
@@ -411,6 +539,7 @@ def runMe(cmd_args):
     pipe = subprocess.Popen(cmdout, stdin=subprocess.PIPE)
     sims = []
     iseult_figs = []
+
     for i in range(len(cmd_args.O)):
         dirname= os.curdir
         dirlist = os.listdir(dirname)
@@ -436,6 +565,8 @@ def runMe(cmd_args):
         if len(tSteps) < len(s.tlist):
             # list(s.tlist) instead of s.tlist here is to force a deep copy. quirk of python.
             tSteps = list(s.tlist)
+
+
     for t in tSteps:
         imgs = []
         for s, ifig in zip(sims, iseult_figs):
@@ -447,6 +578,7 @@ def runMe(cmd_args):
         # save that beautiful picture
         imgs_comb = Image.fromarray(imgs_comb)
         imgs_comb.save(pipe.stdin, 'PNG')
+        print(f"saving image {n} to pipe")
     pipe.stdin.close()
     pipe.wait()
 

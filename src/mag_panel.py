@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-import tkinter as Tk
-from tkinter import ttk
+#import tkinter as Tk
+#from tkinter import ttk
 import matplotlib
 import numpy as np
 import numpy.ma as ma
@@ -56,7 +56,7 @@ class BPanel:
         self.InterpolationMethods = ['none','nearest', 'bilinear', 'bicubic', 'spline16',
             'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
-
+        self.mag_color = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.5)
     def norm(self, vmin=None, vmax=None):
         if self.GetPlotParam('cnorm_type') =="Linear":
             if self.GetPlotParam('UseDivCmap'):
@@ -65,14 +65,13 @@ class BPanel:
                 return mcolors.Normalize(vmin, vmax)
         else:
             return PowerNormWithNeg(self.GetPlotParam('cpow_num'), vmin, vmax, div_cmap = self.GetPlotParam('UseDivCmap'),midpoint = self.GetPlotParam('div_midpoint'), stretch_colors = self.GetPlotParam('stretch_colors'))
-
-    def draw(self, output):
+    def update_data(self, output):
         ''' A Helper function that loads the data for the plot'''
         # First see of the x_axis and y_axis values have already been calculated
         # and stored in the DataDict for this time step
         self.c_omp = getattr(output, 'c_omp')
         self.istep = getattr(output, 'istep')
-        self.mag_color = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.5)
+
 
         if self.GetPlotParam('cmap') == 'None':
             if self.GetPlotParam('mag_plot_type')==1:
@@ -154,7 +153,7 @@ class BPanel:
                 #b_para *= self.parent.b0**(-1)
                 self.f = (b_para-self.parent.b0)/self.parent.b0
 
-
+    def draw(self):
         ''' A function that draws the data. In the interest in speeding up the
         code, draw should only be called when you want to recreate the whole
         figure, i.e. it  will be slow. Most times you will only want to update
@@ -362,8 +361,111 @@ class BPanel:
             self.right_loc = self.parent.MainParamDict['FFTRight'] + self.parent.shock_loc*self.parent.MainParamDict['FFTRelative']
             self.right_loc = min(self.right_loc, self.xaxis_values[-1])
             self.lineright.set_xdata([self.right_loc,self.right_loc])
-        if self.GetPlotParam('show_cpu_domains'):
-            self.parent.SetCpuDomainLines()
+
+    def refresh(self):
+        '''This is a function that will be called only if self.axes already
+        holds a fields type plot. We only update things that have changed & are
+        shown.  If hasn't changed or isn't shown, don't touch it. The difference
+        between this and last time, is that we won't actually do any drawing in
+        the plot. The plot will be redrawn after all subplots are refreshed. '''
+
+
+        # Main goal, only change what is showing..
+
+        self.lineleft.set_visible(self.GetPlotParam('show_FFT_region'))
+        self.lineright.set_visible(self.GetPlotParam('show_FFT_region'))
+
+        if self.GetPlotParam('show_FFT_region'):
+            self.left_loc = self.parent.MainParamDict['FFTLeft'] + self.parent.shock_loc*self.parent.MainParamDict['FFTRelative']
+            self.left_loc = max(self.left_loc, self.xaxis_values[0])
+            self.lineleft.set_xdata([self.left_loc,self.left_loc])
+
+            self.right_loc = self.parent.MainParamDict['FFTRight'] + self.parent.shock_loc*self.parent.MainParamDict['FFTRelative']
+            self.right_loc = min(self.right_loc, self.xaxis_values[-1])
+            self.lineright.set_xdata([self.right_loc,self.right_loc])
+
+
+        # First do the 1D plots, because it is simpler
+        if self.GetPlotParam('twoD') == 0:
+            if self.parent.MainParamDict['Average1D']:
+                self.line[0].set_data(self.xaxis_values, np.average(self.f.reshape(-1,self.f.shape[-1]), axis = 0))
+            else:
+                self.line[0].set_data(self.xaxis_values, self.f[self.parent.zSlice,self.parent.ySlice,:])
+
+            min_max = [self.line[0].get_data()[1].min(), self.line[0].get_data()[1].max()]
+            dist = min_max[1]-min_max[0]
+            min_max[0] -= 0.04*dist
+            min_max[1] += 0.04*dist
+            self.axes.set_ylim(min_max)
+            if self.GetPlotParam('show_shock'):
+                self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
+            # xlims
+            if self.parent.MainParamDict['SetxLim']:
+                if self.parent.MainParamDict['xLimsRelative']:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+            else:
+                self.axes.set_xlim(self.xaxis_values[0], self.xaxis_values[-1])
+
+            if self.GetPlotParam('set_v_min'):
+                self.axes.set_ylim(bottom = self.GetPlotParam('v_min'))
+            if self.GetPlotParam('set_v_max'):
+                self.axes.set_ylim(top = self.GetPlotParam('v_max'))
+            self.axes.set_ylabel(self.ylabel, size = self.parent.MainParamDict['AxLabelSize'])
+
+        else: # Now refresh the plot if it is 2D
+            if self.parent.MainParamDict['2DSlicePlane'] == 0: # x-y plane
+                self.cax.set_data(self.f[self.parent.zSlice,:,:])
+            elif self.parent.MainParamDict['2DSlicePlane'] == 1: # x-y plane
+                self.cax.set_data(self.f[:,self.parent.ySlice,:])
+
+            self.ymin = 0
+            self.ymax =  self.cax.get_array().shape[0]/self.c_omp*self.istep
+            self.xmin = 0
+            self.xmax = self.xaxis_values[-1]
+            self.TwoDan.set_text(self.ann_label)
+            self.clims = np.copy([self.cax.get_array().min(), self.cax.get_array().max()])
+
+            if self.parent.MainParamDict['SetxLim']:
+                if self.parent.MainParamDict['xLimsRelative']:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+            else:
+                self.axes.set_xlim(self.xmin,self.xmax)
+            if self.parent.MainParamDict['SetyLim']:
+                self.axes.set_ylim(self.parent.MainParamDict['yBottom'],self.parent.MainParamDict['yTop'])
+            else:
+                self.axes.set_ylim(self.ymin,self.ymax)
+
+            self.cax.set_extent([self.xmin, self.xmax, self.ymin, self.ymax])
+
+            self.vmin = self.cax.get_array().min()
+            if self.GetPlotParam('set_v_min'):
+                self.vmin = self.GetPlotParam('v_min')
+            self.vmax = self.cax.get_array().max()
+            if self.GetPlotParam('set_v_max'):
+                self.vmax = self.GetPlotParam('v_max')
+            if self.GetPlotParam('UseDivCmap') and not self.GetPlotParam('stretch_colors'):
+                self.vmax = max(np.abs(self.vmin), self.vmax)
+                self.vmin = -self.vmax
+            self.cax.norm.vmin = self.vmin
+            self.cax.norm.vmax = self.vmax
+
+            self.CbarTickFormatter()
+            if self.parent.MainParamDict['2DSlicePlane'] == 0:
+                self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            if self.parent.MainParamDict['2DSlicePlane'] == 1:
+                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+
+            if self.GetPlotParam('show_shock'):
+                self.shockline_2d.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
+            #self.axes.draw_artist(self.axes.patch)
+            #self.axes.draw_artist(self.cax)
+            #self.axes.draw_artist(self.axes.xaxis)
 
     def CbarTickFormatter(self):
         ''' A helper function that sets the cbar ticks & labels. This used to be

@@ -80,8 +80,7 @@ class SpectralPanel:
         self.RegionFlag = True # Set to true if the region lines need to be written to a phase plot
         # The variables that store the eps_p & eps_e values
 
-
-    def draw(self, output):
+    def update_data(self, output):
         self.c_omp = getattr(output, 'c_omp')
         self.istep = getattr(output, 'istep')
 #        self.gamma0 = getattr(output, 'gamma0')[0]
@@ -89,6 +88,8 @@ class SpectralPanel:
         # Load gamma-1 of the spectra
         self.gamma = getattr(output, 'gamma')
         self.massRatio = getattr(output, 'mi')/getattr(output, 'me')
+        self.mi = output.mi
+        self.me = output.me
 
         # Select the x-range from which to take the spectra
         self.e_left_loc = self.GetPlotParam('ElectronLeft')
@@ -195,6 +196,8 @@ class SpectralPanel:
             self.pdist = 1E-200*np.ones(len(self.fp))
             self.mompdist = 1E-200*np.ones(len(self.fp))
 
+
+    def draw(self):
         self.RegionFlag = True
         # Set the tick color
         tick_color = 'black'
@@ -275,9 +278,9 @@ class SpectralPanel:
             self.axes.set_xlabel(r'$\gamma-1$', labelpad = -2, color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             self.axes.set_ylabel(r'$E(dn/dE)/n$', labelpad = 0, color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
-        self.refresh(output)
+        self.refresh()
 
-    def refresh(self,output):
+    def refresh(self):
         self.RegionFlag = True
         # First let set the dashes
         self.ion_spect[0].set_dashes(self.dashes)
@@ -356,7 +359,7 @@ class SpectralPanel:
                 if self.GetPlotParam('SetTe'):
                     self.electron_temp[0].set_visible(True)
 
-                    self.delgame0=self.GetPlotParam('DelGame')*getattr(output, 'mi')/getattr(output, 'me')
+                    self.delgame0=self.GetPlotParam('DelGame')*self.mi/self.me
                     if self.delgame0 >= 0.013:
                         aconst = 1/(self.delgame0*np.exp(1.0/self.delgame0)*kn(2, 1.0/self.delgame0))
                     else:
@@ -428,7 +431,7 @@ class SpectralPanel:
                 # The temperature
                 if self.GetPlotParam('SetTe'):
                     self.electron_temp[0].set_visible(True)
-                    self.delgame0=self.GetPlotParam('DelGame')*getattr(output, 'mi')/getattr(output, 'me')
+                    self.delgame0=self.GetPlotParam('DelGame')*self.mi/self.me
                     if self.delgame0 >= 0.013:
                         aconst = 1/(self.delgame0*np.exp(1.0/self.delgame0)*kn(2, 1.0/self.delgame0))
                     else:
@@ -583,7 +586,7 @@ class SpectralPanel:
             # Now calculate the eps
             if prtl_type == 'electron':
                 psum = np.trapz(self.pdist,self.gamma)
-                return np.exp(logF)/psum * getattr(output, 'me')[0]/getattr(output, 'mi')[0]
+                return np.exp(logF)/psum * self.me/self.mi
             else:
                 return np.exp(logF)/endSum[0]
 
@@ -609,7 +612,7 @@ class SpectralPanel:
             Tlegend_labels.append(r'$T_e\ = $' +  ' ' + tmpstr + ' ' + r'$m_e c^2$')
         if self.GetPlotParam('show_ions') and self.GetPlotParam('SetTi'):
             Tlegend_handles.append(self.ion_temp[0])
-            tmpcon =self.GetPlotParam('DelGami')*getattr(output, 'mi')[0]/getattr(output, 'me')[0]
+            tmpcon =self.GetPlotParam('DelGami')*self.mi/self.me
             tmpstr = '%.3f' % tmpcon
             Tlegend_labels.append(r'$T_p\ = $' +  ' ' + tmpstr + ' ' + r'$m_e c^2$')
 

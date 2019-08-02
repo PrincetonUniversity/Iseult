@@ -89,6 +89,16 @@ class FieldsPanel:
         self.InterpolationMethods = ['none','nearest', 'bilinear', 'bicubic', 'spline16',
             'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
+        if self.GetPlotParam('OutlineText'):
+            self.annotate_kwargs = {'horizontalalignment': 'right',
+            'verticalalignment': 'top',
+            'size' : self.parent.MainParamDict['annotateTextSize'],
+            'path_effects' : [PathEffects.withStroke(linewidth=1.5,foreground="k")]
+            }
+        else:
+            self.annotate_kwargs = {'horizontalalignment' : 'right',
+            'verticalalignment' : 'top',
+            'size' : self.parent.MainParamDict['annotateTextSize']}
 
     def norm(self, vmin=None, vmax=None):
         if self.GetPlotParam('cnorm_type') =="Linear":
@@ -101,60 +111,7 @@ class FieldsPanel:
         else:
             return PowerNormWithNeg(self.GetPlotParam('cpow_num'), vmin, vmax, div_cmap = self.GetPlotParam('UseDivCmap'),midpoint = self.GetPlotParam('div_midpoint'), stretch_colors = self.GetPlotParam('stretch_colors'))
 
-    def set_plot_keys(self):
-        '''A helper function that will insure that each hdf5 file will only be
-        opened once per time step'''
-        # First make sure that omega_plasma & xi is loaded so we can fix the
-        # x & y distances.
-
-        # Then see if we are plotting E-field or B-Field
-        if self.GetPlotParam('field_type') == 0: # Load the B-Field
-            self.arrs_needed = ['c_omp', 'istep', 'bx']#, 'by', 'bz']
-            if self.GetPlotParam('show_y'):
-                self.arrs_needed.append('by')
-            if self.GetPlotParam('show_z'):
-                self.arrs_needed.append('bz')
-
-        if self.GetPlotParam('field_type') == 1: # Load the E-Field
-            self.arrs_needed = ['c_omp', 'istep', 'ex']
-            if self.GetPlotParam('show_y'):
-                self.arrs_needed.append('ey')
-            if self.GetPlotParam('show_z'):
-                self.arrs_needed.append('ez')
-
-        if self.GetPlotParam('field_type') == 2: # Load the currents
-            self.arrs_needed = ['c_omp', 'istep', 'jx']
-            if self.GetPlotParam('show_y'):
-                self.arrs_needed.append('jy')
-            if self.GetPlotParam('show_z'):
-                self.arrs_needed.append('jz')
-
-        if self.GetPlotParam('field_type') == 3: # Check what the user wants.
-            self.arrs_needed = ['c_omp', 'istep', 'bx']
-            if self.GetPlotParam('show_x'):
-                for line in self.GetPlotParam('cmdstr1').splitlines():
-                    if line[1:15] == 'def FieldFunc(':
-                        self.f1args = [elm.strip() for elm in line[15:-2].split(',')]
-                        self.arrs_needed += self.f1args
-            if self.GetPlotParam('show_y'):
-                for line in self.GetPlotParam('cmdstr2').splitlines():
-                    if line[1:15] == 'def FieldFunc(':
-                        self.f2args = [elm.strip() for elm in line[15:-2].split(',')]
-                        self.arrs_needed += self.f2args
-            if self.GetPlotParam('show_z'):
-                for line in self.GetPlotParam('cmdstr3').splitlines():
-                    if line[1:15] == 'def FieldFunc(':
-                        self.f3args = [elm.strip() for elm in line[15:-2].split(',')]
-                        self.arrs_needed += self.f3args
-        return self.arrs_needed
-
-
-
-
-    def draw(self, output):
-        ''' A Helper function that loads the data for the plot'''
-        # First see of the x_axis and y_axis values have already been calculated
-        # and stored in the DataDict for this time step
+    def update_data(self, output):
         self.c_omp = getattr(output,'c_omp')
         self.istep = getattr(output,'istep')
         if self.GetPlotParam('cmap') == 'None':
@@ -336,22 +293,15 @@ class FieldsPanel:
 
                     self.fz = np.NAN
                     self.flagz = 0
+
+    def draw(self,):
         ''' A function that draws the data. In the interest in speeding up the
         code, draw should only be called when you want to recreate the whole
         figure, i.e. it  will be slow. Most times you will only want to update
         what has changed in the figure. This will be done in a function called
-        refresh, that should be much much faster.'''
+        refresh, that should be much much faster.'''        # First see of the x_axis and y_axis values have already been calculated
+        # and stored in the DataDict for this time step
 
-        if self.GetPlotParam('OutlineText'):
-            self.annotate_kwargs = {'horizontalalignment': 'right',
-            'verticalalignment': 'top',
-            'size' : self.parent.MainParamDict['annotateTextSize'],
-            'path_effects' : [PathEffects.withStroke(linewidth=1.5,foreground="k")]
-            }
-        else:
-            self.annotate_kwargs = {'horizontalalignment' : 'right',
-            'verticalalignment' : 'top',
-            'size' : self.parent.MainParamDict['annotateTextSize']}
 
 
         # Set the tick color
@@ -675,8 +625,175 @@ class FieldsPanel:
         #
         ####
 
-        if self.GetPlotParam('show_cpu_domains'):
-            self.parent.SetCpuDomainLines()
+    def refresh(self):
+        '''This is a function that will be called only if self.axes already
+        holds a fields type plot. We only update things that have changed & are
+        shown.  If hasn't changed or isn't shown, don't touch it. The difference
+        between this and last time, is that we won't actually do any drawing in
+        the plot. The plot will be redrawn after all subplots are refreshed. '''
+
+
+        # Main goal, only change what is showing..
+
+        self.xmin, self.xmax = self.xaxis_values[0], self.xaxis_values[-1]
+        self.lineleft.set_visible(self.GetPlotParam('show_FFT_region'))
+        self.lineright.set_visible(self.GetPlotParam('show_FFT_region'))
+
+        if self.GetPlotParam('show_FFT_region'):
+            # Update the position of the FFT region
+            self.left_loc = self.parent.MainParamDict['FFTLeft'] + self.parent.shock_loc*self.parent.MainParamDict['FFTRelative']
+            self.left_loc = max(self.left_loc, self.xmin)
+            self.lineleft.set_xdata([self.left_loc,self.left_loc])
+
+            self.right_loc = self.parent.MainParamDict['FFTRight'] + self.parent.shock_loc*self.parent.MainParamDict['FFTRelative']
+            self.right_loc = min(self.right_loc, self.xmax)
+            self.lineright.set_xdata([self.right_loc,self.right_loc])
+
+        # Now do the 1D plots, because it is simpler
+        if self.GetPlotParam('twoD') == 0:
+            min_max = [np.inf, -np.inf]
+            if self.GetPlotParam('show_x') and self.flagx:
+                if self.flagx == 1 and len(self.fx.shape) == 1:
+                    self.linex[0].set_data(self.xaxis_values, self.fx)
+                elif self.parent.MainParamDict['Average1D']:
+                    self.linex[0].set_data(self.xaxis_values, np.average(self.fx.reshape(-1,self.fx.shape[-1]), axis =0))
+                else: # In the x-y plane
+                    self.linex[0].set_data(self.xaxis_values, self.fx[self.parent.zSlice,self.parent.ySlice,:])
+                self.linex[0].set_visible(True)
+                self.anx.set_visible(True)
+                min_max[0]=min(min_max[0],self.linex[0].get_data()[1].min())
+                min_max[1]=max(min_max[1],self.linex[0].get_data()[1].max())
+
+            if self.GetPlotParam('show_y') and self.flagy:
+                if self.flagy == 1 and len(self.fy.shape) == 1:
+                    self.liney[0].set_data(self.xaxis_values, self.fy)
+                elif self.parent.MainParamDict['Average1D']:
+                    self.liney[0].set_data(self.xaxis_values, np.average(self.fy.reshape(-1,self.fy.shape[-1]), axis =0))
+                else:
+                    self.liney[0].set_data(self.xaxis_values, self.fy[self.parent.zSlice,self.parent.ySlice,:])
+                self.liney[0].set_visible(True)
+                self.any.set_visible(True)
+                min_max[0]=min(min_max[0],self.liney[0].get_data()[1].min())
+                min_max[1]=max(min_max[1],self.liney[0].get_data()[1].max())
+
+            if self.GetPlotParam('show_z'):
+                if self.flagz ==1 and len(self.fz.shape) == 1:
+                    self.linez[0].set_data(self.xaxis_values, self.fz)
+                elif self.parent.MainParamDict['Average1D']:
+                    self.linez[0].set_data(self.xaxis_values, np.average(self.fz.reshape(-1,self.fz.shape[-1]), axis =0))
+                else:
+                    self.linez[0].set_data(self.xaxis_values, self.fz[self.parent.zSlice,self.parent.ySlice,:])
+                self.linez[0].set_visible(True)
+                self.anz.set_visible(True)
+                min_max[0]=min(min_max[0],self.linez[0].get_data()[1].min())
+                min_max[1]=max(min_max[1],self.linez[0].get_data()[1].max())
+
+            if np.isinf(min_max[0]):
+                min_max[0]=None
+                min_max[1]=None
+            else:
+                dist = min_max[1]-min_max[0]
+                min_max[0] -= 0.04*dist
+                min_max[1] += 0.04*dist
+            self.axes.set_ylim(min_max)
+
+            if self.GetPlotParam('show_shock'):
+                self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
+            if self.parent.MainParamDict['SetxLim']:
+                if self.parent.MainParamDict['xLimsRelative']:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+            else:
+                self.axes.set_xlim(self.xaxis_values[0], self.xaxis_values[-1])
+
+            if self.GetPlotParam('set_v_min'):
+                self.axes.set_ylim(bottom = self.GetPlotParam('v_min'))
+            if self.GetPlotParam('set_v_max'):
+                self.axes.set_ylim(top = self.GetPlotParam('v_max'))
+
+
+        else: # Now refresh the plot if it is 2D
+            self.plotFlag = -1
+
+            if self.GetPlotParam('show_x') and self.flagx >1:
+                self.plotFlag = 0
+                if self.parent.MainParamDict['2DSlicePlane'] == 0: #x-y plane
+                    self.cax.set_data(self.fx[self.parent.zSlice,:,:])
+                elif self.parent.MainParamDict['2DSlicePlane'] == 1: #x-z plane
+                    self.cax.set_data(self.fx[:,self.parent.ySlice,:])
+
+            elif self.GetPlotParam('show_y') and self.flagy >1:
+                self.plotFlag = 1
+                if self.parent.MainParamDict['2DSlicePlane'] == 0: #x-y plane
+                    self.cax.set_data(self.fy[self.parent.zSlice,:,:])
+                elif self.parent.MainParamDict['2DSlicePlane'] == 1: #x-z plane
+                    self.cax.set_data(self.fy[:,self.parent.ySlice,:])
+
+            elif self.GetPlotParam('show_z') and self.flagz>1:
+                self.plotFlag = 2
+                if self.parent.MainParamDict['2DSlicePlane'] == 0: #x-y plane
+                    self.cax.set_data(self.fz[self.parent.zSlice,:,:])
+                elif self.parent.MainParamDict['2DSlicePlane'] == 1: #x-z plane
+                    self.cax.set_data(self.fz[:,self.parent.ySlice,:])
+            else:
+                self.cax.set_data(np.ma.masked_array(np.empty([2,2]), mask = np.ones([2,2])))
+                self.clims = [None, None]
+
+            self.axC.set_visible(self.plotFlag !=-1)
+            if self.plotFlag != -1:
+                self.ymin = 0
+                self.ymax =  self.cax.get_array().shape[0]/self.c_omp*self.istep
+                self.xmin = 0
+                self.xmax =  self.xaxis_values[-1]
+                self.clims = [self.cax.get_array().min(), self.cax.get_array().max()]
+
+
+            if self.parent.MainParamDict['SetxLim']:
+                if self.parent.MainParamDict['xLimsRelative']:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+            else:
+                self.axes.set_xlim(self.xmin,self.xmax)
+            if self.parent.MainParamDict['SetyLim']:
+                self.axes.set_ylim(self.parent.MainParamDict['yBottom'],self.parent.MainParamDict['yTop'])
+            else:
+                self.axes.set_ylim(self.ymin,self.ymax)
+
+            self.cax.set_extent([self.xmin, self.xmax, self.ymin, self.ymax])
+            if self.plotFlag >= 0:
+                self.anntext = self.GetPlotParam('2D_label')[self.GetPlotParam('field_type')][self.plotFlag]
+                if self.GetPlotParam('field_type') ==0  and self.GetPlotParam('normalize_fields'):
+                    self.anntext +=r'$/B_0$'
+                if self.GetPlotParam('field_type') ==1  and self.GetPlotParam('normalize_fields'):
+                    self.anntext +=r'$/E_0$'
+                self.TwoDan.set_text(self.anntext)
+            else:
+                self.TwoDan.set_text('')
+
+            self.vmin = self.cax.get_array().min()
+            if self.GetPlotParam('set_v_min'):
+                self.vmin = self.GetPlotParam('v_min')
+            self.vmax = self.cax.get_array().max()
+            if self.GetPlotParam('set_v_max'):
+                self.vmax = self.GetPlotParam('v_max')
+            if self.GetPlotParam('UseDivCmap') and not self.GetPlotParam('stretch_colors'):
+                self.vmax = max(np.abs(self.vmin), self.vmax)
+                self.vmin = -self.vmax
+            self.cax.norm.vmin = self.vmin
+            self.cax.norm.vmax = self.vmax
+
+            self.CbarTickFormatter()
+
+            if self.GetPlotParam('show_shock'):
+                self.shockline_2d.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
+            if self.parent.MainParamDict['2DSlicePlane'] == 0:
+                self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            if self.parent.MainParamDict['2DSlicePlane'] == 1:
+                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
     def CbarTickFormatter(self):
         ''' A helper function that sets the cbar ticks & labels. This used to be
         easier, but because I am no longer using the colorbar class i have to do
@@ -723,11 +840,9 @@ class FieldsPanel:
 
             else:# self.GetPlotParam('cnorm_type') == "Linear":
                 if self.parent.MainParamDict['HorizontalCbars']:
-    #                    self.cbar.set_data(self.gradient)
                     self.cbar.set_extent([clim[0],clim[1],0,1])
                     self.axC.set_xlim(clim[0],clim[1])
                 else:
-    #                    self.cbar.set_data(np.transpose(self.gradient)[::-1])
                     self.cbar.set_extent([0,1,clim[0],clim[1]])
                     self.axC.set_ylim(clim[0],clim[1])
                     self.axC.locator_params(axis='y',nbins=6)

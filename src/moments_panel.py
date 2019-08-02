@@ -69,10 +69,7 @@ class  MomentsPanel:
 
 
 
-
-
-    def draw(self, output):
-
+    def update_data(self, output):
         ''' A function that draws the data. In the interest in speeding up the
         code, draw should only be called when you want to recreate the whole
         figure, i.e. it  will be slow. Most times you will only want to update
@@ -184,6 +181,7 @@ class  MomentsPanel:
             self.ex*=self.memi
             self.ey*=self.memi
 
+    def draw(self):
         # Set the tick color
         tick_color = 'black'
 
@@ -350,6 +348,74 @@ class  MomentsPanel:
 
         self.axes.set_xlabel(r'$x\  [c/\omega_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
         self.axes.set_ylabel(self.ylabel_list[self.GetPlotParam('m_type')], labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+
+    def refresh(self):
+        '''This is a function that will be called only if self.axes already
+        holds a total energy type plot. We only update things that have changed & are
+        shown.  If hasn't changed or isn't shown, don't touch it. The difference
+        between this and last time, is that we won't actually do any drawing in
+        the plot. The plot will be redrawn after all subplots are refreshed. '''
+
+        if self.GetPlotParam('show_electrons'):
+            if self.GetPlotParam('show_x'):
+                self.ex_plot[0].set_data(*stepify(self.x_bins, self.ex))
+            if self.GetPlotParam('show_y'):
+                self.ey_plot[0].set_data(*stepify(self.x_bins, self.ey))
+            if self.GetPlotParam('show_z'):
+                self.ez_plot[0].set_data(*stepify(self.x_bins, self.ez))
+        if self.GetPlotParam('show_ions'):
+            if self.GetPlotParam('show_x'):
+                self.ix_plot[0].set_data(*stepify(self.x_bins, self.ix))
+            if self.GetPlotParam('show_y'):
+                self.iy_plot[0].set_data(*stepify(self.x_bins, self.iy))
+            if self.GetPlotParam('show_z'):
+                self.iz_plot[0].set_data(*stepify(self.x_bins, self.iz))
+        if self.GetPlotParam('show_total'):
+            if self.GetPlotParam('show_x'):
+                self.tx_plot[0].set_data(*stepify(self.x_bins, Total(self.ix, self.icounts, self.ex, self.ecounts)))
+            if self.GetPlotParam('show_y'):
+                self.ty_plot[0].set_data(*stepify(self.x_bins, Total(self.iy, self.icounts, self.ey, self.ecounts)))
+            if self.GetPlotParam('show_z'):
+                self.tz_plot[0].set_data(*stepify(self.x_bins, Total(self.iz, self.icounts, self.ez, self.ecounts)))
+
+        # fancy code to make sure that matplotlib sets its limits
+        # based only on the visible lines.
+        self.axes.dataLim = mtransforms.Bbox.unit()
+        #self.axes.dataLim.update_from_data_xy(xy = np.vstack(self.ion_plot_list[0].get_data()).T, ignore=True)
+        if self.GetPlotParam('show_ions'):
+            for i in range(len(self.ion_plot_list)):
+                if self.GetPlotParam(self.key_list[i]):
+                    xy = np.vstack(self.ion_plot_list[i].get_data()).T
+                    self.axes.dataLim.update_from_data_xy(xy, ignore=False)
+        if self.GetPlotParam('show_electrons'):
+            for i in range(len(self.e_plot_list)):
+                if self.GetPlotParam(self.key_list[i]):
+                    xy = np.vstack(self.e_plot_list[i].get_data()).T
+                    self.axes.dataLim.update_from_data_xy(xy, ignore=False)
+        if self.GetPlotParam('show_total'):
+            for i in range(len(self.t_plot_list)):
+                if self.GetPlotParam(self.key_list[i]):
+                    xy = np.vstack(self.t_plot_list[i].get_data()).T
+                    self.axes.dataLim.update_from_data_xy(xy, ignore=False)
+
+
+        self.axes.autoscale()
+
+        # Set new lims if the user chooses to do so.
+        if self.GetPlotParam('set_v_min'):
+            self.axes.set_ylim(bottom = self.GetPlotParam('v_min'))
+        if self.GetPlotParam('set_v_max'):
+            self.axes.set_ylim(top = self.GetPlotParam('v_max'))
+
+
+        if self.parent.MainParamDict['SetxLim']:
+            if self.parent.MainParamDict['xLimsRelative']:
+                self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                   self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+            else:
+                self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+        else:
+            self.axes.set_xlim(self.fxmin,self.fxmax)
 
     def GetPlotParam(self, keyname):
         return self.param_dict[keyname]

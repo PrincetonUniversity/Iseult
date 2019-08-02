@@ -1,7 +1,9 @@
-
+#! /usr/bin/env python
 
 if __name__ == '__main__':
+
     import argparse
+
     parser = argparse.ArgumentParser(description='Plotting program for Tristan-MP files.')
     #        parser.add_argument('integers', metavar='N', type=int, nargs='+',
     #                        help='The maximum file number to consider')
@@ -40,6 +42,7 @@ if __name__ == '__main__':
     #                    action="store_true")
 
     cmd_args = parser.parse_args()
+
     import sys, os
     sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 

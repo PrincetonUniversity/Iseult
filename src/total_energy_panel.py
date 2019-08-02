@@ -50,9 +50,9 @@ class TotEnergyPanel:
         self.parent = parent
         self.chartType = 'TotalEnergyPlot'
         self.figure = self.parent.figure
-    def draw(self, output):
-        self.time = getattr(output,'time')
-
+    def update_data(self, output):
+        self.time = output.time
+    def draw(self):
         ''' A function that draws the data. In the interest in speeding up the
         code, draw should only be called when you want to recreate the whole
         figure, i.e. it  will be slow. Most times you will only want to update
@@ -160,6 +160,15 @@ class TotEnergyPanel:
 
         self.axes.set_xlabel(r'$t\ \  [\omega^{-1}_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
         self.axes.set_ylabel('Energy [arb. unit]', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+    def refresh(self):
+
+        '''This is a function that will be called only if self.axes already
+        holds a total energy type plot. We only update things that have changed & are
+        shown.  If hasn't changed or isn't shown, don't touch it. The difference
+        between this and last time, is that we won't actually do any drawing in
+        the plot. The plot will be redrawn after all subplots are refreshed. '''
+
+        self.cur_time.set_xdata([self.time,self.time])
 
     def GetPlotParam(self, keyname):
         return self.param_dict[keyname]
