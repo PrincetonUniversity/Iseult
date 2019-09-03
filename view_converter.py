@@ -541,9 +541,17 @@ def convertOldConfig(config_file):
                             if tmpchart_type == 'FieldsPlot':
                                 if param == '2D_label' or param =='1D_label':
                                     tstr = config.get(tmp_str, param)
-                                    flattened_list = tstr.strip('[').strip(']').strip().split(',')
+                                    print(tstr)
+                                    tstr = tstr.replace('[', '')
+                                    tstr = tstr.replace(']', '')
+                                    tstr = tstr.replace(' ', '')
+                                    tstr = tstr.replace("'", '')
+                                    tstr = tstr.replace('\\\\', '\\')
+                                    flattened_list = tstr.split(',')
+                                    print(flattened_list)
                                     # NOW MAKE IT A LIST OF LISTs
                                     cfgDict[new_str][param] = [*map(list, zip(*[iter(flattened_list)]*3))]
+                                    print(cfgDict[new_str][param])
                 except KeyError:
                     pass
             else:
