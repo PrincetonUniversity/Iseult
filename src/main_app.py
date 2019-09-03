@@ -1,5 +1,4 @@
 #! /usr/bin/env python
-
 import re # regular expressions
 import os, sys # Used to make the code portable
 import h5py # Allows us the read the data files
