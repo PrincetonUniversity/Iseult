@@ -225,17 +225,19 @@ class PhasePanel:
                     self.hist2d = Fast2DWeightedHist(self.y_values, self.x_values, self.weights, self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
                 else:
                     self.hist2d = Fast2DHist(self.y_values, self.x_values, self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
-            if self.GetPlotParam('masked'):
-                zval = ma.masked_array(self.hist2d[0])
-                zval[zval == 0] = ma.masked
-                zval *= float(zval.max())**(-1)
-                tmplist = [zval[~zval.mask].min(), zval.max()]
-            else:
-                zval = np.copy(self.hist2d[0])
-                zval[zval==0] = 0.5
-                zval *= float(zval.max())**(-1)
-                tmplist = [zval.min(), zval.max()]
-
+            try:
+                if self.GetPlotParam('masked'):
+                    zval = ma.masked_array(self.hist2d[0])
+                    zval[zval == 0] = ma.masked
+                    zval *= float(zval.max())**(-1)
+                    tmplist = [zval[~zval.mask].min(), zval.max()]
+                else:
+                    zval = np.copy(self.hist2d[0])
+                    zval[zval==0] = 0.5
+                    zval *= float(zval.max())**(-1)
+                    tmplist = [zval.min(), zval.max()]
+            except ValueError:
+                tmplist = [0.1, 1]
             self.hist2d = zval, self.hist2d[1], self.hist2d[2], tmplist
 
 
@@ -322,18 +324,19 @@ class PhasePanel:
                 else:
                     self.hist2d = Fast2DHist(self.y_values, self.x_values, self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
 
-
-            if self.GetPlotParam('masked'):
-                zval = ma.masked_array(self.hist2d[0])
-                zval[zval == 0] = ma.masked
-                zval *= float(zval.max())**(-1)
-                tmplist = [zval[~zval.mask].min(), zval.max()]
-            else:
-                zval = np.copy(self.hist2d[0])
-                zval[zval==0] = 0.5
-                zval *= float(zval.max())**(-1)
-                tmplist = [zval.min(), zval.max()]
-
+            try:
+                if self.GetPlotParam('masked'):
+                    zval = ma.masked_array(self.hist2d[0])
+                    zval[zval == 0] = ma.masked
+                    zval *= float(zval.max())**(-1)
+                    tmplist = [zval[~zval.mask].min(), zval.max()]
+                else:
+                    zval = np.copy(self.hist2d[0])
+                    zval[zval==0] = 0.5
+                    zval *= float(zval.max())**(-1)
+                    tmplist = [zval.min(), zval.max()]
+            except ValueError:
+                tmplist = [0.1,1]
             self.hist2d = zval, self.hist2d[1], self.hist2d[2], tmplist
 
     def draw(self):
