@@ -232,12 +232,12 @@ def convertOldConfig(config_file):
                        'interpolation': 'nearest',
                        'face_color': 'gainsboro'}
 
-    subplotCfg['EnergyPlot']['IntList'] = ['twoD', 'masked', 'weighted', 'show_cbar', 'show_shock', 'show_int_region', 'set_color_limits',
+    subplotCfg['EnergyPlot']['BoolList'] = ['twoD', 'masked', 'weighted', 'show_cbar', 'show_shock', 'show_int_region', 'set_color_limits',
                 'set_v_min', 'set_v_max', 'set_y_min', 'set_y_max', 'spatial_x', 'spatial_y']
     subplotCfg['EnergyPlot']['IntList']= ['prtl_type', 'xbins', 'ebins']
-    subplotCfg['EnergyPlot']['IntList'] = ['v_min', 'v_max', 'y_min', 'y_max', 'cpow_num']
+    subplotCfg['EnergyPlot']['FloatList'] = ['v_min', 'v_max', 'y_min', 'y_max', 'cpow_num']
     #StrList = ['interpolation', 'cnorm_type']
-    subplotCfg['EnergyPlot']['IntList'] = ['cnorm_type'] # No longer loading interpolation from config files
+    subplotCfg['EnergyPlot']['StrList'] = ['cnorm_type'] # No longer loading interpolation from config files
 
     subplotCfg['FFTPlots']['plot_param_dict'] = {'twoD': 0,
                        'FFT_type':0, # 0 = FFT_Bz, 1 = FFT_perp_in_plane, 2 = Chi -> sin(2*Chi) = V/I where V & I are the Stokes parameters
