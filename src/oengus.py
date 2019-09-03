@@ -51,7 +51,7 @@ class Oengus():
             print('either it must be enclosed in quotation marks or given with whitespace replaced by _.')
             print('Name is case sensitive. Reverting to Default view')
             with open(os.path.join(self.IseultDir, '.iseult_configs', 'Default.yml')) as f:
-                sefl.cfgDict = yaml.safe_load(f)
+                self.cfgDict = yaml.safe_load(f)
         self.GenMainParamDict()
 
         # Create the figure
