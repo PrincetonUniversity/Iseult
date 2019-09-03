@@ -194,8 +194,8 @@ class PhasePanel:
             nan_ind = np.isnan(self.y_values)
 
 
-            self.pmin = min(self.y_values)
-            self.pmax = max(self.y_values)
+            self.pmin = 0 if len(self.y_values) == 0 else min(self.y_values)
+            self.pmax = 0 if len(self.y_values) == 0 else  max(self.y_values)
             self.pmax = self.pmax if (self.pmax != self.pmin) else self.pmin + 1
 
 
@@ -273,8 +273,8 @@ class PhasePanel:
                 if self.GetPlotParam('mom_dim') == 2:
                     self.y_values = getattr(output,'we')
 
-            self.pmin = min(self.y_values)
-            self.pmax = max(self.y_values)
+            self.pmin = 0.0 if len(self.y_values) == 0 else min(self.y_values)
+            self.pmax = 0.0 if len(self.y_values) == 0 else max(self.y_values)
             self.pmax = self.pmax if (self.pmax != self.pmin) else self.pmin + 1
 
             self.xmin = 0
