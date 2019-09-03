@@ -542,7 +542,7 @@ def convertOldConfig(config_file):
                                     tstr = config.get(tmp_str, param)
                                     flattened_list = tstr.strip('[').strip(']').strip().split(',')
                                     # NOW MAKE IT A LIST OF LISTs
-                                    cfgDict[tmp_str][param] = list(map(list, zip(*[iter(flattened_list)]*3)))
+                                    cfgDict[tmp_str][param] = [*map(list, zip(*[iter(flattened_list)]*3))]
                 except KeyError:
                     pass
             else:
