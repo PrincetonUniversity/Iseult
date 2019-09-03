@@ -510,44 +510,45 @@ def convertOldConfig(config_file):
     for i in range(cfgDict['MainParamDict']['NumOfRows']):
         for j in range(cfgDict['MainParamDict']['NumOfCols']):
             tmp_str = 'Chart' + str(i) + ',' + str(j)
-            cfgDict[tmp_str] = {}
+            new_str = 'Chart' + str(i) + '_' + str(j)
+            cfgDict[new_str] = {}
             if tmp_str in config.sections():
                 tmpchart_type = config.get(tmp_str, 'ChartType')
-                cfgDict[tmp_str]['ChartType'] = tmpchart_type
+                cfgDict[new_str]['ChartType'] = tmpchart_type
                 #Now load in all the parameters from the config file
                 for param in subplotCfg[tmpchart_type]['BoolList']:
                     if param.lower() in config.options(tmp_str):
-                        cfgDict[tmp_str][param] = config.getboolean(tmp_str, param)
+                        cfgDict[new_str][param] = config.getboolean(tmp_str, param)
 
                 for param in subplotCfg[tmpchart_type]['IntList']:
                     if param.lower() in config.options(tmp_str):
-                        cfgDict[tmp_str][param] = int(config.getfloat(tmp_str, param))
+                        cfgDict[new_str][param] = int(config.getfloat(tmp_str, param))
 
                 for param in subplotCfg[tmpchart_type]['FloatList']:
                     if param.lower() in config.options(tmp_str):
-                        cfgDict[tmp_str][param] = config.getfloat(tmp_str, param)
+                        cfgDict[new_str][param] = config.getfloat(tmp_str, param)
 
                 for param in subplotCfg[tmpchart_type]['StrList']:
                     if param.lower() in config.options(tmp_str):
-                        cfgDict[tmp_str][param] = config.get(tmp_str, param)
+                        cfgDict[new_str][param] = config.get(tmp_str, param)
                 try:
                     for param in subplotCfg[tmpchart_type]['SpecialList']:
                         if param.lower() in config.options(tmp_str):
                             if tmpchart_type == 'FieldsPlot':
                                 if param == 'yaxis_label' or 'OneDOnly':
                                     tstr = config.get(tmp_str, param)
-                                    cfgDict[tmp_str][param] = tstr.strip('[').strip(']').strip().split(',')
+                                    cfgDict[new_str][param] = tstr.strip('[').strip(']').strip().split(',')
                             if tmpchart_type == 'FieldsPlot':
                                 if param == '2D_label' or param =='1D_label':
                                     tstr = config.get(tmp_str, param)
                                     flattened_list = tstr.strip('[').strip(']').strip().split(',')
                                     # NOW MAKE IT A LIST OF LISTs
-                                    cfgDict[tmp_str][param] = [*map(list, zip(*[iter(flattened_list)]*3))]
+                                    cfgDict[new_str][param] = [*map(list, zip(*[iter(flattened_list)]*3))]
                 except KeyError:
                     pass
             else:
                 # The graph isn't specified in the config file, just set it equal to a phase plot
-                cfgDict[tmp_str]['ChartType'] = 'PhasePlot'
+                cfgDict[new_str]['ChartType'] = 'PhasePlot'
 
 
     # WRITE THE NEW YAML FILE
