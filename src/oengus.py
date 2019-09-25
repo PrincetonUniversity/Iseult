@@ -302,7 +302,7 @@ class Oengus():
 
             # Find the farthest location where the average density is greater
             # than half max
-            ishock = np.where(o.dens[0,:,:][o.dens[0,:,:].shape[0]/2,jstart:]>=dens_half_max)[0][-1]
+            ishock = np.where(o.dens[0,:,:][o.dens[0,:,:].shape[0]//2,jstart:]>=dens_half_max)[0][-1]
             self.shock_loc = cur_xaxis[ishock]
 
             #self.cpu_x_locs = np.cumsum(self.DataDict['mx']-5)/self.DataDict['c_omp'][0]
@@ -424,7 +424,7 @@ class Oengus():
 
             # Find the farthest location where the average density is greater
             # than half max
-            ishock = np.where(o.dens[0,:,:][o.dens[0,:,:].shape[0]/2,jstart:]>=dens_half_max)[0][-1]
+            ishock = np.where(o.dens[0,:,:][o.dens[0,:,:].shape[0]//2,jstart:]>=dens_half_max)[0][-1]
             self.shock_loc = cur_xaxis[ishock]
 
             #self.cpu_x_locs = np.cumsum(self.DataDict['mx']-5)/self.DataDict['c_omp'][0]
