@@ -491,38 +491,30 @@ class Oengus():
             if self.SubPlotList[pos[0]][pos[1]].GetPlotParam('prtl_type') == 0:
                 for spos in self.spectral_plot_list:
                     if self.SubPlotList[spos[0]][spos[1]].GetPlotParam('show_ions'):
-                        k = min(self.SubPlotList[spos[0]][spos[1]].spect_num, len(self.dashes_options)-1)
-                        # Append the left line to the list
-                        self.SubPlotList[pos[0]][pos[1]].IntRegionLines.append(self.SubPlotList[pos[0]][pos[1]].axes.axvline(
-                        max(self.SubPlotList[spos[0]][spos[1]].i_left_loc, self.SubPlotList[pos[0]][pos[1]].xmin+1),
-                        linewidth = 1.5, linestyle = '-', color = self.ion_color))
-                        # Choose the left dashes pattern
-                        self.SubPlotList[pos[0]][pos[1]].IntRegionLines[-1].set_dashes(self.dashes_options[k])
-
-                        # Append the right line to the list
-                        self.SubPlotList[pos[0]][pos[1]].IntRegionLines.append(self.SubPlotList[pos[0]][pos[1]].axes.axvline(
-                        min(self.SubPlotList[spos[0]][spos[1]].i_right_loc, self.SubPlotList[pos[0]][pos[1]].xmax+1),
-                        linewidth = 1.5, linestyle = '-', color = self.ion_color))
-                        # Choose the right dashes pattern
-                        self.SubPlotList[pos[0]][pos[1]].IntRegionLines[-1].set_dashes(self.dashes_options[k])
+                        # Update the left line to the list
+                        self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines[i].set_xdata(
+                        [max(self.SubPlotList[spos[0]][spos[1]].graph.i_left_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmin+1),
+                        max(self.SubPlotList[spos[0]][spos[1]].graph.i_left_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmin+1)])
+                        i+=1
+                        # Append the right line of the list
+                        self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines[i].set_xdata(
+                        [min(self.SubPlotList[spos[0]][spos[1]].graph.i_right_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmax-1),
+                        min(self.SubPlotList[spos[0]][spos[1]].graph.i_right_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmax-1)])
+                        i+=1
             else:
                 for spos in self.spectral_plot_list:
                     if self.SubPlotList[spos[0]][spos[1]].GetPlotParam('show_electrons'):
-                        k = min(self.SubPlotList[spos[0]][spos[1]].spect_num, len(self.dashes_options)-1)
-                        # Append the left line to the list
-                        self.SubPlotList[pos[0]][pos[1]].IntRegionLines.append(self.SubPlotList[pos[0]][pos[1]].axes.axvline(
-                        max(self.SubPlotList[spos[0]][spos[1]].e_left_loc, self.SubPlotList[pos[0]][pos[1]].xmin+1),
-                        linewidth = 1.5, linestyle = '-', color = self.electron_color))
-                        # Choose the left dashes pattern
-                        self.SubPlotList[pos[0]][pos[1]].IntRegionLines[-1].set_dashes(self.dashes_options[k])
 
-                        # Append the right line to the list
-                        self.SubPlotList[pos[0]][pos[1]].IntRegionLines.append(self.SubPlotList[pos[0]][pos[1]].axes.axvline(
-                        min(self.SubPlotList[spos[0]][spos[1]].e_right_loc, self.SubPlotList[pos[0]][pos[1]].xmax+1),
-                        linewidth = 1.5, linestyle = '-', color = self.electron_color))
-                        # Choose the right dashes pattern
-                        self.SubPlotList[pos[0]][pos[1]].IntRegionLines[-1].set_dashes(self.dashes_options[k])
-
+                        # Update the left line to the list
+                        self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines[i].set_xdata(
+                        [max(self.SubPlotList[spos[0]][spos[1]].graph.e_left_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmin+1),
+                        max(self.SubPlotList[spos[0]][spos[1]].graph.e_left_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmin-1)])
+                        i+=1
+                        # Update the right line of the list
+                        self.SubPlotList[pos[0]][pos[1]].graph.IntRegionLines[i].set_xdata(
+                        [min(self.SubPlotList[spos[0]][spos[1]].graph.e_right_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmax+1),
+                        min(self.SubPlotList[spos[0]][spos[1]].graph.e_right_loc, self.SubPlotList[pos[0]][pos[1]].graph.xmax-1)])
+                        i+=1
         self.canvas.draw()
 
         s, (width, height) = self.canvas.print_to_buffer()
