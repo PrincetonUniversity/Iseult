@@ -2676,7 +2676,7 @@ class MainApp(Tk.Tk):
 
                 # Find the farthest location where the average density is greater
                 # than half max
-                ishock = np.where(self.DataDict['dens'][0,:,:][self.DataDict['dens'][0,:,:].shape[0]/2,jstart:]>=dens_half_max)[0][-1]
+                ishock = np.where(self.DataDict['dens'][0,:,:][self.DataDict['dens'][0,:,:].shape[0]//2,jstart:]>=dens_half_max)[0][-1]
                 self.DataDict['shock_loc'] = cur_xaxis[ishock]
 
             if np.isnan(self.prev_shock_loc):

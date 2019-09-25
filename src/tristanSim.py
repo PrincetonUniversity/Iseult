@@ -23,7 +23,7 @@ class PicSim(object):
         self._outputFileNames = outputFileNames
         self._outputFileKey = [key.split('.')[0] for key in self._outputFileNames]
         self._outputFileRegEx = [re.compile(elm) for elm in self._outputFileNames]
-  
+
         self._outputFileH5Keys = []
         self._pathDict = {}
         self._collisionFixers = {'time': 'param', 'dens': 'flds'}
@@ -60,10 +60,10 @@ class PicSim(object):
                             self._h5Key2FileDict[key] = self._collisionFixers[key]
                     else:
                         self._h5Key2FileDict[key] = fkey
-         
+
 
             self._output[0].setKeys(self._h5Key2FileDict)
-            
+
     def getFileNums(self):
         try:
             # Create a dictionary of all the paths to the files
@@ -91,40 +91,41 @@ class PicSim(object):
         except OSError:
             return []
 
-
+    def getFields(self):
+        return []
     @property
-    def trackKeys(self): 
-        return self._trackKeys 
-          
-    # setting the values     
-    @trackKeys.setter 
-    def trackKeys(self, trackKeys): 
+    def trackKeys(self):
+        return self._trackKeys
+
+    # setting the values
+    @trackKeys.setter
+    def trackKeys(self, trackKeys):
         self._trackKeys = trackKeys
 
     @property
-    def name(self): 
-        return self._name 
-          
-    # setting the values     
-    @name.setter 
-    def name(self, myName): 
+    def name(self):
+        return self._name
+
+    # setting the values
+    @name.setter
+    def name(self, myName):
         self._name = myName
 
     @property
-    def trackStart(self): 
+    def trackStart(self):
         return self._trackStart
-          
-    # setting the values     
-    @trackStart.setter 
+
+    # setting the values
+    @trackStart.setter
     def trackStart(self, val):
         self._trackStart = val
 
     @property
-    def trackStop(self): 
+    def trackStop(self):
         return self._trackStop
 
-    # setting the values     
-    @trackStop.setter 
+    # setting the values
+    @trackStop.setter
     def trackStop(self, val):
         self._trackStop = val
 

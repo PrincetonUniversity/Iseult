@@ -341,9 +341,9 @@ MainParamDict:
   Average1D: 0
   AxLabelSize: 11
   ClearFig: true
-  ColorMap: viridis
+  ColorMap: Blue/Green/Red/Yellow
   ConstantShockVel: true
-  DivColorMap: BuYlRd
+  DivColorMap: Blue/Green/Red/Yellow
   DoLorentzBoost: false
   FFTLeft: 0.0
   FFTRelative: true
