@@ -6,7 +6,6 @@ import numpy as np
 import numpy.ma as ma
 import new_cmaps
 from new_cnorms import PowerNormWithNeg, PowerNormFunc
-from modest_image import imshow
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
@@ -246,15 +245,15 @@ class BPanel:
 
             if self.parent.MainParamDict['2DSlicePlane'] == 0: # x-y plane
                 if self.parent.MainParamDict['ImageAspect']:
-                    self.cax = imshow(self.axes, self.f[self.parent.zSlice,:,:], origin = 'lower', norm = self.norm())
+                    self.cax = self.axes.imshow(self.f[self.parent.zSlice,:,:], origin = 'lower', norm = self.norm())
                 else:
-                    self.cax = imshow(self.axes, self.f[self.parent.zSlice,:,:], origin = 'lower', norm = self.norm(),
+                    self.cax = self.axes.imshow(self.f[self.parent.zSlice,:,:], origin = 'lower', norm = self.norm(),
                                             aspect= 'auto')
             elif self.parent.MainParamDict['2DSlicePlane'] == 1: # x-y plane
                 if self.parent.MainParamDict['ImageAspect']:
-                    self.cax = imshow(self.axes, self.f[:, self.parent.ySlice,:], origin = 'lower', norm = self.norm())
+                    self.cax = self.axes.imshow(self.f[:, self.parent.ySlice,:], origin = 'lower', norm = self.norm())
                 else:
-                    self.cax = imshow(self.axes,self.f[:,self.parent.ySlice,:], origin = 'lower', norm = self.norm(),
+                    self.cax = self.axes.imshow(self.f[:,self.parent.ySlice,:], origin = 'lower', norm = self.norm(),
                                             aspect= 'auto')
 
             self.ymin = 0
