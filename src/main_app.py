@@ -3314,7 +3314,7 @@ class MainApp(Tk.Tk):
                         '-y', '-f', 'image2', # overwrite, image2 is a colorspace thing.
                         '-framerate', str(int(FPS)), # Set framerate to the the user selected option
                         '-pattern_type', 'glob', '-i', os.path.join(self.movie_dir, '../tmp_erase','*.png'),
-                        'c:v', 'libx264, ''-vf', 'format=yuv420p',  # save as a *.mov
+                        '-vf', 'format=yuv420p',  # save as a *.mov
                         os.path.join(os.path.join(self.movie_dir,'..'),fname)]#, '&']#, # output name,
                         #'<dev/null', '>dev/null', '2>/var/log/ffmpeg.log', '&'] # run in background
             try:
