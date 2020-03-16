@@ -1,6 +1,7 @@
 *.pyc
 *.pyx
 __pycache__/
+.DS_Store
 IgnoreME/
 output/
 *~
