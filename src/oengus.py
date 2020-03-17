@@ -265,7 +265,13 @@ class Oengus():
         self.TotalIonEnergy = []#
         self.TotalMagEnergy = []
         self.TotalElectricEnergy =[]
+        self.TotalBxEnergy = []
+        self.TotalByEnergy = []
         self.TotalBzEnergy = []
+        self.TotalExEnergy = []
+        self.TotalEyEnergy = []
+        self.TotalEzEnergy = []
+
         for o in self.sim:
             self.TotalEnergyTimes.append(o.time)
             self.TotalElectronEnergy.append(np.sum(np.sqrt(o.ue*o.ue + o.ve*o.ve + o.we*o.we +1)-1)*o.stride*abs(o.qi)*o.c**2)
@@ -273,12 +279,27 @@ class Oengus():
             self.TotalMagEnergy.append(np.sum(o.bz*o.bz+o.bx*o.bx+o.by*o.by)*o.istep**2*.5)
             self.TotalElectricEnergy.append(np.sum(o.ez*o.ez+o.ex*o.ex+o.ey*o.ey)*o.istep**2*.5)
             self.TotalBzEnergy.append(np.sum(o.bz*o.bz)*o.istep**2*.5)
+            self.TotalBxEnergy.append(np.sum(o.bx*o.bx)*o.istep**2*.5)
+            self.TotalByEnergy.append(np.sum(o.by*o.by)*o.istep**2*.5)
+
+            self.TotalEzEnergy.append(np.sum(o.ez*o.ez)*o.istep**2*.5)
+            self.TotalExEnergy.append(np.sum(o.ex*o.ex)*o.istep**2*.5)
+            self.TotalEyEnergy.append(np.sum(o.ey*o.ey)*o.istep**2*.5)
+
+
             o.clear()
         self.TotalElectronEnergy = np.array(self.TotalElectronEnergy)
         self.TotalIonEnergy = np.array(self.TotalIonEnergy)
         self.TotalMagEnergy = np.array(self.TotalMagEnergy)
         self.TotalElectricEnergy = np.array(self.TotalElectricEnergy)
         self.TotalBzEnergy = np.array(self.TotalBzEnergy)
+        self.TotalByEnergy = np.array(self.TotalByEnergy)
+        self.TotalBxEnergy = np.array(self.TotalBxEnergy)
+
+        self.TotalEzEnergy = np.array(self.TotalEzEnergy)
+        self.TotalEyEnergy = np.array(self.TotalEyEnergy)
+        self.TotalExEnergy = np.array(self.TotalExEnergy)
+
 
     def create_graphs(self):
         o = self.sim[0]

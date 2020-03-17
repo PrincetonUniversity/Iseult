@@ -1896,7 +1896,14 @@ class MainApp(Tk.Tk):
         self.TotalElectronEnergy = np.array([])
 
         self.TotalMagEnergy = np.array([])
+        self.TotalBxEnergy = np.array([])
+        self.TotalByEnergy = np.array([])
         self.TotalBzEnergy = np.array([])
+
+        self.TotalExEnergy = np.array([])
+        self.TotalEyEnergy = np.array([])
+        self.TotalEzEnergy = np.array([])
+
         self.TotalElectricEnergy = np.array([])
 
         # figure out all keys that have 'Prtl'
@@ -2453,7 +2460,13 @@ class MainApp(Tk.Tk):
             self.TotalElectronEnergy = np.array([])
 
             self.TotalMagEnergy = np.array([])
+            self.TotalBxEnergy = np.array([])
+            self.TotalByEnergy = np.array([])
             self.TotalBzEnergy = np.array([])
+
+            self.TotalExEnergy = np.array([])
+            self.TotalEyEnergy = np.array([])
+            self.TotalEzEnergy = np.array([])
             self.TotalElectricEnergy = np.array([])
 
 
@@ -2622,28 +2635,33 @@ class MainApp(Tk.Tk):
                 self.TotalElectronEnergy = np.append(np.append(self.TotalElectronEnergy[0:ind],TotalElectronKE),self.TotalElectronEnergy[ind:])
                 self.TotalIonEnergy = np.append(np.append(self.TotalIonEnergy[0:ind],TotalIonKE),self.TotalIonEnergy[ind:])
 
-                BzEnergy = self.DataDict['bz'][:,:,:]*self.DataDict['bz'][:,:,:]
-                TotalBEnergy = self.DataDict['bx'][:,:,:]*self.DataDict['bx'][:,:,:]
-                TotalBEnergy += self.DataDict['by'][:,:,:]*self.DataDict['by'][:,:,:]
-                TotalBEnergy += BzEnergy
-                # sum over the array and then multiply by the number of points len(x)*len(y)
 
-                BzEnergy = np.sum(BzEnergy)
-                BzEnergy *= self.DataDict['istep'][0]**2*.5
-                TotalBEnergy = np.sum(TotalBEnergy) #*self.DataDict['bx'][0,:,:].shape[1]*self.DataDict['bx'][0,:,:].shape[0]
-                TotalBEnergy *= self.DataDict['istep'][0]**2*.5
+                BxEnergy = np.sum(self.DataDict['bx'][:,:,:]*self.DataDict['bx'][:,:,:]) * self.DataDict['istep'][0]**2*.5
+                ByEnergy = np.sum(self.DataDict['by'][:,:,:]*self.DataDict['by'][:,:,:]) * self.DataDict['istep'][0]**2*.5
+                BzEnergy = np.sum(self.DataDict['bz'][:,:,:]*self.DataDict['bz'][:,:,:]) * self.DataDict['istep'][0]**2*.5
 
-                TotalEEnergy = self.DataDict['ex'][:,:,:]*self.DataDict['ex'][:,:,:]
-                TotalEEnergy += self.DataDict['ey'][:,:,:]*self.DataDict['ey'][:,:,:]
-                TotalEEnergy += self.DataDict['ez'][:,:,:]*self.DataDict['ez'][:,:,:]
+                ExEnergy = np.sum(self.DataDict['ex'][:,:,:]*self.DataDict['ex'][:,:,:]) * self.DataDict['istep'][0]**2*.5
+                EyEnergy = np.sum(self.DataDict['ey'][:,:,:]*self.DataDict['ey'][:,:,:]) * self.DataDict['istep'][0]**2*.5
+                EzEnergy = np.sum(self.DataDict['ez'][:,:,:]*self.DataDict['ez'][:,:,:]) * self.DataDict['istep'][0]**2*.5
+
+                #TotalBEnergy = BxEnergy + ByEnergy + BzEnergy
+
+                ExEnergy = np.sum(self.DataDict['ex'][:,:,:]*self.DataDict['ex'][:,:,:]) * self.DataDict['istep'][0]**2*.5
+                EyEnergy = np.sum(self.DataDict['ey'][:,:,:]*self.DataDict['ey'][:,:,:]) * self.DataDict['istep'][0]**2*.5
+                EzEnergy = np.sum(self.DataDict['ez'][:,:,:]*self.DataDict['ez'][:,:,:]) * self.DataDict['istep'][0]**2*.5
+
+                #TotalEEnergy = ExEnergy + EyEnergy + EzEnergy
 
                 # sum over the array and then divide by the number of points len(x)*len(y)
-                TotalEEnergy = np.sum(TotalEEnergy) #*self.DataDict['ex'][0,:,:].shape[1]*self.DataDict['ex'][0,:,:].shape[0]
-                TotalEEnergy *= self.DataDict['istep'][0]**2*.5
-                self.TotalMagEnergy = np.append(np.append(self.TotalMagEnergy[0:ind],TotalBEnergy), self.TotalMagEnergy[ind:])
+                self.TotalBxEnergy = np.append(np.append(self.TotalBxEnergy[0:ind],BxEnergy), self.TotalBxEnergy[ind:])
+                self.TotalByEnergy = np.append(np.append(self.TotalByEnergy[0:ind],ByEnergy), self.TotalByEnergy[ind:])
                 self.TotalBzEnergy = np.append(np.append(self.TotalBzEnergy[0:ind],BzEnergy), self.TotalBzEnergy[ind:])
-                self.TotalElectricEnergy = np.append(np.append(self.TotalElectricEnergy[0:ind],TotalEEnergy), self.TotalElectricEnergy[ind:])
+                self.TotalMagEnergy = self.TotalBxEnergy + self.TotalByEnergy + self.TotalBzEnergy
 
+                self.TotalExEnergy = np.append(np.append(self.TotalExEnergy[0:ind],BxEnergy), self.TotalExEnergy[ind:])
+                self.TotalEyEnergy = np.append(np.append(self.TotalEyEnergy[0:ind],ByEnergy), self.TotalEyEnergy[ind:])
+                self.TotalEzEnergy = np.append(np.append(self.TotalEzEnergy[0:ind],BzEnergy), self.TotalEzEnergy[ind:])
+                self.TotalElectricEnergy = self.TotalExEnergy + self.TotalEyEnergy + self.TotalEzEnergy
 
         if self.MainParamDict['ConstantShockVel']:
             # We can just calculate the time * self.shock_speed
@@ -2721,13 +2739,23 @@ class MainApp(Tk.Tk):
                 self.TotalIonEnergy = np.append(self.TotalIonEnergy[0:ind],self.TotalIonEnergy[ind+1:])
                 self.TotalMagEnergy = np.append(self.TotalMagEnergy[0:ind], self.TotalMagEnergy[ind+1:])
                 self.TotalBzEnergy = np.append(self.TotalBzEnergy[0:ind], self.TotalBzEnergy[ind+1:])
+                self.TotalByEnergy = np.append(self.TotalByEnergy[0:ind], self.TotalByEnergy[ind+1:])
+                self.TotalBxEnergy = np.append(self.TotalBxEnergy[0:ind], self.TotalBxEnergy[ind+1:])
+                self.TotalEzEnergy = np.append(self.TotalEzEnergy[0:ind], self.TotalEzEnergy[ind+1:])
+                self.TotalEyEnergy = np.append(self.TotalEyEnergy[0:ind], self.TotalEyEnergy[ind+1:])
+                self.TotalExEnergy = np.append(self.TotalExEnergy[0:ind], self.TotalExEnergy[ind+1:])
                 self.TotalElectricEnergy = np.append(self.TotalElectricEnergy[0:ind], self.TotalElectricEnergy[ind+1:])
             else:
                 self.TotalEnergyTimes = self.TotalEnergyTimes[0:ind]
                 self.TotalElectronEnergy = self.TotalElectronEnergy[0:ind]
                 self.TotalIonEnergy = self.TotalIonEnergy[0:ind]
                 self.TotalMagEnergy = self.TotalMagEnergy[0:ind]
+                self.TotalBxEnergy = self.TotalBxEnergy[0:ind]
+                self.TotalByEnergy = self.TotalByEnergy[0:ind]
                 self.TotalBzEnergy = self.TotalBzEnergy[0:ind]
+                self.TotalExEnergy = self.TotalExEnergy[0:ind]
+                self.TotalEyEnergy = self.TotalEyEnergy[0:ind]
+                self.TotalEzEnergy = self.TotalEzEnergy[0:ind]
                 self.TotalElectricEnergy = self.TotalElectricEnergy[0:ind]
 
     def MakePrevCtypeList(self):

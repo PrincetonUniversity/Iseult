@@ -20,6 +20,13 @@ class TotEnergyPanel:
                        'show_ion_E': False,
                        'show_electron_E': False,
                        'show_total_E': True,
+                       'show_Bx_energy': False,
+                       'show_By_energy': False,
+                       'show_Bz_energy': False,
+                       'show_Ex_energy': False,
+                       'show_Ey_energy': False,
+                        'show_Ez_energy': False,
+
                        'show_Bz_energy': False,
                        'show_B_E': False,
                        'show_E_E': False,
@@ -92,9 +99,27 @@ class TotEnergyPanel:
                                         ls= ':', marker = 'd', markeredgecolor = self.prtlcolor,
                                         color = self.prtlcolor, visible = self.GetPlotParam('show_prtl_KE'))
 
+
+        self.Bx_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalBxEnergy,
+                                           ls= ':', marker = '1', markeredgecolor = self.fieldcolor,
+                                           color = self.fieldcolor, visible = self.GetPlotParam('show_Bx_energy'))
+        self.By_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalByEnergy,
+                                           ls= ':', marker = '2', markeredgecolor = self.fieldcolor,
+                                           color = self.fieldcolor, visible = self.GetPlotParam('show_By_energy'))
         self.Bz_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalBzEnergy,
-                                       ls= ':', marker = '<', markeredgecolor = self.fieldcolor,
-                                       color = self.fieldcolor, visible = self.GetPlotParam('show_Bz_energy'))
+                                           ls= ':', marker = '3', markeredgecolor = self.fieldcolor,
+                                           color = self.fieldcolor, visible = self.GetPlotParam('show_Bz_energy'))
+
+        self.Ex_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalExEnergy,
+                                           ls= ':', marker = '4', markeredgecolor = self.fieldcolor,
+                                           color = self.fieldcolor, visible = self.GetPlotParam('show_Ex_energy'))
+        self.Ey_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalEyEnergy,
+                                           ls= ':', marker = 'h', markeredgecolor = self.fieldcolor,
+                                           color = self.fieldcolor, visible = self.GetPlotParam('show_Ey_energy'))
+        self.Ez_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalEzEnergy,
+                                           ls= ':', marker = 'X', markeredgecolor = self.fieldcolor,
+                                           color = self.fieldcolor, visible = self.GetPlotParam('show_Ez_energy'))
+
         self.mag_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy,
                                        ls= ':', marker = '*',  markersize = 10, markeredgecolor = self.fieldcolor,
                                        color = self.fieldcolor, visible = self.GetPlotParam('show_B_E'))
@@ -128,10 +153,15 @@ class TotEnergyPanel:
 
         # fancy code to make sure that matplotlib sets its limits
         # only based on visible lines
-        self.key_list = ['show_total_E', 'show_prtl_KE', 'show_ion_E', 'show_electron_E', 'show_field_E', 'show_E_E', 'show_B_E', 'show_Bz_energy']
-        self.plot_list = [self.total_plot[0], self.prtl_plot[0], self.ion_plot[0], self.electron_plot[0], self.field_plot[0], self.e_plot[0], self.mag_plot[0], self.Bz_plot[0]]
-        self.label_names = ['Prtl+Field', 'Particles', 'Ions', 'Electrons', 'EM Field', 'Electric Field', 'Magnetic Field', r'$B_z^2$']
-
+        self.key_list = ['show_total_E', 'show_prtl_KE', 'show_ion_E', 'show_electron_E', 'show_field_E', 'show_E_E',
+                                'show_B_E', 'show_Bx_energy', 'show_By_energy', 'show_Bz_energy',
+                                'show_Ex_energy', 'show_Ey_energy', 'show_Ez_energy']
+        self.plot_list = [self.total_plot[0], self.prtl_plot[0], self.ion_plot[0], self.electron_plot[0], self.field_plot[0],
+                                self.e_plot[0], self.mag_plot[0],
+                                self.Bx_plot[0], self.By_plot[0], self.Bz_plot[0],
+                                self.Ex_plot[0], self.Ey_plot[0], self.Ez_plot[0]]
+        self.label_names = ['Prtl+Field', 'Particles', 'Ions', 'Electrons', 'EM Field', 'Electric Field', 'Magnetic Field',
+                            r'$B_x^2$', r'$B_y^2$', r'$B_z^2$', r'$E_x^2$', r'$E_y^2$', r'$E_z^2$']
         self.axes.dataLim = mtransforms.Bbox.unit()
         self.axes.dataLim.update_from_data_xy(xy = np.vstack(self.field_plot[0].get_data()).T, ignore=True)
         for i in range(len(self.plot_list)):
@@ -188,7 +218,12 @@ class TotEnergyPanel:
         self.e_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalElectricEnergy)
         self.field_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy + self.parent.TotalElectricEnergy)
         self.total_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy + self.parent.TotalElectricEnergy + self.parent.TotalElectronEnergy + self.parent.TotalIonEnergy)
+        self.Bx_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalBxEnergy)
+        self.By_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalByEnergy)
         self.Bz_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalBzEnergy)
+        self.Ex_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalExEnergy)
+        self.Ey_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalEyEnergy)
+        self.Ez_plot[0].set_data(self.parent.TotalEnergyTimes, self.parent.TotalEzEnergy)
 
         self.cur_time.set_xdata([self.time,self.time])
         # fancy code to make sure that matplotlib sets its limits
@@ -300,14 +335,46 @@ class TotEnergySettings(Tk.Toplevel):
             command = self.Selector)
         cb.grid(row = 5, column = 0, columnspan =1, sticky = Tk.W)
 
+        self.ShowBxVar = Tk.IntVar(self) # Create a var to track whether or not to plot poynting energy
+        self.ShowBxVar.set(self.parent.GetPlotParam('show_Bx_energy'))
+        cb = ttk.Checkbutton(frm, text = "B_x*B_x",
+            variable = self.ShowBxVar,
+            command = self.Selector)
+        cb.grid(row = 5, column = 1, columnspan =1, sticky = Tk.W)
+
+        self.ShowByVar = Tk.IntVar(self) # Create a var to track whether or not to plot poynting energy
+        self.ShowByVar.set(self.parent.GetPlotParam('show_By_energy'))
+        cb = ttk.Checkbutton(frm, text = "B_y*B_y",
+            variable = self.ShowByVar,
+            command = self.Selector)
+        cb.grid(row = 6, column = 1, columnspan =1, sticky = Tk.W)
         self.ShowBzVar = Tk.IntVar(self) # Create a var to track whether or not to plot poynting energy
         self.ShowBzVar.set(self.parent.GetPlotParam('show_Bz_energy'))
         cb = ttk.Checkbutton(frm, text = "B_z*B_z",
             variable = self.ShowBzVar,
             command = self.Selector)
-        cb.grid(row = 5, column = 1, columnspan =1, sticky = Tk.W)
+        cb.grid(row = 7, column = 1, columnspan =1, sticky = Tk.W)
 
+        self.ShowExVar = Tk.IntVar(self) # Create a var to track whether or not to plot poynting energy
+        self.ShowExVar.set(self.parent.GetPlotParam('show_Ex_energy'))
+        cb = ttk.Checkbutton(frm, text = "E_x*E_x",
+            variable = self.ShowExVar,
+            command = self.Selector)
+        cb.grid(row = 8, column = 1, columnspan =1, sticky = Tk.W)
 
+        self.ShowEyVar = Tk.IntVar(self) # Create a var to track whether or not to plot poynting energy
+        self.ShowEyVar.set(self.parent.GetPlotParam('show_Ey_energy'))
+        cb = ttk.Checkbutton(frm, text = "E_y*E_y",
+            variable = self.ShowEyVar,
+            command = self.Selector)
+        cb.grid(row = 9, column = 1, columnspan =1, sticky = Tk.W)
+
+        self.ShowEzVar = Tk.IntVar(self) # Create a var to track whether or not to plot poynting energy
+        self.ShowEzVar.set(self.parent.GetPlotParam('show_Ez_energy'))
+        cb = ttk.Checkbutton(frm, text = "E_z*E_z",
+            variable = self.ShowEzVar,
+            command = self.Selector)
+        cb.grid(row = 10, column = 1, columnspan =1, sticky = Tk.W)
 
         # Now the x & y lim
         self.setZminVar = Tk.IntVar()
@@ -391,12 +458,12 @@ class TotEnergySettings(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text ='Show legend',
                         variable = self.LegendVar)
-        cb.grid(row = 6, column = 1, sticky = Tk.W)
+        cb.grid(row = 8, column = 0, sticky = Tk.W)
 
 
         self.CurTimeVar = Tk.IntVar()
         self.CurTimeVar.set(self.parent.GetPlotParam('show_current_time'))
-        self.LegendVar.trace('w', self.showtimeChanged)
+        self.CurTimeVar.trace('w', self.showtimeChanged)
 
         cb = ttk.Checkbutton(frm, text ='Show current time',
                         variable = self.CurTimeVar)
@@ -467,7 +534,8 @@ class TotEnergySettings(Tk.Toplevel):
         # self.parent.key_list = ['show_prtl_KE', 'show_ion_E', 'show_electron_E', 'show_field_E', 'show_E_E', 'show_B_E']
         # self.parent.plot_list = [self.prtl_plot[0], self.ion_plot[0], self.electron_plot[0], self.field_plot[0], self.e_plot[0], self.mag_plot[0]]
         # self.parent.label_names = ['Particles', 'Ions', 'Electrons', 'EM Field', 'Electric Field', 'Magnetic Field']
-        VarList = [self.ShowTotalVar, self.ShowPrtlVar,  self.ShowIonVar, self.ShowElectronVar, self.ShowFieldVar, self.ShowEVar, self.ShowMagVar, self.ShowBzVar]
+        VarList = [self.ShowTotalVar, self.ShowPrtlVar,  self.ShowIonVar, self.ShowElectronVar, self.ShowFieldVar, self.ShowEVar, self.ShowMagVar,
+                self.ShowBxVar, self.ShowByVar , self.ShowBzVar, self.ShowExVar, self.ShowEyVar, self.ShowEzVar]
 
         # Update current legend position
         if self.parent.legend._get_loc() != 1:

@@ -19,7 +19,13 @@ class TotEnergyPanel:
                        'show_ion_E': False,
                        'show_electron_E': False,
                        'show_total_E': True,
+                       'show_Bx_energy': False,
+                       'show_By_energy': False,
                        'show_Bz_energy': False,
+                       'show_Ex_energy': False,
+                       'show_Ey_energy': False,
+                       'show_Ez_energy': False,
+
                        'show_B_E': False,
                        'show_E_E': False,
                        'y_min': 0,
@@ -80,9 +86,26 @@ class TotEnergyPanel:
                                         ls= ':', marker = 'd', markeredgecolor = self.prtlcolor,
                                         color = self.prtlcolor, visible = self.GetPlotParam('show_prtl_KE'))
 
+        self.Bx_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalBxEnergy,
+                                       ls= ':', marker = '1', markeredgecolor = self.fieldcolor,
+                                       color = self.fieldcolor, visible = self.GetPlotParam('show_Bx_energy'))
+        self.By_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalByEnergy,
+                                       ls= ':', marker = '2', markeredgecolor = self.fieldcolor,
+                                       color = self.fieldcolor, visible = self.GetPlotParam('show_By_energy'))
         self.Bz_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalBzEnergy,
-                                       ls= ':', marker = '<', markeredgecolor = self.fieldcolor,
+                                       ls= ':', marker = '3', markeredgecolor = self.fieldcolor,
                                        color = self.fieldcolor, visible = self.GetPlotParam('show_Bz_energy'))
+
+        self.Ex_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalExEnergy,
+                                       ls= ':', marker = '4', markeredgecolor = self.fieldcolor,
+                                       color = self.fieldcolor, visible = self.GetPlotParam('show_Ex_energy'))
+        self.Ey_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalEyEnergy,
+                                       ls= ':', marker = 'CARETLEFT', markeredgecolor = self.fieldcolor,
+                                       color = self.fieldcolor, visible = self.GetPlotParam('show_Ey_energy'))
+        self.Ez_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalEzEnergy,
+                                       ls= ':', marker = 'CARETRIGHT', markeredgecolor = self.fieldcolor,
+                                       color = self.fieldcolor, visible = self.GetPlotParam('show_Ez_energy'))
+
         self.mag_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy,
                                        ls= ':', marker = '*',  markersize = 10, markeredgecolor = self.fieldcolor,
                                        color = self.fieldcolor, visible = self.GetPlotParam('show_B_E'))
@@ -116,9 +139,15 @@ class TotEnergyPanel:
 
         # fancy code to make sure that matplotlib sets its limits
         # only based on visible lines
-        self.key_list = ['show_total_E', 'show_prtl_KE', 'show_ion_E', 'show_electron_E', 'show_field_E', 'show_E_E', 'show_B_E', 'show_Bz_energy']
-        self.plot_list = [self.total_plot[0], self.prtl_plot[0], self.ion_plot[0], self.electron_plot[0], self.field_plot[0], self.e_plot[0], self.mag_plot[0], self.Bz_plot[0]]
-        self.label_names = ['Prtl+Field', 'Particles', 'Ions', 'Electrons', 'EM Field', 'Electric Field', 'Magnetic Field', r'$B_z^2$']
+        self.key_list = ['show_total_E', 'show_prtl_KE', 'show_ion_E', 'show_electron_E', 'show_field_E', 'show_E_E',
+                                'show_B_E', 'show_Bx_energy', 'show_By_energy', 'show_Bz_energy',
+                                'show_Ex_energy', 'show_Ey_energy', 'show_Ez_energy']
+        self.plot_list = [self.total_plot[0], self.prtl_plot[0], self.ion_plot[0], self.electron_plot[0], self.field_plot[0],
+                                self.e_plot[0], self.mag_plot[0],
+                                self.Bx_plot[0], self.By_plot[0], self.Bz_plot[0],
+                                self.Ex_plot[0], self.Ey_plot[0], self.Ez_plot[0]]
+        self.label_names = ['Prtl+Field', 'Particles', 'Ions', 'Electrons', 'EM Field', 'Electric Field', 'Magnetic Field',
+                            r'$B_x^2$', r'$B_y^2$', r'$B_z^2$', r'$E_x^2$', r'$E_y^2$', r'$E_z^2$']
 
         self.axes.dataLim = mtransforms.Bbox.unit()
         self.axes.dataLim.update_from_data_xy(xy = np.vstack(self.field_plot[0].get_data()).T, ignore=True)
