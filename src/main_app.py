@@ -2639,11 +2639,6 @@ class MainApp(Tk.Tk):
                 BxEnergy = np.sum(self.DataDict['bx'][:,:,:]*self.DataDict['bx'][:,:,:]) * self.DataDict['istep'][0]**2*.5
                 ByEnergy = np.sum(self.DataDict['by'][:,:,:]*self.DataDict['by'][:,:,:]) * self.DataDict['istep'][0]**2*.5
                 BzEnergy = np.sum(self.DataDict['bz'][:,:,:]*self.DataDict['bz'][:,:,:]) * self.DataDict['istep'][0]**2*.5
-
-                ExEnergy = np.sum(self.DataDict['ex'][:,:,:]*self.DataDict['ex'][:,:,:]) * self.DataDict['istep'][0]**2*.5
-                EyEnergy = np.sum(self.DataDict['ey'][:,:,:]*self.DataDict['ey'][:,:,:]) * self.DataDict['istep'][0]**2*.5
-                EzEnergy = np.sum(self.DataDict['ez'][:,:,:]*self.DataDict['ez'][:,:,:]) * self.DataDict['istep'][0]**2*.5
-
                 #TotalBEnergy = BxEnergy + ByEnergy + BzEnergy
 
                 ExEnergy = np.sum(self.DataDict['ex'][:,:,:]*self.DataDict['ex'][:,:,:]) * self.DataDict['istep'][0]**2*.5
@@ -2658,9 +2653,9 @@ class MainApp(Tk.Tk):
                 self.TotalBzEnergy = np.append(np.append(self.TotalBzEnergy[0:ind],BzEnergy), self.TotalBzEnergy[ind:])
                 self.TotalMagEnergy = self.TotalBxEnergy + self.TotalByEnergy + self.TotalBzEnergy
 
-                self.TotalExEnergy = np.append(np.append(self.TotalExEnergy[0:ind],BxEnergy), self.TotalExEnergy[ind:])
-                self.TotalEyEnergy = np.append(np.append(self.TotalEyEnergy[0:ind],ByEnergy), self.TotalEyEnergy[ind:])
-                self.TotalEzEnergy = np.append(np.append(self.TotalEzEnergy[0:ind],BzEnergy), self.TotalEzEnergy[ind:])
+                self.TotalExEnergy = np.append(np.append(self.TotalExEnergy[0:ind],ExEnergy), self.TotalExEnergy[ind:])
+                self.TotalEyEnergy = np.append(np.append(self.TotalEyEnergy[0:ind],EyEnergy), self.TotalEyEnergy[ind:])
+                self.TotalEzEnergy = np.append(np.append(self.TotalEzEnergy[0:ind],EzEnergy), self.TotalEzEnergy[ind:])
                 self.TotalElectricEnergy = self.TotalExEnergy + self.TotalEyEnergy + self.TotalEzEnergy
 
         if self.MainParamDict['ConstantShockVel']:
