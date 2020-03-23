@@ -97,14 +97,14 @@ class TotEnergyPanel:
                                        color = self.fieldcolor, visible = self.GetPlotParam('show_Bz_energy'))
 
         self.Ex_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalExEnergy,
-                                       ls= ':', marker = '4', markeredgecolor = self.fieldcolor,
-                                       color = self.fieldcolor, visible = self.GetPlotParam('show_Ex_energy'))
+                                       ls= ':', marker = '4', markeredgecolor = 'green',
+                                       color = 'green', visible = self.GetPlotParam('show_Ex_energy'))
         self.Ey_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalEyEnergy,
-                                       ls= ':', marker = 'CARETLEFT', markeredgecolor = self.fieldcolor,
-                                       color = self.fieldcolor, visible = self.GetPlotParam('show_Ey_energy'))
+                                       ls= ':', marker = 'CARETLEFT', markeredgecolor = 'green',
+                                       color = 'green', visible = self.GetPlotParam('show_Ey_energy'))
         self.Ez_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalEzEnergy,
-                                       ls= ':', marker = 'CARETRIGHT', markeredgecolor = self.fieldcolor,
-                                       color = self.fieldcolor, visible = self.GetPlotParam('show_Ez_energy'))
+                                       ls= ':', marker = 'CARETRIGHT', markeredgecolor = 'green',
+                                       color = 'green', visible = self.GetPlotParam('show_Ez_energy'))
 
         self.mag_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy,
                                        ls= ':', marker = '*',  markersize = 10, markeredgecolor = self.fieldcolor,

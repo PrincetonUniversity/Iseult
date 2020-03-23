@@ -111,14 +111,14 @@ class TotEnergyPanel:
                                            color = self.fieldcolor, visible = self.GetPlotParam('show_Bz_energy'))
 
         self.Ex_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalExEnergy,
-                                           ls= ':', marker = '4', markeredgecolor = self.fieldcolor,
-                                           color = self.fieldcolor, visible = self.GetPlotParam('show_Ex_energy'))
+                                           ls= ':', marker = '4', markeredgecolor = 'green',
+                                           color = 'green', visible = self.GetPlotParam('show_Ex_energy'))
         self.Ey_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalEyEnergy,
-                                           ls= ':', marker = 'h', markeredgecolor = self.fieldcolor,
-                                           color = self.fieldcolor, visible = self.GetPlotParam('show_Ey_energy'))
+                                           ls= ':', marker = 'h', markeredgecolor = 'green',
+                                           color = 'green', visible = self.GetPlotParam('show_Ey_energy'))
         self.Ez_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalEzEnergy,
-                                           ls= ':', marker = 'X', markeredgecolor = self.fieldcolor,
-                                           color = self.fieldcolor, visible = self.GetPlotParam('show_Ez_energy'))
+                                           ls= ':', marker = 'X', markeredgecolor = 'green',
+                                           color = 'green', visible = self.GetPlotParam('show_Ez_energy'))
 
         self.mag_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy,
                                        ls= ':', marker = '*',  markersize = 10, markeredgecolor = self.fieldcolor,
@@ -282,20 +282,32 @@ class TotEnergySettings(Tk.Toplevel):
 
         ttk.Label(frm, text="Choose Chart Type:").grid(row=0, column = 0)
         ctypeChooser = ttk.OptionMenu(frm, self.ctypevar, self.parent.chartType, *tuple(self.parent.ChartTypes))
-        ctypeChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
+        ctypeChooser.grid(row =0, column = 2, sticky = Tk.W + Tk.E)
 
         # the Check boxes for the dimension
         ttk.Label(frm, text='Show Prtl Energy:').grid(row = 1, column = 0, sticky = Tk.W)
-        ttk.Label(frm, text='Show Field Energy:').grid(row = 1, column = 1, sticky = Tk.W)
+        ttk.Label(frm, text='Choose Color:').grid(row = 1, column = 1, sticky = Tk.W)
+
+        ttk.Label(frm, text='Show Field Energy:').grid(row = 1, column = 2, sticky = Tk.W)
+        ttk.Label(frm, text='Choose Color:').grid(row = 1, column = 3, sticky = Tk.W)
+
 
         self.ShowElectronVar = Tk.IntVar(self) # Create a var to track whether or not to show electrons
         self.ShowElectronVar.set(self.parent.GetPlotParam('show_electron_E'))
+        self.lecColorVar = Tk.StringVar()
+        self.lecColorVar.set('test')
+        self.ElectronColor = ttk.Entry(frm, textvariable=self.lecColorVar , width=7)
+        self.ElectronColor.grid(row = 2, column = 1)
         ttk.Checkbutton(frm, text = "Electrons",
             variable = self.ShowElectronVar,
             command = self.Selector).grid(row = 2, column = 0, sticky = Tk.W)
 
         self.ShowIonVar = Tk.IntVar(self) # Create a var to track whether or not to show ions
         self.ShowIonVar.set(self.parent.GetPlotParam('show_ion_E'))
+        self.ionColorVar = Tk.StringVar()
+        self.ionColorVar.set('test')
+        self.IonColor = ttk.Entry(frm, textvariable=self.ionColorVar , width=7)
+        self.IonColor.grid(row = 3, column = 1)
         ttk.Checkbutton(frm, text = "Ions",
             variable = self.ShowIonVar,
             command = self.Selector).grid(row = 3, column = 0, sticky = Tk.W)
@@ -305,31 +317,51 @@ class TotEnergySettings(Tk.Toplevel):
         ttk.Checkbutton(frm, text = "Total Prtls",
             variable = self.ShowPrtlVar,
             command = self.Selector).grid(row = 4, column = 0, sticky = Tk.W)
+        self.totalColorVar = Tk.StringVar()
+        self.totalColorVar.set('test')
+        self.TotalPrtlColor = ttk.Entry(frm, textvariable=self.totalColorVar, width=7)
+        self.TotalPrtlColor.grid(row = 4, column = 1)
 
         self.ShowMagVar = Tk.IntVar(self) # Create a var to track whether or not to plot Mag Field
         self.ShowMagVar.set(self.parent.GetPlotParam('show_B_E'))
+        self.magColorVar = Tk.StringVar()
+        self.magColorVar.set('test')
+        self.magColor = ttk.Entry(frm, textvariable=self.magColorVar, width=7)
+        self.magColor.grid(row = 2, column = 3)
         cb = ttk.Checkbutton(frm, text = "Magnetic Field",
             variable = self.ShowMagVar,
             command = self.Selector)
-        cb.grid(row = 2, column = 1, sticky = Tk.W)
+        cb.grid(row = 2, column = 2, sticky = Tk.W)
 
         self.ShowEVar = Tk.IntVar(self) # Create a var to track whether or not to plot E field
         self.ShowEVar.set(self.parent.GetPlotParam('show_E_E'))
+        self.elecColorVar = Tk.StringVar()
+        self.elecColorVar.set('test')
+        self.elecColor = ttk.Entry(frm, textvariable=self.elecColorVar, width=7)
+        self.elecColor.grid(row = 3, column = 3)
         cb = ttk.Checkbutton(frm, text = "Electric Field",
             variable = self.ShowEVar,
             command = self.Selector)
-        cb.grid(row = 3, column = 1, sticky = Tk.W)
+        cb.grid(row = 3, column = 2, sticky = Tk.W)
 
 
         self.ShowFieldVar = Tk.IntVar(self) # Create a var to track whether or not to plot poynting energy
         self.ShowFieldVar.set(self.parent.GetPlotParam('show_field_E'))
+        self.fieldColorVar = Tk.StringVar()
+        self.fieldColorVar.set('test')
+        self.fieldColor = ttk.Entry(frm, textvariable=self.fieldColorVar, width=7)
+        self.fieldColor.grid(row = 4, column = 3)
         cb = ttk.Checkbutton(frm, text = "Total E&M Fields",
             variable = self.ShowFieldVar,
             command = self.Selector)
-        cb.grid(row = 4, column = 1, sticky = Tk.W)
+        cb.grid(row = 4, column = 2, sticky = Tk.W)
 
         self.ShowTotalVar = Tk.IntVar(self) # Create a var to track whether or not to plot poynting energy
         self.ShowTotalVar.set(self.parent.GetPlotParam('show_total_E'))
+        self.totalColorVar = Tk.StringVar()
+        self.totalColorVar.set('test')
+        self.totalColor = ttk.Entry(frm, textvariable=self.totalColorVar, width=7)
+        self.totalColor.grid(row = 5, column = 3)
         cb = ttk.Checkbutton(frm, text = "E&M + Prtls",
             variable = self.ShowTotalVar,
             command = self.Selector)
@@ -337,44 +369,65 @@ class TotEnergySettings(Tk.Toplevel):
 
         self.ShowBxVar = Tk.IntVar(self) # Create a var to track whether or not to plot poynting energy
         self.ShowBxVar.set(self.parent.GetPlotParam('show_Bx_energy'))
+        self.BxColorVar = Tk.StringVar()
+        self.BxColorVar.set('test')
+        self.BxColor = ttk.Entry(frm, textvariable=self.BxColorVar, width=7)
+        self.BxColor.grid(row = 5, column = 3)
         cb = ttk.Checkbutton(frm, text = "B_x*B_x",
             variable = self.ShowBxVar,
             command = self.Selector)
-        cb.grid(row = 5, column = 1, columnspan =1, sticky = Tk.W)
+        cb.grid(row = 5, column = 2, columnspan =1, sticky = Tk.W)
 
         self.ShowByVar = Tk.IntVar(self) # Create a var to track whether or not to plot poynting energy
         self.ShowByVar.set(self.parent.GetPlotParam('show_By_energy'))
+        self.ByColorVar = Tk.StringVar()
+        self.ByColorVar.set('test')
+        self.ByColor = ttk.Entry(frm, textvariable=self.ByColorVar, width=7)
+        self.ByColor.grid(row = 6, column = 3)
+
         cb = ttk.Checkbutton(frm, text = "B_y*B_y",
             variable = self.ShowByVar,
             command = self.Selector)
-        cb.grid(row = 6, column = 1, columnspan =1, sticky = Tk.W)
+        cb.grid(row = 6, column = 2, columnspan =1, sticky = Tk.W)
+
+
+
         self.ShowBzVar = Tk.IntVar(self) # Create a var to track whether or not to plot poynting energy
         self.ShowBzVar.set(self.parent.GetPlotParam('show_Bz_energy'))
+        self.BzColorVar = Tk.StringVar()
+        self.BzColorVar.set('test')
+        self.BzColor = ttk.Entry(frm, textvariable=self.BzColorVar, width=7)
+        self.BzColor.grid(row = 7, column = 3)
+
         cb = ttk.Checkbutton(frm, text = "B_z*B_z",
             variable = self.ShowBzVar,
             command = self.Selector)
-        cb.grid(row = 7, column = 1, columnspan =1, sticky = Tk.W)
+        cb.grid(row = 7, column = 2, columnspan =1, sticky = Tk.W)
 
         self.ShowExVar = Tk.IntVar(self) # Create a var to track whether or not to plot poynting energy
         self.ShowExVar.set(self.parent.GetPlotParam('show_Ex_energy'))
+        self.ExColorVar = Tk.StringVar()
+        self.ExColorVar.set('test')
+        self.ExColor = ttk.Entry(frm, textvariable=self.ExColorVar, width=7)
+        self.ExColor.grid(row = 8, column = 3)
         cb = ttk.Checkbutton(frm, text = "E_x*E_x",
             variable = self.ShowExVar,
             command = self.Selector)
-        cb.grid(row = 8, column = 1, columnspan =1, sticky = Tk.W)
+        cb.grid(row = 8, column = 2, columnspan =1, sticky = Tk.W)
 
         self.ShowEyVar = Tk.IntVar(self) # Create a var to track whether or not to plot poynting energy
         self.ShowEyVar.set(self.parent.GetPlotParam('show_Ey_energy'))
         cb = ttk.Checkbutton(frm, text = "E_y*E_y",
             variable = self.ShowEyVar,
             command = self.Selector)
-        cb.grid(row = 9, column = 1, columnspan =1, sticky = Tk.W)
+        cb.grid(row = 9, column = 2, columnspan =1, sticky = Tk.W)
 
         self.ShowEzVar = Tk.IntVar(self) # Create a var to track whether or not to plot poynting energy
         self.ShowEzVar.set(self.parent.GetPlotParam('show_Ez_energy'))
         cb = ttk.Checkbutton(frm, text = "E_z*E_z",
             variable = self.ShowEzVar,
             command = self.Selector)
-        cb.grid(row = 10, column = 1, columnspan =1, sticky = Tk.W)
+        cb.grid(row = 10, column = 2, columnspan =1, sticky = Tk.W)
 
         # Now the x & y lim
         self.setZminVar = Tk.IntVar()
@@ -396,16 +449,16 @@ class TotEnergySettings(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text ='Set y min',
                         variable = self.setZminVar)
-        cb.grid(row = 2, column = 2, sticky = Tk.W)
+        cb.grid(row = 2, column = 4, sticky = Tk.W)
         self.ZminEnter = ttk.Entry(frm, textvariable=self.Zmin, width=7)
-        self.ZminEnter.grid(row = 2, column = 3)
+        self.ZminEnter.grid(row = 2, column = 5)
 
         cb = ttk.Checkbutton(frm, text ='Set y max',
                         variable = self.setZmaxVar)
-        cb.grid(row = 3, column = 2, sticky = Tk.W)
+        cb.grid(row = 3, column = 4, sticky = Tk.W)
 
         self.ZmaxEnter = ttk.Entry(frm, textvariable=self.Zmax, width=7)
-        self.ZmaxEnter.grid(row = 3, column = 3)
+        self.ZmaxEnter.grid(row = 3, column = 5)
 
         self.setXminVar = Tk.IntVar()
         self.setXminVar.set(self.parent.GetPlotParam('set_x_min'))
@@ -426,16 +479,16 @@ class TotEnergySettings(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text ='Set x min',
                         variable = self.setXminVar)
-        cb.grid(row = 4, column = 2, sticky = Tk.W)
+        cb.grid(row = 4, column = 4, sticky = Tk.W)
         self.XminEnter = ttk.Entry(frm, textvariable=self.Xmin, width=7)
-        self.XminEnter.grid(row = 4, column = 3)
+        self.XminEnter.grid(row = 4, column = 5)
 
         cb = ttk.Checkbutton(frm, text ='Set x max',
                         variable = self.setXmaxVar)
-        cb.grid(row = 5, column = 2, sticky = Tk.W)
+        cb.grid(row = 5, column = 4, sticky = Tk.W)
 
         self.XmaxEnter = ttk.Entry(frm, textvariable=self.Xmax, width=7)
-        self.XmaxEnter.grid(row = 5, column = 3)
+        self.XmaxEnter.grid(row = 5, column = 5)
 
 
         # Now whether or not the y axes should be in logspace
