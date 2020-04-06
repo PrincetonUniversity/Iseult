@@ -3333,6 +3333,7 @@ class MainApp(Tk.Tk):
             ## ffmpeg -framerate [FPS] -i [NAME_***].png -c:v prores -pix_fmt yuv444p10le [OUTPUTNAME].mov
             cmdstring = ['xterm', '-e','ffmpeg',
                         '-framerate', str(int(FPS)), # Set framerate to the the user selected option
+                        '-pattern_type', 'glob',
                         '-i', os.path.join(self.movie_dir, '../tmp_erase','*.png'),
                         '-c:v',
                         'prores',
