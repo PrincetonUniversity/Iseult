@@ -233,7 +233,7 @@ class DensPanel:
             self.vmax = self.cax.get_array().max()
             if self.GetPlotParam('set_v_max'):
                 self.vmax = self.GetPlotParam('v_max')
-            if self.GetPlotParam('UseDivCmap') and not self.GetPlotParam('stretch_colors'):
+            if self.GetPlotParam('UseDivCmap') and self.GetPlotParam('stretch_colors'):
                 self.vmax = max(np.abs(self.vmin), self.vmax)
                 self.vmin = -self.vmax
             self.cax.norm.vmin = self.vmin
@@ -367,7 +367,7 @@ class DensPanel:
             dist = min_max[1]-min_max[0]
             min_max[0] -= 0.04*dist
             min_max[1] += 0.04*dist
-            if not self.GetPlotParam('stretch_colors'):
+            if self.GetPlotParam('stretch_colors'):
                 tmp = max(abs(min_max[0]), abs(min_max[1]))
                 min_max = [-tmp, tmp]
             self.axes.set_ylim(min_max)
@@ -453,7 +453,7 @@ class DensPanel:
             dist = min_max[1]-min_max[0]
             min_max[0] -= 0.04*dist
             min_max[1] += 0.04*dist
-            if not self.GetPlotParam('stretch_colors'):
+            if self.GetPlotParam('stretch_colors'):
                 tmp = max(abs(min_max[0]), abs(min_max[1]))
                 min_max = [-tmp, tmp]
             self.axes.set_ylim(min_max)
@@ -533,7 +533,7 @@ class DensPanel:
             self.vmax = self.cax.get_array().max()
             if self.GetPlotParam('set_v_max'):
                 self.vmax = self.GetPlotParam('v_max')
-            if self.GetPlotParam('UseDivCmap') and not self.GetPlotParam('stretch_colors'):
+            if self.GetPlotParam('UseDivCmap') and self.GetPlotParam('stretch_colors'):
                 self.vmax = max(np.abs(self.vmin), self.vmax)
                 self.vmin = -self.vmax
             self.cax.norm.vmin = self.vmin
@@ -711,7 +711,7 @@ class DensSettings(Tk.Toplevel):
 
         # Use full div cmap
         self.StretchVar = Tk.IntVar()
-        self.StretchVar.set(not self.parent.GetPlotParam('stretch_colors'))
+        self.StretchVar.set(self.parent.GetPlotParam('stretch_colors'))
         cb = ttk.Checkbutton(frm, text = "Symmetric about zero",
                         variable = self.StretchVar,
                         command = self.StretchHandler)
@@ -805,12 +805,12 @@ class DensSettings(Tk.Toplevel):
 
 
     def StretchHandler(self, *args):
-        if self.parent.GetPlotParam('stretch_colors') == ~self.StretchVar.get():
+        if self.parent.GetPlotParam('stretch_colors') == self.StretchVar.get():
             pass
         elif self.parent.GetPlotParam('twoD'):
-            self.parent.SetPlotParam('stretch_colors',~self.parent.GetPlotParam('stretch_colors'), NeedsRedraw = True)
+            self.parent.SetPlotParam('stretch_colors', self.StretchVar.get(), NeedsRedraw = True)
         else:
-            self.parent.SetPlotParam('stretch_colors', ~self.parent.GetPlotParam('stretch_colors'), update_plot = True)
+            self.parent.SetPlotParam('stretch_colors', self.StretchVar.get(), update_plot = True)
 
     def cnormChanged(self, *args):
         if self.parent.GetPlotParam('cnorm_type')== self.cnormvar.get():

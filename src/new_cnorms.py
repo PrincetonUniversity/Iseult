@@ -37,7 +37,7 @@ def PowerNormFunc(data, gamma = 1.0, vmin=None, vmax=None, div_cmap = True,  mid
     vmax -= midpoint
     left_clip = 0.0
     right_clip = 1.0
-    if not stretch_colors:
+    if stretch_colors:
         if np.sign(vmin) < 0 and np.sign(vmax) > 0:
             v_absmax = max(np.abs(vmin),np.abs(vmax))
             left_clip = 0.5*(1 - np.abs(vmin)**gamma/np.abs(v_absmax)**gamma)
@@ -105,7 +105,7 @@ def SymLogNormFunc(data,  vmin=None, vmax=None, div_cmap = True,  midpoint = 0.0
     left_lin = 0.5*(1-linscale)
     right_lin = 0.5*(1 + linscale)
 
-    if not stretch_colors:
+    if stretch_colors:
         if np.sign(vmin) < 0 and np.sign(vmax) > 0:
             v_absmax = max(np.abs(vmin),np.abs(vmax))
             left_clip = 0.5*(1-linscale)*(1-np.log10(np.abs(vmin/linthresh))/np.log10(v_absmax/linthresh))

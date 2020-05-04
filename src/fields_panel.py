@@ -389,7 +389,7 @@ class FieldsPanel:
                 self.vmax = self.cax.get_array().max()
                 if self.GetPlotParam('set_v_max'):
                     self.vmax = self.GetPlotParam('v_max')
-                if self.GetPlotParam('UseDivCmap') and not self.GetPlotParam('stretch_colors'):
+                if self.GetPlotParam('UseDivCmap') and self.GetPlotParam('stretch_colors'):
                     self.vmax = max(np.abs(self.vmin), self.vmax)
                     self.vmin = -self.vmax
                 self.cax.norm.vmin = self.vmin
@@ -556,7 +556,7 @@ class FieldsPanel:
                 dist = min_max[1]-min_max[0]
                 min_max[0] -= 0.04*dist
                 min_max[1] += 0.04*dist
-                if not self.GetPlotParam('stretch_colors'):
+                if self.GetPlotParam('stretch_colors'):
                     tmp = max(abs(min_max[0]), abs(min_max[1]))
                     min_max = [-tmp, tmp]
             self.axes.set_ylim(min_max)
@@ -698,7 +698,7 @@ class FieldsPanel:
                 dist = min_max[1]-min_max[0]
                 min_max[0] -= 0.04*dist
                 min_max[1] += 0.04*dist
-                if not self.GetPlotParam('stretch_colors'):
+                if self.GetPlotParam('stretch_colors'):
                     tmp = max(abs(min_max[0]), abs(min_max[1]))
                     min_max = [-tmp, tmp]
             self.axes.set_ylim(min_max)
@@ -786,7 +786,7 @@ class FieldsPanel:
             self.vmax = self.cax.get_array().max()
             if self.GetPlotParam('set_v_max'):
                 self.vmax = self.GetPlotParam('v_max')
-            if self.GetPlotParam('UseDivCmap') and not self.GetPlotParam('stretch_colors'):
+            if self.GetPlotParam('UseDivCmap') and self.GetPlotParam('stretch_colors'):
                 self.vmax = max(np.abs(self.vmin), self.vmax)
                 self.vmin = -self.vmax
             self.cax.norm.vmin = self.vmin
