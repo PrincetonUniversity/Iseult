@@ -310,6 +310,9 @@ class DensPanel:
             dist = min_max[1]-min_max[0]
             min_max[0] -= 0.04*dist
             min_max[1] += 0.04*dist
+            if not self.GetPlotParam('stretch_colors'):
+                tmp = max(abs(min_max[0]), abs(min_max[1]))
+                min_max = [-tmp, tmp]
             self.axes.set_ylim(min_max)
             self.shock_line =self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
                     PathEffects.Normal()])
@@ -447,6 +450,10 @@ class DensPanel:
             dist = min_max[1]-min_max[0]
             min_max[0] -= 0.04*dist
             min_max[1] += 0.04*dist
+            if not self.GetPlotParam('stretch_colors'):
+                tmp = max(abs(min_max[0]), abs(min_max[1]))
+                min_max = [-tmp, tmp]
+
             self.axes.set_ylim(min_max)
             if self.GetPlotParam('set_v_min'):
                 self.axes.set_ylim(bottom = self.GetPlotParam('v_min'))

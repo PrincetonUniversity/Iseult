@@ -674,6 +674,9 @@ class FieldsPanel:
                 dist = min_max[1]-min_max[0]
                 min_max[0] -= 0.04*dist
                 min_max[1] += 0.04*dist
+                if self.GetPlotParam('stretch_colors'):
+                    tmp = max(abs(min_max[0]), abs(min_max[1]))
+                    min_max = [-tmp, tmp]
             self.axes.set_ylim(min_max)
 
             self.anz = self.axes.annotate(self.GetPlotParam('1D_label')[self.GetPlotParam('field_type')][2], xy = self.annotate_pos,
@@ -816,6 +819,9 @@ class FieldsPanel:
                 dist = min_max[1]-min_max[0]
                 min_max[0] -= 0.04*dist
                 min_max[1] += 0.04*dist
+                if not self.GetPlotParam('stretch_colors'):
+                    tmp = max(abs(min_max[0]), abs(min_max[1]))
+                    min_max = [-tmp, tmp]
             self.axes.set_ylim(min_max)
 
             if self.GetPlotParam('show_shock'):
@@ -1097,8 +1103,8 @@ class FieldSettings(Tk.Toplevel):
 
         # Use full div cmap
         self.StretchVar = Tk.IntVar()
-        self.StretchVar.set(self.parent.GetPlotParam('stretch_colors'))
-        cb = ttk.Checkbutton(self.frm, text = "Asymmetric Color Space",
+        self.StretchVar.set(~self.parent.GetPlotParam('stretch_colors'))
+        cb = ttk.Checkbutton(self.frm, text = "Symmetric about zero",
                         variable = self.StretchVar,
                         command = self.StretchHandler)
         cb.grid(row = 8, column = 1, sticky = Tk.W)
@@ -1203,12 +1209,12 @@ class FieldSettings(Tk.Toplevel):
 
 
     def StretchHandler(self, *args):
-        if self.parent.GetPlotParam('stretch_colors')== self.StretchVar.get():
+        if self.parent.GetPlotParam('stretch_colors') == ~self.StretchVar.get():
             pass
         elif self.parent.GetPlotParam('twoD'):
-            self.parent.SetPlotParam('stretch_colors', self.StretchVar.get(), NeedsRedraw = True)
+            self.parent.SetPlotParam('stretch_colors',~self.parent.GetPlotParam('stretch_colors'), NeedsRedraw = True)
         else:
-            self.parent.SetPlotParam('stretch_colors', self.StretchVar.get(), update_plot = False)
+            self.parent.SetPlotParam('stretch_colors', ~self.parent.GetPlotParam('stretch_colors'), update_plot = True)
 
     def cnormChanged(self, *args):
         if self.parent.GetPlotParam('cnorm_type')== self.cnormvar.get():

@@ -556,6 +556,9 @@ class FieldsPanel:
                 dist = min_max[1]-min_max[0]
                 min_max[0] -= 0.04*dist
                 min_max[1] += 0.04*dist
+                if not self.GetPlotParam('stretch_colors'):
+                    tmp = max(abs(min_max[0]), abs(min_max[1]))
+                    min_max = [-tmp, tmp]
             self.axes.set_ylim(min_max)
 
             self.anz = self.axes.annotate(self.GetPlotParam('1D_label')[self.GetPlotParam('field_type')][2], xy = self.annotate_pos,
@@ -695,6 +698,9 @@ class FieldsPanel:
                 dist = min_max[1]-min_max[0]
                 min_max[0] -= 0.04*dist
                 min_max[1] += 0.04*dist
+                if not self.GetPlotParam('stretch_colors'):
+                    tmp = max(abs(min_max[0]), abs(min_max[1]))
+                    min_max = [-tmp, tmp]
             self.axes.set_ylim(min_max)
 
             if self.GetPlotParam('show_shock'):
