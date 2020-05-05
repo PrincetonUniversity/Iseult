@@ -39,6 +39,7 @@ class PhasePanel:
                        'set_p_min': False,
                        'set_p_max': False,
                        'spatial_x': True,
+                       'symmetric': False,
                        'spatial_y': False,
                        'interpolation': 'nearest',
                        'face_color': 'gainsboro'}
@@ -485,6 +486,10 @@ class PhasePanel:
             self.ymin = self.GetPlotParam('p_min')
         if self.GetPlotParam('set_p_max'):
             self.ymax = self.GetPlotParam('p_max')
+        if self.GetPlotParam('symmetric'):
+            self.ymin = -max(abs(self.ymin), abs(self.ymax))
+            self.ymax = abs(self.ymin)
+
         self.axes.set_ylim(self.ymin, self.ymax)
 
         if self.parent.MainParamDict['SetxLim'] and self.parent.MainParamDict['LinkSpatial'] == 1:

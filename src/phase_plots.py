@@ -40,6 +40,7 @@ class PhasePanel:
                        'set_p_max': False,
                        'spatial_x': True,
                        'spatial_y': False,
+                       'symmetric': False,
                        'interpolation': 'nearest',
                        'face_color': 'gainsboro'}
 
@@ -432,7 +433,7 @@ class PhasePanel:
                     self.hist2d = Fast2DWeightedHist(self.y_values, self.x_values, self.weights, self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
                 else:
                     self.hist2d = Fast2DHist(self.y_values, self.x_values, self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
-            
+
             try:
                 if self.GetPlotParam('masked'):
                     zval = ma.masked_array(self.hist2d[0])
@@ -618,6 +619,9 @@ class PhasePanel:
             self.ymin = self.GetPlotParam('p_min')
         if self.GetPlotParam('set_p_max'):
             self.ymax = self.GetPlotParam('p_max')
+        if self.GetPlotParam('symmetric'):
+            self.ymin = -max(abs(self.ymin), abs(self.ymax))
+            self.ymax = abs(self.ymin)
         self.axes.set_ylim(self.ymin, self.ymax)
 
         if self.parent.MainParamDict['SetxLim'] and self.parent.MainParamDict['LinkSpatial'] == 1:
@@ -766,6 +770,13 @@ class PhaseSettings(Tk.Toplevel):
                         variable = self.ShockVar,
                         command = self.ShockVarHandler)
         cb.grid(row = 6, column = 1, sticky = Tk.W)
+        # Use full div cmap
+        self.SymVar = Tk.IntVar()
+        self.SymVar.set(self.parent.GetPlotParam('symmetric'))
+        cb = ttk.Checkbutton(frm, text = "Symmetric about zero",
+                        variable = self.SymVar,
+                        command = self.SymmetricHandler)
+        cb.grid(row = 8, column = 1, sticky = Tk.W)
 
 
         # Control if the plot is weightedd
@@ -952,6 +963,12 @@ class PhaseSettings(Tk.Toplevel):
             self.parent.UpdateLabelsandColors()
             self.parent.axes.set_ylabel(self.parent.y_label, labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
             self.parent.SetPlotParam('mom_dim', self.dimvar.get())
+
+    def SymmetricHandler(self, *args):
+        if self.parent.GetPlotParam('symmetric') == self.SymVar.get():
+            pass
+        else:
+            self.parent.SetPlotParam('symmetric', self.SymVar.get(), update_plot = True)
 
     def setVminChanged(self, *args):
         if self.setVminVar.get() == self.parent.GetPlotParam('set_v_min'):
