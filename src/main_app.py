@@ -2128,6 +2128,11 @@ class MainApp(Tk.Tk):
         self.PathDict['Param'].sort()
 
         ### iterate through the Paths and just get the .nnn number
+        if len(self.PathDict['Param']) > 0:
+            self.length_of_outfiles = len(self.PathDict['Param'][0].split('.')[-1])
+        else:
+            self.length_of_outfiles = 3
+
         for key in self.PathDict.keys():
             for i in range(len(self.PathDict[key])):
                 try:
@@ -2149,10 +2154,10 @@ class MainApp(Tk.Tk):
                 allFour.pop(-1)
 
         # Rebuild the pathdict only with files that have all 4 things
-        self.PathDict['Flds'] = ['flds.tot.'+str(elm).zfill(3) for elm in allFour]
-        self.PathDict['Prtl'] = ['prtl.tot.'+str(elm).zfill(3) for elm in allFour]
-        self.PathDict['Spect'] = ['spect.'+str(elm).zfill(3) for elm in allFour]
-        self.PathDict['Param'] = ['param.'+str(elm).zfill(3) for elm in allFour]
+        self.PathDict['Flds'] = ['flds.tot.'+str(elm).zfill(self.length_of_outfiles) for elm in allFour]
+        self.PathDict['Prtl'] = ['prtl.tot.'+str(elm).zfill(self.length_of_outfiles) for elm in allFour]
+        self.PathDict['Spect'] = ['spect.'+str(elm).zfill(self.length_of_outfiles) for elm in allFour]
+        self.PathDict['Param'] = ['param.'+str(elm).zfill(self.length_of_outfiles) for elm in allFour]
         self.TimeStep.setMax(len(self.PathDict['Flds']))
         self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
         if self.MainParamDict['Reload2End']:
@@ -2182,6 +2187,7 @@ class MainApp(Tk.Tk):
         param_re = re.compile('param.*')
 
 
+
         self.PathDict['Flds']= list(filter(f_re.match, os.listdir(self.dirname)))
         self.PathDict['Flds'].sort()
         self.PathDict['Prtl']= list(filter(prtl_re.match, os.listdir(self.dirname)))
@@ -2192,6 +2198,11 @@ class MainApp(Tk.Tk):
         self.PathDict['Param'].sort()
 
         ### iterate through the Paths and just get the .nnn number
+        if len(self.PathDict['Param']) > 0:
+            self.length_of_outfiles = len(self.PathDict['Param'][0].split('.')[-1])
+        else:
+            self.length_of_outfiles = 3
+
         for key in self.PathDict.keys():
             for i in range(len(self.PathDict[key])):
                 try:
@@ -2214,10 +2225,11 @@ class MainApp(Tk.Tk):
 
         is_okay = len(allFour)>0
         # Rebuild the pathdict only with files that have all 4 things
-        self.PathDict['Flds'] = ['flds.tot.'+str(elm).zfill(3) for elm in allFour]
-        self.PathDict['Prtl'] = ['prtl.tot.'+str(elm).zfill(3) for elm in allFour]
-        self.PathDict['Spect'] = ['spect.'+str(elm).zfill(3) for elm in allFour]
-        self.PathDict['Param'] = ['param.'+str(elm).zfill(3) for elm in allFour]
+
+        self.PathDict['Flds'] = ['flds.tot.'+str(elm).zfill(self.length_of_outfiles) for elm in allFour]
+        self.PathDict['Prtl'] = ['prtl.tot.'+str(elm).zfill(self.length_of_outfiles) for elm in allFour]
+        self.PathDict['Spect'] = ['spect.'+str(elm).zfill(self.length_of_outfiles) for elm in allFour]
+        self.PathDict['Param'] = ['param.'+str(elm).zfill(self.length_of_outfiles) for elm in allFour]
         if is_okay:
             self.NewDirectory = True
             self.TimeStep.setMax(len(self.PathDict['Flds']))
