@@ -25,6 +25,8 @@ from total_energy_plots import TotEnergyPanel
 from moments import MomentsPanel
 from functools import partial
 import subprocess, yaml
+from PIL import Image
+
 #import datetime
 #from ThreeD_mag_plots import ThreeDBPanel STILL TESTING
 
@@ -3314,106 +3316,50 @@ class MainApp(Tk.Tk):
 
     def MakeAMovie(self, fname, start, stop, step, FPS):
         '''Record a movie'''
-        # Where-ever you are create a hidden file and then delete that directory:
-        self.PrintFig(MakingMovie= True)
-        # Delete all the images in that subdirectory
-        if os.path.isdir(os.path.join(self.movie_dir, '../tmp_erase')):
-            for name in os.listdir(os.path.join(self.movie_dir, '../tmp_erase')):
-                os.remove(os.path.join(self.movie_dir, '../tmp_erase', name))
+        # First find the last frame is stop is -1:
 
-            # First find the last frame is stop is -1:
+        if stop == -1:
+            stop = len(self.PathDict['Param'])
 
-            if stop == -1:
-                stop = len(self.PathDict['Param'])
+        # Now build all the frames we have to visit
+        frame_arr = np.arange(start, stop, step)
+        if frame_arr[-1] != stop:
+            frame_arr = np.append(frame_arr, stop)
 
-            # Now build all the frames we have to visit
-            frame_arr = np.arange(start, stop, step)
-            if frame_arr[-1] != stop:
-                frame_arr = np.append(frame_arr, stop)
+        # If total energy plot is showing, we have to loop through everything twice.
 
-            # If total energy plot is showing, we have to loop through everything twice.
+        if self.showing_total_energy_plt:
+            for k in frame_arr:
+                self.TimeStep.set(k)
+        print('hi')
+        cmdstring = ['ffmpeg',
+            '-framerate', str(int(FPS)), # Set framerate to the the user selected option
+            '-pattern_type', 'glob',
+            '-i', '-',
+            '-c:v',
+            'prores',
+            '-pix_fmt',
+            'yuv444p10le',
+            os.path.join(os.path.join(self.movie_dir),fname)]
+        pipe = subprocess.Popen(cmdstring, stdin=subprocess.PIPE)
 
-            if self.showing_total_energy_plt:
-                for k in frame_arr:
-                    self.TimeStep.set(k)
-
-            for i in frame_arr:
-                self.TimeStep.set(i)
-                self.PrintFig(MakingMovie  = True)
-
+        for i in frame_arr:
+            self.TimeStep.set(i)
+            s, (width, height) = self.canvas.print_to_buffer()
+            im = Image.frombytes('RGBA', (width, height), s)
             # The ffmpeg command we want to call.
             ## ffmpeg -framerate [FPS] -i [NAME_***].png -c:v prores -pix_fmt yuv444p10le [OUTPUTNAME].mov
-            cmdstring = ['xterm', '-e','ffmpeg',
-                        '-framerate', str(int(FPS)), # Set framerate to the the user selected option
-                        '-pattern_type', 'glob',
-                        '-i', os.path.join(self.movie_dir, '../tmp_erase','*.png'),
-                        '-c:v',
-                        'prores',
-                        '-pix_fmt',
-                        'yuv444p10le',
-                        os.path.join(os.path.join(self.movie_dir,'..'),fname)]#, '&']#, # output name,
+            #, '&']#, # output name,
                         #'<dev/null', '>dev/null', '2>/var/log/ffmpeg.log', '&'] # run in background
-            try:
-                subprocess.call(cmdstring)
-            except OSError:
-                try:
-                    subprocess.call(cmdstring[2:])
-                except OSError:
-                    messagebox.showwarning(
-                        "Problems saving a movie",
-                        "Please make sure that ffmpeg is installedgg on your machine."
-                        )
+            im.save(pipe.stdin, 'PNG')
+            print(f"saving image {i} to pipe")
+        pipe.stdin.close()
+        pipe.wait()
 
-            for name in os.listdir(os.path.join(self.movie_dir, '../tmp_erase')):
-                os.remove(os.path.join(self.movie_dir, '../tmp_erase', name))
-            os.rmdir(os.path.join(self.movie_dir, '../tmp_erase'))
-            '''
-            #THIS METHOD TRIES TO USE SUBPROCCESS AND PIPING TO OUTPUT... LEAVING THIS HERE
-            #FOR LATER....
-            # Draw frames
-            im_list = []
-            for i in frame_arr:
-                self.TimeStep.set(i)
+        # Make sure all went well
+        if pipe.returncode != 0:
+            raise sp.CalledProcessError(pipe.returncode, cmdstring)
 
-
-            # Save the image png as a cString
-            ram = cStringIO.StringIO()
-            self.f.savefig(ram, format='png', dpi=self.f.dpi, facecolor=self.f.get_facecolor())
-            ram.seek(0)
-            # write to pipe
-            im_list.append(ram.read())
-            ram.close()
-
-
-            # Let's try using CStrings and piping to ffmpeg. Here's what we got from the OIC people
-            # ffmpeg -y -f image2 -framerate 8 -pattern_type glob -i '*.png' -codec copy out.mov
-            # ffmpeg -y -f image2 -framerate 8 -pattern_type glob -i '*.png' -vcodec libx264 -pix_fmt yuv420p out.mp4
-            # OLD DEPRECATED METHOD
-            #FFMpegWriter = manimation.writers['ffmpeg']
-            #writer = FFMpegWriter(fps=FPS, bitrate = 10000)
-
-
-
-            # New Method.... First, let's translate the above command into a string
-
-
-
-            cmdstring = ('ffmpeg',
-                        '-y', '-f', 'image2', # overwrite, image2 is a colorspace thing..
-                        'vcodec', 'png',
-                        '-framerate', str(int(FPS)), # Set framerate to the the user selected option
-                        '-pattern_type', 'glob', '-i', '-', # Not sure what this does... I am going to get rid of it
-                        '-vcodec', 'libx264', '-pix_fmt', 'yuv420p', fname+'.mp4') # output encoding
-            p = subprocess.Popen(cmdstring, stdin=subprocess.PIPE)
-
-            # Write the images to the pipe
-            for i in range(len(im_list)):
-                print i
-                p.stdin.write(im_list.pop(0))
-            # Finish up
-            p.communicate()
-            #p.stdout.close()
-            '''
     def OpenSaveDialog(self):
         SaveDialog(self)
     def OpenMovieDialog(self):
