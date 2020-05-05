@@ -32,6 +32,7 @@ class  MomentsPanel:
                        'spatial_x': True,
                        'show_legend': True,
                        'spatial_y': False,
+                       'symmetric': False,
                        'logy': False,
                        'legend_loc': 'N/A',
                        'face_color': 'gainsboro'
@@ -281,15 +282,18 @@ class  MomentsPanel:
 
         legend_handles = []
         legend_labels = []
+        xmin_max = [np.inf, -np.inf]
+        ymin_max = [np.inf, -np.inf]
 
-        self.axes.dataLim = mtransforms.Bbox.unit()
         #self.axes.dataLim.update_from_data_xy(xy = np.vstack(self.ion_plot_list[0].get_data()).T, ignore=True)
         #self.axes.dataLim.update_from_data_xy(xy = np.vstack(self.e_plot_list[0].get_data()).T, ignore=True)
         if self.GetPlotParam('show_ions'):
             for i in range(len(self.ion_plot_list)):
                 if self.GetPlotParam(self.key_list[i]):
-                    xy = np.vstack(self.ion_plot_list[i].get_data()).T
-                    self.axes.dataLim.update_from_data_xy(xy, ignore=False)
+                    xmin_max[0] = min(xmin_max[0], np.min(self.ion_plot_list[i].get_xdata()))
+                    xmin_max[1] = max(xmin_max[1], np.max(self.ion_plot_list[i].get_xdata()))
+                    ymin_max[0] = min(ymin_max[0], np.min(self.ion_plot_list[i].get_ydata()))
+                    ymin_max[1] = max(ymin_max[1], np.max(self.ion_plot_list[i].get_ydata()))
                     legend_handles.append(self.ion_plot_list[i])
                     legend_labels.append(self.legend_labels[self.GetPlotParam('m_type')][0][i])
 
@@ -297,24 +301,51 @@ class  MomentsPanel:
         if self.GetPlotParam('show_electrons'):
             for i in range(len(self.e_plot_list)):
                 if self.GetPlotParam(self.key_list[i]):
-                    xy = np.vstack(self.e_plot_list[i].get_data()).T
-                    self.axes.dataLim.update_from_data_xy(xy, ignore=False)
+                    xmin_max[0] = min(xmin_max[0], np.min(self.e_plot_list[i].get_xdata()))
+                    xmin_max[1] = max(xmin_max[1], np.max(self.e_plot_list[i].get_xdata()))
+                    ymin_max[0] = min(ymin_max[0], np.min(self.e_plot_list[i].get_ydata()))
+                    ymin_max[1] = max(ymin_max[1], np.max(self.e_plot_list[i].get_ydata()))
+
                     legend_handles.append(self.e_plot_list[i])
                     legend_labels.append(self.legend_labels[self.GetPlotParam('m_type')][1][i])
 
         if self.GetPlotParam('show_total'):
             for i in range(len(self.t_plot_list)):
                 if self.GetPlotParam(self.key_list[i]):
-                    xy = np.vstack(self.t_plot_list[i].get_data()).T
+                    xmin_max[0] = min(xmin_max[0], np.min(self.t_plot_list[i].get_xdata()))
+                    xmin_max[1] = max(xmin_max[1], np.max(self.t_plot_list[i].get_xdata()))
+                    ymin_max[0] = min(ymin_max[0], np.min(self.t_plot_list[i].get_ydata()))
+                    ymin_max[1] = max(ymin_max[1], np.max(self.t_plot_list[i].get_ydata()))
                     self.axes.dataLim.update_from_data_xy(xy, ignore=False)
                     legend_handles.append(self.t_plot_list[i])
                     legend_labels.append(self.legend_labels[self.GetPlotParam('m_type')][2][i])
 
+        if np.isinf(xmin_max[0]):
+            xmin_max=[None, None]
+            ymin_max=[None, None]
+
         if self.GetPlotParam('logy'):
             self.axes.set_yscale('log')
-        self.axes.autoscale()
+            for i in range(2):
+                if ymin_max[i] <= 0:
+                    ymin_max[i] = None
+                if ymin_max[i] is not None:
+                    ymin_max[i] = np.log10(ymin_max[i])
 
-        # now make the legend
+
+        if ymin_max[0] is not None and ymin_max[1] is not None:
+            dist = ymin_max[1]-ymin_max[0]
+            ymin_max[0] -= 0.04*dist
+            ymin_max[1] += 0.04*dist
+            if self.GetPlotParam('logy'):
+                ymin_max = [10**elm for elm in ymin_max]
+        if not self.GetPlotParam('logy') and self.GetPlotParam('symmetric'):
+            tmp = max(abs(ymin_max[0]), abs(ymin_max[1]))
+            ymin_max = [-tmp, tmp]
+
+        self.axes.set_xlim(xmin_max)
+        self.axes.set_ylim(ymin_max)
+
 
 
         self.legend = self.axes.legend(legend_handles, legend_labels,
@@ -380,27 +411,67 @@ class  MomentsPanel:
 
         # fancy code to make sure that matplotlib sets its limits
         # based only on the visible lines.
-        self.axes.dataLim = mtransforms.Bbox.unit()
+        # fancy code to make sure that matplotlib sets its limits
+        # based only on the visible lines.
+        xmin_max = [np.inf, -np.inf]
+        ymin_max = [np.inf, -np.inf]
+
         #self.axes.dataLim.update_from_data_xy(xy = np.vstack(self.ion_plot_list[0].get_data()).T, ignore=True)
+        #self.axes.dataLim.update_from_data_xy(xy = np.vstack(self.e_plot_list[0].get_data()).T, ignore=True)
         if self.GetPlotParam('show_ions'):
             for i in range(len(self.ion_plot_list)):
                 if self.GetPlotParam(self.key_list[i]):
-                    xy = np.vstack(self.ion_plot_list[i].get_data()).T
-                    self.axes.dataLim.update_from_data_xy(xy, ignore=False)
+                    xmin_max[0] = min(xmin_max[0], np.min(self.ion_plot_list[i].get_xdata()))
+                    xmin_max[1] = max(xmin_max[1], np.max(self.ion_plot_list[i].get_xdata()))
+                    ymin_max[0] = min(ymin_max[0], np.min(self.ion_plot_list[i].get_ydata()))
+                    ymin_max[1] = max(ymin_max[1], np.max(self.ion_plot_list[i].get_ydata()))
+
+
+
         if self.GetPlotParam('show_electrons'):
             for i in range(len(self.e_plot_list)):
                 if self.GetPlotParam(self.key_list[i]):
-                    xy = np.vstack(self.e_plot_list[i].get_data()).T
-                    self.axes.dataLim.update_from_data_xy(xy, ignore=False)
+                    xmin_max[0] = min(xmin_max[0], np.min(self.e_plot_list[i].get_xdata()))
+                    xmin_max[1] = max(xmin_max[1], np.max(self.e_plot_list[i].get_xdata()))
+                    ymin_max[0] = min(ymin_max[0], np.min(self.e_plot_list[i].get_ydata()))
+                    ymin_max[1] = max(ymin_max[1], np.max(self.e_plot_list[i].get_ydata()))
+
+
         if self.GetPlotParam('show_total'):
             for i in range(len(self.t_plot_list)):
                 if self.GetPlotParam(self.key_list[i]):
-                    xy = np.vstack(self.t_plot_list[i].get_data()).T
+                    xmin_max[0] = min(xmin_max[0], np.min(self.t_plot_list[i].get_xdata()))
+                    xmin_max[1] = max(xmin_max[1], np.max(self.t_plot_list[i].get_xdata()))
+                    ymin_max[0] = min(ymin_max[0], np.min(self.t_plot_list[i].get_ydata()))
+                    ymin_max[1] = max(ymin_max[1], np.max(self.t_plot_list[i].get_ydata()))
                     self.axes.dataLim.update_from_data_xy(xy, ignore=False)
 
 
-        self.axes.autoscale()
+        if np.isinf(xmin_max[0]):
+            xmin_max=[None, None]
+            ymin_max=[None, None]
 
+        if self.GetPlotParam('logy'):
+            self.axes.set_yscale('log')
+            for i in range(2):
+                if ymin_max[i] <= 0:
+                    ymin_max[i] = None
+                if ymin_max[i] is not None:
+                    ymin_max[i] = np.log10(ymin_max[i])
+
+
+        if ymin_max[0] is not None and ymin_max[1] is not None:
+            dist = ymin_max[1]-ymin_max[0]
+            ymin_max[0] -= 0.04*dist
+            ymin_max[1] += 0.04*dist
+            if self.GetPlotParam('logy'):
+                ymin_max = [10**elm for elm in ymin_max]
+        if not self.GetPlotParam('logy') and self.GetPlotParam('symmetric'):
+            tmp = max(abs(ymin_max[0]), abs(ymin_max[1]))
+            ymin_max = [-tmp, tmp]
+
+        self.axes.set_xlim(xmin_max)
+        self.axes.set_ylim(ymin_max)
         # Set new lims if the user chooses to do so.
         if self.GetPlotParam('set_v_min'):
             self.axes.set_ylim(bottom = self.GetPlotParam('v_min'))
