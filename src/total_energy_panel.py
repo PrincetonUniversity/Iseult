@@ -149,14 +149,35 @@ class TotEnergyPanel:
         self.label_names = ['Prtl+Field', 'Particles', 'Ions', 'Electrons', 'EM Field', 'Electric Field', 'Magnetic Field',
                             r'$B_x^2$', r'$B_y^2$', r'$B_z^2$', r'$E_x^2$', r'$E_y^2$', r'$E_z^2$']
 
-        self.axes.dataLim = mtransforms.Bbox.unit()
-        self.axes.dataLim.update_from_data_xy(xy = np.vstack(self.field_plot[0].get_data()).T, ignore=True)
         for i in range(len(self.plot_list)):
             line = self.plot_list[i]
             if self.GetPlotParam(self.key_list[i]):
-                xy = np.vstack(line.get_data()).T
-                self.axes.dataLim.update_from_data_xy(xy, ignore=False)
-        self.axes.autoscale()
+                xmin_max[0] = min(xmin_max[0], np.min(line.get_xdata()))
+                xmin_max[1] = max(xmin_max[1], np.max(line.get_xdata()))
+                ymin_max[0] = min(ymin_max[0], np.min(line.get_ydata()))
+                ymin_max[1] = max(ymin_max[1], np.max(line.get_ydata()))
+
+        if np.isinf(xmin_max[0]):
+            xmin_max=[None, None]
+            ymin_max=[None, None]
+
+        if self.GetPlotParam('yLog'):
+            for i in range(2):
+                if ymin_max[i] <= 0:
+                    ymin_max[i] = None
+                if ymin_max[i] is not None:
+                    ymin_max[i] = np.log10(ymin_max[i])
+
+
+        if ymin_max[0] is not None and ymin_max[1] is not None:
+            dist = ymin_max[1]-ymin_max[0]
+            ymin_max[0] -= 0.04*dist
+            ymin_max[1] += 0.04*dist
+            if self.GetPlotParam('yLog'):
+                ymin_max = [10**elm for elm in ymin_max]
+
+        self.axes.set_xlim(xmin_max)
+        self.axes.set_ylim(ymin_max)
 
         if self.GetPlotParam('set_y_min'):
             self.axes.set_ylim(bottom = self.GetPlotParam('y_min'))
