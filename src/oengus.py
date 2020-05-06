@@ -608,4 +608,4 @@ def runMe(cmd_args):
 
     # Make sure all went well
     if pipe.returncode != 0:
-        raise sp.CalledProcessError(pipe.returncode, cmdout)
+        raise subprocess.CalledProcessError(pipe.returncode, cmdout)

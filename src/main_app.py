@@ -779,11 +779,10 @@ class MovieDialog(Tk.Toplevel):
             self.title(title)
 
         self.parent = parent
-
         self.result = None
 
         body = ttk.Frame(self)
-        self.initial_focus = self.body(body)
+        self.initial_focus = self.body(body, directory=os.path.abspath(os.path.join(self.parent.dirname,'../')))
 #        body.pack(fill=Tk.BOTH)#, expand=True)
         body.pack(fill = Tk.BOTH, anchor = Tk.CENTER, expand=1)
 
@@ -806,28 +805,36 @@ class MovieDialog(Tk.Toplevel):
     #
     # construction hooks
 
-    def body(self, master):
+    def body(self, master, directory='./'):
         # create dialog body.  return widget that should have
         # initial focus.  this method should be overridden
+        master.grid_columnconfigure(1, weight=1)
         ttk.Label(master, text="Name of Movie:").grid(row=0)
         self.e1 = ttk.Entry(master, width=17)
-        self.e1.grid(row=0, column=1, sticky = Tk.E)
+        self.e1.grid(row=0, column=1, sticky=Tk.E + Tk.W)
 
         ttk.Label(master, text="First Frame:").grid(row=1)
         self.e2 = ttk.Entry(master, width=17)
-        self.e2.grid(row=1, column=1, sticky = Tk.E)
+        self.e2.grid(row=1, column=1, sticky=Tk.E + Tk.W)
 
         ttk.Label(master, text="Last Frame (-1 for final frame):").grid(row=2)
         self.e3 = ttk.Entry(master, width=17)
-        self.e3.grid(row=2, column=1, sticky = Tk.E)
+        self.e3.grid(row=2, column=1, sticky=Tk.E + Tk.W)
 
         ttk.Label(master, text="Step Size:").grid(row=3)
         self.e4 = ttk.Entry(master, width=17)
-        self.e4.grid(row=3, column=1, sticky = Tk.E)
+        self.e4.grid(row=3, column=1, sticky=Tk.E + Tk.W)
 
         ttk.Label(master, text="Frames Per Second:").grid(row=4)
         self.e5 = ttk.Entry(master, width=17)
-        self.e5.grid(row=4, column=1, sticky = Tk.E)
+        self.e5.grid(row=4, column=1, sticky=Tk.E + Tk.W)
+
+        ttk.Label(master, text="Movie Directory:").grid(row=5)
+        self.e6 = ttk.Entry(master, width=30)
+        self.e6.delete(0, Tk.END)
+        self.e6.insert(0, directory)
+        self.e6.grid(row=5, column=1, sticky=Tk.E + Tk.W)
+
 
     def buttonbox(self):
         # add standard button box. override if you don't want the
@@ -889,6 +896,8 @@ class MovieDialog(Tk.Toplevel):
             self.FPS = int(self.e5.get())
         except ValueError:
             self.FPS = ''
+        self.outdir = str(self.e6.get().strip())
+
 
         if self.Name != '':
             self.Name = str(self.e1.get()).strip().replace(' ', '_') +'.mov'
@@ -897,13 +906,34 @@ class MovieDialog(Tk.Toplevel):
         if self.EndFrame <0:
             self.EndFrame = len(self.parent.PathDict['Param'])+self.EndFrame + 1
 
+        bad = False
         if self.Name == '':
             messagebox.showwarning(
                 "Bad input",
                 "Field must contain a name, please try again"
             )
+            bad = True
+        if not os.path.isdir(self.outdir):
+            messagebox.showwarning(
+                "Bad input",
+                f"{self.outdir} is not a directory"
+            )
+            bad = True
 
-        elif self.StartFrame == '':
+        filepath = os.path.join(self.outdir, self.Name)
+        try:
+            filehandle = open(filepath, 'w')
+            filehandle.close()
+            if os.path.exists(filepath):
+                os.remove(filepath)
+
+        except IOError:
+            messagebox.showwarning(
+                "Bad input",
+                f"You do not have write access to {self.outdir}"
+            )
+            bad = True
+        if self.StartFrame == '':
             messagebox.showwarning(
                 "Bad input",
                 "StartFrame must contain an int, please try again"
@@ -945,7 +975,7 @@ class MovieDialog(Tk.Toplevel):
                 "Bad input",
                 "FPS must contain an int >0, please try again"
             )
-        else:
+        elif bad == False:
             return 1 # override
 
     def apply(self):
@@ -954,7 +984,8 @@ class MovieDialog(Tk.Toplevel):
                                 start = self.StartFrame,
                                 stop = self.EndFrame,
                                 step = self.Step,
-                                FPS = self.FPS)
+                                FPS = self.FPS,
+                                outdir = self.outdir)
 
 
 class SettingsFrame(Tk.Toplevel):
@@ -3288,7 +3319,7 @@ class MainApp(Tk.Tk):
                     if not os.path.isdir(os.path.join(self.movie_dir, '../tmp_erase')):
                         self.PrintFig(MakingMovie = MakingMovie, Flag = self.recordProblemsPrompt())
 
-            fname = 'iseult_img_'+ str(self.TimeStep.value).zfill(3)+'.png'
+            fname = 'iseult_img_'+ str(self.TimeStep.value).zfill(self.length_of_outfiles)+'.png'
             if self.MainParamDict['Recording'] :
                 try:
                     self.f.savefig(os.path.join(self.movie_dir, fname))#, dpi = 300)#, facecolor=self.f.get_facecolor())#, edgecolor='none')
@@ -3314,7 +3345,7 @@ class MainApp(Tk.Tk):
             self.MainParamDict['Recording'] = False
             self.playbackbar.RecVar.set(False)
 
-    def MakeAMovie(self, fname, start, stop, step, FPS):
+    def MakeAMovie(self, fname, start, stop, step, FPS, outdir):
         '''Record a movie'''
         # First find the last frame is stop is -1:
 
@@ -3331,7 +3362,7 @@ class MainApp(Tk.Tk):
         if self.showing_total_energy_plt:
             for k in frame_arr:
                 self.TimeStep.set(k)
-        print('hi')
+
         cmdstring = ['ffmpeg',
             '-framerate', str(int(FPS)), # Set framerate to the the user selected option
             '-pattern_type', 'glob',
@@ -3340,7 +3371,7 @@ class MainApp(Tk.Tk):
             'prores',
             '-pix_fmt',
             'yuv444p10le',
-            os.path.join(os.path.join(self.movie_dir),fname)]
+            os.path.join(os.path.join(outdir),fname)]
         pipe = subprocess.Popen(cmdstring, stdin=subprocess.PIPE)
 
         for i in frame_arr:
@@ -3358,7 +3389,7 @@ class MainApp(Tk.Tk):
 
         # Make sure all went well
         if pipe.returncode != 0:
-            raise sp.CalledProcessError(pipe.returncode, cmdstring)
+            raise subprocess.CalledProcessError(pipe.returncode, cmdstring)
 
     def OpenSaveDialog(self):
         SaveDialog(self)
