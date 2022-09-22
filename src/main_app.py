@@ -2196,7 +2196,7 @@ class MainApp(Tk.Tk):
         if self.MainParamDict['Reload2End']:
             self.TimeStep.value = len(self.PathDict['Flds'])
             self.playbackbar.slider.set(self.TimeStep.value)
-        self.shock_finder()
+        self.shock_finder() #hack
 
     def CheckMaxNPopUp(self):
         MaxNDialog(self)
@@ -2270,7 +2270,7 @@ class MainApp(Tk.Tk):
             if self.MainParamDict['Reload2End']:
                 self.TimeStep.value = len(self.PathDict['Flds'])
                 self.playbackbar.slider.set(self.TimeStep.value)
-            self.shock_finder()
+            self.shock_finder() #hack
             self.movie_dir = ''
 
         return is_okay
@@ -3365,13 +3365,14 @@ class MainApp(Tk.Tk):
 
         cmdstring = ['ffmpeg',
             '-framerate', str(int(FPS)), # Set framerate to the the user selected option
-            '-pattern_type', 'glob',
+#            '-pattern_type', 'glob',
             '-i', '-',
             '-c:v',
             'prores',
             '-pix_fmt',
             'yuv444p10le',
             os.path.join(os.path.join(outdir),fname)]
+        print("cmdstring=",cmdstring)
         pipe = subprocess.Popen(cmdstring, stdin=subprocess.PIPE)
 
         for i in frame_arr:
@@ -3382,7 +3383,10 @@ class MainApp(Tk.Tk):
             ## ffmpeg -framerate [FPS] -i [NAME_***].png -c:v prores -pix_fmt yuv444p10le [OUTPUTNAME].mov
             #, '&']#, # output name,
                         #'<dev/null', '>dev/null', '2>/var/log/ffmpeg.log', '&'] # run in background
-            im.save(pipe.stdin, 'PNG')
+            width1=width//2 *2 #make it even
+            height1=height//2 *2 #make it even
+            im1=im.crop((0,0,width1,height1))# box=width1,height1]
+            im1.save(pipe.stdin, 'PNG')
             print(f"saving image {i} to pipe")
         pipe.stdin.close()
         pipe.wait()
@@ -3482,6 +3486,7 @@ class MainApp(Tk.Tk):
                 self.e0 = 1.0
             else:
                 # Normalize by b0
+                print(np.shape((f['bx'])))
                 self.bx0 = f['bx'][0,-1,-10]
                 self.by0 = by[0,-1,-10]
                 self.bz0 = f['bz'][0,-1,-10]
