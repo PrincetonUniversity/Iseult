@@ -3,6 +3,7 @@
 if __name__ == '__main__':
 
     import argparse
+    import warnings
 
     parser = argparse.ArgumentParser(description='Plotting program for Tristan-MP files.')
 
@@ -47,7 +48,9 @@ if __name__ == '__main__':
         from main_app import runMe
         runMe(cmd_args)
     else:
+        warnings.warn('The `-b` option has not been verified to be fully functional.', RuntimeWarning)
         if cmd_args.wait:
+            import subprocess, time
             slurm_num = sys.stdin.read().split[-1]
             print(slurm_num)
             num = 0
@@ -56,7 +59,7 @@ if __name__ == '__main__':
                     slurm_queue = subprocess.check_output(["squeue"])
                     if slurm_queue.find(slurm_num) != -1:
                         num += 1
-                        time.sleep(3E5)
+                        time.sleep(300)
 
         from oengus import runMe
         print(cmd_args.name, cmd_args.O)
