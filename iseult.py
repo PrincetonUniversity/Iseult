@@ -3,6 +3,7 @@
 if __name__ == '__main__':
 
     import argparse
+    import warnings
 
     parser = argparse.ArgumentParser(description='Plotting program for Tristan-MP files.')
 
@@ -47,6 +48,7 @@ if __name__ == '__main__':
         from main_app import runMe
         runMe(cmd_args)
     else:
+        warnings.warn('The `-b` option has not been verified to be fully functional.', RuntimeWarning)
         if cmd_args.wait:
             import subprocess, time
             slurm_num = sys.stdin.read().split[-1]
