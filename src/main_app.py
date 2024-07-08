@@ -2122,20 +2122,6 @@ class MainApp(Tk.Tk):
         with open(cfgfile, 'w') as cfgFile:
             cfgFile.write(yaml.safe_dump(cfgDict))
 
-    def GenH5Dict(self):
-        '''Loads all of the files and then finds all of the keys in
-        the file to load data. Deprecated'''
-        for pkey in self.PathDict.keys():
-            with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][0]), 'r') as f:
-                # Because dens is in both spect* files and flds* files,
-                for h5key in f.keys():
-                    if h5key == 'dens' and pkey == 'Spect':
-                        self.H5KeyDict['spect_dens'] = pkey
-                    else:
-                        self.H5KeyDict[h5key] = pkey
-
-        print(self.H5KeyDict)
-
     def ReloadPath(self):
         """ This function updates the current pathdictionary"""
         dirlist = os.listdir(self.dirname)
@@ -2449,7 +2435,7 @@ class MainApp(Tk.Tk):
 
     def LoadAllKeys(self):
         ''' A function that will find out will arrays need to be loaded for
-        to draw the graphs. Then it will save all the data necessaru to
+        to draw the graphs. Then it will save all the data necessary to
         If the time hasn't changed, it will only load new keys.'''
         # Make a dictionary that stores all of the keys we will need to load
         # to draw the graphs.
