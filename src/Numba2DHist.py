@@ -50,11 +50,12 @@ def Fast2DWeightedHist(x1, x2, weights, min1, max1, bnum1, min2,max2, bnum2):
 if __name__ =='__main__':
     import numpy as np
     import matplotlib.pyplot as plt
-    import h5py
+    import data_loading
 
-    with h5py.File('output/prtl.tot.003', 'r') as f:
-        x = np.copy(f['xi'][:])
-        px = np.copy(f['ui'][:])
+    filepath = 'output/prtl.tot.003'
+    x = data_loading.load_dataset(filepath, 'xi', slice(None))
+    px = data_loading.load_dataset(filepath, 'ui', slice(None))
+
     #for k in range(10):
     #    x = np.append(x, x)
     #    px = np.append(px, px)

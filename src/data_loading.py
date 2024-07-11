@@ -79,11 +79,12 @@ def load_dataset(file_path: str | pathlib.Path, dataset_name: str, dataset_slice
         data_version = __detect_tristan_data_version(file)
 
         # Raise exception and exit if the version is wrong
-        if data_version != 1 or data_version != 2:
+        if data_version != 1 and data_version != 2:
             raise ValueError(f'Improper Tristan data version detected. Version detected is "{data_version}", should be "1" or "2".')
 
         # If the data is from Tristan v1 then return it and exit early
         if data_version == 1:
+            # might need to add a try/except here to catch KeyErrors
             return file[dataset_name][dataset_slice]
 
         # =====

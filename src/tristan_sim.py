@@ -1,6 +1,6 @@
 import re, sys, os, h5py
 import numpy as np
-
+import data_loading
 
 class cachedProperty(object):
     """
@@ -46,7 +46,7 @@ class TristanSim(object):
                     tmpStr += elm +'.'
                 tmpStr += self._fnum[0]
                 with h5py.File(os.path.join(self.dir, tmpStr), 'r') as f:
-                    self._outputFileH5Keys.append([key for key in f.keys()])
+                    self._outputFileH5Keys.append(list(f.keys()))
             # Build an key to h5 file dictionary, and a h5 file to key dictionary
             self._output = [OutputPoint(self, n=x) for x in self.getFileNums()]
             for fkey in self._outputFileKey:
@@ -204,14 +204,13 @@ class h5Wrapper(object):
         if object.__getattribute__(self, name) is None:
             if name in self.__h5Keys:
                 if self._fname.split('.')[0] == 'prtl':
-                    with h5py.File(self._fname, 'r') as f:
-                        setattr(self, name, f[name][::self.stride])
+                    setattr(self, name, data_loading.load_data(self._fname, name, slice(None,None,self.stride)))
                 else:
-                    with h5py.File(self._fname, 'r') as f:
-                        if np.sum([x for x in f[name].shape])!= 1:
-                            setattr(self, name, f[name][:])
-                        else:
-                            setattr(self, name, f[name][0])
+                    data = data_loading.load_data(self._fname, name, slice(None))
+                    if np.sum([x for x in data.shape]) != 1:
+                        setattr(self, name, data)
+                    else:
+                        setattr(self, name, data[0])
 
         return object.__getattribute__(self, name)
 
