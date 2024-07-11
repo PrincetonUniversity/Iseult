@@ -21,17 +21,17 @@ already been implemented.
 Dependencies:
 -------------
 
-Python packages required: Anaconda 2019/3, matplotlib 3.0 & its required
-dependencies, python 3.7.3,  h5py. Will not work with older versions of anaconda3 and
+Python packages required: Anaconda 2021/5, matplotlib 3.0 & its required
+dependencies, python 3.7.3,  h5py, scipy >=v1.6.0. Will not work with older versions of anaconda3 and
 matplotlib 2.0 or older.
 
 To use the movie saving feature: ffmpeg & xterm.
 
 Iseult should work on Windows, MacOS & Linux.
 
-To run Iseult on tigressdata type the following:
+To run Iseult on tigressdata or stellar vis nodes type the following:
 ```bash
-$ module load anaconda3/2019.3
+$ module load anaconda3/2021.5
 $ cd /path/to/Iseult/
 $ chmod +x ./iseult.py
 $ ./iseult.py

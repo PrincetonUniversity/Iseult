@@ -229,7 +229,7 @@ class FieldsPanel:
                     """
                     messagebox.showinfo('Error when evaluating user defined function 1:', print(sys.exc_info()))#(err_msg)
 
-                    self.fx = np.NAN
+                    self.fx = np.nan
                     self.flagx = 0
 
             if self.GetPlotParam('show_y'):
@@ -259,7 +259,7 @@ class FieldsPanel:
 
                         """
                     messagebox.showinfo('Error when evaluating user defined function 2:', print(sys.exc_info()))#(err_msg)
-                    self.fy = np.NAN
+                    self.fy = np.nan
                     self.flagy = 0
 
             if self.GetPlotParam('show_z'):
@@ -291,7 +291,7 @@ class FieldsPanel:
                     """
                     messagebox.showinfo('Error when evaluating user defined function 3:', print(sys.exc_info()))#(err_msg)
 
-                    self.fz = np.NAN
+                    self.fz = np.nan
                     self.flagz = 0
 
     def draw(self,):

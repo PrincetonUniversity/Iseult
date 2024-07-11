@@ -41,14 +41,14 @@ class FieldsPanel:
                        'cmdstr3': example,
                        'OneDOnly': [False, False, False],
                        'yaxis_label': ['$B$','$E$','$J$','$B$'],
-                       '2D_label': [['$B_x$','$B_y$','$B_z$'],
-                                    ['$E_x$','$E_y$','$E_z$'],
-                                    ['$J_x$','$J_y$','$J_z$'],
-                                    ['$B_\mathrm{tot}$','$B_\mathrm{tot}$','$B_\mathrm{tot}$']],
-                       '1D_label': [['$B_x$','$B_y$','$B_z$'],
-                                    ['$E_x$','$E_y$','$E_z$'],
-                                    ['$J_x$','$J_y$','$J_z$'],
-                                    ['$B_\mathrm{tot}$','$B_\mathrm{tot}$','$B_\mathrm{tot}$']],
+                       '2D_label': [[r'$B_x$',r'$B_y$',r'$B_z$'],
+                                    [r'$E_x$',r'$E_y$',r'$E_z$'],
+                                    [r'$J_x$',r'$J_y$',r'$J_z$'],
+                                    [r'$B_\mathrm{tot}$',r'$B_\mathrm{tot}$',r'$B_\mathrm{tot}$']],
+                       '1D_label': [[r'$B_x$',r'$B_y$',r'$B_z$'],
+                                    [r'$E_x$',r'$E_y$',r'$E_z$'],
+                                    [r'$J_x$',r'$J_y$',r'$J_z$'],
+                                    [r'$B_\mathrm{tot}$',r'$B_\mathrm{tot}$',r'$B_\mathrm{tot}$']],
                        'show_x' : 1,
                        'show_y' : 1,
                        'show_z' : 1,
@@ -287,7 +287,7 @@ class FieldsPanel:
                         """
                         messagebox.showinfo('Error when evaluating user defined function 1:', print(sys.exc_info()))#(err_msg)
 
-                        self.fx = np.NAN
+                        self.fx = np.nan
                         self.flagx = 0
 
             if self.GetPlotParam('show_y'):
@@ -329,7 +329,7 @@ class FieldsPanel:
 
                         """
                         messagebox.showinfo('Error when evaluating user defined function 2:', print(sys.exc_info()))#(err_msg)
-                        self.fy = np.NAN
+                        self.fy = np.nan
                         self.flagy = 0
 
             if self.GetPlotParam('show_z'):
@@ -373,7 +373,7 @@ class FieldsPanel:
                         """
                         messagebox.showinfo('Error when evaluating user defined function 3:', print(sys.exc_info()))#(err_msg)
 
-                        self.fz = np.NAN
+                        self.fz = np.nan
                         self.flagz = 0
 
     def draw(self):
