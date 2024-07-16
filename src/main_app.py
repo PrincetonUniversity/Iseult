@@ -2577,7 +2577,7 @@ class MainApp(Tk.Tk):
                                     elif elm == 'c':
                                         self.DataDict[elm]= 0.45
                                     elif elm == 'ppc0':
-                                        self.DataDict[elm] = np.NaN
+                                        self.DataDict[elm] = np.nan
                                     elif elm == 'my':
                                         tmpSize = ((self.MaxYInd+1)*f['istep'][0])//(f['my0'][0]-5)
                                         self.DataDict[elm] = np.ones(tmpSize)*(f['my0'][0])
@@ -2623,7 +2623,7 @@ class MainApp(Tk.Tk):
                                     elif elm == 'c':
                                         self.DataDict[elm]= 0.45
                                     elif elm == 'ppc0':
-                                        self.DataDict[elm] = np.NaN
+                                        self.DataDict[elm] = np.nan
                                     elif elm == 'my':
                                         tmpSize = ((self.MaxYInd+1)*f['istep'][0])//(f['my0'][0]-5)
                                         self.DataDict[elm] = np.ones(tmpSize)*(f['my0'][0])
@@ -3158,7 +3158,7 @@ class MainApp(Tk.Tk):
 
         if self.MainParamDict['ShowTitle']:
             tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].split('.')[-1]
-            self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time'][0]), size = 15)
+            self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+r' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time'][0]), size = 15)
         if keep_view:
             self.LoadView()
 
@@ -3259,7 +3259,7 @@ class MainApp(Tk.Tk):
 
         if self.MainParamDict['ShowTitle']:
             tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].split('.')[-1]
-            self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time'][0]), size = 15)
+            self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+r' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time'][0]), size = 15)
 
         if keep_view:
             self.LoadView()
@@ -3471,11 +3471,11 @@ class MainApp(Tk.Tk):
                     '''
                     # Normalize by b0
                 if np.abs(f['sigma'][0])==0:
-                    self.btheta = np.NaN
+                    self.btheta = np.nan
                 else:
                     self.btheta = f['btheta'][0]
             except KeyError:
-                self.btheta = np.NaN
+                self.btheta = np.nan
 
 
         with h5py.File(os.path.join(self.dirname,self.PathDict['Flds'][0]), 'r') as f:
@@ -3522,7 +3522,7 @@ class MainApp(Tk.Tk):
         ishock_final = np.where(dens_arr[dens_arr.shape[0]//2,jstart:]>=dens_half_max)[0][-1]
         xshock_final = xaxis_final[ishock_final]
         self.shock_speed = xshock_final/final_time
-        self.prev_shock_loc = np.NaN
+        self.prev_shock_loc = np.nan
 
     def setKnob(self, value):
         # If the time parameter changes update the plots

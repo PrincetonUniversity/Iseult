@@ -10,7 +10,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
 from scipy.special import kn # Modified Bessel function
 from scipy.stats import linregress
-from scipy.integrate import simps, cumtrapz
+from scipy.integrate import cumulative_trapezoid
 class SpectralPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
 
@@ -618,7 +618,7 @@ class SpectralPanel:
             endSumF = np.cumsum(dF[::-1])[::-1]
             '''
             # Do a reverse cummulative trapz integration over the energy_dist
-            endSum = cumtrapz(energy_dist[::-1],self.gamma[::-1])[::-1]
+            endSum =  cumulative_trapezoid(energy_dist[::-1],self.gamma[::-1])[::-1]
             endSum *= -1
 
             logF = np.nan
