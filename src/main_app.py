@@ -2200,12 +2200,10 @@ class MainApp(Tk.Tk):
         self.PathDict = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
 
         # create a bunch of regular expressions used to search for files
-        f_re = re.compile('flds.tot.*')
-        prtl_re = re.compile('prtl.tot.*')
-        s_re = re.compile('spect.*')
-        param_re = re.compile('param.*')
-
-
+        f_re = re.compile(r'flds.tot.([\d\w\.]+)(?<!xdmf)$') # !(*.xdmf)
+        prtl_re = re.compile(r'prtl.tot.*')
+        s_re = re.compile(r'spect.*')
+        param_re = re.compile(r'param.*')
 
         self.PathDict['Flds']= list(filter(f_re.match, os.listdir(self.dirname)))
         self.PathDict['Flds'].sort()
@@ -2213,6 +2211,10 @@ class MainApp(Tk.Tk):
         self.PathDict['Prtl'].sort()
         self.PathDict['Spect']= list(filter(s_re.match, os.listdir(self.dirname)))
         self.PathDict['Spect'].sort()
+        if len(self.PathDict['Spect']) == 0:
+            s_re = re.compile(r'spec.*')
+            self.PathDict['Spect']= list(filter(s_re.match, os.listdir(self.dirname)))
+            self.PathDict['Spect'].sort()
         self.PathDict['Param']= list(filter(param_re.match, os.listdir(self.dirname)))
         self.PathDict['Param'].sort()
 
@@ -2464,7 +2466,7 @@ class MainApp(Tk.Tk):
         # Grab c_omp & istep
         filepath = os.path.join(self.dirname,self.PathDict['Param'][self.TimeStep.value-1])
         self.c_omp = data_loading.load_dataset(filepath, 'c_omp', slice(0))
-        self.c_omp = data_loading.load_dataset(filepath, 'istep', slice(0))
+        self.istep = data_loading.load_dataset(filepath, 'istep', slice(0))
 
         # FIND THE SLICE
         filepath = os.path.join(self.dirname,self.PathDict['Flds'][self.TimeStep.value-1])
@@ -2874,6 +2876,7 @@ class MainApp(Tk.Tk):
                     is_changed =[]
                     diff_list = []
                     for j in range(4):
+                        print(f'Logging for potential KeyError bug\n{i = }, {j = }, \n{home_view = }, \n{home_view[i] = }, \n{home_view[i][j] = }')
                         num_changed = home_view[i][j]-cur_view[i][j] != 0.0
                         is_changed.append(num_changed)
                         if num_changed:
@@ -3444,7 +3447,8 @@ class MainApp(Tk.Tk):
                 '''
             # Normalize by b0
             filepath = os.path.join(self.dirname,self.PathDict['Param'][0])
-            abs_sigma = np.abs(data_loading.load_dataset(filepath, 'sigma', slice(0)))
+            abs_sigma = np.abs(data_loading.load_dataset(filepath, 'sigma', slice(None)))[0]
+
             if abs_sigma == 0:
                 self.btheta = np.nan
             else:
