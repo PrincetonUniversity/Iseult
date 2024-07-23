@@ -71,24 +71,49 @@ def __detect_tristan_data_version(file: h5py.File) -> int:
 # =============================================================================
 
 # =============================================================================
-def __verify_file_path(file_path: pathlib.Path, dataset_name: str):
-    # Check that the file exists. If not, try to handle the special cases before raising exception
-    if not file_path.exists():
-        if 'param.' in file_path.name:
-            file_path = file_path.with_name(file_path.name.replace('param', 'params'))
-        elif 'spect.' in file_path.name:
-            file_path = file_path.with_name(file_path.name.replace('spect', 'spec.tot'))
-            warnings.warn('Spectra not yet supported with Tristan v2 data. Spectra plots will show dummy data with a value of 1.')
-            if dataset_name in ['gmin','spece','specerest','specp','specprest','umean']:
-                return np.ones((10,10))
-            elif dataset_name in ['xsl', 'gamma']:
-                return np.ones(10)
-            else:
-                return 1
-        else:
-            raise FileNotFoundError(f'File not found at path: {file_path}')
+def __insert_directory(path: pathlib.Path, inserted_directory: str, location: int = -1):
+    path_list = list(pathlib.PurePath(path).parts)
+    path_list.insert(location, inserted_directory)
+    return pathlib.Path(pathlib.PurePath('').joinpath(*path_list))
+# =============================================================================
 
-    return file_path
+# =============================================================================
+def __verify_file_path(file_path: pathlib.Path, dataset_name: str):
+    unmodified_path = file_path
+    # Check that the file exists. If not, try to handle the special cases before raising exception
+    if file_path.exists():
+        return file_path
+
+    # Now that we've verified the file doesn't exist let's try some fixes
+
+    # Correct the name for Tristan v2 data
+    if 'param.' in file_path.name:
+        file_path = file_path.with_name(file_path.name.replace('param', 'params'))
+    elif 'spect.' in file_path.name:
+        file_path = file_path.with_name(file_path.name.replace('spect', 'spec.tot'))
+        warnings.warn('Spectra not yet supported with Tristan v2 data. Spectra plots will show dummy data with a value of 1.')
+        if dataset_name in ['gmin','spece','specerest','specp','specprest','umean']:
+            return np.ones((10,10))
+        elif dataset_name in ['xsl', 'gamma']:
+            return np.ones(10)
+        else:
+            return 1
+
+    # Check if the corrected path exists. If it does then it's Tristan v2 data
+    # that is all in one directory. If not then we need to handle the case where
+    # the data is in a subdirectory
+    if file_path.exists():
+        return file_path
+
+    # Data is in a subdirectory so let's add that to the path
+    if 'flds' in file_path.name:
+        return __insert_directory(file_path, 'flds')
+    elif 'prtl' in file_path.name:
+        return __insert_directory(file_path, 'prtl')
+    elif 'spec' in file_path.name:
+        return __insert_directory(file_path, 'spec')
+
+    raise FileNotFoundError(f'File not found at path: {unmodified_path} and could not be found in any standard places.')
 # =============================================================================
 
 # =============================================================================

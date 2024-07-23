@@ -2206,15 +2206,24 @@ class MainApp(Tk.Tk):
         param_re = re.compile(r'param.*')
 
         self.PathDict['Flds']= list(filter(f_re.match, os.listdir(self.dirname)))
+        if len(self.PathDict['Flds']) == 0:
+            self.PathDict['Flds']= list(filter(f_re.match, os.listdir(self.dirname+'/flds')))
         self.PathDict['Flds'].sort()
+
         self.PathDict['Prtl']= list(filter(prtl_re.match, os.listdir(self.dirname)))
+        if len(self.PathDict['Prtl']) == 0:
+            self.PathDict['Prtl']= list(filter(prtl_re.match, os.listdir(self.dirname+'/prtl')))
         self.PathDict['Prtl'].sort()
+
         self.PathDict['Spect']= list(filter(s_re.match, os.listdir(self.dirname)))
-        self.PathDict['Spect'].sort()
         if len(self.PathDict['Spect']) == 0:
             s_re = re.compile(r'spec.*')
             self.PathDict['Spect']= list(filter(s_re.match, os.listdir(self.dirname)))
-            self.PathDict['Spect'].sort()
+            if len(self.PathDict['Spect']) == 0 or (len(self.PathDict['Spect']) == 1 and self.PathDict['Spect'][0] == 'spec'):
+                self.PathDict['Spect']= list(filter(s_re.match, os.listdir(self.dirname+'/spec')))
+
+        self.PathDict['Spect'].sort()
+
         self.PathDict['Param']= list(filter(param_re.match, os.listdir(self.dirname)))
         self.PathDict['Param'].sort()
 
