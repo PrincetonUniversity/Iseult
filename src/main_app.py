@@ -2876,7 +2876,7 @@ class MainApp(Tk.Tk):
                     is_changed =[]
                     diff_list = []
                     for j in range(4):
-                        print(f'Logging for potential KeyError bug\n{i = }, {j = }, \n{home_view = }, \n{home_view[i] = }, \n{home_view[i][j] = }')
+                        print(f'Logging for potential KeyError bug\n{i = }, {j = }, \n{home_view = }, \n{home_view[i] = }')
                         num_changed = home_view[i][j]-cur_view[i][j] != 0.0
                         is_changed.append(num_changed)
                         if num_changed:
