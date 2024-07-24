@@ -71,14 +71,14 @@ def __detect_tristan_data_version(file: h5py.File) -> int:
 # =============================================================================
 
 # =============================================================================
-def __insert_directory(path: pathlib.Path, inserted_directory: str, location: int = -1):
+def __insert_directory(path: pathlib.Path, inserted_directory: str, location: int = -1) -> pathlib.Path:
     path_list = list(pathlib.PurePath(path).parts)
     path_list.insert(location, inserted_directory)
     return pathlib.Path(pathlib.PurePath('').joinpath(*path_list))
 # =============================================================================
 
 # =============================================================================
-def __verify_file_path(file_path: pathlib.Path, dataset_name: str):
+def __verify_file_path(file_path: pathlib.Path, dataset_name: str) -> pathlib.Path | np.ndarray | int:
     unmodified_path = file_path
     # Check that the file exists. If not, try to handle the special cases before raising exception
     if file_path.exists():
@@ -117,7 +117,7 @@ def __verify_file_path(file_path: pathlib.Path, dataset_name: str):
 # =============================================================================
 
 # =============================================================================
-def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: str, dataset_slice: tuple | slice):
+def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: str, dataset_slice: tuple | slice) -> np.ndarray | int:
     # Make sure the dataset is properly mapped
     try:
         dataset_name = __v2_map[dataset_name]
@@ -147,7 +147,7 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
 # =============================================================================
 
 # =============================================================================
-def load_dataset(file_path: str | pathlib.Path, dataset_name: str, dataset_slice: tuple | slice) -> np.array:
+def load_dataset(file_path: str | pathlib.Path, dataset_name: str, dataset_slice: tuple | slice) -> np.ndarray | int:
 
     # First check argument types
     assert isinstance(file_path, pathlib.Path) or isinstance(file_path, str)
