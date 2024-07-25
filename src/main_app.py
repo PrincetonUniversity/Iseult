@@ -2474,8 +2474,8 @@ class MainApp(Tk.Tk):
         # Check to make sure the 2DSlice is OK...
         # Grab c_omp & istep
         filepath = os.path.join(self.dirname,self.PathDict['Param'][self.TimeStep.value-1])
-        self.c_omp = data_loading.load_dataset(filepath, 'c_omp', slice(0))
-        self.istep = data_loading.load_dataset(filepath, 'istep', slice(0))
+        self.c_omp = data_loading.load_dataset(filepath, 'c_omp', slice(0,1))[0]
+        self.istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))[0]
 
         # FIND THE SLICE
         filepath = os.path.join(self.dirname,self.PathDict['Flds'][self.TimeStep.value-1])
@@ -2566,13 +2566,13 @@ class MainApp(Tk.Tk):
                                 elif elm == 'ppc0':
                                     self.DataDict[elm] = np.nan
                                 elif elm == 'my':
-                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0))
-                                    my0   = data_loading.load_dataset(filepath, 'my0', slice(0))
+                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))[0]
+                                    my0   = data_loading.load_dataset(filepath, 'my0', slice(0,1))[0]
                                     tmpSize = ((self.MaxYInd+1)*istep)//(my0-5)
                                     self.DataDict[elm] = np.ones(tmpSize)*my0
                                 elif elm == 'mx':
-                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0))
-                                    mx0   = data_loading.load_dataset(filepath, 'mx0', slice(0))
+                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))[0]
+                                    mx0   = data_loading.load_dataset(filepath, 'mx0', slice(0,1))[0]
                                     tmpSize = ((self.MaxXInd+1)*istep)//(mx0-5)
                                     self.DataDict[elm] = np.ones(tmpSize)*mx0
                                 else:
@@ -2606,13 +2606,13 @@ class MainApp(Tk.Tk):
                                 elif elm == 'ppc0':
                                     self.DataDict[elm] = np.nan
                                 elif elm == 'my':
-                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0))
-                                    my0   = data_loading.load_dataset(filepath, 'my0', slice(0))
+                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))[0]
+                                    my0   = data_loading.load_dataset(filepath, 'my0', slice(0,1))[0]
                                     tmpSize = ((self.MaxYInd+1)*istep)//(my0-5)
                                     self.DataDict[elm] = np.ones(tmpSize)*my0
                                 elif elm == 'mx':
-                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0))
-                                    mx0   = data_loading.load_dataset(filepath, 'mx0', slice(0))
+                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))[0]
+                                    mx0   = data_loading.load_dataset(filepath, 'mx0', slice(0,1))[0]
                                     tmpSize = ((self.MaxXInd+1)*istep)//(mx0-5)
                                     self.DataDict[elm] = np.ones(tmpSize)*mx0
                                 else:
@@ -3461,7 +3461,7 @@ class MainApp(Tk.Tk):
             if abs_sigma == 0:
                 self.btheta = np.nan
             else:
-                self.btheta = self.c_omp = data_loading.load_dataset(filepath, 'btheta', slice(0))
+                self.btheta = self.c_omp = data_loading.load_dataset(filepath, 'btheta', slice(0,1))[0]
         except KeyError:
             self.btheta = np.nan
 
