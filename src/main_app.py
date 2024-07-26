@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 import re # regular expressions
 import os, sys # Used to make the code portable
-import h5py # Allows us the read the data files
+import data_loading # Allows us the read the data files
 import time, string, io
 from PIL import Image
 import matplotlib
@@ -2122,20 +2122,6 @@ class MainApp(Tk.Tk):
         with open(cfgfile, 'w') as cfgFile:
             cfgFile.write(yaml.safe_dump(cfgDict))
 
-    def GenH5Dict(self):
-        '''Loads all of the files and then finds all of the keys in
-        the file to load data. Deprecated'''
-        for pkey in self.PathDict.keys():
-            with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][0]), 'r') as f:
-                # Because dens is in both spect* files and flds* files,
-                for h5key in f.keys():
-                    if h5key == 'dens' and pkey == 'Spect':
-                        self.H5KeyDict['spect_dens'] = pkey
-                    else:
-                        self.H5KeyDict[h5key] = pkey
-
-        print(self.H5KeyDict)
-
     def ReloadPath(self):
         """ This function updates the current pathdictionary"""
         dirlist = os.listdir(self.dirname)
@@ -2214,19 +2200,30 @@ class MainApp(Tk.Tk):
         self.PathDict = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
 
         # create a bunch of regular expressions used to search for files
-        f_re = re.compile('flds.tot.*')
-        prtl_re = re.compile('prtl.tot.*')
-        s_re = re.compile('spect.*')
-        param_re = re.compile('param.*')
-
-
+        f_re = re.compile(r'flds.tot.([\d\w\.]+)(?<!xdmf)$') # !(*.xdmf)
+        prtl_re = re.compile(r'prtl.tot.*')
+        s_re = re.compile(r'spect.*')
+        param_re = re.compile(r'param.*')
 
         self.PathDict['Flds']= list(filter(f_re.match, os.listdir(self.dirname)))
+        if len(self.PathDict['Flds']) == 0:
+            self.PathDict['Flds']= list(filter(f_re.match, os.listdir(self.dirname+'/flds')))
         self.PathDict['Flds'].sort()
+
         self.PathDict['Prtl']= list(filter(prtl_re.match, os.listdir(self.dirname)))
+        if len(self.PathDict['Prtl']) == 0:
+            self.PathDict['Prtl']= list(filter(prtl_re.match, os.listdir(self.dirname+'/prtl')))
         self.PathDict['Prtl'].sort()
+
         self.PathDict['Spect']= list(filter(s_re.match, os.listdir(self.dirname)))
+        if len(self.PathDict['Spect']) == 0:
+            s_re = re.compile(r'spec.*')
+            self.PathDict['Spect']= list(filter(s_re.match, os.listdir(self.dirname)))
+            if len(self.PathDict['Spect']) == 0 or (len(self.PathDict['Spect']) == 1 and self.PathDict['Spect'][0] == 'spec'):
+                self.PathDict['Spect']= list(filter(s_re.match, os.listdir(self.dirname+'/spec')))
+
         self.PathDict['Spect'].sort()
+
         self.PathDict['Param']= list(filter(param_re.match, os.listdir(self.dirname)))
         self.PathDict['Param'].sort()
 
@@ -2449,7 +2446,7 @@ class MainApp(Tk.Tk):
 
     def LoadAllKeys(self):
         ''' A function that will find out will arrays need to be loaded for
-        to draw the graphs. Then it will save all the data necessaru to
+        to draw the graphs. Then it will save all the data necessary to
         If the time hasn't changed, it will only load new keys.'''
         # Make a dictionary that stores all of the keys we will need to load
         # to draw the graphs.
@@ -2476,19 +2473,17 @@ class MainApp(Tk.Tk):
 
         # Check to make sure the 2DSlice is OK...
         # Grab c_omp & istep
-        with h5py.File(os.path.join(self.dirname,self.PathDict['Param'][self.TimeStep.value-1]), 'r') as f:
-            self.c_omp = f['c_omp'][0]
-            self.istep = f['istep'][0]
+        filepath = os.path.join(self.dirname,self.PathDict['Param'][self.TimeStep.value-1])
+        self.c_omp = data_loading.load_dataset(filepath, 'c_omp', slice(0,1))[0]
+        self.istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))[0]
 
         # FIND THE SLICE
-        with h5py.File(os.path.join(self.dirname,self.PathDict['Flds'][self.TimeStep.value-1]), 'r') as f:
-            self.MaxZInd = f['bx'].shape[0]-1
-            self.MaxYInd = f['bx'].shape[1]-1
-            self.MaxXInd = f['bx'].shape[2]-1
+        filepath = os.path.join(self.dirname,self.PathDict['Flds'][self.TimeStep.value-1])
+        bx_shape = data_loading.load_dataset(filepath, 'bx', slice(None,None,None)).shape
+        self.MaxZInd, self.MaxYInd, self.MaxXInd  = np.array(bx_shape) - 1
 
-            self.ySlice = int(np.around(self.MainParamDict['ySlice']*self.MaxYInd))
-            self.zSlice = int(np.around(self.MainParamDict['zSlice']*self.MaxZInd))
-
+        self.ySlice = int(np.around(self.MainParamDict['ySlice']*self.MaxYInd))
+        self.zSlice = int(np.around(self.MainParamDict['zSlice']*self.MaxZInd))
 
         # See if we are in a new Directory
         if self.NewDirectory:
@@ -2551,43 +2546,37 @@ class MainApp(Tk.Tk):
                     if tmplist2[i] in self.DataDict.keys():
                         tmplist.remove(tmplist2[i])
                 # Now iterate over each path key and create a datadictionary
+                filepath = os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1])
                 if len(tmplist)> 0:
-                    if pkey == 'Prtl': # we load particle arrays with a stride because they are very expensive
-                        with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
-                            for elm in tmplist:
-                                try:
-                                    # Load all the keys
-                                    self.DataDict[elm] = f[elm][::self.MainParamDict['PrtlStride']]
-
-                                except KeyError:
-                                    raise
+                    if pkey =='Prtl': # we load particle arrays with a stride because they are expensive
+                        for elm in tmplist:
+                            self.DataDict[elm] = data_loading.load_dataset(filepath, elm, slice(None, None, self.MainParamDict['PrtlStride']))
                     else:
-                        with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
-                            for elm in tmplist:
-                                try:
-                                    # Load all the keys
-                                    if elm == 'spect_dens':
-                                        self.DataDict[elm] = f['dens'][:]
-                                    else:
-                                        self.DataDict[elm] = f[elm][:]
-
-                                except KeyError:
-                                    if elm == 'sizex':
-                                        self.DataDict[elm] = 1
-                                    elif elm == 'c':
-                                        self.DataDict[elm]= 0.45
-                                    elif elm == 'ppc0':
-                                        self.DataDict[elm] = np.nan
-                                    elif elm == 'my':
-                                        tmpSize = ((self.MaxYInd+1)*f['istep'][0])//(f['my0'][0]-5)
-                                        self.DataDict[elm] = np.ones(tmpSize)*(f['my0'][0])
-                                    elif elm == 'mx':
-                                        tmpSize = ((self.MaxXInd+1)*f['istep'][0])//(f['mx0'][0]-5)
-                                        self.DataDict[elm] = np.ones(tmpSize)*(f['mx0'][0])
-
-
-                                    else:
-                                        raise
+                        for elm in tmplist:
+                            try:
+                                if elm == 'spect_dens':
+                                    self.DataDict[elm] = data_loading.load_dataset(filepath, 'dens', slice(None))
+                                else:
+                                    self.DataDict[elm] = data_loading.load_dataset(filepath, elm, slice(None))
+                            except KeyError:
+                                if elm == 'sizex':
+                                    self.DataDict[elm] = 1
+                                elif elm == 'c':
+                                    self.DataDict[elm]= 0.45
+                                elif elm == 'ppc0':
+                                    self.DataDict[elm] = np.nan
+                                elif elm == 'my':
+                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))[0]
+                                    my0   = data_loading.load_dataset(filepath, 'my0', slice(0,1))[0]
+                                    tmpSize = ((self.MaxYInd+1)*istep)//(my0-5)
+                                    self.DataDict[elm] = np.ones(tmpSize)*my0
+                                elif elm == 'mx':
+                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))[0]
+                                    mx0   = data_loading.load_dataset(filepath, 'mx0', slice(0,1))[0]
+                                    tmpSize = ((self.MaxXInd+1)*istep)//(mx0-5)
+                                    self.DataDict[elm] = np.ones(tmpSize)*mx0
+                                else:
+                                    raise
 
             self.timestep_queue.append(self.TimeStep.value)
 
@@ -2597,42 +2586,37 @@ class MainApp(Tk.Tk):
             for pkey in self.ToLoad.keys():
                 tmplist = list(set(self.ToLoad[pkey])) # get rid of duplicate keys
                 # Load the file
+                filepath = os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1])
                 if len(tmplist)> 0:
                     if pkey =='Prtl': # we load particle arrays with a stride because they are expensive
-                        with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
-                            for elm in tmplist:
-                                try:
-                                    # Load all the key
-                                    self.DataDict[elm] = f[elm][::self.MainParamDict['PrtlStride']]
-
-                                except KeyError:
-                                    raise
+                        for elm in tmplist:
+                            self.DataDict[elm] = data_loading.load_dataset(filepath, elm, slice(None, None, self.MainParamDict['PrtlStride']))
                     else:
-                        with h5py.File(os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1]), 'r') as f:
-                            for elm in tmplist:
-                                try:
-                                    # Load all the keys
-                                    if elm == 'spect_dens':
-                                        self.DataDict[elm] = f['dens'][:]
-                                    else:
-                                        self.DataDict[elm] = f[elm][:]
-
-                                except KeyError:
-                                    if elm == 'sizex':
-                                        self.DataDict[elm] = 1
-                                    elif elm == 'c':
-                                        self.DataDict[elm]= 0.45
-                                    elif elm == 'ppc0':
-                                        self.DataDict[elm] = np.nan
-                                    elif elm == 'my':
-                                        tmpSize = ((self.MaxYInd+1)*f['istep'][0])//(f['my0'][0]-5)
-                                        self.DataDict[elm] = np.ones(tmpSize)*(f['my0'][0])
-                                    elif elm == 'mx':
-                                        tmpSize = ((self.MaxXInd+1)*f['istep'][0])//(f['mx0'][0]-5)
-                                        self.DataDict[elm] = np.ones(tmpSize)*(f['mx0'][0])
-
-                                    else:
-                                        raise
+                        for elm in tmplist:
+                            try:
+                                if elm == 'spect_dens':
+                                    self.DataDict[elm] = data_loading.load_dataset(filepath, 'dens', slice(None))
+                                else:
+                                    self.DataDict[elm] = data_loading.load_dataset(filepath, elm, slice(None))
+                            except KeyError:
+                                if elm == 'sizex':
+                                    self.DataDict[elm] = 1
+                                elif elm == 'c':
+                                    self.DataDict[elm]= 0.45
+                                elif elm == 'ppc0':
+                                    self.DataDict[elm] = np.nan
+                                elif elm == 'my':
+                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))[0]
+                                    my0   = data_loading.load_dataset(filepath, 'my0', slice(0,1))[0]
+                                    tmpSize = ((self.MaxYInd+1)*istep)//(my0-5)
+                                    self.DataDict[elm] = np.ones(tmpSize)*my0
+                                elif elm == 'mx':
+                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))[0]
+                                    mx0   = data_loading.load_dataset(filepath, 'mx0', slice(0,1))[0]
+                                    tmpSize = ((self.MaxXInd+1)*istep)//(mx0-5)
+                                    self.DataDict[elm] = np.ones(tmpSize)*mx0
+                                else:
+                                    raise
 
             # don't keep more than 30 time steps in memory because of RAM issues
             if len(self.timestep_visited)>30:
@@ -3433,79 +3417,85 @@ class MainApp(Tk.Tk):
 
         # First load the first field file to find the initial size of the
         # box in the x direction, and find the initial field values
-        with h5py.File(os.path.join(self.dirname,self.PathDict['Param'][0]), 'r') as f:
-            # Find out what sigma is
-            try:
-                ''' Obviously the most correct way to do this to to calculate b0 from sigma.
-                This is proving more difficult that I thought it would be, so I am calculating it
-                as Jaehong did.
 
-                sigma = f['sigma'][0]
-                gamma0 = f['gamma0'][0]
-                c = f['c'][0]
-                btheta = f['btheta'][0]
-                bphi = f['bphi'][0]
+        # Find out what sigma is
+        try:
+            ''' Obviously the most correct way to do this to to calculate b0 from sigma.
+            This is proving more difficult that I thought it would be, so I am calculating it
+            as Jaehong did.
 
-                ppc0 = f['ppc0'][0]
-                mi = f['mi'][0]
-                me = f['me'][0]
-                print mi, c, ppc0
-                if gamma0 <1:
-                    beta0 = gamma0
-                    gamma0 = 1/np.sqrt(1-gamma0**2)
-                else:
-                    beta0=np.sqrt(1-gamma0**(-2))
+            sigma = f['sigma'][0]
+            gamma0 = f['gamma0'][0]
+            c = f['c'][0]
+            btheta = f['btheta'][0]
+            bphi = f['bphi'][0]
 
-
-                if sigma <= 1E-10:
-                    self.b0 = 1.0
-                    self.e0 = 1.0
-                else:
-                    # b0 in the upstream frame
-                    self.b0 = np.sqrt(gamma0*ppc0*.5*c**2*(mi+me)*sigma)
-                    # Translate to the downstream frame
-                    b_x = self.b0*np.cos(btheta)*np.cos(bphi)
-                    b_y = self.b0*np.sin(btheta)*np.cos(bphi)
-                    b_z = self.b0*np.sin(btheta)*np.cos(bphi)
-                    print 'sigma b0', self.b0
-                    '''
-                    # Normalize by b0
-                if np.abs(f['sigma'][0])==0:
-                    self.btheta = np.nan
-                else:
-                    self.btheta = f['btheta'][0]
-            except KeyError:
-                self.btheta = np.nan
+            ppc0 = f['ppc0'][0]
+            mi = f['mi'][0]
+            me = f['me'][0]
+            print mi, c, ppc0
+            if gamma0 <1:
+                beta0 = gamma0
+                gamma0 = 1/np.sqrt(1-gamma0**2)
+            else:
+                beta0=np.sqrt(1-gamma0**(-2))
 
 
-        with h5py.File(os.path.join(self.dirname,self.PathDict['Flds'][0]), 'r') as f:
-            by = f['by'][:]
-            nxf0 = by.shape[1]
-            if np.isnan(self.btheta):
+            if sigma <= 1E-10:
                 self.b0 = 1.0
                 self.e0 = 1.0
             else:
-                # Normalize by b0
-                print(np.shape((f['bx'])))
-                self.bx0 = f['bx'][0,-1,-10]
-                self.by0 = by[0,-1,-10]
-                self.bz0 = f['bz'][0,-1,-10]
-                self.b0 = np.sqrt(self.bx0**2+self.by0**2+self.bz0**2)
-                self.ex0 = f['ex'][0,-1,-2]
-                self.ey0 = f['ey'][0,-1,-2]
-                self.ez0 = f['ez'][0,-1,-2]
-                self.e0 = np.sqrt(self.ex0**2+self.ey0**2+self.ez0**2)
+                # b0 in the upstream frame
+                self.b0 = np.sqrt(gamma0*ppc0*.5*c**2*(mi+me)*sigma)
+                # Translate to the downstream frame
+                b_x = self.b0*np.cos(btheta)*np.cos(bphi)
+                b_y = self.b0*np.sin(btheta)*np.cos(bphi)
+                b_z = self.b0*np.sin(btheta)*np.cos(bphi)
+                print 'sigma b0', self.b0
+                '''
+            # Normalize by b0
+            filepath = os.path.join(self.dirname,self.PathDict['Param'][0])
+            abs_sigma = np.abs(data_loading.load_dataset(filepath, 'sigma', slice(None)))[0]
+
+            if abs_sigma == 0:
+                self.btheta = np.nan
+            else:
+                self.btheta = self.c_omp = data_loading.load_dataset(filepath, 'btheta', slice(0,1))[0]
+        except KeyError:
+            self.btheta = np.nan
+
+        filepath = os.path.join(self.dirname,self.PathDict['Flds'][0])
+        by = data_loading.load_dataset(filepath, 'by', slice(None))
+        nxf0 = by.shape[1]
+        if np.isnan(self.btheta):
+            self.b0 = 1.0
+            self.e0 = 1.0
+        else:
+            # Normalize by b0
+            bx = data_loading.load_dataset(filepath, 'bx', slice(None))
+            print(np.shape(bx))
+            b_slice = (slice(0,1),slice(-1,None),slice(-10,-9))
+            self.bx0 = bx[0,-1,-10]
+            self.by0 = by[0,-1,-10]
+            self.bz0 = data_loading.load_dataset(filepath, 'bz', b_slice)[0,0,0]
+            self.b0 = np.sqrt(self.bx0**2+self.by0**2+self.bz0**2)
+            e_slice = (slice(0,1), slice(-1,None), slice(-2,-1))
+            self.ex0 = data_loading.load_dataset(filepath, 'ex', e_slice)[0,0,0]
+            self.ey0 = data_loading.load_dataset(filepath, 'ey', e_slice)[0,0,0]
+            self.ez0 = data_loading.load_dataset(filepath, 'ez', e_slice)[0,0,0]
+            self.e0 = np.sqrt(self.ex0**2+self.ey0**2+self.ez0**2)
 
         # Load the final time step to find the shock's location at the end.
-        with h5py.File(os.path.join(self.dirname,self.PathDict['Flds'][-1]), 'r') as f:
-            dens_arr =np.copy(f['dens'][0,:,:])
+        filepath = os.path.join(self.dirname,self.PathDict['Flds'][-1])
+        dens_slice = (slice(0,1), slice(None), slice(None))
+        dens_arr = data_loading.load_dataset(filepath, 'dens', dens_slice)[0,:,:]
 
-        with h5py.File(os.path.join(self.dirname,self.PathDict['Param'][-1]), 'r') as f:
-            # I use this file to get the final time, the istep, interval, and c_omp
-            final_time = f['time'][0]
-            istep = f['istep'][0]
-            interval = f['interval'][0]
-            c_omp = f['c_omp'][0]
+        # I use this file to get the final time, the istep, interval, and c_omp
+        filepath = os.path.join(self.dirname,self.PathDict['Param'][-1])
+        final_time = data_loading.load_dataset(filepath, 'time',     slice(None))[0]
+        istep      = data_loading.load_dataset(filepath, 'istep',    slice(None))[0]
+        interval   = data_loading.load_dataset(filepath, 'interval', slice(None))[0]
+        c_omp      = data_loading.load_dataset(filepath, 'c_omp',    slice(None))[0]
 
         # Find out where the shock is at the last time step.
         jstart = int(min(10*c_omp/istep, nxf0))
