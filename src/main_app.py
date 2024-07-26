@@ -2474,12 +2474,12 @@ class MainApp(Tk.Tk):
         # Check to make sure the 2DSlice is OK...
         # Grab c_omp & istep
         filepath = os.path.join(self.dirname,self.PathDict['Param'][self.TimeStep.value-1])
-        self.c_omp = data_loading.load_dataset(filepath, 'c_omp', slice(0,1))[0]
-        self.istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))[0]
+        self.c_omp = data_loading.load_dataset(filepath, 'c_omp', slice(0,1))
+        self.istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))
 
         # FIND THE SLICE
         filepath = os.path.join(self.dirname,self.PathDict['Flds'][self.TimeStep.value-1])
-        bx_shape = data_loading.load_dataset(filepath, 'bx', slice(None,None,None)).shape
+        bx_shape = data_loading.load_dataset(filepath, 'bx').shape
         self.MaxZInd, self.MaxYInd, self.MaxXInd  = np.array(bx_shape) - 1
 
         self.ySlice = int(np.around(self.MainParamDict['ySlice']*self.MaxYInd))
@@ -2555,9 +2555,9 @@ class MainApp(Tk.Tk):
                         for elm in tmplist:
                             try:
                                 if elm == 'spect_dens':
-                                    self.DataDict[elm] = data_loading.load_dataset(filepath, 'dens', slice(None))
+                                    self.DataDict[elm] = data_loading.load_dataset(filepath, 'dens')
                                 else:
-                                    self.DataDict[elm] = data_loading.load_dataset(filepath, elm, slice(None))
+                                    self.DataDict[elm] = data_loading.load_dataset(filepath, elm)
                             except KeyError:
                                 if elm == 'sizex':
                                     self.DataDict[elm] = 1
@@ -2566,13 +2566,13 @@ class MainApp(Tk.Tk):
                                 elif elm == 'ppc0':
                                     self.DataDict[elm] = np.nan
                                 elif elm == 'my':
-                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))[0]
-                                    my0   = data_loading.load_dataset(filepath, 'my0', slice(0,1))[0]
+                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))
+                                    my0   = data_loading.load_dataset(filepath, 'my0', slice(0,1))
                                     tmpSize = ((self.MaxYInd+1)*istep)//(my0-5)
                                     self.DataDict[elm] = np.ones(tmpSize)*my0
                                 elif elm == 'mx':
-                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))[0]
-                                    mx0   = data_loading.load_dataset(filepath, 'mx0', slice(0,1))[0]
+                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))
+                                    mx0   = data_loading.load_dataset(filepath, 'mx0', slice(0,1))
                                     tmpSize = ((self.MaxXInd+1)*istep)//(mx0-5)
                                     self.DataDict[elm] = np.ones(tmpSize)*mx0
                                 else:
@@ -2595,9 +2595,9 @@ class MainApp(Tk.Tk):
                         for elm in tmplist:
                             try:
                                 if elm == 'spect_dens':
-                                    self.DataDict[elm] = data_loading.load_dataset(filepath, 'dens', slice(None))
+                                    self.DataDict[elm] = data_loading.load_dataset(filepath, 'dens')
                                 else:
-                                    self.DataDict[elm] = data_loading.load_dataset(filepath, elm, slice(None))
+                                    self.DataDict[elm] = data_loading.load_dataset(filepath, elm)
                             except KeyError:
                                 if elm == 'sizex':
                                     self.DataDict[elm] = 1
@@ -2606,13 +2606,13 @@ class MainApp(Tk.Tk):
                                 elif elm == 'ppc0':
                                     self.DataDict[elm] = np.nan
                                 elif elm == 'my':
-                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))[0]
-                                    my0   = data_loading.load_dataset(filepath, 'my0', slice(0,1))[0]
+                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))
+                                    my0   = data_loading.load_dataset(filepath, 'my0', slice(0,1))
                                     tmpSize = ((self.MaxYInd+1)*istep)//(my0-5)
                                     self.DataDict[elm] = np.ones(tmpSize)*my0
                                 elif elm == 'mx':
-                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))[0]
-                                    mx0   = data_loading.load_dataset(filepath, 'mx0', slice(0,1))[0]
+                                    istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))
+                                    mx0   = data_loading.load_dataset(filepath, 'mx0', slice(0,1))
                                     tmpSize = ((self.MaxXInd+1)*istep)//(mx0-5)
                                     self.DataDict[elm] = np.ones(tmpSize)*mx0
                                 else:
@@ -2632,8 +2632,8 @@ class MainApp(Tk.Tk):
             if self.showing_total_energy_plt:
                 self.TotalEnergyTimeSteps.append(self.TimeStep.value)
                 self.TotalEnergyTimeSteps.sort()
-                ind = self.TotalEnergyTimes.searchsorted(self.DataDict['time'][0])
-                self.TotalEnergyTimes = np.append(np.append(self.TotalEnergyTimes[0:ind],self.DataDict['time'][0]),self.TotalEnergyTimes[ind:])
+                ind = self.TotalEnergyTimes.searchsorted(self.DataDict['time'])
+                self.TotalEnergyTimes = np.append(np.append(self.TotalEnergyTimes[0:ind],self.DataDict['time']),self.TotalEnergyTimes[ind:])
 
                 TotalElectronKE = self.DataDict['ue']*self.DataDict['ue']
                 TotalElectronKE += self.DataDict['ve']*self.DataDict['ve']
@@ -2695,14 +2695,14 @@ class MainApp(Tk.Tk):
                 # should be the same.
 
                 # First calculate the new shock location
-                self.shock_loc = self.DataDict['time'][0]*self.shock_speed
+                self.shock_loc = self.DataDict['time']*self.shock_speed
                 # Set previous shock loc to current location
                 self.prev_shock_loc = np.copy(self.shock_loc)
             else:
                 # First save the previous shock location,
                 self.prev_shock_loc = np.copy(self.shock_loc)
                 # Now calculate the new shock location
-                self.shock_loc = self.DataDict['time'][0]*self.shock_speed
+                self.shock_loc = self.DataDict['time']*self.shock_speed
 
         else:
             # Let's see if the shock_loc is in the DataDict
@@ -2736,8 +2736,8 @@ class MainApp(Tk.Tk):
                 # Now calculate the new shock location
                 self.shock_loc = self.DataDict['shock_loc']
 
-        self.cpu_x_locs = np.cumsum(self.DataDict['mx']-5)/self.DataDict['c_omp'][0]
-        self.cpu_y_locs = np.cumsum(self.DataDict['my']-5)/self.DataDict['c_omp'][0]
+        self.cpu_x_locs = np.cumsum(self.DataDict['mx']-5)/self.DataDict['c_omp']
+        self.cpu_y_locs = np.cumsum(self.DataDict['my']-5)/self.DataDict['c_omp']
         # Now that the DataDict is created, iterate over all the subplots and
         # load the data into them:
         for i in range(self.MainParamDict['NumOfRows']):
@@ -2756,7 +2756,7 @@ class MainApp(Tk.Tk):
 
         if self.TimeStep.value in self.TotalEnergyTimeSteps:
             self.TotalEnergyTimeSteps.remove(self.TimeStep.value)
-            ind = self.TotalEnergyTimes.searchsorted(self.DataDict['time'][0])
+            ind = self.TotalEnergyTimes.searchsorted(self.DataDict['time'])
             if ind < len(self.TotalEnergyTimes)-1:
                 self.TotalEnergyTimes = np.append(self.TotalEnergyTimes[0:ind],self.TotalEnergyTimes[ind+1:])
                 self.TotalElectronEnergy = np.append(self.TotalElectronEnergy[0:ind],self.TotalElectronEnergy[ind+1:])
@@ -3142,7 +3142,7 @@ class MainApp(Tk.Tk):
 
         if self.MainParamDict['ShowTitle']:
             tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].split('.')[-1]
-            self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+r' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time'][0]), size = 15)
+            self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+r' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time']), size = 15)
         if keep_view:
             self.LoadView()
 
@@ -3243,7 +3243,7 @@ class MainApp(Tk.Tk):
 
         if self.MainParamDict['ShowTitle']:
             tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].split('.')[-1]
-            self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+r' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time'][0]), size = 15)
+            self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+r' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time']), size = 15)
 
         if keep_view:
             self.LoadView()
@@ -3455,47 +3455,47 @@ class MainApp(Tk.Tk):
                 '''
             # Normalize by b0
             filepath = os.path.join(self.dirname,self.PathDict['Param'][0])
-            abs_sigma = np.abs(data_loading.load_dataset(filepath, 'sigma', slice(None)))[0]
+            abs_sigma = np.abs(data_loading.load_dataset(filepath, 'sigma'))
 
             if abs_sigma == 0:
                 self.btheta = np.nan
             else:
-                self.btheta = self.c_omp = data_loading.load_dataset(filepath, 'btheta', slice(0,1))[0]
+                self.btheta = self.c_omp = data_loading.load_dataset(filepath, 'btheta', slice(0,1))
         except KeyError:
             self.btheta = np.nan
 
         filepath = os.path.join(self.dirname,self.PathDict['Flds'][0])
-        by = data_loading.load_dataset(filepath, 'by', slice(None))
+        by = data_loading.load_dataset(filepath, 'by')
         nxf0 = by.shape[1]
         if np.isnan(self.btheta):
             self.b0 = 1.0
             self.e0 = 1.0
         else:
             # Normalize by b0
-            bx = data_loading.load_dataset(filepath, 'bx', slice(None))
+            bx = data_loading.load_dataset(filepath, 'bx')
             print(np.shape(bx))
             b_slice = (slice(0,1),slice(-1,None),slice(-10,-9))
             self.bx0 = bx[0,-1,-10]
             self.by0 = by[0,-1,-10]
-            self.bz0 = data_loading.load_dataset(filepath, 'bz', b_slice)[0,0,0]
+            self.bz0 = data_loading.load_dataset(filepath, 'bz', b_slice)
             self.b0 = np.sqrt(self.bx0**2+self.by0**2+self.bz0**2)
             e_slice = (slice(0,1), slice(-1,None), slice(-2,-1))
-            self.ex0 = data_loading.load_dataset(filepath, 'ex', e_slice)[0,0,0]
-            self.ey0 = data_loading.load_dataset(filepath, 'ey', e_slice)[0,0,0]
-            self.ez0 = data_loading.load_dataset(filepath, 'ez', e_slice)[0,0,0]
+            self.ex0 = data_loading.load_dataset(filepath, 'ex', e_slice)
+            self.ey0 = data_loading.load_dataset(filepath, 'ey', e_slice)
+            self.ez0 = data_loading.load_dataset(filepath, 'ez', e_slice)
             self.e0 = np.sqrt(self.ex0**2+self.ey0**2+self.ez0**2)
 
         # Load the final time step to find the shock's location at the end.
         filepath = os.path.join(self.dirname,self.PathDict['Flds'][-1])
-        dens_slice = (slice(0,1), slice(None), slice(None))
+        dens_slice = (slice(0,1))
         dens_arr = data_loading.load_dataset(filepath, 'dens', dens_slice)[0,:,:]
 
         # I use this file to get the final time, the istep, interval, and c_omp
         filepath = os.path.join(self.dirname,self.PathDict['Param'][-1])
-        final_time = data_loading.load_dataset(filepath, 'time',     slice(None))[0]
-        istep      = data_loading.load_dataset(filepath, 'istep',    slice(None))[0]
-        interval   = data_loading.load_dataset(filepath, 'interval', slice(None))[0]
-        c_omp      = data_loading.load_dataset(filepath, 'c_omp',    slice(None))[0]
+        final_time = data_loading.load_dataset(filepath, 'time')
+        istep      = data_loading.load_dataset(filepath, 'istep')
+        interval   = data_loading.load_dataset(filepath, 'interval')
+        c_omp      = data_loading.load_dataset(filepath, 'c_omp')
 
         # Find out where the shock is at the last time step.
         jstart = int(min(10*c_omp/istep, nxf0))

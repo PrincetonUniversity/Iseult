@@ -246,7 +246,7 @@ class h5Wrapper(object):
     def __getattribute__(self, name):
         if object.__getattribute__(self, name) is None:
             if name in self.__h5Keys:
-                data = data_loading.load_data(self._fname, name, slice(None))
+                data = data_loading.load_data(self._fname, name)
                 if np.sum([x for x in data.shape]) != 1:
                     setattr(self, name, data)
                 else:

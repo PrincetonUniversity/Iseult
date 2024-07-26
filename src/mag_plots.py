@@ -76,8 +76,8 @@ class BPanel:
         ''' A Helper function that loads the data for the plot'''
         # First see of the x_axis and y_axis values have already been calculated
         # and stored in the DataDict for this time step
-        self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
-        self.istep = self.FigWrap.LoadKey('istep')[0]
+        self.c_omp = self.FigWrap.LoadKey('c_omp')
+        self.istep = self.FigWrap.LoadKey('istep')
         self.mag_color = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.5)
 
         if self.GetPlotParam('cmap') == 'None':
