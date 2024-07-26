@@ -1,6 +1,6 @@
 # Iseult
 
-A TKinter based python 3.7 GUI for visualizing Tristan-MP plots. A work in progress.
+A TKinter based python GUI for visualizing Tristan-MP plots. A work in progress.
 
 ![Iseult Set-up](https://raw.githubusercontent.com/pcrumley/Iseult/gh-pages/images/IseultPanels.png)
 An example visualization of a Tristan-MP simulation.
@@ -12,6 +12,9 @@ IDL script.
 
 UPDATES:
 -------
+July 2024: Ported to Python 3.11, see environment.yml for details on all dependencies.
+Added support for Tristan v2 data.
+
 May 8th 2019: Ported code to python 3.7.x & Matplotlib 3.0.x There may be a few bugs
 here and there, but I think it is working.
 
@@ -21,9 +24,7 @@ already been implemented.
 Dependencies:
 -------------
 
-Python packages required: Anaconda 2021/5, matplotlib 3.0 & its required
-dependencies, python 3.10,  h5py, scipy >=v1.6.0. Will not work with older versions of anaconda3 and
-matplotlib 2.0 or older.
+Python packages required: See the environment.yml file
 
 To use the movie saving feature: ffmpeg & xterm.
 
@@ -31,9 +32,17 @@ Iseult should work on Windows, MacOS & Linux.
 
 To run Iseult on tigressdata or stellar vis nodes type the following:
 ```bash
-$ module load anaconda3/2023.3
+# Initial setup, optional if your python environment has the correct version of all dependencies
+$ module load anaconda3/2024.6 # or the latest version
 $ cd /path/to/Iseult/
 $ chmod +x ./iseult.py
+$ conda env create
+$ conda activate iseult
+
+# After initial setup
+$ module load anaconda3/2024.6 # or the latest version
+$ conda activate iseult
+$ cd /path/to/Iseult/
 $ ./iseult.py
 ```
 
