@@ -34,10 +34,18 @@ def test__detect_tristan_data_version_incorrect_data():
                 version = data_loading.__detect_tristan_data_version(file)
 
 def test__insert_directory_default():
-    pass
+    test_path = pathlib.Path('/dir1/dir2/dir3/file.txt')
+    test_path = data_loading.__insert_directory(test_path, 'new_dir')
+
+    fiducial_path = pathlib.Path('/dir1/dir2/dir3/new_dir/file.txt')
+    assert test_path == fiducial_path
 
 def test__insert_directory_specified_location():
-    pass
+    test_path = pathlib.Path('/dir1/dir2/dir3/file.txt')
+    test_path = data_loading.__insert_directory(test_path, 'new_dir', 3)
+
+    fiducial_path = pathlib.Path('/dir1/dir2/new_dir/dir3/file.txt')
+    assert test_path == fiducial_path
 
 def test__verify_file_path():
     pass
