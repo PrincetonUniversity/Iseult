@@ -10,8 +10,8 @@ Written by:
 Patrick Crumley, patrick.crumley@gmail.com, based on Jaehong's Tristan analysis
 IDL script.
 
-UPDATES:
--------
+## UPDATES:
+
 July 2024: Ported to Python 3.11, see environment.yml for details on all dependencies.
 Added support for Tristan v2 data.
 
@@ -21,8 +21,8 @@ here and there, but I think it is working.
 The code is now it's beta phase. See the implemented column for what has
 already been implemented.
 
-Dependencies:
--------------
+## Dependencies:
+
 
 Python packages required: See the environment.yml file
 
@@ -30,20 +30,36 @@ To use the movie saving feature: ffmpeg & xterm.
 
 Iseult should work on Windows, MacOS & Linux.
 
-To run Iseult on tigressdata or stellar vis nodes type the following:
+## Setup & Running
+
+There are two different methods to setup what you need for Iseult to run. The recommended method is to setup a python environment with conda, pyenv, etc and a conda `environment.yml` file is provided. The other method for those with access to the Stellar cluster at Princeton is to simply load the proper Anaconda module.
 ```bash
-# Initial setup, optional if your python environment has the correct version of all dependencies
+# Recommended setup
+# If on Stellar
 $ module load anaconda3/2024.6 # or the latest version
+# If not on Stellar then install/load Anaconda
 $ cd /path/to/Iseult/
-$ chmod +x ./iseult.py
 $ conda env create
 $ conda activate iseult
+$ chmod +x ./iseult.py
+
+# Stellar simple setup
+$ module load anaconda3/2023.3
+$ cd /path/to/Iseult/
+$ chmod +x ./iseult.py
 
 # After initial setup
-$ module load anaconda3/2024.6 # or the latest version
+# make sure the proper environment is activated
 $ conda activate iseult
+# or, if on Stellar you may load the proper Anaconda module
+$ module load anaconda3/2023.3
+
+# Then run iseult. This method opens a GUI to allow you to search for the data you want to open
 $ cd /path/to/Iseult/
 $ ./iseult.py
+# Or if you want to open data directly
+$ cd /directory/that/contains/data # usually the `output` directory
+$ /path/to/iseult.py # you can append an ampersand (&) to open iseult in the background
 ```
 
 When Iseult is started, it checks to see if Tristan-MP data is located at the
