@@ -33,6 +33,9 @@ Iseult should work on Windows, MacOS & Linux.
 ## Setup & Running
 
 There are two different methods to setup what you need for Iseult to run. The recommended method is to setup a python environment with conda, pyenv, etc and a conda `environment.yml` file is provided. The other method for those with access to the Stellar cluster at Princeton is to simply load the proper Anaconda module.
+
+### Recommended Method
+
 ```bash
 # Recommended setup
 # If on Stellar
@@ -43,17 +46,29 @@ $ conda env create
 $ conda activate iseult
 $ chmod +x ./iseult.py
 
-# Stellar simple setup
+# After initial setup
+# make sure the proper environment is activated
+$ conda activate iseult
+# Then run iseult. This method opens a GUI to allow you to search for the data you want to open
+$ cd /path/to/Iseult/
+$ ./iseult.py
+# Or if you want to open data directly
+$ cd /directory/that/contains/data # usually the `output` directory
+$ /path/to/iseult.py # you can append an ampersand (&) to open iseult in the background
+```
+
+### Stellar Only Method
+
+The previous method is still recommended on Stellar, this secondary method is simplier but potentially less reliable if the software stack on Stellar is changed.
+
+```bash
+# Setup
 $ module load anaconda3/2023.3
 $ cd /path/to/Iseult/
 $ chmod +x ./iseult.py
 
 # After initial setup
-# make sure the proper environment is activated
-$ conda activate iseult
-# or, if on Stellar you may load the proper Anaconda module
 $ module load anaconda3/2023.3
-
 # Then run iseult. This method opens a GUI to allow you to search for the data you want to open
 $ cd /path/to/Iseult/
 $ ./iseult.py
