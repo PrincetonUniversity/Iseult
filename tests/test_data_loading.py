@@ -144,5 +144,42 @@ def test___handle_tristan_v2_slicing():
         result = data_loading.__handle_tristan_v2(data_path, file, 'bx', test_slice)
         assert np.array_equiv(fiducial_arr, result)
 
-def test_load_dataset():
-    pass
+def test_load_dataset_v1_data():
+    file_path = repo_root / 'tests' / 'data' / 'tristan_v1' / 'flds.tot.041'
+    dataset = 'by'
+    fiducial_dataset = np.full((1,5,10), 1)
+
+    test_dataset = data_loading.load_dataset(file_path, dataset)
+    assert np.array_equiv(fiducial_dataset, test_dataset)
+
+def test_load_dataset_v2_data():
+    file_path = repo_root / 'tests' / 'data' / 'tristan_v2' / 'single_directory' / 'flds.tot.00070'
+    dataset = 'by'
+    fiducial_dataset = np.full((1,5,10), 1)
+
+    test_dataset = data_loading.load_dataset(file_path, dataset)
+    assert np.array_equiv(fiducial_dataset, test_dataset)
+
+def test_load_dataset_unsupported_data():
+    file_path = repo_root / 'tests' / 'data' / 'unsupported_data' / 'flds.tot.041'
+    dataset = 'by'
+
+    with pytest.raises(ValueError):
+        test_dataset = data_loading.load_dataset(file_path, dataset)
+
+def test_load_dataset_slicing():
+    file_path = repo_root / 'tests' / 'data' / 'tristan_v2' / 'single_directory' / 'flds.tot.00070'
+    dataset = 'by'
+    test_slice = (slice(0,1), slice(1,5,1), slice(2,8,2))
+    fiducial_dataset = np.full((1,4,3), 1)
+
+    test_dataset = data_loading.load_dataset(file_path, dataset, test_slice)
+    assert np.array_equiv(fiducial_dataset, test_dataset)
+
+def test_load_dataset_scalar_return():
+    file_path = repo_root / 'tests' / 'data' / 'tristan_v1' / 'param.041'
+    dataset = 'c_omp'
+    fiducial_dataset = 8
+
+    test_dataset = data_loading.load_dataset(file_path, dataset)
+    assert test_dataset == fiducial_dataset
