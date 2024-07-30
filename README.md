@@ -1,6 +1,6 @@
 # Iseult
 
-A TKinter based python 3.7 GUI for visualizing Tristan-MP plots. A work in progress.
+A TKinter based python GUI for visualizing Tristan-MP plots. A work in progress.
 
 ![Iseult Set-up](https://raw.githubusercontent.com/pcrumley/Iseult/gh-pages/images/IseultPanels.png)
 An example visualization of a Tristan-MP simulation.
@@ -10,31 +10,71 @@ Written by:
 Patrick Crumley, patrick.crumley@gmail.com, based on Jaehong's Tristan analysis
 IDL script.
 
-UPDATES:
--------
+## UPDATES:
+
+July 2024: Ported to Python 3.11, see environment.yml for details on all dependencies.
+Added support for Tristan v2 data.
+
 May 8th 2019: Ported code to python 3.7.x & Matplotlib 3.0.x There may be a few bugs
 here and there, but I think it is working.
 
 The code is now it's beta phase. See the implemented column for what has
 already been implemented.
 
-Dependencies:
--------------
+## Dependencies:
 
-Python packages required: Anaconda 2021/5, matplotlib 3.0 & its required
-dependencies, python 3.10,  h5py, scipy >=v1.6.0. Will not work with older versions of anaconda3 and
-matplotlib 2.0 or older.
+
+Python packages required: See the environment.yml file
 
 To use the movie saving feature: ffmpeg & xterm.
 
 Iseult should work on Windows, MacOS & Linux.
 
-To run Iseult on tigressdata or stellar vis nodes type the following:
+## Setup & Running
+
+There are two different methods to setup what you need for Iseult to run. The recommended method is to setup a python environment with conda, pyenv, etc and a conda `environment.yml` file is provided. The other method for those with access to the Stellar cluster at Princeton is to simply load the proper Anaconda module.
+
+### Recommended Method
+
 ```bash
+# Recommended setup
+# If on Stellar
+$ module load anaconda3/2024.6 # or the latest version
+# If not on Stellar then install/load Anaconda
+$ cd /path/to/Iseult/
+$ conda env create
+$ conda activate iseult
+$ chmod +x ./iseult.py
+
+# After initial setup
+# make sure the proper environment is activated
+$ conda activate iseult
+# Then run iseult. This method opens a GUI to allow you to search for the data you want to open
+$ cd /path/to/Iseult/
+$ ./iseult.py
+# Or if you want to open data directly
+$ cd /directory/that/contains/data # usually the `output` directory
+$ /path/to/iseult.py # you can append an ampersand (&) to open iseult in the background
+```
+
+### Stellar Only Method
+
+The previous method is still recommended on Stellar, this secondary method is simplier but potentially less reliable if the software stack on Stellar is changed.
+
+```bash
+# Setup
 $ module load anaconda3/2023.3
 $ cd /path/to/Iseult/
 $ chmod +x ./iseult.py
+
+# After initial setup
+$ module load anaconda3/2023.3
+# Then run iseult. This method opens a GUI to allow you to search for the data you want to open
+$ cd /path/to/Iseult/
 $ ./iseult.py
+# Or if you want to open data directly
+$ cd /directory/that/contains/data # usually the `output` directory
+$ /path/to/iseult.py # you can append an ampersand (&) to open iseult in the background
 ```
 
 When Iseult is started, it checks to see if Tristan-MP data is located at the

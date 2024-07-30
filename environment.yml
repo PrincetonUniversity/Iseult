@@ -1,0 +1,30 @@
+# Create a new environment by
+# $ cd iseult-dir-here
+# $ conda env create
+#
+# To update the environment:
+# $ cd iseult-dir-here
+# $ conda env update --prune
+#
+# To recreate from scratch
+# $ cd iseult-dir-here
+# $ conda env create --force
+
+name: iseult
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  # Python language things
+  - python=3.11
+  - pytest=8.3
+  # Numerical/Data tools
+  - numpy=1.26
+  - numba=0.60
+  # Scientific Packages
+  - scipy=1.14
+  # File Handling
+  - h5py=3.11
+  - pyyaml=6.0
+  # Plotting
+  - matplotlib=3.7
