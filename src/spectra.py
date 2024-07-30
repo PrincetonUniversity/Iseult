@@ -107,13 +107,13 @@ class SpectralPanel:
         return self.arrs_needed
 
     def LoadData(self):
-        self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
-        self.istep = self.FigWrap.LoadKey('istep')[0]
+        self.c_omp = self.FigWrap.LoadKey('c_omp')
+        self.istep = self.FigWrap.LoadKey('istep')
 #        self.gamma0 = self.FigWrap.LoadKey('gamma0')[0]
         self.xsl = self.FigWrap.LoadKey('xsl')/self.c_omp
         # Load gamma-1 of the spectra
         self.gamma = self.FigWrap.LoadKey('gamma')
-        self.massRatio = self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
+        self.massRatio = self.FigWrap.LoadKey('mi')/self.FigWrap.LoadKey('me')
         self.keyname = 'spectra_data'
         if self.GetPlotParam('normalize_spectra'):
             self.keyname +='_normalized_'
@@ -413,7 +413,7 @@ class SpectralPanel:
                 if self.GetPlotParam('SetTe'):
                     self.electron_temp[0].set_visible(True)
 
-                    self.delgame0=self.GetPlotParam('DelGame')*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
+                    self.delgame0=self.GetPlotParam('DelGame')*self.FigWrap.LoadKey('mi')/self.FigWrap.LoadKey('me')
                     if self.delgame0 >= 0.013:
                         aconst = 1/(self.delgame0*np.exp(1.0/self.delgame0)*kn(2, 1.0/self.delgame0))
                     else:
@@ -486,7 +486,7 @@ class SpectralPanel:
                 # The temperature
                 if self.GetPlotParam('SetTe'):
                     self.electron_temp[0].set_visible(True)
-                    self.delgame0=self.GetPlotParam('DelGame')*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
+                    self.delgame0=self.GetPlotParam('DelGame')*self.FigWrap.LoadKey('mi')/self.FigWrap.LoadKey('me')
                     if self.delgame0 >= 0.013:
                         aconst = 1/(self.delgame0*np.exp(1.0/self.delgame0)*kn(2, 1.0/self.delgame0))
                     else:
@@ -641,7 +641,7 @@ class SpectralPanel:
             # Now calculate the eps
             if prtl_type == 'electron':
                 psum = np.trapz(self.pdist,self.gamma)
-                return np.exp(logF)/psum * self.FigWrap.LoadKey('me')[0]/self.FigWrap.LoadKey('mi')[0]
+                return np.exp(logF)/psum * self.FigWrap.LoadKey('me')/self.FigWrap.LoadKey('mi')
             else:
                 return np.exp(logF)/endSum[0]
 
@@ -674,7 +674,7 @@ class SpectralPanel:
             Tlegend_labels.append(r'$T_e\ = $' +  ' ' + tmpstr + ' ' + r'$m_e c^2$')
         if self.GetPlotParam('show_ions') and self.GetPlotParam('SetTi'):
             Tlegend_handles.append(self.ion_temp[0])
-            tmpcon =self.GetPlotParam('DelGami')*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
+            tmpcon =self.GetPlotParam('DelGami')*self.FigWrap.LoadKey('mi')/self.FigWrap.LoadKey('me')
             tmpstr = '%.3f' % tmpcon
             Tlegend_labels.append(r'$T_p\ = $' +  ' ' + tmpstr + ' ' + r'$m_e c^2$')
 

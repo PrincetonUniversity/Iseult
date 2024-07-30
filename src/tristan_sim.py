@@ -206,7 +206,7 @@ class h5Wrapper(object):
                 if self._fname.split('.')[0] == 'prtl':
                     setattr(self, name, data_loading.load_data(self._fname, name, slice(None,None,self.stride)))
                 else:
-                    data = data_loading.load_data(self._fname, name, slice(None))
+                    data = data_loading.load_data(self._fname, name)
                     if np.sum([x for x in data.shape]) != 1:
                         setattr(self, name, data)
                     else:

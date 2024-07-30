@@ -166,8 +166,8 @@ class EnergyPanel:
 
         else:
             # Generate the X-axis values
-            self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
-            self.istep = self.FigWrap.LoadKey('istep')[0]
+            self.c_omp = self.FigWrap.LoadKey('c_omp')
+            self.istep = self.FigWrap.LoadKey('istep')
             self.weights = None
             self.x_values = None
             self.y_values = None
@@ -195,7 +195,7 @@ class EnergyPanel:
 
             self.y_values = np.sqrt(u**2+v**2+w**2+1)-1
             if self.GetPlotParam('prtl_type') == 1:
-                self.y_values *= self.FigWrap.LoadKey('me')[0]/self.FigWrap.LoadKey('mi')[0]
+                self.y_values *= self.FigWrap.LoadKey('me')/self.FigWrap.LoadKey('mi')
             self.Ymin = min(self.y_values)
             self.Ymax = max(self.y_values)
             self.Ymax = self.Ymax if ( self.Ymin != self.Ymax ) else self.Ymin+1

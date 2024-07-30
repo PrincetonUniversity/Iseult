@@ -100,9 +100,9 @@ class  MomentsPanel:
         already been calculated and if it hasn't, it calculates
         it then stores it.'''
 
-        self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
-        self.istep = self.FigWrap.LoadKey('istep')[0]
-        self.memi = self.FigWrap.LoadKey('me')[0]/self.FigWrap.LoadKey('mi')[0]
+        self.c_omp = self.FigWrap.LoadKey('c_omp')
+        self.istep = self.FigWrap.LoadKey('istep')
+        self.memi = self.FigWrap.LoadKey('me')/self.FigWrap.LoadKey('mi')
         self.totalcolor = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.0)
 
         if 'xaxis_values' in self.parent.DataDict.keys():

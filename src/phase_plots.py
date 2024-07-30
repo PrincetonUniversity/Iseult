@@ -219,8 +219,8 @@ class PhasePanel:
 
         elif self.parent.MainParamDict['DoLorentzBoost'] and np.abs(self.parent.MainParamDict['GammaBoost'])>1E-8:
             # Gotta boost it
-            self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
-            self.istep = self.FigWrap.LoadKey('istep')[0]
+            self.c_omp = self.FigWrap.LoadKey('c_omp')
+            self.istep = self.FigWrap.LoadKey('istep')
             self.weights = None
             self.x_values = None
             self.y_values = None
@@ -312,7 +312,7 @@ class PhasePanel:
             if self.GetPlotParam('set_E_min') or self.GetPlotParam('set_E_max'):
                 # We need to calculate the total energy in units m_e c^2
                 if self.GetPlotParam('prtl_type')==0:
-                    energy = gamma_ds*self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
+                    energy = gamma_ds*self.FigWrap.LoadKey('mi')/self.FigWrap.LoadKey('me')
                 else:
                     energy = np.copy(gamma_ds)
 
@@ -355,8 +355,8 @@ class PhasePanel:
 
         else:
             # Generate the X-axis values
-            self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
-            self.istep = self.FigWrap.LoadKey('istep')[0]
+            self.c_omp = self.FigWrap.LoadKey('c_omp')
+            self.istep = self.FigWrap.LoadKey('istep')
             self.weights = None
             self.x_values = None
             self.y_values = None
@@ -415,7 +415,7 @@ class PhasePanel:
                 # If they are electrons this already the energy in units m_e c^2.
                 # Otherwise...
                 if self.GetPlotParam('prtl_type')==0:
-                    energy *= self.FigWrap.LoadKey('mi')[0]/self.FigWrap.LoadKey('me')[0]
+                    energy *= self.FigWrap.LoadKey('mi')/self.FigWrap.LoadKey('me')
 
                 # Now find the particles that fall in our range
                 if self.GetPlotParam('set_E_min'):

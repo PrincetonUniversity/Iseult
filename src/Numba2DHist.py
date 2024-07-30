@@ -53,8 +53,8 @@ if __name__ =='__main__':
     import data_loading
 
     filepath = 'output/prtl.tot.003'
-    x = data_loading.load_dataset(filepath, 'xi', slice(None))
-    px = data_loading.load_dataset(filepath, 'ui', slice(None))
+    x = data_loading.load_dataset(filepath, 'xi')
+    px = data_loading.load_dataset(filepath, 'ui')
 
     #for k in range(10):
     #    x = np.append(x, x)

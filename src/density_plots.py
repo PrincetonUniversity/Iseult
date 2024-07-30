@@ -95,16 +95,16 @@ class DensPanel:
 
 
         if self.GetPlotParam('normalize_density'):
-            self.ppc0 = self.FigWrap.LoadKey('ppc0')[0]
-        elif not np.isnan(self.FigWrap.LoadKey('ppc0')[0]):
+            self.ppc0 = self.FigWrap.LoadKey('ppc0')
+        elif not np.isnan(self.FigWrap.LoadKey('ppc0')):
             self.ppc0 = 1.0
         else:
             self.SetPlotParam('normalize_density', False, update_plot = False)
 
         self.dens_color = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.5)
         # get c_omp and istep to convert cells to physical units
-        self.c_omp = self.FigWrap.LoadKey('c_omp')[0]
-        self.istep = self.FigWrap.LoadKey('istep')[0]
+        self.c_omp = self.FigWrap.LoadKey('c_omp')
+        self.istep = self.FigWrap.LoadKey('istep')
         self.dens = self.FigWrap.LoadKey('dens')[:,:,:]
 
         # Now calculate rho if needed.
