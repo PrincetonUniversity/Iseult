@@ -25,8 +25,8 @@ def __detect_tristan_data_version(file: h5py.File) -> int:
     """
     # The fields to query were chosen only because they don't exist in the other version of Tristan
     #  Files:  particles fields   spectra  paramater
-    v1_keys = ('che',    'densi', 'gamma', 'acool')
-    v2_keys = ('ind_1',   'dens1', 'ebins', 'algorithm:c')
+    v1_keys = ('che',   'densi', 'gamma', 'acool')
+    v2_keys = ('ind_1', 'dens1', 'ebins', 'algorithm:c')
 
     if any(key in file for key in v1_keys):
         return 1
@@ -60,19 +60,17 @@ def __insert_directory(path: pathlib.Path, inserted_directory: str, location: in
 # =============================================================================
 
 # =============================================================================
-def __verify_file_path(file_path: pathlib.Path, dataset_name: str) -> pathlib.Path | np.ndarray | int:
+def __verify_file_path(file_path: pathlib.Path) -> pathlib.Path:
     """Verify that a HDF5 file exists at `file_path` and if it doesn't then try to find it based on known directory structures of Tristan v1 and v2 outputs
 
     Parameters
     ----------
     file_path : pathlib.Path
         The path to the file
-    dataset_name : str
-        The dataset to look for. Used for dealing with spectral data that isn't yet supported.
 
     Returns
     -------
-    pathlib.Path | np.ndarray | int
+    pathlib.Path
         The confirmed or corrected path to the file
 
     Raises
@@ -92,13 +90,6 @@ def __verify_file_path(file_path: pathlib.Path, dataset_name: str) -> pathlib.Pa
         file_path = file_path.with_name(file_path.name.replace('param', 'params'))
     elif 'spect.' in file_path.name:
         file_path = file_path.with_name(file_path.name.replace('spect', 'spec.tot'))
-        warnings.warn('Spectra not yet supported with Tristan v2 data. Spectra plots will show dummy data with a value of 1.')
-        if dataset_name in ['gmin','spece','specerest','specp','specprest','umean']:
-            return np.ones((10,10))
-        elif dataset_name in ['xsl', 'gamma']:
-            return np.ones(10)
-        else:
-            return 1
 
     # Check if the corrected path exists. If it does then it's Tristan v2 data
     # that is all in one directory. If not then we need to handle the case where
@@ -258,12 +249,7 @@ def load_dataset(file_path: str | pathlib.Path, dataset_name: str, dataset_slice
     file_path = pathlib.Path(file_path)
 
     # Verify the file_path and perform any required fixes for Tristan v2 data
-    file_path = __verify_file_path(file_path, dataset_name)
-    if not isinstance(file_path, pathlib.Path):
-        # in this case the file path handling has returned dummy data instead of
-        # a file_path since reading that data is not supported yet. Given that we
-        # will just return the dummy data directly
-        return file_path
+    file_path = __verify_file_path(file_path)
 
     # open file
     with h5py.File(file_path, 'r') as file:
@@ -278,8 +264,8 @@ def load_dataset(file_path: str | pathlib.Path, dataset_name: str, dataset_slice
         if data_version == 1:
             # might need to add a try/except here to catch KeyErrors
             loaded_data = file[dataset_name][dataset_slice]
-        if data_version == 2:
-            # If the data is from Tristan v2 then perform whatever handling is needed. Note that at this point `data_version` must be 2
+        elif data_version == 2:
+            # If the data is from Tristan v2 then perform whatever handling is needed.
             loaded_data = __handle_tristan_v2(file_path, file, dataset_name, dataset_slice)
 
         # Reduce to a scalar if the array is size 1

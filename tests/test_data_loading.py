@@ -31,7 +31,7 @@ def test__detect_tristan_data_version_incorrect_data():
     for name in file_names:
         with h5py.File(data_dir / name, 'r') as file:
             with pytest.raises(ValueError):
-                version = data_loading.__detect_tristan_data_version(file)
+                data_loading.__detect_tristan_data_version(file)
 
 def test__insert_directory_default():
     test_path = pathlib.Path('/dir1/dir2/dir3/file.txt')
@@ -53,7 +53,7 @@ def test__verify_file_path_v1_data():
 
     for name in file_names:
         original_path = data_dir / name
-        found_path = data_loading.__verify_file_path(original_path, 'dataset_name')
+        found_path = data_loading.__verify_file_path(original_path)
         assert found_path == original_path
 
 def test__verify_file_path_v2_data_single_dir():
@@ -62,7 +62,7 @@ def test__verify_file_path_v2_data_single_dir():
 
     for name in file_names:
         original_path = data_dir / name
-        found_path = data_loading.__verify_file_path(original_path, 'dataset_name')
+        found_path = data_loading.__verify_file_path(original_path)
         assert found_path == original_path
 
 def test__verify_file_path_v2_data_multi_dir():
@@ -70,7 +70,7 @@ def test__verify_file_path_v2_data_multi_dir():
     file_names = ['flds.tot.00070', 'params.00070', 'prtl.tot.00070', 'spec.tot.00070']
 
     for name in file_names:
-        found_path = data_loading.__verify_file_path(data_dir / name, 'dataset_name')
+        found_path = data_loading.__verify_file_path(data_dir / name)
 
         if 'flds' in name:
             fiducial_path = data_dir / 'flds' / name
@@ -134,7 +134,7 @@ def test___handle_tristan_v2_KeyError():
     data_path = repo_root / 'tests' / 'data' / 'tristan_v2' / 'single_directory' / 'spec.tot.00070'
     with h5py.File(data_path, 'r') as file:
         with pytest.raises(KeyError):
-            result = data_loading.__handle_tristan_v2(data_path, file, 'bad_name', slice(None))
+            data_loading.__handle_tristan_v2(data_path, file, 'bad_name', slice(None))
 
 def test___handle_tristan_v2_slicing():
     data_path = repo_root / 'tests' / 'data' / 'tristan_v1' / 'flds.tot.041'
@@ -165,7 +165,7 @@ def test_load_dataset_unsupported_data():
     dataset = 'by'
 
     with pytest.raises(ValueError):
-        test_dataset = data_loading.load_dataset(file_path, dataset)
+        data_loading.load_dataset(file_path, dataset)
 
 def test_load_dataset_slicing():
     file_path = repo_root / 'tests' / 'data' / 'tristan_v2' / 'single_directory' / 'flds.tot.00070'
