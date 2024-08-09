@@ -329,7 +329,7 @@ def load_dataset(file_path: str | pathlib.Path, dataset_name: str, dataset_slice
             loaded_data = __handle_tristan_v2(file_path, file, dataset_name, dataset_slice)
 
         # Reduce to a scalar if the array is size 1
-        if loaded_data.size == 1:
+        if loaded_data.size == 1 and dataset_name != 'xsl':
             return loaded_data.item()
 
         return loaded_data
