@@ -109,6 +109,13 @@ def __verify_file_path(file_path: pathlib.Path) -> pathlib.Path:
 # =============================================================================
 
 # =============================================================================
+def __handle_tristan_v2_spectra(file_path: pathlib.Path, file: h5py.File, dataset_name: str) -> np.ndarray:
+    spectral_data = file[dataset_name]
+    spectral_data = np.sum(spectral_data, axis=(1,2))
+    return spectral_data
+# =============================================================================
+
+# =============================================================================
 def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: str, dataset_slice: tuple | slice) -> np.ndarray | int | np.float64:
     """Load Tristan v2 data and perform any necessary transformation to convert it to the same format as Tristan v1 data
 
@@ -181,7 +188,18 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
               'jy':'jy',
               'jz':'jz',
               'dens':'compute_dens', # dens1 + dens2
-              'densi':'dens2'}
+              'densi':'dens2',
+              # Spectra
+              # HACK: These mappings are all first pass guesses, they still need to be verified
+              'gamma':'ebins',
+            #   'gmax':'',
+            #   'gmin':'',
+              'spece':'n1',
+              'specp':'n3',
+              'specerest':'restframe_unsupported',
+              'specprest':'restframe_unsupported',
+              'xsl':'xbins',
+              }
 
     # Make sure the dataset is properly mapped
     try:
@@ -191,7 +209,10 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
                         f'when attempting to read from the file at {file_path}. Please add appropriate mapping')
 
     # Check if this dataset requires additional handling, if not then return it and exit early
-    if dataset_name not in [v2_map['dens'], v2_map['gamma0']]:
+    special_handling_list = [v2_map['dens'], v2_map['gamma0'],
+                             v2_map['spece'], v2_map['specerest'],
+                             v2_map['specp'], v2_map['specprest']]
+    if dataset_name not in special_handling_list:
         # Check that the dataset exists, return zero data and print warning if it doesn't.
         if dataset_name not in file:
             warnings.warn(f'{file_path} does not contain the dataset "{dataset_name}". Returning zero valued data.')
@@ -204,9 +225,13 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
         return file['dens1'][dataset_slice] + file['dens2'][dataset_slice]
     elif dataset_name == v2_map['gamma0']:
         warnings.warn('"gamma0" is not present in Tristan v2 datasets. Setting gamma0=1')
-        return 1
-    # elif dataset_name == v2_map['?????']:
-    #     return
+        return np.array([1])
+    elif dataset_name in [v2_map['spece'], v2_map['specp']]:
+        return __handle_tristan_v2_spectra(file_path, file, dataset_name)[dataset_slice]
+    elif dataset_name in [v2_map['specerest'], v2_map['specprest']]:
+        warnings.warn('Rest frame spectra are not supported with Tristan v2 Data. Using dummy data.')
+        shape = list(file['n1'].shape)
+        return np.ones((shape[0],shape[-1])) # only use the energy and x dimensions since we would sum over the others normally
     else:
         raise ValueError(f'Dataset "{dataset_name}" was indicated to require special handling but no clause was supplied to do that handling.')
 # =============================================================================
