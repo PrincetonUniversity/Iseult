@@ -109,9 +109,44 @@ def __verify_file_path(file_path: pathlib.Path) -> pathlib.Path:
 # =============================================================================
 
 # =============================================================================
-def __handle_tristan_v2_spectra(file_path: pathlib.Path, file: h5py.File, dataset_name: str) -> np.ndarray:
-    spectral_data = file[dataset_name]
+def __handle_tristan_v2_spectra(spectra_file_path: pathlib.Path, spectra_file: h5py.File, dataset_name: str) -> np.ndarray:
+    # First we need to find the parameter file
+    if spectra_file_path.parent.name == 'spec':
+        param_file_path = spectra_file_path.parents[1]
+    else:
+        param_file_path = spectra_file_path.parents[0]
+    # Add the file name
+    param_file_path = param_file_path / ('params' + spectra_file_path.suffix)
+
+    # Determine the charge to search for
+    if dataset_name == 'compute_electron_spectrum':
+        charge = -1
+    elif dataset_name == 'compute_ion_spectrum':
+        charge = 1
+    else:
+        raise ValueError(f'Dataset name not recognized. Got "{dataset_name}" and expected either "compute_electron_spectrum" or "compute_ion_spectrum"')
+
+    with h5py.File(param_file_path, 'r') as param_file:
+        # find the number of the first dataset that matches the charge
+        dataset_number = 1
+        while True:
+            try:
+                dataset_charge = param_file['particles:ch'+str(dataset_number)][0]
+                if dataset_charge == charge:
+                    break
+            except KeyError:
+                raise ValueError(f'No dataset with a charge of {charge} was found.')
+            dataset_number += 1
+
+        # Check if the data is log scaled
+        data_log_scale = bool(param_file['output:spec_log_bins'][0])
+
+    spectral_data = spectra_file['n' + str(dataset_number)]
     spectral_data = np.sum(spectral_data, axis=(1,2))
+
+    if not data_log_scale:
+        spectral_data = np.log10(spectral_data)
+
     return spectral_data
 # =============================================================================
 
@@ -194,8 +229,8 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
               'gamma':'ebins',
             #   'gmax':'',
             #   'gmin':'',
-              'spece':'n1',
-              'specp':'n3',
+              'spece':'compute_electron_spectrum',
+              'specp':'compute_ion_spectrum',
               'specerest':'restframe_unsupported',
               'specprest':'restframe_unsupported',
               'xsl':'xbins',
