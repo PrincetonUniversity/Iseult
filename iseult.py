@@ -35,9 +35,21 @@ if __name__ == '__main__':
                          default=[''],
                             help='Plot Title')
 
-
     parser.add_argument("--wait", help="Wait until current simulation is finished before making movie.",
                         action="store_true")
+
+    parser.add_argument("-e",
+                        "--electron-spectra",
+                        default=None,
+                        type=str,
+                        choices=['n'+str(i) for i in range(1,11)],
+                        help="Which data set to use for the electron spectra. Should be of the format 'nX` where X is the integer number of the dataset")
+    parser.add_argument("-i",
+                        "--ion-spectra",
+                        default=None,
+                        type=str,
+                        choices=['n'+str(i) for i in range(1,11)],
+                        help="Which data set to use for the ion spectra. Should be of the format 'nX` where X is the integer number of the dataset")
 
     cmd_args = parser.parse_args()
 

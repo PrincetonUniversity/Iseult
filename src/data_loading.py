@@ -3,6 +3,7 @@ import numpy as np
 import h5py
 import pathlib
 import warnings
+import argparse
 
 # =============================================================================
 def __detect_tristan_data_version(file: h5py.File) -> int:
@@ -109,39 +110,96 @@ def __verify_file_path(file_path: pathlib.Path) -> pathlib.Path:
 # =============================================================================
 
 # =============================================================================
-def __handle_tristan_v2_spectra(spectra_file_path: pathlib.Path, spectra_file: h5py.File, dataset_name: str) -> np.ndarray:
-    # First we need to find the parameter file
+def __find_tristan_v2_spectra(param_file: h5py.File, charge: int) -> str:
+    """Find the first spectra data that has the proper charge.
+
+    Parameters
+    ----------
+    param_file : h5py.File
+        The parameter file
+    charge : int
+        The charge to look for
+
+    Returns
+    -------
+    str
+        The key for the spectra data to load
+
+    Raises
+    ------
+    ValueError
+        If no spectra with that charge was found.
+    """
+    # find the number of the first dataset that matches the charge
+    dataset_number = 1
+    while True:
+        try:
+            dataset_charge = param_file['particles:ch'+str(dataset_number)][0]
+            if dataset_charge == charge:
+                break
+        except KeyError:
+            raise ValueError(f'No dataset with a charge of {charge} was found.')
+        dataset_number += 1
+
+    return 'n' + str(dataset_number)
+# =============================================================================
+
+# =============================================================================
+def __handle_tristan_v2_spectra(spectra_file_path: pathlib.Path, spectra_file: h5py.File, dataset_name: str, cli_args: argparse.Namespace) -> np.ndarray:
+    """Load and compute the spectra from Tristan v2 into Tristan v1 format
+
+    Parameters
+    ----------
+    spectra_file_path : pathlib.Path
+        The path to the spectra file
+    spectra_file : h5py.File
+        The spectra file
+    dataset_name : str
+        The name of the dataset to load. Must be 'compute_electron_spectrum' or 'compute_ion_spectrum'.
+    cli_args : argparse.Namespace
+        The CLI arguments passed to Iseult by the user
+
+    Returns
+    -------
+    np.ndarray
+        The loaded spectra
+
+    Raises
+    ------
+    ValueError
+        Improper value of dataset_name passed.
+    """
+    # Determine if this is an ion or electron spectra
+    if dataset_name == 'compute_electron_spectrum':
+        charge = -1
+        cli_spectra_arg = cli_args.electron_spectra
+    elif dataset_name == 'compute_ion_spectrum':
+        charge = 1
+        cli_spectra_arg = cli_args.ion_spectra
+    else:
+        raise ValueError(f'Dataset name not recognized. Got "{dataset_name}" and expected either "compute_electron_spectrum" or "compute_ion_spectrum"')
+
+    # Find the parameter file
     if spectra_file_path.parent.name == 'spec':
         param_file_path = spectra_file_path.parents[1]
     else:
         param_file_path = spectra_file_path.parents[0]
+
     # Add the file name
     param_file_path = param_file_path / ('params' + spectra_file_path.suffix)
 
-    # Determine the charge to search for
-    if dataset_name == 'compute_electron_spectrum':
-        charge = -1
-    elif dataset_name == 'compute_ion_spectrum':
-        charge = 1
-    else:
-        raise ValueError(f'Dataset name not recognized. Got "{dataset_name}" and expected either "compute_electron_spectrum" or "compute_ion_spectrum"')
-
     with h5py.File(param_file_path, 'r') as param_file:
-        # find the number of the first dataset that matches the charge
-        dataset_number = 1
-        while True:
-            try:
-                dataset_charge = param_file['particles:ch'+str(dataset_number)][0]
-                if dataset_charge == charge:
-                    break
-            except KeyError:
-                raise ValueError(f'No dataset with a charge of {charge} was found.')
-            dataset_number += 1
+        if cli_spectra_arg is None:
+            # find the proper dataset
+            dataset_key = __find_tristan_v2_spectra(param_file, charge)
+        else:
+            # use the dataset indicated by the CLI argument
+            dataset_key = cli_spectra_arg
 
         # Check if the data is log scaled
         data_log_scale = bool(param_file['output:spec_log_bins'][0])
 
-    spectral_data = spectra_file['n' + str(dataset_number)]
+    spectral_data = spectra_file[dataset_key]
     spectral_data = np.sum(spectral_data, axis=(1,2))
 
     if not data_log_scale:
@@ -151,7 +209,7 @@ def __handle_tristan_v2_spectra(spectra_file_path: pathlib.Path, spectra_file: h
 # =============================================================================
 
 # =============================================================================
-def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: str, dataset_slice: tuple | slice) -> np.ndarray | int | np.float64:
+def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: str, dataset_slice: tuple | slice, cli_args: argparse.Namespace) -> np.ndarray | int | np.float64:
     """Load Tristan v2 data and perform any necessary transformation to convert it to the same format as Tristan v1 data
 
     Parameters
@@ -164,6 +222,8 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
         The name of the dataset to load, should be the Tristan v1 name
     dataset_slice : tuple | slice
         How to slice the data
+    cli_args : argparse.Namespace
+        The CLI arguments passed to Iseult by the user
 
     Returns
     -------
@@ -262,7 +322,7 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
         warnings.warn('"gamma0" is not present in Tristan v2 datasets. Setting gamma0=1')
         return np.array([1])
     elif dataset_name in [v2_map['spece'], v2_map['specp']]:
-        return __handle_tristan_v2_spectra(file_path, file, dataset_name)[dataset_slice]
+        return __handle_tristan_v2_spectra(file_path, file, dataset_name, cli_args)[dataset_slice]
     elif dataset_name in [v2_map['specerest'], v2_map['specprest']]:
         warnings.warn('Rest frame spectra are not supported with Tristan v2 Data. Using dummy data.')
         shape = list(file['n1'].shape)
@@ -272,7 +332,7 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
 # =============================================================================
 
 # =============================================================================
-def load_dataset(file_path: str | pathlib.Path, dataset_name: str, dataset_slice: tuple | slice = slice(None)) -> np.ndarray | int | np.float64:
+def load_dataset(file_path: str | pathlib.Path, dataset_name: str, dataset_slice: tuple | slice = slice(None), cli_args: argparse.Namespace = None) -> np.ndarray | int | np.float64:
     """Load a dataset from a datafile. Automatically detects the format and loads+transforms the data to match Tristan v1 formats
 
     Parameters
@@ -285,6 +345,8 @@ def load_dataset(file_path: str | pathlib.Path, dataset_name: str, dataset_slice
         How to slice the dataset. Can either be a Slice object or a tuple of
         Slice object where the nth element is the slice for the nth dimension,
         by default slice(None) which loads all the data
+    cli_args : argparse.Namespace
+        The CLI arguments passed to Iseult by the user
 
     Returns
     -------
@@ -326,7 +388,7 @@ def load_dataset(file_path: str | pathlib.Path, dataset_name: str, dataset_slice
             loaded_data = file[dataset_name][dataset_slice]
         elif data_version == 2:
             # If the data is from Tristan v2 then perform whatever handling is needed.
-            loaded_data = __handle_tristan_v2(file_path, file, dataset_name, dataset_slice)
+            loaded_data = __handle_tristan_v2(file_path, file, dataset_name, dataset_slice, cli_args)
 
         # Reduce to a scalar if the array is size 1
         if loaded_data.size == 1 and dataset_name != 'xsl':

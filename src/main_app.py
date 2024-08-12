@@ -2597,7 +2597,7 @@ class MainApp(Tk.Tk):
                                 if elm == 'spect_dens':
                                     self.DataDict[elm] = data_loading.load_dataset(filepath, 'dens')
                                 else:
-                                    self.DataDict[elm] = data_loading.load_dataset(filepath, elm)
+                                    self.DataDict[elm] = data_loading.load_dataset(filepath, elm, cli_args=self.cmd_args)
                             except KeyError:
                                 if elm == 'sizex':
                                     self.DataDict[elm] = 1
