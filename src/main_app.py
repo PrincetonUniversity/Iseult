@@ -26,6 +26,7 @@ from moments import MomentsPanel
 from functools import partial
 import subprocess, yaml
 from PIL import Image
+import pathlib
 
 #import datetime
 #from ThreeD_mag_plots import ThreeDBPanel STILL TESTING
@@ -2206,12 +2207,12 @@ class MainApp(Tk.Tk):
         param_re = re.compile(r'param.*')
 
         self.PathDict['Flds']= list(filter(f_re.match, os.listdir(self.dirname)))
-        if len(self.PathDict['Flds']) == 0:
+        if len(self.PathDict['Flds']) == 0 and pathlib.Path(self.dirname+'/flds').is_dir():
             self.PathDict['Flds']= list(filter(f_re.match, os.listdir(self.dirname+'/flds')))
         self.PathDict['Flds'].sort()
 
         self.PathDict['Prtl']= list(filter(prtl_re.match, os.listdir(self.dirname)))
-        if len(self.PathDict['Prtl']) == 0:
+        if len(self.PathDict['Prtl']) == 0 and pathlib.Path(self.dirname+'/prtl').is_dir():
             self.PathDict['Prtl']= list(filter(prtl_re.match, os.listdir(self.dirname+'/prtl')))
         self.PathDict['Prtl'].sort()
 
@@ -2219,9 +2220,8 @@ class MainApp(Tk.Tk):
         if len(self.PathDict['Spect']) == 0:
             s_re = re.compile(r'spec.*')
             self.PathDict['Spect']= list(filter(s_re.match, os.listdir(self.dirname)))
-            if len(self.PathDict['Spect']) == 0 or (len(self.PathDict['Spect']) == 1 and self.PathDict['Spect'][0] == 'spec'):
+            if len(self.PathDict['Spect']) >= 1 and pathlib.Path(self.dirname+'/spec').is_dir():
                 self.PathDict['Spect']= list(filter(s_re.match, os.listdir(self.dirname+'/spec')))
-
         self.PathDict['Spect'].sort()
 
         self.PathDict['Param']= list(filter(param_re.match, os.listdir(self.dirname)))
