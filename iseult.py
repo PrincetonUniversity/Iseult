@@ -8,35 +8,35 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plotting program for Tristan-MP files.')
 
     parser.add_argument('-n', nargs = '?',# dest='accumulate', action='store_const',
-                            const=-1, default=-1,
+                            const=-1, default=-1, type=int,
                             help='Maximum file # to consider')
     parser.add_argument('-framerate', nargs = '?',# dest='accumulate', action='store_const',
-                        const=10, default=10,
+                        const=10, default=10, type=int,
                         help='FPS for the movie')
 
     parser.add_argument('-outmovie', nargs = '?',# dest='accumulate', action='store_const',
-                        const='out.mov', default='out.mov',
+                        const='out.mov', default='out.mov', type=str,
                         help='FPS for the movie')
 
     parser.add_argument('-O', nargs = '+',# dest='accumulate', action='store_const',
-                            default=[''],
+                            default=[''], type=str,
                             help='Directory Iseult will open. Default is output')
 
     parser.add_argument('-p', nargs = '?',# dest='accumulate', action='store_const',
-                            const='Default', default='Default',
+                            const='Default', default='Default', type=str,
                             help='''Open Iseult with the given saved view.
                                   If the name of view contains whitespace,
                                   either it must be enclosed in quotation marks or given
                                   with whitespace removed. Name is case sensitive.''')
-    parser.add_argument("-b", help="Run Iseult from bash script. Makes a movie.",
+    parser.add_argument("-b", help="Run Iseult from bash script. Makes a movie.", type=bool,
                             action="store_true")
 
     parser.add_argument("-name", nargs = '+',# dest='accumulate', action='store_const',
-                         default=[''],
+                         default=[''], type=str,
                             help='Plot Title')
 
     parser.add_argument("--wait", help="Wait until current simulation is finished before making movie.",
-                        action="store_true")
+                        action="store_true", type=bool)
 
     parser.add_argument("-e",
                         "--electron-spectra",
