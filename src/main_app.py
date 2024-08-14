@@ -1731,14 +1731,6 @@ class MainApp(Tk.Tk):
         self.bind_all("<Command-o>", self.OnOpen)
         self.bind_all("S", self.OpenSettings)
 
-        # create a bunch of regular expressions used to search for files
-        f_re = re.compile('flds.tot.*')
-        prtl_re = re.compile('prtl.tot.*')
-        s_re = re.compile('spect.*')
-        param_re = re.compile('param.*')
-        self.re_list = [f_re, prtl_re, s_re, param_re]
-
-
         # A list that will keep track of whether a given axes is a colorbar or not:
         self.cbarList = []
 
