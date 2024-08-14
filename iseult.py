@@ -28,7 +28,7 @@ if __name__ == '__main__':
                                   If the name of view contains whitespace,
                                   either it must be enclosed in quotation marks or given
                                   with whitespace removed. Name is case sensitive.''')
-    parser.add_argument("-b", help="Run Iseult from bash script. Makes a movie.", type=bool,
+    parser.add_argument("-b", help="Run Iseult from bash script. Makes a movie.",
                             action="store_true")
 
     parser.add_argument("-name", nargs = '+',# dest='accumulate', action='store_const',
@@ -36,7 +36,7 @@ if __name__ == '__main__':
                             help='Plot Title')
 
     parser.add_argument("--wait", help="Wait until current simulation is finished before making movie.",
-                        action="store_true", type=bool)
+                        action="store_true")
 
     parser.add_argument("-e",
                         "--electron-spectra",
