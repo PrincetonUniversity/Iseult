@@ -432,7 +432,7 @@ class PlaybackBar(Tk.Frame):
         self.param.attach(self)
 
     def OnReload(self, *args):
-        self.parent.ReloadPath()
+        _ = self.parent.checkAndFindFilePaths()
         self.parent.RenewCanvas()
 
     def OnRefresh(self, *args):
@@ -2115,155 +2115,81 @@ class MainApp(Tk.Tk):
         with open(cfgfile, 'w') as cfgFile:
             cfgFile.write(yaml.safe_dump(cfgDict))
 
-    def ReloadPath(self):
-        """ This function updates the current pathdictionary"""
-        dirlist = os.listdir(self.dirname)
+    def CheckMaxNPopUp(self):
+        MaxNDialog(self)
 
-        if int(self.cmd_args.n)!=-1:
-            self.CheckMaxNPopUp()
+    def __findFilesInSubdir(self, file_glob: str, subdir: str) -> list[pathlib.Path]:
+        file_list = list(self.dirname.glob(file_glob))
+        if len(file_list) == 0:
+            file_list = list((self.dirname/subdir).glob(file_glob))
 
-        # Create a dictionary of all the paths to the files
-        self.PathDict = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
+        return file_list
 
-        # create a bunch of regular expressions used to search for files
-        f_re = re.compile('flds.tot.*')
-        prtl_re = re.compile('prtl.tot.*')
-        s_re = re.compile('spect.*')
-        param_re = re.compile('param.*')
-        self.PathDict['Flds']= list(filter(f_re.match, os.listdir(self.dirname)))
-        self.PathDict['Flds'].sort()
-        self.PathDict['Prtl']= list(filter(prtl_re.match, os.listdir(self.dirname)))
-        self.PathDict['Prtl'].sort()
-        self.PathDict['Spect']= list(filter(s_re.match, os.listdir(self.dirname)))
-        self.PathDict['Spect'].sort()
-        self.PathDict['Param']= list(filter(param_re.match, os.listdir(self.dirname)))
-        self.PathDict['Param'].sort()
+    def checkAndFindFilePaths(self, reload_mode: bool = False) -> bool:
+        # Convert to pathlib.Path
+        self.dirname = pathlib.Path(self.dirname)
 
-        ### iterate through the Paths and just get the .nnn number
-        if len(self.PathDict['Param']) > 0:
-            self.length_of_outfiles = len(self.PathDict['Param'][0].split('.')[-1])
+        # Check for "output" directory and update path if it's found
+        if (self.dirname/'output').is_dir():
+            self.dirname /= 'output'
+
+        # Check if data is from Tristan v1 or v2 and set file names accordingly
+        if len(list(self.dirname.glob("param.*"))) > 0:
+            # This is Tristan v1 data
+            param_name = 'param'
+            spectra_name = 'spect'
+        elif len(list(self.dirname.glob("params.*"))) > 0:
+            # This is Tristan v2 data
+            param_name = 'params'
+            spectra_name = 'spec'
         else:
-            self.length_of_outfiles = 3
+            # This directory does not contain any Tristan files
+            return False
 
-        for key in self.PathDict.keys():
-            for i in range(len(self.PathDict[key])):
-                try:
-                    self.PathDict[key][i] = int(self.PathDict[key][i].split('.')[-1])
-                except ValueError:
-                    self.PathDict[key].pop(i)
-                except IndexError:
-                    pass
+        # Load each list of files, searching in subdirectories if needed
+        param_files    = list(self.dirname.glob(f"{param_name}.*"))
+        flds_files     = self.__findFilesInSubdir('flds.tot.*', 'flds')
+        prtl_files     = self.__findFilesInSubdir('prtl.tot.*', 'flds')
+        spectra_files  = self.__findFilesInSubdir(f'{spectra_name}.*', 'flds')
 
-        ### GET THE NUMBERS THAT HAVE ALL 4 FILES:
+        # Strip out .xdmf files
+        flds_files = [path for path in flds_files if not path.suffix == '.xdmf']
 
-        allFour = set(self.PathDict['Param'])
-        for key in self.PathDict.keys():
-            allFour &= set(self.PathDict[key])
-        allFour = sorted(allFour)
+        # Find which files are in all four lists
+        intersection = set.intersection(set([filename.suffix for filename in param_files]),
+                                        set([filename.suffix for filename in flds_files]),
+                                        set([filename.suffix for filename in prtl_files]),
+                                        set([filename.suffix for filename in spectra_files]))
 
-        if int(self.cmd_args.n) != -1 and len(allFour)>0:
-            while allFour[-1] > int(self.cmd_args.n) and len(allFour)>0:
-                allFour.pop(-1)
+        # Check that there is at least one complete set of data. If not then return early
+        if len(intersection) == 0:
+            return False
 
-        # Rebuild the pathdict only with files that have all 4 things
-        self.PathDict['Flds'] = ['flds.tot.'+str(elm).zfill(self.length_of_outfiles) for elm in allFour]
-        self.PathDict['Prtl'] = ['prtl.tot.'+str(elm).zfill(self.length_of_outfiles) for elm in allFour]
-        self.PathDict['Spect'] = ['spect.'+str(elm).zfill(self.length_of_outfiles) for elm in allFour]
-        self.PathDict['Param'] = ['param.'+str(elm).zfill(self.length_of_outfiles) for elm in allFour]
+        # Limit us to the first N files if the relevant CLI flag is set
+        if self.cmd_args.n != -1:
+            intersection = sorted(intersection)[:self.cmd_args.n]
+
+        # Reduce file path lists to just the complete datasets, sort, and assign to member variables
+        self.PathDict['Param'] = sorted([path for path in param_files   if path.suffix in intersection])
+        self.PathDict['Flds']  = sorted([path for path in flds_files    if path.suffix in intersection])
+        self.PathDict['Prtl']  = sorted([path for path in prtl_files    if path.suffix in intersection])
+        self.PathDict['Spect'] = sorted([path for path in spectra_files if path.suffix in intersection])
+
+        if reload_mode:
+            if int(self.cmd_args.n)!=-1:
+                self.CheckMaxNPopUp()
+        else:
+            self.NewDirectory = True
+            self.movie_dir = ''
+
         self.TimeStep.setMax(len(self.PathDict['Flds']))
         self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
         if self.MainParamDict['Reload2End']:
             self.TimeStep.value = len(self.PathDict['Flds'])
             self.playbackbar.slider.set(self.TimeStep.value)
-        self.shock_finder() #hack
+        self.shock_finder()
 
-    def CheckMaxNPopUp(self):
-        MaxNDialog(self)
-    def pathOK(self):
-        """ Test to see if the current path contains tristan files
-        using regular expressions, then generate the lists of files
-        to iterate over"""
-        dirlist = os.listdir(self.dirname)
-        if 'output' in dirlist:
-            self.dirname = os.path.join(self.dirname, 'output')
-
-        is_okay = True
-
-        # Create a dictionary of all the paths to the files
-        self.PathDict = {'Flds': [], 'Prtl': [], 'Param': [], 'Spect': []}
-
-        # create a bunch of regular expressions used to search for files
-        f_re = re.compile(r'flds.tot.([\d\w\.]+)(?<!xdmf)$') # !(*.xdmf)
-        prtl_re = re.compile(r'prtl.tot.*')
-        s_re = re.compile(r'spect.*')
-        param_re = re.compile(r'param.*')
-
-        self.PathDict['Flds']= list(filter(f_re.match, os.listdir(self.dirname)))
-        if len(self.PathDict['Flds']) == 0 and pathlib.Path(self.dirname+'/flds').is_dir():
-            self.PathDict['Flds']= list(filter(f_re.match, os.listdir(self.dirname+'/flds')))
-        self.PathDict['Flds'].sort()
-
-        self.PathDict['Prtl']= list(filter(prtl_re.match, os.listdir(self.dirname)))
-        if len(self.PathDict['Prtl']) == 0 and pathlib.Path(self.dirname+'/prtl').is_dir():
-            self.PathDict['Prtl']= list(filter(prtl_re.match, os.listdir(self.dirname+'/prtl')))
-        self.PathDict['Prtl'].sort()
-
-        self.PathDict['Spect']= list(filter(s_re.match, os.listdir(self.dirname)))
-        if len(self.PathDict['Spect']) == 0:
-            s_re = re.compile(r'spec.*')
-            self.PathDict['Spect']= list(filter(s_re.match, os.listdir(self.dirname)))
-            if len(self.PathDict['Spect']) >= 1 and pathlib.Path(self.dirname+'/spec').is_dir():
-                self.PathDict['Spect']= list(filter(s_re.match, os.listdir(self.dirname+'/spec')))
-        self.PathDict['Spect'].sort()
-
-        self.PathDict['Param']= list(filter(param_re.match, os.listdir(self.dirname)))
-        self.PathDict['Param'].sort()
-
-        ### iterate through the Paths and just get the .nnn number
-        if len(self.PathDict['Param']) > 0:
-            self.length_of_outfiles = len(self.PathDict['Param'][0].split('.')[-1])
-        else:
-            self.length_of_outfiles = 3
-
-        for key in self.PathDict.keys():
-            for i in range(len(self.PathDict[key])):
-                try:
-                    self.PathDict[key][i] = int(self.PathDict[key][i].split('.')[-1])
-                except ValueError:
-                    self.PathDict[key].pop(i)
-                except IndexError:
-                    pass
-
-        ### GET THE NUMBERS THAT HAVE ALL 4 FILES:
-
-        allFour = set(self.PathDict['Param'])
-        for key in self.PathDict.keys():
-            allFour &= set(self.PathDict[key])
-        allFour = sorted(allFour)
-
-        if int(self.cmd_args.n) != -1 and len(allFour)>0:
-            while allFour[-1] > int(self.cmd_args.n) and len(allFour)>0:
-                allFour.pop(-1)
-
-        is_okay = len(allFour)>0
-        # Rebuild the pathdict only with files that have all 4 things
-
-        self.PathDict['Flds'] = ['flds.tot.'+str(elm).zfill(self.length_of_outfiles) for elm in allFour]
-        self.PathDict['Prtl'] = ['prtl.tot.'+str(elm).zfill(self.length_of_outfiles) for elm in allFour]
-        self.PathDict['Spect'] = ['spect.'+str(elm).zfill(self.length_of_outfiles) for elm in allFour]
-        self.PathDict['Param'] = ['param.'+str(elm).zfill(self.length_of_outfiles) for elm in allFour]
-        if is_okay:
-            self.NewDirectory = True
-            self.TimeStep.setMax(len(self.PathDict['Flds']))
-            self.playbackbar.slider.config(to =(len(self.PathDict['Flds'])))
-            if self.MainParamDict['Reload2End']:
-                self.TimeStep.value = len(self.PathDict['Flds'])
-                self.playbackbar.slider.set(self.TimeStep.value)
-            self.shock_finder() #hack
-            self.movie_dir = ''
-
-        return is_okay
-
+        return True
 
     def OnOpen(self, e = None):
         """open a file"""
@@ -2277,7 +2203,7 @@ class MainApp(Tk.Tk):
 
         else:
             self.dirname = tmpdir
-        if not self.pathOK():
+        if not self.checkAndFindFilePaths():
 #            p = MyDalog(self, 'Directory must contain either the output directory or all of the following: \n flds.tot.*, ptrl.tot.*, params.*, spect.*', title = 'Cannot find output files')
 #            self.wait_window(p.top)
             self.findDir()
@@ -2288,7 +2214,7 @@ class MainApp(Tk.Tk):
         """open a file"""
         if int(self.cmd_args.n) != -1:
             self.CheckMaxNPopUp()
-        self.pathOK()
+        self.checkAndFindFilePaths()
         self.ReDrawCanvas()
 
     def findDir(self, dlgstr = 'Choose the directory of the output files.'):
@@ -2301,11 +2227,11 @@ class MainApp(Tk.Tk):
         self.dir_opt['mustexist'] = True
         self.dir_opt['parent'] = self
 
-        if not self.pathOK():
+        if not self.checkAndFindFilePaths():
             tmpdir = filedialog.askdirectory(title = dlgstr, **self.dir_opt)
             if tmpdir != '':
                 self.dirname = tmpdir
-            if not self.pathOK():
+            if not self.checkAndFindFilePaths():
 #                p = MyDialog(self, 'Directory must contain either the output directory or all of the following: \n flds.tot.*, ptrl.tot.*, params.*, spect.*', title = 'Cannot find output files')
 #                self.wait_window(p.top)
                 self.findDir()
@@ -3133,8 +3059,8 @@ class MainApp(Tk.Tk):
                 self.SubPlotList[i][j].DrawGraph()
 
         if self.MainParamDict['ShowTitle']:
-            tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].split('.')[-1]
-            self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+r' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time']), size = 15)
+            tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].suffix
+            self.f.suptitle(os.path.abspath(self.dirname)+ '/*'+tmpstr+r' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time']), size = 15)
         if keep_view:
             self.LoadView()
 
@@ -3234,7 +3160,7 @@ class MainApp(Tk.Tk):
                 self.SubPlotList[i][j].RefreshGraph()
 
         if self.MainParamDict['ShowTitle']:
-            tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].split('.')[-1]
+            tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].suffix
             self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+r' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time']), size = 15)
 
         if keep_view:
