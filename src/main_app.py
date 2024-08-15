@@ -2149,8 +2149,8 @@ class MainApp(Tk.Tk):
         # Load each list of files, searching in subdirectories if needed
         param_files    = list(self.dirname.glob(f"{param_name}.*"))
         flds_files     = self.__findFilesInSubdir('flds.tot.*', 'flds')
-        prtl_files     = self.__findFilesInSubdir('prtl.tot.*', 'flds')
-        spectra_files  = self.__findFilesInSubdir(f'{spectra_name}.*', 'flds')
+        prtl_files     = self.__findFilesInSubdir('prtl.tot.*', 'prtl')
+        spectra_files  = self.__findFilesInSubdir(f'{spectra_name}.*', 'spec')
 
         # Strip out .xdmf files
         flds_files = [path for path in flds_files if not path.suffix == '.xdmf']
