@@ -2391,12 +2391,12 @@ class MainApp(Tk.Tk):
 
         # Check to make sure the 2DSlice is OK...
         # Grab c_omp & istep
-        filepath = os.path.join(self.dirname,self.PathDict['Param'][self.TimeStep.value-1])
+        filepath = self.PathDict['Param'][self.TimeStep.value-1]
         self.c_omp = data_loading.load_dataset(filepath, 'c_omp', slice(0,1))
         self.istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))
 
         # FIND THE SLICE
-        filepath = os.path.join(self.dirname,self.PathDict['Flds'][self.TimeStep.value-1])
+        filepath = self.PathDict['Flds'][self.TimeStep.value-1]
         bx_shape = data_loading.load_dataset(filepath, 'bx').shape
         self.MaxZInd, self.MaxYInd, self.MaxXInd  = np.array(bx_shape) - 1
 
@@ -2464,7 +2464,7 @@ class MainApp(Tk.Tk):
                     if tmplist2[i] in self.DataDict.keys():
                         tmplist.remove(tmplist2[i])
                 # Now iterate over each path key and create a datadictionary
-                filepath = os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1])
+                filepath = self.PathDict[pkey][self.TimeStep.value-1]
                 if len(tmplist)> 0:
                     if pkey =='Prtl': # we load particle arrays with a stride because they are expensive
                         for elm in tmplist:
@@ -2504,7 +2504,7 @@ class MainApp(Tk.Tk):
             for pkey in self.ToLoad.keys():
                 tmplist = list(set(self.ToLoad[pkey])) # get rid of duplicate keys
                 # Load the file
-                filepath = os.path.join(self.dirname,self.PathDict[pkey][self.TimeStep.value-1])
+                filepath = self.PathDict[pkey][self.TimeStep.value-1]
                 if len(tmplist)> 0:
                     if pkey =='Prtl': # we load particle arrays with a stride because they are expensive
                         for elm in tmplist:
@@ -2963,7 +2963,7 @@ class MainApp(Tk.Tk):
             state_tuple += self.freeze(self.TotalEnergyTimeSteps)
         # add to the state_tuple the last modification time of all the output files:
         for key in self.PathDict.keys():
-            state_tuple += os.path.getmtime(os.path.join(self.dirname,self.PathDict[key][self.TimeStep.value-1])),
+            state_tuple += os.path.getmtime(self.PathDict[key][self.TimeStep.value-1]),
 #        fname = 'iseult_img_'+ str(self.TimeStep.value).zfill(3)+'.png'
         self.StateHash = hash(state_tuple)
 #        print self.freeze(self.MainParamDict)
@@ -3372,7 +3372,7 @@ class MainApp(Tk.Tk):
                 print 'sigma b0', self.b0
                 '''
             # Normalize by b0
-            filepath = os.path.join(self.dirname,self.PathDict['Param'][0])
+            filepath = self.PathDict['Param'][0]
             abs_sigma = np.abs(data_loading.load_dataset(filepath, 'sigma'))
 
             if abs_sigma == 0:
@@ -3382,7 +3382,7 @@ class MainApp(Tk.Tk):
         except KeyError:
             self.btheta = np.nan
 
-        filepath = os.path.join(self.dirname,self.PathDict['Flds'][0])
+        filepath = self.PathDict['Flds'][0]
         by = data_loading.load_dataset(filepath, 'by')
         nxf0 = by.shape[1]
         if np.isnan(self.btheta):
@@ -3404,12 +3404,12 @@ class MainApp(Tk.Tk):
             self.e0 = np.sqrt(self.ex0**2+self.ey0**2+self.ez0**2)
 
         # Load the final time step to find the shock's location at the end.
-        filepath = os.path.join(self.dirname,self.PathDict['Flds'][-1])
+        filepath = self.PathDict['Flds'][-1]
         dens_slice = (slice(0,1))
         dens_arr = data_loading.load_dataset(filepath, 'dens', dens_slice)[0,:,:]
 
         # I use this file to get the final time, the istep, interval, and c_omp
-        filepath = os.path.join(self.dirname,self.PathDict['Param'][-1])
+        filepath = self.PathDict['Param'][-1]
         final_time = data_loading.load_dataset(filepath, 'time')
         istep      = data_loading.load_dataset(filepath, 'istep')
         interval   = data_loading.load_dataset(filepath, 'interval')
