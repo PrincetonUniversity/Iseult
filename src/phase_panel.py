@@ -214,7 +214,7 @@ class PhasePanel:
                         inRange *= energy <= self.GetPlotParam('E_max')
                 elif self.GetPlotParam('set_E_max'):
                     inRange = energy <= self.GetPlotParam('E_max')
-                inRange *= ~nan_ind
+                inRange *= not nan_ind
                 if self.GetPlotParam('weighted'):
                     self.hist2d = Fast2DWeightedHist(self.y_values[inRange], self.x_values[inRange], self.weights[inRange], self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
 
@@ -231,7 +231,7 @@ class PhasePanel:
                     zval = ma.masked_array(self.hist2d[0])
                     zval[zval == 0] = ma.masked
                     zval *= float(zval.max())**(-1)
-                    tmplist = [zval[~zval.mask].min(), zval.max()]
+                    tmplist = [zval[not zval.mask].min(), zval.max()]
                 else:
                     zval = np.copy(self.hist2d[0])
                     zval[zval==0] = 0.5
@@ -330,7 +330,7 @@ class PhasePanel:
                     zval = ma.masked_array(self.hist2d[0])
                     zval[zval == 0] = ma.masked
                     zval *= float(zval.max())**(-1)
-                    tmplist = [zval[~zval.mask].min(), zval.max()]
+                    tmplist = [zval[not zval.mask].min(), zval.max()]
                 else:
                     zval = np.copy(self.hist2d[0])
                     zval[zval==0] = 0.5

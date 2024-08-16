@@ -213,7 +213,7 @@ class EnergyPanel:
                 zval = ma.masked_array(self.hist2d[0])
                 zval[zval == 0] = ma.masked
                 zval *= float(zval.max())**(-1)
-                tmplist = [zval[~zval.mask].min(), zval.max()]
+                tmplist = [zval[not zval.mask].min(), zval.max()]
             else:
                 zval = np.copy(self.hist2d[0])
                 zval[zval==0] = 0.5

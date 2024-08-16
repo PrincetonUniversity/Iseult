@@ -1291,7 +1291,7 @@ class FieldSettings(Tk.Toplevel):
         if self.parent.GetPlotParam('normalize_fields') == self.NormFieldVar.get():
             pass
         else:
-            if ~self.parent.GetPlotParam('twoD'):
+            if not self.parent.GetPlotParam('twoD'):
                 tmplblstr = self.parent.GetPlotParam('yaxis_label')[self.FieldTypeVar.get()]
                 if self.NormFieldVar.get():
                     if self.parent.GetPlotParam('field_type') ==0:
@@ -1395,7 +1395,7 @@ class FieldSettings(Tk.Toplevel):
                 self.parent.SetPlotParam('show_x', False, update_plot = False)
                 self.parent.SetPlotParam('show_y', False, update_plot = False)
                 self.parent.SetPlotParam('show_z', False, update_plot = False)
-                if ~self.parent.GetPlotParam('twoD'):
+                if not self.parent.GetPlotParam('twoD'):
                     self.parent.linex[0].set_visible(False)
                     self.parent.anx.set_visible(False)
                     self.parent.liney[0].set_visible(False)
@@ -1418,7 +1418,8 @@ class FieldSettings(Tk.Toplevel):
                 self.parent.SetPlotParam('show_x', False, update_plot = False)
                 self.parent.SetPlotParam('show_y', False, update_plot = False)
                 self.parent.SetPlotParam('show_z', False, update_plot = False)
-                if ~self.parent.GetPlotParam('twoD'):
+                if not self.parent.GetPlotParam('twoD'):
+                    print(f"{self.parent.GetPlotParam('twoD') = }")
                     self.parent.linex[0].set_visible(False)
                     self.parent.anx.set_visible(False)
                     self.parent.liney[0].set_visible(False)
@@ -1608,7 +1609,7 @@ class UserDefSettings(Tk.Toplevel):
         tmplist2.append(tmplist)
 
         self.subplot.SetPlotParam('1D_label',tmplist2, update_plot =False)
-        if ~self.subplot.GetPlotParam('twoD'):
+        if not self.subplot.GetPlotParam('twoD'):
             self.subplot.axes.set_ylabel(self.subplot.GetPlotParam('yaxis_label')[3])
             self.subplot.anx.set_text(self.subplot.GetPlotParam('1D_label')[3][0])
             self.subplot.any.set_text(self.subplot.GetPlotParam('1D_label')[3][1])

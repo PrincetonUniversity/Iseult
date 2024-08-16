@@ -97,7 +97,7 @@ class BPanel:
 
 
         if self.GetPlotParam('mag_plot_type') == 1: # Set f to deltaB/B0
-            if ~np.isnan(self.parent.btheta):
+            if not np.isnan(self.parent.btheta):
                 self.ylabel = r'$|\delta B|/B_0$'
                 self.ann_label = r'$|\delta B|/B_0$'
             else:
@@ -115,7 +115,7 @@ class BPanel:
 
 
         if self.GetPlotParam('mag_plot_type') == 2: # Set f to deltaB_perp/B0
-            if ~np.isnan(self.parent.btheta):
+            if not np.isnan(self.parent.btheta):
                 self.ylabel = r'$|\delta B_\perp|/B_0$'
                 self.ann_label = r'$|\delta B_\perp|/B_0$'
             else:
@@ -138,7 +138,7 @@ class BPanel:
 
 
         if self.GetPlotParam('mag_plot_type') == 3: # Set f to deltaB_para/B0
-            if ~np.isnan(self.parent.btheta):
+            if not np.isnan(self.parent.btheta):
                 self.ylabel = r'$\delta B_\parallel/B_0$'
                 self.ann_label = r'$\delta B_\parallel/B_0$'
             else:
