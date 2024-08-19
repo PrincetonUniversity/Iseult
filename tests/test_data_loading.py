@@ -204,7 +204,7 @@ def test_handle_tristan_v2_spectra():
         for i,dataset_name in enumerate(dataset_names):
             test_spectra = data_loading.__handle_tristan_v2_spectra(file_path, file, dataset_name, cli_args)
 
-            assert np.array_equiv(test_spectra, np.full(5,i+1))
+            assert np.array_equiv(test_spectra, np.full(5,i+2))
 
 def test_handle_tristan_v2_spectra_cli_args():
     parser = argparse.ArgumentParser()
@@ -219,7 +219,7 @@ def test_handle_tristan_v2_spectra_cli_args():
         for i,dataset_name in enumerate(dataset_names):
             test_spectra = data_loading.__handle_tristan_v2_spectra(file_path, file, dataset_name, cli_args)
 
-            assert np.array_equiv(test_spectra, np.full(5,i+1))
+            assert np.array_equiv(test_spectra, np.full(5,i+2))
 
 def test_handle_tristan_v2_spectra_raise_ValueError():
     with pytest.raises(ValueError):

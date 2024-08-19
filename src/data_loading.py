@@ -205,7 +205,7 @@ def __handle_tristan_v2_spectra(spectra_file_path: pathlib.Path, spectra_file: h
     if not data_log_scale:
         spectral_data = np.log10(spectral_data)
 
-    spectral_data /= spectra_file['ebins']
+    spectral_data /= (spectra_file['ebins'][:])[:, np.newaxis]
 
     return spectral_data
 # =============================================================================
