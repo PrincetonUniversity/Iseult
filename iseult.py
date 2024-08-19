@@ -4,6 +4,14 @@ if __name__ == '__main__':
 
     import argparse
     import warnings
+    import importlib.metadata
+
+    matplotlib_version = importlib.metadata.version('matplotlib')
+    required_mpl_version = '3.7'
+    if matplotlib_version[:3] != required_mpl_version:
+        raise RuntimeError(f"Unsupported Matplotlib version. Must be version {required_mpl_version}.x, environment has version {matplotlib_version}. " \
+                           "See README.md for details on how to set up the environment.")
+
 
     parser = argparse.ArgumentParser(description='Plotting program for Tristan-MP files.')
 
