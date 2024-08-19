@@ -205,6 +205,8 @@ def __handle_tristan_v2_spectra(spectra_file_path: pathlib.Path, spectra_file: h
     if not data_log_scale:
         spectral_data = np.log10(spectral_data)
 
+    spectral_data /= spectra_file['ebins']
+
     return spectral_data
 # =============================================================================
 
@@ -295,7 +297,6 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
               'specprest':'restframe_unsupported',
               'xsl':'xbins',
               }
-
     # Make sure the dataset is properly mapped
     try:
         dataset_name = v2_map[dataset_name]
