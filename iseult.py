@@ -16,22 +16,22 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plotting program for Tristan-MP files.')
 
     parser.add_argument('-n', nargs = '?',# dest='accumulate', action='store_const',
-                            const=-1, default=-1, type=int,
+                            const=-1, default=-1,
                             help='Maximum file # to consider')
     parser.add_argument('-framerate', nargs = '?',# dest='accumulate', action='store_const',
-                        const=10, default=10, type=int,
+                        const=10, default=10,
                         help='FPS for the movie')
 
     parser.add_argument('-outmovie', nargs = '?',# dest='accumulate', action='store_const',
-                        const='out.mov', default='out.mov', type=str,
+                        const='out.mov', default='out.mov',
                         help='FPS for the movie')
 
     parser.add_argument('-O', nargs = '+',# dest='accumulate', action='store_const',
-                            default=[''], type=str,
+                            default=[''],
                             help='Directory Iseult will open. Default is output')
 
     parser.add_argument('-p', nargs = '?',# dest='accumulate', action='store_const',
-                            const='Default', default='Default', type=str,
+                            const='Default', default='Default',
                             help='''Open Iseult with the given saved view.
                                   If the name of view contains whitespace,
                                   either it must be enclosed in quotation marks or given
@@ -40,24 +40,12 @@ if __name__ == '__main__':
                             action="store_true")
 
     parser.add_argument("-name", nargs = '+',# dest='accumulate', action='store_const',
-                         default=[''], type=str,
+                         default=[''],
                             help='Plot Title')
+
 
     parser.add_argument("--wait", help="Wait until current simulation is finished before making movie.",
                         action="store_true")
-
-    parser.add_argument("-e",
-                        "--electron-spectra",
-                        default=None,
-                        type=str,
-                        choices=['n'+str(i) for i in range(1,11)],
-                        help="Which data set to use for the electron spectra. Should be of the format 'nX` where X is the integer number of the dataset")
-    parser.add_argument("-i",
-                        "--ion-spectra",
-                        default=None,
-                        type=str,
-                        choices=['n'+str(i) for i in range(1,11)],
-                        help="Which data set to use for the ion spectra. Should be of the format 'nX` where X is the integer number of the dataset")
 
     cmd_args = parser.parse_args()
 
