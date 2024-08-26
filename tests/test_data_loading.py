@@ -2,6 +2,7 @@ import pathlib
 import h5py
 import numpy as np
 import pytest
+import argparse
 import data_loading
 
 repo_root = pathlib.Path(__file__).resolve().parents[1]
@@ -31,7 +32,7 @@ def test__detect_tristan_data_version_incorrect_data():
     for name in file_names:
         with h5py.File(data_dir / name, 'r') as file:
             with pytest.raises(ValueError):
-                version = data_loading.__detect_tristan_data_version(file)
+                data_loading.__detect_tristan_data_version(file)
 
 def test__insert_directory_default():
     test_path = pathlib.Path('/dir1/dir2/dir3/file.txt')
@@ -53,7 +54,7 @@ def test__verify_file_path_v1_data():
 
     for name in file_names:
         original_path = data_dir / name
-        found_path = data_loading.__verify_file_path(original_path, 'dataset_name')
+        found_path = data_loading.__verify_file_path(original_path)
         assert found_path == original_path
 
 def test__verify_file_path_v2_data_single_dir():
@@ -62,7 +63,7 @@ def test__verify_file_path_v2_data_single_dir():
 
     for name in file_names:
         original_path = data_dir / name
-        found_path = data_loading.__verify_file_path(original_path, 'dataset_name')
+        found_path = data_loading.__verify_file_path(original_path)
         assert found_path == original_path
 
 def test__verify_file_path_v2_data_multi_dir():
@@ -70,7 +71,7 @@ def test__verify_file_path_v2_data_multi_dir():
     file_names = ['flds.tot.00070', 'params.00070', 'prtl.tot.00070', 'spec.tot.00070']
 
     for name in file_names:
-        found_path = data_loading.__verify_file_path(data_dir / name, 'dataset_name')
+        found_path = data_loading.__verify_file_path(data_dir / name)
 
         if 'flds' in name:
             fiducial_path = data_dir / 'flds' / name
@@ -123,9 +124,9 @@ def test___handle_tristan_v2_datasets():
                 # catch the cases with warnings
                 if dataset_name in ['gamma0']:
                     with pytest.warns(UserWarning):
-                        result = data_loading.__handle_tristan_v2(data_dir, file, dataset_name, slice(None))
+                        result = data_loading.__handle_tristan_v2(data_dir, file, dataset_name, slice(None), None)
                 else:
-                    result = data_loading.__handle_tristan_v2(data_dir, file, dataset_name, slice(None))
+                    result = data_loading.__handle_tristan_v2(data_dir, file, dataset_name, slice(None), None)
                     assert np.array_equiv(result, fiducial_data[name][i]), \
                         f'Datasets {dataset_name} in file {name} do not match expectations.' \
                         f'Expected {fiducial_data[name][i] = } got {result = }'
@@ -134,14 +135,14 @@ def test___handle_tristan_v2_KeyError():
     data_path = repo_root / 'tests' / 'data' / 'tristan_v2' / 'single_directory' / 'spec.tot.00070'
     with h5py.File(data_path, 'r') as file:
         with pytest.raises(KeyError):
-            result = data_loading.__handle_tristan_v2(data_path, file, 'bad_name', slice(None))
+            data_loading.__handle_tristan_v2(data_path, file, 'bad_name', slice(None), None)
 
 def test___handle_tristan_v2_slicing():
     data_path = repo_root / 'tests' / 'data' / 'tristan_v1' / 'flds.tot.041'
     test_slice = (slice(0,1), slice(1,5,1), slice(2,8,2))
     fiducial_arr = np.zeros((1,4,3))
     with h5py.File(data_path, 'r') as file:
-        result = data_loading.__handle_tristan_v2(data_path, file, 'bx', test_slice)
+        result = data_loading.__handle_tristan_v2(data_path, file, 'bx', test_slice, None)
         assert np.array_equiv(fiducial_arr, result)
 
 def test_load_dataset_v1_data():
@@ -165,7 +166,7 @@ def test_load_dataset_unsupported_data():
     dataset = 'by'
 
     with pytest.raises(ValueError):
-        test_dataset = data_loading.load_dataset(file_path, dataset)
+        data_loading.load_dataset(file_path, dataset)
 
 def test_load_dataset_slicing():
     file_path = repo_root / 'tests' / 'data' / 'tristan_v2' / 'single_directory' / 'flds.tot.00070'
@@ -183,3 +184,43 @@ def test_load_dataset_scalar_return():
 
     test_dataset = data_loading.load_dataset(file_path, dataset)
     assert test_dataset == fiducial_dataset
+
+def test_find_tristan_v2_spectra():
+    param_path = repo_root / 'tests/data/tristan_v2/standard_structure/params.00070'
+    with h5py.File(param_path, 'r') as param_file:
+        assert 'n1' == data_loading.__find_tristan_v2_spectra(param_file, -1)
+        assert 'n2' == data_loading.__find_tristan_v2_spectra(param_file, 1)
+
+def test_handle_tristan_v2_spectra():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--electron-spectra", default=None)
+    parser.add_argument("--ion-spectra", default=None)
+    cli_args = parser.parse_args()
+
+    dataset_names = ('compute_electron_spectrum', 'compute_ion_spectrum')
+
+    file_path = repo_root / 'tests/data/tristan_v2/standard_structure/spec/spec.tot.00070'
+    with h5py.File(file_path, 'r') as file:
+        for i,dataset_name in enumerate(dataset_names):
+            test_spectra = data_loading.__handle_tristan_v2_spectra(file_path, file, dataset_name, cli_args)
+
+            assert np.array_equiv(test_spectra, np.full(5,i+2))
+
+def test_handle_tristan_v2_spectra_cli_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--electron-spectra", default=None)
+    parser.add_argument("--ion-spectra", default=None)
+    cli_args = parser.parse_args(['--electron-spectra', 'n2','--ion-spectra','n1'])
+
+    dataset_names = ('compute_ion_spectrum', 'compute_electron_spectrum')
+
+    file_path = repo_root / 'tests/data/tristan_v2/standard_structure/spec/spec.tot.00070'
+    with h5py.File(file_path, 'r') as file:
+        for i,dataset_name in enumerate(dataset_names):
+            test_spectra = data_loading.__handle_tristan_v2_spectra(file_path, file, dataset_name, cli_args)
+
+            assert np.array_equiv(test_spectra, np.full(5,i+2))
+
+def test_handle_tristan_v2_spectra_raise_ValueError():
+    with pytest.raises(ValueError):
+        data_loading.__handle_tristan_v2_spectra(None, None, dataset_name='this is a bad value', cli_args=None)
