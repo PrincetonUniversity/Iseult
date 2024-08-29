@@ -148,7 +148,7 @@ def __update_parameter(settings, param_name, value):
 
 def streamlines_callback(settings, update_plot=True):
     # Don't update the plot if there's no streamplot active
-    if not settings.parent.GetPlotParam('show_streamlines'):
+    if not settings.parent.GetPlotParam("show_streamlines"):
         update_plot = False
 
     # Handle streamline stride
@@ -184,12 +184,6 @@ def draw_streamlines(panel):
     panel :
         The Panel object the streamlines are being drawn in
     """
-    # Logging and start timer
-    print("drawing streamlines")
-    from timeit import default_timer as timer
-
-    start = timer()
-
     # Get settings from panel
     fields = panel.GetPlotParam("streamlines_fields")
     stride = panel.GetPlotParam("streamlines_stride")
@@ -218,19 +212,8 @@ def draw_streamlines(panel):
     coords_x, coords_y = np.meshgrid(coords_x, coords_y)
 
     # Draw plots
-    start_plot = timer()
     panel.FigWrap.streamlines = panel.FigWrap.graph.axes.streamplot(
         coords_x, coords_y, bx, by, density=line_density, color=line_color
-    )
-
-    # Report timing
-    end = timer()
-    overall = end - start
-    streamplot = end - start_plot
-    print(
-        f"Time to generate streamlines: {overall:.3f}s. "
-        f"Time for `plt.streamplot` only: {streamplot:.3f}s. "
-        f"{streamplot/overall*100:.2f}% of time spent in `plt.streamplot`."
     )
 
 
@@ -242,7 +225,6 @@ def refresh_streamlines(panel):
     panel :
         The panel object the streamlines are being drawn in
     """
-    print("refreshing streamlines")
     remove_streamlines(panel)
     draw_streamlines(panel)
 
