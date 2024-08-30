@@ -749,7 +749,7 @@ class FieldsPanel:
         #
         ####
 
-        if self.GetPlotParam('show_streamlines'):
+        if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.draw_streamlines(self)
 
         if self.GetPlotParam('show_cpu_domains'):
@@ -928,7 +928,7 @@ class FieldsPanel:
             if self.parent.MainParamDict['2DSlicePlane'] == 1:
                 self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
-        if self.GetPlotParam('show_streamlines'):
+        if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.refresh_streamlines(self)
 
         if self.GetPlotParam('show_cpu_domains'):

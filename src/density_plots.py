@@ -413,7 +413,7 @@ class DensPanel:
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             self.axes.set_ylabel(tmp_str, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
-        if self.GetPlotParam('show_streamlines'):
+        if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.draw_streamlines(self)
 
         if self.GetPlotParam('show_cpu_domains'):
@@ -550,7 +550,7 @@ class DensPanel:
             if self.GetPlotParam('show_shock'):
                 self.shockline_2d.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
 
-        if self.GetPlotParam('show_streamlines'):
+        if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.refresh_streamlines(self)
 
         if self.GetPlotParam('show_cpu_domains'):
