@@ -40,8 +40,8 @@ def add_streamline_buttons(settings, panel, starting_row):
     """
 
     # Label
-    Tk.ttk.Label(settings.frm, text="Streamline Settings:").grid(
-        row=starting_row, sticky=Tk.W
+    Tk.ttk.Label(settings.frm, text="Streamline Settings: (2D only)").grid(
+        row=starting_row, columnspan=2, sticky=Tk.W
     )
 
     # Create checkbox to toggle the streamlines
