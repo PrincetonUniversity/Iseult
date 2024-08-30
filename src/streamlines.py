@@ -20,7 +20,6 @@ def add_streamline_params(param_dictionary):
         The dictionary to add elements to.
     """
     param_dictionary["show_streamlines"] = False
-    param_dictionary["streamlines_fields"] = "bxby"
     param_dictionary["streamlines_stride"] = 10
     param_dictionary["streamlines_density"] = 1
     param_dictionary["streamlines_color"] = "black"
@@ -54,44 +53,13 @@ def add_streamline_buttons(settings, panel, starting_row):
         command=lambda: __show_streamline_handler(settings, panel),
     ).grid(row=starting_row + 1, sticky=Tk.W)
 
-    # Choose which streamlines to display
-    settings.streamlines_fields = Tk.StringVar()
-    settings.streamlines_fields.set(settings.parent.GetPlotParam("streamlines_fields"))
-    Tk.ttk.Radiobutton(
-        settings.frm,
-        text="Bx/By",
-        variable=settings.streamlines_fields,
-        value="bxby",
-        command=lambda: __update_parameter(
-            settings, "streamlines_fields", settings.streamlines_fields.get()
-        ),
-    ).grid(row=starting_row + 2, sticky=Tk.W)
-    Tk.ttk.Radiobutton(
-        settings.frm,
-        text="By/Bz",
-        variable=settings.streamlines_fields,
-        value="bybz",
-        command=lambda: __update_parameter(
-            settings, "streamlines_fields", settings.streamlines_fields.get()
-        ),
-    ).grid(row=starting_row + 3, sticky=Tk.W)
-    Tk.ttk.Radiobutton(
-        settings.frm,
-        text="Bx/Bz",
-        variable=settings.streamlines_fields,
-        value="bxbz",
-        command=lambda: __update_parameter(
-            settings, "streamlines_fields", settings.streamlines_fields.get()
-        ),
-    ).grid(row=starting_row + 4, sticky=Tk.W)
-
     # Set stride
     settings.streamlines_stride = Tk.IntVar(
         value=settings.parent.GetPlotParam("streamlines_stride")
     )
-    Tk.ttk.Label(settings.frm, text="Stride:").grid(row=starting_row + 5, sticky=Tk.W)
+    Tk.ttk.Label(settings.frm, text="Stride:").grid(row=starting_row + 2, sticky=Tk.W)
     Tk.ttk.Entry(settings.frm, textvariable=settings.streamlines_stride, width=7).grid(
-        row=starting_row + 5, sticky=Tk.E
+        row=starting_row + 2, sticky=Tk.E
     )
 
     # Set line density
@@ -99,10 +67,10 @@ def add_streamline_buttons(settings, panel, starting_row):
         value=settings.parent.GetPlotParam("streamlines_density")
     )
     Tk.ttk.Label(settings.frm, text="Line Density:").grid(
-        row=starting_row + 6, sticky=Tk.W
+        row=starting_row + 3, sticky=Tk.W
     )
     Tk.ttk.Entry(settings.frm, textvariable=settings.streamlines_density, width=7).grid(
-        row=starting_row + 6, sticky=Tk.E
+        row=starting_row + 3, sticky=Tk.E
     )
 
     # Set line color
@@ -110,10 +78,10 @@ def add_streamline_buttons(settings, panel, starting_row):
         value=settings.parent.GetPlotParam("streamlines_color")
     )
     Tk.ttk.Label(settings.frm, text="Line Color:").grid(
-        row=starting_row + 7, sticky=Tk.W
+        row=starting_row + 4, sticky=Tk.W
     )
     Tk.ttk.Entry(settings.frm, textvariable=settings.streamlines_color, width=7).grid(
-        row=starting_row + 7, sticky=Tk.E
+        row=starting_row + 4, sticky=Tk.E
     )
 
 
@@ -184,25 +152,19 @@ def draw_streamlines(panel):
     panel :
         The Panel object the streamlines are being drawn in
     """
-    # Get settings from panel
-    fields = panel.GetPlotParam("streamlines_fields")
-    stride = panel.GetPlotParam("streamlines_stride")
-    line_density = panel.GetPlotParam("streamlines_density")
-    line_color = panel.GetPlotParam("streamlines_color")
 
-    # Grab the data, use aliases to make it easier to work with
-    if fields == "bxby":
+    # Choose which pair of fields to plot and compute the slice to use
+    stride = panel.GetPlotParam("streamlines_stride")
+    if panel.parent.MainParamDict["2DSlicePlane"] == 0:  # x-y plane
         bx_name, by_name = "bx", "by"
-    elif fields == "bybz":
-        bx_name, by_name = "by", "bz"
-    elif fields == "bxbz":
+        slice_tuple = np.s_[panel.parent.zSlice, ::stride, ::stride]
+    elif panel.parent.MainParamDict["2DSlicePlane"] == 1:  # x-z plane
         bx_name, by_name = "bx", "bz"
-    else:
-        raise ValueError(
-            f"Improper fields value of {fields} passed to draw_streamlines. "
-        )
-    bx = panel.parent.DataDict[bx_name][0, ::stride, ::stride]
-    by = panel.parent.DataDict[by_name][0, ::stride, ::stride]
+        slice_tuple = np.s_[::stride, panel.parent.ySlice, ::stride]
+
+    # Grab the data and slice appropriately
+    bx = panel.parent.DataDict[bx_name][slice_tuple]
+    by = panel.parent.DataDict[by_name][slice_tuple]
 
     # Create meshgrid
     x_min, x_max = panel.FigWrap.graph.axes.get_xlim()
@@ -213,7 +175,12 @@ def draw_streamlines(panel):
 
     # Draw plots
     panel.FigWrap.streamlines = panel.FigWrap.graph.axes.streamplot(
-        coords_x, coords_y, bx, by, density=line_density, color=line_color
+        coords_x,
+        coords_y,
+        bx,
+        by,
+        density=panel.GetPlotParam("streamlines_density"),
+        color=panel.GetPlotParam("streamlines_color"),
     )
 
 
