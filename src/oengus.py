@@ -226,7 +226,7 @@ class Oengus():
                               'xLimsRelative': False,
                               'ConstantShockVel': True,
                               'xRight': 100.0,
-                              'LinkSpatial': 2,
+                              'LinkSpatial': 1,
                               'HCbarExtent': [0, 4, 0, -1],
                               'Recording': False,
                               'xLabelPad': 0,

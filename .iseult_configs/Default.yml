@@ -373,7 +373,7 @@ MainParamDict:
   HorizontalCbars: false
   ImageAspect: 0
   LinkK: true
-  LinkSpatial: 2
+  LinkSpatial: 1
   LoopPlayback: true
   MaxCols: 8
   MaxRows: 8
