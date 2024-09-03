@@ -151,6 +151,10 @@ class FieldsPanel:
                     if line[1:15] == 'def FieldFunc(':
                         self.f3args = [elm.strip() for elm in line[15:-2].split(',')]
                         self.arrs_needed += self.f3args
+
+        if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
+            streamlines.add_streamline_plot_keys(self)
+
         return self.arrs_needed
 
     def LoadData(self):

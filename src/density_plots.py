@@ -84,6 +84,9 @@ class DensPanel:
         if self.GetPlotParam('dens_type') >0: # Load the ion density
             self.arrs_needed.append('densi')
 
+        if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
+            streamlines.add_streamline_plot_keys(self)
+
         return self.arrs_needed
     def LoadData(self):
         ''' A Helper function that loads the data for the plot'''

@@ -11,6 +11,15 @@ import numpy as np
 import matplotlib
 
 
+def add_streamline_plot_keys(panel):
+    if panel.parent.MainParamDict["2DSlicePlane"] == 0:  # x-y plane
+        panel.arrs_needed.append("bx")
+        panel.arrs_needed.append("by")
+    elif panel.parent.MainParamDict["2DSlicePlane"] == 1:  # x-z plane
+        panel.arrs_needed.append("bx")
+        panel.arrs_needed.append("bz")
+
+
 def add_streamline_params(param_dictionary):
     """Add data to the parameter dictionary for controlling the streamlines.
 
