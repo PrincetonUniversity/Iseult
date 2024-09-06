@@ -10,6 +10,7 @@ import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
 from matplotlib.ticker import FuncFormatter
+import streamlines
 
 class DensPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
@@ -37,6 +38,8 @@ class DensPanel:
                        'cmap': 'None', # If cmap is none, the plot will inherit the parent's cmap
                        'show_cpu_domains': False, # plots lines showing how the CPUs are divvying up the computational region
                        'face_color': 'gainsboro'}
+
+    streamlines.add_streamline_params(plot_param_dict)
 
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))
@@ -80,6 +83,9 @@ class DensPanel:
         # To plot rho we need both dens and densi
         if self.GetPlotParam('dens_type') >0: # Load the ion density
             self.arrs_needed.append('densi')
+
+        if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
+            streamlines.add_streamline_plot_keys(self)
 
         return self.arrs_needed
     def LoadData(self):
@@ -410,6 +416,8 @@ class DensPanel:
             self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             self.axes.set_ylabel(tmp_str, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
+        if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
+            streamlines.draw_streamlines(self)
 
         if self.GetPlotParam('show_cpu_domains'):
             self.FigWrap.SetCpuDomainLines()
@@ -544,6 +552,10 @@ class DensPanel:
                 self.CbarTickFormatter()
             if self.GetPlotParam('show_shock'):
                 self.shockline_2d.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
+
+        if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
+            streamlines.refresh_streamlines(self)
+
         if self.GetPlotParam('show_cpu_domains'):
             self.FigWrap.UpdateCpuDomainLines()
 
@@ -623,8 +635,8 @@ class DensSettings(Tk.Toplevel):
 
         self.wm_title('Dens Plot (%d,%d) Settings' % self.parent.FigWrap.pos)
         self.parent = parent
-        frm = ttk.Frame(self)
-        frm.pack(fill=Tk.BOTH, expand=True)
+        self.frm = ttk.Frame(self)
+        self.frm.pack(fill=Tk.BOTH, expand=True)
         self.protocol('WM_DELETE_WINDOW', self.OnClosing)
         self.bind('<Return>', self.TxtEnter)
 
@@ -634,8 +646,8 @@ class DensSettings(Tk.Toplevel):
         self.InterpolVar.set(self.parent.GetPlotParam('interpolation')) # default value
         self.InterpolVar.trace('w', self.InterpolChanged)
 
-        ttk.Label(frm, text="Interpolation Method:").grid(row=0, column = 2)
-        InterplChooser = ttk.OptionMenu(frm, self.InterpolVar, self.parent.GetPlotParam('interpolation'), *tuple(self.parent.InterpolationMethods))
+        ttk.Label(self.frm, text="Interpolation Method:").grid(row=0, column = 2)
+        InterplChooser = ttk.OptionMenu(self.frm, self.InterpolVar, self.parent.GetPlotParam('interpolation'), *tuple(self.parent.InterpolationMethods))
         InterplChooser.grid(row =0, column = 3, sticky = Tk.W + Tk.E)
 
         # Create the OptionMenu to chooses the Chart Type:
@@ -643,14 +655,14 @@ class DensSettings(Tk.Toplevel):
         self.ctypevar.set(self.parent.chartType) # default value
         self.ctypevar.trace('w', self.ctypeChanged)
 
-        ttk.Label(frm, text="Choose Chart Type:").grid(row=0, column = 0)
-        ctypeChooser = ttk.OptionMenu(frm, self.ctypevar, self.parent.chartType, *tuple(self.parent.ChartTypes))
+        ttk.Label(self.frm, text="Choose Chart Type:").grid(row=0, column = 0)
+        ctypeChooser = ttk.OptionMenu(self.frm, self.ctypevar, self.parent.chartType, *tuple(self.parent.ChartTypes))
         ctypeChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
 
 
         self.TwoDVar = Tk.IntVar(self) # Create a var to track whether or not to plot in 2-D
         self.TwoDVar.set(self.parent.GetPlotParam('twoD'))
-        cb = ttk.Checkbutton(frm, text = "Show in 2-D",
+        cb = ttk.Checkbutton(self.frm, text = "Show in 2-D",
                 variable = self.TwoDVar,
                 command = self.Change2d)
         cb.grid(row = 1, sticky = Tk.W)
@@ -660,10 +672,10 @@ class DensSettings(Tk.Toplevel):
         self.DensTypeVar  = Tk.IntVar()
         self.DensTypeVar.set(self.parent.GetPlotParam('dens_type'))
 
-        ttk.Label(frm, text='Choose Density:').grid(row = 2, sticky = Tk.W)
+        ttk.Label(self.frm, text='Choose Density:').grid(row = 2, sticky = Tk.W)
 
         for i in range(len(self.DensList)):
-            ttk.Radiobutton(frm,
+            ttk.Radiobutton(self.frm,
                 text=self.DensList[i],
                 variable=self.DensTypeVar,
                 command = self.RadioField,
@@ -673,7 +685,7 @@ class DensSettings(Tk.Toplevel):
         # Control whether or not Cbar is shown
         self.CbarVar = Tk.IntVar()
         self.CbarVar.set(self.parent.GetPlotParam('show_cbar'))
-        cb = ttk.Checkbutton(frm, text = "Show Color bar",
+        cb = ttk.Checkbutton(self.frm, text = "Show Color bar",
                         variable = self.CbarVar,
                         command = self.CbarHandler)
         cb.grid(row = 6, sticky = Tk.W)
@@ -681,7 +693,7 @@ class DensSettings(Tk.Toplevel):
         # show shock
         self.ShockVar = Tk.IntVar()
         self.ShockVar.set(self.parent.GetPlotParam('show_shock'))
-        cb = ttk.Checkbutton(frm, text = "Show Shock",
+        cb = ttk.Checkbutton(self.frm, text = "Show Shock",
                         variable = self.ShockVar,
                         command = self.ShockVarHandler)
         cb.grid(row = 6, column = 1, sticky = Tk.W)
@@ -689,7 +701,7 @@ class DensSettings(Tk.Toplevel):
         # Normalize Density Var
         self.NormDVar = Tk.IntVar()
         self.NormDVar.set(self.parent.GetPlotParam('normalize_density'))
-        cb = ttk.Checkbutton(frm, text = "Normalize to ppc0",
+        cb = ttk.Checkbutton(self.frm, text = "Normalize to ppc0",
                         variable = self.NormDVar,
                         command = self.NormPPCHandler)
         cb.grid(row = 7, sticky = Tk.W)
@@ -697,14 +709,14 @@ class DensSettings(Tk.Toplevel):
         # show labels
         self.ShowLabels = Tk.IntVar()
         self.ShowLabels.set(self.parent.GetPlotParam('show_labels'))
-        cb = ttk.Checkbutton(frm, text = "Show Labels 2D",
+        cb = ttk.Checkbutton(self.frm, text = "Show Labels 2D",
                         variable = self.ShowLabels,
                         command = self.LabelHandler)
         cb.grid(row = 7, column = 1, sticky = Tk.W)
         # Control whether or not diverging cmap is used
         self.DivVar = Tk.IntVar()
         self.DivVar.set(self.parent.GetPlotParam('UseDivCmap'))
-        cb = ttk.Checkbutton(frm, text = "Use Diverging Cmap",
+        cb = ttk.Checkbutton(self.frm, text = "Use Diverging Cmap",
                         variable = self.DivVar,
                         command = self.DivHandler)
         cb.grid(row = 8, sticky = Tk.W)
@@ -712,14 +724,14 @@ class DensSettings(Tk.Toplevel):
         # Use full div cmap
         self.StretchVar = Tk.IntVar()
         self.StretchVar.set(self.parent.GetPlotParam('stretch_colors'))
-        cb = ttk.Checkbutton(frm, text = "Symmetric about zero",
+        cb = ttk.Checkbutton(self.frm, text = "Symmetric about zero",
                         variable = self.StretchVar,
                         command = self.StretchHandler)
         cb.grid(row = 9, column = 0, columnspan =2, sticky = Tk.W)
 
         self.CPUVar = Tk.IntVar()
         self.CPUVar.set(self.parent.GetPlotParam('show_cpu_domains'))
-        cb = ttk.Checkbutton(frm, text = "Show CPU domains",
+        cb = ttk.Checkbutton(self.frm, text = "Show CPU domains",
                         variable = self.CPUVar,
                         command = self.CPUVarHandler)
         cb.grid(row = 10, column = 0, sticky = Tk.W)
@@ -729,18 +741,18 @@ class DensSettings(Tk.Toplevel):
         self.cnormvar.set(self.parent.chartType) # default value
         self.cnormvar.trace('w', self.cnormChanged)
 
-        ttk.Label(frm, text="Choose Color Norm:").grid(row=6, column = 2)
-        cnormChooser = ttk.OptionMenu(frm, self.cnormvar, self.parent.GetPlotParam('cnorm_type'), *tuple(['Pow', 'Linear']))
+        ttk.Label(self.frm, text="Choose Color Norm:").grid(row=6, column = 2)
+        cnormChooser = ttk.OptionMenu(self.frm, self.cnormvar, self.parent.GetPlotParam('cnorm_type'), *tuple(['Pow', 'Linear']))
         cnormChooser.grid(row =6, column = 3, sticky = Tk.W + Tk.E)
 
         # Now the gamma of the pow norm
         self.powGamma = Tk.StringVar()
         self.powGamma.set(str(self.parent.GetPlotParam('cpow_num')))
-        ttk.Label(frm, text ='gamma =').grid(row = 7, column = 2, sticky =Tk.E)
-        ttk.Label(frm, text ='If cnorm is Pow =>').grid(row = 8, column = 2,columnspan = 2, sticky =Tk.W)
-        ttk.Label(frm, text ='sign(data)*|data|**gamma').grid(row = 9, column = 2,columnspan = 2, sticky =Tk.E)
+        ttk.Label(self.frm, text ='gamma =').grid(row = 7, column = 2, sticky =Tk.E)
+        ttk.Label(self.frm, text ='If cnorm is Pow =>').grid(row = 8, column = 2,columnspan = 2, sticky =Tk.W)
+        ttk.Label(self.frm, text ='sign(data)*|data|**gamma').grid(row = 9, column = 2,columnspan = 2, sticky =Tk.E)
 
-        self.GammaEnter = ttk.Entry(frm, textvariable=self.powGamma, width=7)
+        self.GammaEnter = ttk.Entry(self.frm, textvariable=self.powGamma, width=7)
         self.GammaEnter.grid(row = 7, column = 3)
 
 
@@ -762,18 +774,20 @@ class DensSettings(Tk.Toplevel):
         self.Zmax.set(str(self.parent.GetPlotParam('v_max')))
 
 
-        cb = ttk.Checkbutton(frm, text ='Set dens min',
+        cb = ttk.Checkbutton(self.frm, text ='Set dens min',
                         variable = self.setZminVar)
         cb.grid(row = 3, column = 2, sticky = Tk.W)
-        self.ZminEnter = ttk.Entry(frm, textvariable=self.Zmin, width=7)
+        self.ZminEnter = ttk.Entry(self.frm, textvariable=self.Zmin, width=7)
         self.ZminEnter.grid(row = 3, column = 3)
 
-        cb = ttk.Checkbutton(frm, text ='Set dens max',
+        cb = ttk.Checkbutton(self.frm, text ='Set dens max',
                         variable = self.setZmaxVar)
         cb.grid(row = 4, column = 2, sticky = Tk.W)
 
-        self.ZmaxEnter = ttk.Entry(frm, textvariable=self.Zmax, width=7)
+        self.ZmaxEnter = ttk.Entry(self.frm, textvariable=self.Zmax, width=7)
         self.ZmaxEnter.grid(row = 4, column = 3)
+
+        streamlines.add_streamline_buttons(self, self.parent, starting_row=11)
 
     def ShockVarHandler(self, *args):
         if self.parent.GetPlotParam('show_shock')== self.ShockVar.get():
@@ -923,6 +937,7 @@ class DensSettings(Tk.Toplevel):
             self.parent.SetPlotParam('set_v_max', self.setZmaxVar.get())
 
     def TxtEnter(self, e):
+        streamlines.streamlines_callback(self, update_plot=True) # not updating plots because FieldsCallback forces an update no matter what
         self.FieldsCallback()
         self.GammaCallback()
 

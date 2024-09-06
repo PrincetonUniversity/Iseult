@@ -11,6 +11,7 @@ import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
 import matplotlib.transforms as mtransforms
+import streamlines
 
 class FieldsPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
@@ -72,6 +73,8 @@ class FieldsPanel:
                        'stretch_colors': False, # If stretch colors is false, then for a diverging cmap the plot ensures -b and b are the same distance from the midpoint of the cmap.
                        'show_cpu_domains': False, # plots lines showing how the CPUs are divvying up the computational region
                        'face_color': 'gainsboro' }
+
+    streamlines.add_streamline_params(plot_param_dict)
 
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))
@@ -148,6 +151,10 @@ class FieldsPanel:
                     if line[1:15] == 'def FieldFunc(':
                         self.f3args = [elm.strip() for elm in line[15:-2].split(',')]
                         self.arrs_needed += self.f3args
+
+        if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
+            streamlines.add_streamline_plot_keys(self)
+
         return self.arrs_needed
 
     def LoadData(self):
@@ -746,6 +753,9 @@ class FieldsPanel:
         #
         ####
 
+        if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
+            streamlines.draw_streamlines(self)
+
         if self.GetPlotParam('show_cpu_domains'):
             self.FigWrap.SetCpuDomainLines()
     def refresh(self):
@@ -921,6 +931,9 @@ class FieldsPanel:
                 self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             if self.parent.MainParamDict['2DSlicePlane'] == 1:
                 self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+
+        if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
+            streamlines.refresh_streamlines(self)
 
         if self.GetPlotParam('show_cpu_domains'):
             self.FigWrap.UpdateCpuDomainLines()
@@ -1189,6 +1202,7 @@ class FieldSettings(Tk.Toplevel):
                         command = self.NormFieldHandler)
         cb.grid(row = 7, column = 1, sticky = Tk.W)
 
+        streamlines.add_streamline_buttons(self, self.parent, starting_row=11)
 
     def CbarHandler(self, *args):
         if self.parent.GetPlotParam('show_cbar')== self.CbarVar.get():
@@ -1494,6 +1508,7 @@ class FieldSettings(Tk.Toplevel):
                 self.parent.SetPlotParam('show_z', self.ShowZVar.get())
 
     def TxtEnter(self, e):
+        streamlines.streamlines_callback(self, update_plot=False) # not updating plots because FieldsCallback forces an update no matter what
         self.FieldsCallback()
         self.GammaCallback()
 
