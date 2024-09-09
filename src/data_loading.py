@@ -257,6 +257,7 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
               'qi':'particles:ch2',
               'stride':'output:stride',
               'time':'timestep', # or maybe timestep/plasma:c_omp or possibly time:last
+              'my':'special_my',
               # Particles file
               'ue':'u_1',
               've':'v_1',
@@ -307,7 +308,8 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
     # Check if this dataset requires additional handling, if not then return it and exit early
     special_handling_list = [v2_map['dens'], v2_map['gamma0'],
                              v2_map['spece'], v2_map['specerest'],
-                             v2_map['specp'], v2_map['specprest']]
+                             v2_map['specp'], v2_map['specprest'],
+                             v2_map['my0'], v2_map['my']]
     if dataset_name not in special_handling_list:
         # Check that the dataset exists, return zero data and print warning if it doesn't.
         if dataset_name not in file:
@@ -328,6 +330,15 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
         warnings.warn('Rest frame spectra are not supported with Tristan v2 Data. Using dummy data.')
         shape = list(file['n1'].shape)
         return np.ones((shape[0],shape[-1])) # only use the energy and x dimensions since we would sum over the others normally
+    elif dataset_name == v2_map['my0']:
+        try:
+            return file[dataset_name]
+        except KeyError:
+            warnings.warn("1D dataset encountered. Setting my0 = 1.")
+            return np.array([1])
+    elif dataset_name == v2_map['my']:
+        warnings.warn("The `my` dataset does not exist in Tristan v2. Returning an array of 1 instead.")
+        return np.array([1])
     else:
         raise ValueError(f'Dataset "{dataset_name}" was indicated to require special handling but no clause was supplied to do that handling.')
 # =============================================================================
