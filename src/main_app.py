@@ -2559,8 +2559,8 @@ class MainApp(Tk.Tk):
                 TotalElectronKE = np.sum(np.sqrt(TotalElectronKE)-1)
                 #TotalElectronKE += -len(self.DataDict['we'])
 
-                TotalElectronKE *= self.DataDict['stride'][0]*self.MainParamDict['PrtlStride'] # multiply by the stride.
-                TotalElectronKE *= np.abs(self.DataDict['qi'][0])*self.DataDict['c'][0]**2 # * m_e c^2, mass of particle is its charge, qe/me=1
+                TotalElectronKE *= self.DataDict['stride']*self.MainParamDict['PrtlStride'] # multiply by the stride.
+                TotalElectronKE *= np.abs(self.DataDict['qi'])*self.DataDict['c']**2 # * m_e c^2, mass of particle is its charge, qe/me=1
 
 
 
@@ -2570,8 +2570,8 @@ class MainApp(Tk.Tk):
                 TotalIonKE = np.sum(np.sqrt(TotalIonKE)-1)
                 #TotalIonKE += -len(self.DataDict['we'])
 
-                TotalIonKE *= self.DataDict['stride'][0]*self.MainParamDict['PrtlStride'] # multiply by the stride
-                TotalIonKE *= self.DataDict['mi'][0]/self.DataDict['me']*np.abs(self.DataDict['qi'][0])*self.DataDict['c'][0]**2 #mass of particle is its charge, qe/me=1
+                TotalIonKE *= self.DataDict['stride']*self.MainParamDict['PrtlStride'] # multiply by the stride
+                TotalIonKE *= self.DataDict['mi']/self.DataDict['me']*np.abs(self.DataDict['qi'])*self.DataDict['c']**2 #mass of particle is its charge, qe/me=1
 
                 TotalKE = (TotalElectronKE +TotalIonKE)
                 # Divide by x size
@@ -2583,14 +2583,14 @@ class MainApp(Tk.Tk):
                 self.TotalIonEnergy = np.append(np.append(self.TotalIonEnergy[0:ind],TotalIonKE),self.TotalIonEnergy[ind:])
 
 
-                BxEnergy = np.sum(self.DataDict['bx'][:,:,:]*self.DataDict['bx'][:,:,:]) * self.DataDict['istep'][0]**2*.5
-                ByEnergy = np.sum(self.DataDict['by'][:,:,:]*self.DataDict['by'][:,:,:]) * self.DataDict['istep'][0]**2*.5
-                BzEnergy = np.sum(self.DataDict['bz'][:,:,:]*self.DataDict['bz'][:,:,:]) * self.DataDict['istep'][0]**2*.5
+                BxEnergy = np.sum(self.DataDict['bx'][:,:,:]*self.DataDict['bx'][:,:,:]) * self.DataDict['istep']**2*.5
+                ByEnergy = np.sum(self.DataDict['by'][:,:,:]*self.DataDict['by'][:,:,:]) * self.DataDict['istep']**2*.5
+                BzEnergy = np.sum(self.DataDict['bz'][:,:,:]*self.DataDict['bz'][:,:,:]) * self.DataDict['istep']**2*.5
                 #TotalBEnergy = BxEnergy + ByEnergy + BzEnergy
 
-                ExEnergy = np.sum(self.DataDict['ex'][:,:,:]*self.DataDict['ex'][:,:,:]) * self.DataDict['istep'][0]**2*.5
-                EyEnergy = np.sum(self.DataDict['ey'][:,:,:]*self.DataDict['ey'][:,:,:]) * self.DataDict['istep'][0]**2*.5
-                EzEnergy = np.sum(self.DataDict['ez'][:,:,:]*self.DataDict['ez'][:,:,:]) * self.DataDict['istep'][0]**2*.5
+                ExEnergy = np.sum(self.DataDict['ex'][:,:,:]*self.DataDict['ex'][:,:,:]) * self.DataDict['istep']**2*.5
+                EyEnergy = np.sum(self.DataDict['ey'][:,:,:]*self.DataDict['ey'][:,:,:]) * self.DataDict['istep']**2*.5
+                EzEnergy = np.sum(self.DataDict['ez'][:,:,:]*self.DataDict['ez'][:,:,:]) * self.DataDict['istep']**2*.5
 
                 #TotalEEnergy = ExEnergy + EyEnergy + EzEnergy
 

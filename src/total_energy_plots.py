@@ -67,7 +67,7 @@ class TotEnergyPanel:
 
     def LoadData(self):
         ''' A Helper function that loads the data for the plot'''
-        self.time = self.FigWrap.LoadKey('time')[0]
+        self.time = self.FigWrap.LoadKey('time')
 
 
     def draw(self):
