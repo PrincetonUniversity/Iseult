@@ -7,8 +7,8 @@ An example visualization of a Tristan-MP simulation.
 
 Written by:
 
-Patrick Crumley, patrick.crumley@gmail.com, based on Jaehong's Tristan analysis
-IDL script.
+- Patrick Crumley, patrick.crumley@gmail.com, based on Jaehong's Tristan analysis IDL script.
+- Robert Caddy, rcaddy@princeton.edu
 
 ## UPDATES:
 
