@@ -124,10 +124,10 @@ def test___handle_tristan_v2_datasets():
                 # catch the cases with warnings
                 if dataset_name in ['gamma0']:
                     with pytest.warns(UserWarning):
-                        result = data_loading.__handle_tristan_v2(data_dir, file, dataset_name, slice(None), None)
+                        result = data_loading.__handle_tristan_v2(data_dir/name, file, dataset_name, slice(None), None)
                 else:
-                    result = data_loading.__handle_tristan_v2(data_dir, file, dataset_name, slice(None), None)
-                    assert np.array_equiv(result, fiducial_data[name][i]), \
+                    result = data_loading.__handle_tristan_v2(data_dir/name, file, dataset_name, slice(None), None)
+                    assert np.array_equiv(result, fiducial_data[name][i].astype(np.float32)), \
                         f'Datasets {dataset_name} in file {name} do not match expectations.' \
                         f'Expected {fiducial_data[name][i] = } got {result = }'
 

@@ -211,6 +211,22 @@ def __handle_tristan_v2_spectra(spectra_file_path: pathlib.Path, spectra_file: h
 # =============================================================================
 
 # =============================================================================
+def __load_tristan_v2_density(field_file_path: pathlib.Path, field_file: h5py.File, density_number: int, dataset_slice: tuple | slice) -> np.ndarray:
+
+    # Find the parameter file
+    param_file_name = 'params' + field_file_path.suffix
+    param_file_path = field_file_path.parents[0] / param_file_name
+    if not param_file_path.is_file():
+        param_file_path = field_file_path.parents[1] / param_file_name
+
+    with h5py.File(param_file_path, 'r') as param_file:
+        density_data = field_file['dens'+str(density_number)][dataset_slice]
+        mass = param_file['particles:m' + str(density_number)][0]
+
+    return density_data / mass
+# =============================================================================
+
+# =============================================================================
 def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: str, dataset_slice: tuple | slice, cli_args: argparse.Namespace) -> np.ndarray | int | np.float64:
     """Load Tristan v2 data and perform any necessary transformation to convert it to the same format as Tristan v1 data
 
@@ -286,7 +302,7 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
               'jy':'jy',
               'jz':'jz',
               'dens':'compute_dens', # dens1 + dens2
-              'densi':'dens2',
+              'densi':'compute_dens2',
               # Spectra
               # HACK: These mappings are all first pass guesses, they still need to be verified
               'gamma':'ebins',
@@ -306,7 +322,7 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
                         f'when attempting to read from the file at {file_path}. Please add appropriate mapping')
 
     # Check if this dataset requires additional handling, if not then return it and exit early
-    special_handling_list = [v2_map['dens'], v2_map['gamma0'],
+    special_handling_list = [v2_map['dens'], v2_map['densi'], v2_map['gamma0'],
                              v2_map['spece'], v2_map['specerest'],
                              v2_map['specp'], v2_map['specprest'],
                              v2_map['my0'], v2_map['my']]
@@ -320,7 +336,9 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
 
     # Datasets that need special handling
     if dataset_name == v2_map['dens']:
-        return file['dens1'][dataset_slice] + file['dens2'][dataset_slice]
+        return __load_tristan_v2_density(file_path, file, 1, dataset_slice) + __load_tristan_v2_density(file_path, file, 2, dataset_slice)
+    if dataset_name == v2_map['densi']:
+        return __load_tristan_v2_density(file_path, file, 2, dataset_slice)
     elif dataset_name == v2_map['gamma0']:
         warnings.warn('"gamma0" is not present in Tristan v2 datasets. Setting gamma0=1')
         return np.array([1])
