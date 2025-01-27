@@ -937,7 +937,7 @@ class DensSettings(Tk.Toplevel):
             self.parent.SetPlotParam('set_v_max', self.setZmaxVar.get())
 
     def TxtEnter(self, e):
-        streamlines.streamlines_callback(self, update_plot=True) # not updating plots because FieldsCallback forces an update no matter what
+        streamlines.streamlines_callback(self, update_plot=True)
         self.FieldsCallback()
         self.GammaCallback()
 
