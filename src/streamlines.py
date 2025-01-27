@@ -106,7 +106,7 @@ def __show_streamline_handler(settings, panel):
     """
     # Write value to the settings dictionary
     settings.parent.SetPlotParam(
-        "show_streamlines", settings.show_streamlines.get(), update_plot=False
+        "show_streamlines", settings.show_streamlines.get(), update_plot=False, NeedsRedraw=True
     )
     # Either create the streamlines or remove them depending on the state of the checkbox
     if settings.parent.GetPlotParam("show_streamlines"):
