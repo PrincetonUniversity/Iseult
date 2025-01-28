@@ -106,12 +106,11 @@ def __show_streamline_handler(settings, panel):
     """
     # Write value to the settings dictionary
     settings.parent.SetPlotParam(
-        "show_streamlines", settings.show_streamlines.get(), update_plot=False
+        "show_streamlines", settings.show_streamlines.get(), update_plot=False, NeedsRedraw=True
     )
-    # Either create the streamlines or remove them depending on the state of the checkbox
-    if settings.parent.GetPlotParam("show_streamlines"):
-        draw_streamlines(panel)
-    else:
+
+    # Remove streamlines if the checkbox is unchecked
+    if not settings.parent.GetPlotParam("show_streamlines"):
         remove_streamlines(panel)
 
     # Update everything
@@ -129,7 +128,9 @@ def streamlines_callback(settings, update_plot=True):
         update_plot = False
 
     # Handle streamline stride
-    if settings.streamlines_stride.get() != settings.streamlines_stride:
+    if settings.streamlines_stride.get() != settings.parent.plot_param_dict['streamlines_stride']:
+        settings.parent.plot_param_dict['streamlines_stride'] = settings.streamlines_stride.get()
+
         settings.parent.SetPlotParam(
             "streamlines_stride",
             settings.streamlines_stride.get(),
@@ -137,7 +138,9 @@ def streamlines_callback(settings, update_plot=True):
         )
 
     # Handle streamline density
-    if settings.streamlines_density.get() != settings.streamlines_density:
+    if settings.streamlines_density.get() != settings.parent.plot_param_dict['streamlines_density']:
+        settings.parent.plot_param_dict['streamlines_density'] = settings.streamlines_density.get()
+
         settings.parent.SetPlotParam(
             "streamlines_density",
             settings.streamlines_density.get(),
@@ -145,7 +148,9 @@ def streamlines_callback(settings, update_plot=True):
         )
 
     # Handle streamline color
-    if settings.streamlines_color.get() != settings.streamlines_color:
+    if settings.streamlines_color.get() != settings.parent.plot_param_dict['streamlines_color']:
+        settings.parent.plot_param_dict['streamlines_color'] = settings.streamlines_color.get()
+
         settings.parent.SetPlotParam(
             "streamlines_color",
             settings.streamlines_color.get(),

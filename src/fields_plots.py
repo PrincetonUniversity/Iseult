@@ -1508,7 +1508,7 @@ class FieldSettings(Tk.Toplevel):
                 self.parent.SetPlotParam('show_z', self.ShowZVar.get())
 
     def TxtEnter(self, e):
-        streamlines.streamlines_callback(self, update_plot=False) # not updating plots because FieldsCallback forces an update no matter what
+        streamlines.streamlines_callback(self, update_plot=False)
         self.FieldsCallback()
         self.GammaCallback()
 
