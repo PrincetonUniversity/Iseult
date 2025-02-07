@@ -27,7 +27,7 @@ def __detect_tristan_data_version(file: h5py.File) -> int:
     # The fields to query were chosen only because they don't exist in the other version of Tristan
     #  Files:  particles fields   spectra  paramater: extra for improved matching on some dataset
     v1_keys = ('che',   'densi', 'gamma', 'acool')
-    v2_keys = ('ind_1', 'dens1', 'ebins', 'algorithm:c', 'ind_5')
+    v2_keys = ('ind_1', 'ind_2', 'ind_5', 'dens1', 'ebins', 'algorithm:c')
 
     if any(key in file for key in v1_keys):
         return 1
