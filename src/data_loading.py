@@ -34,7 +34,7 @@ def __detect_tristan_data_version(file: h5py.File) -> int:
     elif any(key in file for key in v2_keys):
         return 2
     else:
-        raise ValueError('Data file format is not supported. If this is a data file from Tristan v1 or v2 please submit a bug report.')
+        raise ValueError(f"Format of the file '{file.filename}' is not supported. If this is a data file from Tristan v1 or v2 please submit a bug report.")
 # =============================================================================
 
 # =============================================================================
