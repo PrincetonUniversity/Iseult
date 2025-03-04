@@ -101,7 +101,7 @@ def test___handle_tristan_v2_datasets():
                                      np.array((12000)),np.array((16.)),
                                      np.array((0.3)),np.array((2.)),
                                      np.array((240.)),np.array((1.)),
-                                     np.array((50.)),np.array((325025.))],
+                                     np.array((50.)),np.array((5850.449748151004))],
                      'prtl.tot.00070':[np.array((18.)),np.array((22.)),
                                        np.array((26.)),np.array((19.)),
                                        np.array((23.)),np.array((27.)),
@@ -127,7 +127,7 @@ def test___handle_tristan_v2_datasets():
                         result = data_loading.__handle_tristan_v2(data_dir/name, file, dataset_name, slice(None), None)
                 else:
                     result = data_loading.__handle_tristan_v2(data_dir/name, file, dataset_name, slice(None), None)
-                    assert np.array_equiv(result, fiducial_data[name][i].astype(np.float32)), \
+                    assert np.array_equiv(result.astype(np.float32), fiducial_data[name][i].astype(np.float32)), \
                         f'Datasets {dataset_name} in file {name} do not match expectations.' \
                         f'Expected {fiducial_data[name][i] = } got {result = }'
 

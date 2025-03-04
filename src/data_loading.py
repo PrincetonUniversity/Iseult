@@ -272,7 +272,7 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
               'sizey':'node_configuration:sizey',
               'qi':'particles:ch2',
               'stride':'output:stride',
-              'time':'timestep', # or maybe timestep/plasma:c_omp or possibly time:last
+              'time':'compute_time',
               'my':'special_my',
               # Particles file
               'ue':'u_1',
@@ -325,7 +325,7 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
     special_handling_list = [v2_map['dens'], v2_map['densi'], v2_map['gamma0'],
                              v2_map['spece'], v2_map['specerest'],
                              v2_map['specp'], v2_map['specprest'],
-                             v2_map['my0'], v2_map['my']]
+                             v2_map['my0'], v2_map['my'], v2_map['time']]
     if dataset_name not in special_handling_list:
         # Check that the dataset exists, return zero data and print warning if it doesn't.
         if dataset_name not in file:
@@ -348,6 +348,8 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
         warnings.warn('Rest frame spectra are not supported with Tristan v2 Data. Using dummy data.')
         shape = list(file['n1'].shape)
         return np.ones((shape[0],shape[-1])) # only use the energy and x dimensions since we would sum over the others normally
+    elif dataset_name == v2_map['time']:
+        return file['timestep'][dataset_slice] * (file['algorithm:c'][dataset_slice] / file['plasma:c_omp'][dataset_slice])
     elif dataset_name == v2_map['my0']:
         try:
             return file[dataset_name]
