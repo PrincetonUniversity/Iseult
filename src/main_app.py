@@ -1140,7 +1140,46 @@ class SettingsFrame(Tk.Toplevel):
                             command = self.RadioPlane,
                             value=1)
         self.xzbutton.pack(side = Tk.LEFT, expand = 0)
+        self.yzbutton = ttk.Radiobutton(framecb,
+                            text='y-z',
+                            variable=self.PlaneVar,
+                            command = self.RadioPlane,
+                            value=2)
+        self.yzbutton.pack(side = Tk.LEFT, expand = 0)
         framecb.grid(row = 12, columnspan = 4)
+
+        framex = ttk.Frame(frm)
+        self.xSliceVar = Tk.IntVar()
+        self.xSliceVar.set(self.parent.xSlice)
+        self.units_listx = []
+        for i in range(self.parent.MaxXInd+1):
+            self.units_listx.append(str(i*self.parent.istep/self.parent.c_omp))
+
+        self.xSliceVarC_omp = Tk.StringVar()
+        self.xSliceVarC_omp.set(self.units_listx[self.xSliceVar.get()])
+
+        labelx = ttk.Label(framex, text='x-slice')#
+        labelx.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+
+
+        # A slider that will select the 2D slice in the simulation
+        self.sliderx = ttk.Scale(framex, from_=0, to=self.parent.MaxXInd, command = self.xScaleHandler)
+        self.sliderx.set(self.xSliceVar.get())
+        self.sliderx.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
+
+
+        self.txtEnterx = ttk.Entry(framex, textvariable=self.xSliceVarC_omp, width=6)
+        self.txtEnterx.pack(side=Tk.LEFT, fill = Tk.BOTH, expand = 0)
+        if self.parent.MaxXInd ==0:
+            self.txtEnterx.state(['disabled'])
+            self.sliderx.state(['disabled'])
+        ttk.Label(framex, text='[c_omp]').pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+        # bind releasing the moust button to updating the plots.
+        self.sliderx.bind("<ButtonRelease-1>", self.xUpdateValue)
+
+
+        framex.grid(row = 13, columnspan =4)
+
         framey = ttk.Frame(frm)
         self.ySliceVar = Tk.IntVar()
         self.ySliceVar.set(self.parent.ySlice)
@@ -1171,7 +1210,7 @@ class SettingsFrame(Tk.Toplevel):
         self.slidery.bind("<ButtonRelease-1>", self.yUpdateValue)
 
 
-        framey.grid(row = 13, columnspan =4)
+        framey.grid(row = 14, columnspan =4)
 
         framez = ttk.Frame(frm)
         self.zSliceVar = Tk.IntVar()
@@ -1203,11 +1242,11 @@ class SettingsFrame(Tk.Toplevel):
             self.sliderz.state(['disabled'])
 
 
-        framez.grid(row = 14, columnspan =4)
+        framez.grid(row = 15, columnspan =4)
 
         cb = ttk.Checkbutton(frm, text = "Show Title",
                         variable = self.TitleVar)
-        cb.grid(row = 15, sticky = Tk.W)
+        cb.grid(row = 16, sticky = Tk.W)
         # Control whether or not axes are shared with a radio box:
         self.toLinkList = ['None', 'All spatial', 'All non p-x', 'All 2-D spatial']
         self.LinkedVar = Tk.IntVar()
@@ -1228,7 +1267,7 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Aspect = 1",
                                 variable = self.AspectVar)
-        cb.grid(row = 15, column = 1, sticky = Tk.W)
+        cb.grid(row = 16, column = 1, sticky = Tk.W)
 
         self.ConstantShockVar = Tk.IntVar()
         self.ConstantShockVar.set(self.parent.MainParamDict['ConstantShockVel'])
@@ -1236,12 +1275,12 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Constant Shock v",
                                 variable = self.ConstantShockVar)
-        cb.grid(row = 15, column = 2, sticky = Tk.W)
+        cb.grid(row = 16, column = 2, sticky = Tk.W)
 
         self.Average1DVar = Tk.IntVar()
         self.Average1DVar.set(self.parent.MainParamDict['Average1D'])
         self.Average1DVar.trace('w', self.AverageChanged)
-        ttk.Checkbutton(frm, text='1D Average',variable = self.Average1DVar).grid(row = 16, column = 2, sticky = Tk.W)
+        ttk.Checkbutton(frm, text='1D Average',variable = self.Average1DVar).grid(row = 17, column = 2, sticky = Tk.W)
 
         self.CbarOrientation = Tk.IntVar()
         self.CbarOrientation.set(self.parent.MainParamDict['HorizontalCbars'])
@@ -1249,7 +1288,7 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Horizontal Cbars",
                                 variable = self.CbarOrientation)
-        cb.grid(row = 16, sticky = Tk.W)
+        cb.grid(row = 17, sticky = Tk.W)
 
 
         self.LinkKVar = Tk.IntVar()
@@ -1258,18 +1297,24 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Share k-axes",
                                 variable = self.LinkKVar)
-        cb.grid(row = 16, column =1, sticky = Tk.W)
+        cb.grid(row = 17, column =1, sticky = Tk.W)
 
 
 
         self.LorentzBoostVar = Tk.IntVar()
         self.LorentzBoostVar.set(self.parent.MainParamDict['DoLorentzBoost'])
         self.LorentzBoostVar.trace('w', self.LorentzBoostChanged)
-        cb = ttk.Checkbutton(frm, text='Boost PhasePlots', variable =  self.LorentzBoostVar).grid(row = 17, sticky = Tk.W)
-        ttk.Label(frm, text='Gamma/Beta = \r (- for left boost)').grid(row= 17, rowspan = 2,column =1, sticky = Tk.E)
+        cb = ttk.Checkbutton(frm, text='Boost PhasePlots', variable =  self.LorentzBoostVar).grid(row = 18, sticky = Tk.W)
+        ttk.Label(frm, text='Gamma/Beta = \r (- for left boost)').grid(row= 18, rowspan = 2,column =1, sticky = Tk.E)
         self.GammaVar = Tk.StringVar()
         self.GammaVar.set(str(self.parent.MainParamDict['GammaBoost']))
-        ttk.Entry(frm, textvariable=self.GammaVar, width = 7).grid(row = 17, column = 2, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.GammaVar, width = 7).grid(row = 18, column = 2, sticky = Tk.N)
+
+    def xScaleHandler(self, e):
+        # if changing the scale will change the value of the parameter, do so
+        if self.xSliceVar.get() != int(self.sliderx.get()):
+            self.xSliceVar.set(int(self.sliderx.get()))
+            self.xSliceVarC_omp.set(self.units_listx[self.xSliceVar.get()])
 
     def yScaleHandler(self, e):
         # if changing the scale will change the value of the parameter, do so
@@ -1290,6 +1335,15 @@ class SettingsFrame(Tk.Toplevel):
         else:
             self.parent.MainParamDict['zSlice'] = float(self.zSliceVar.get())/self.parent.MaxZInd
             self.zSliceVarC_omp.set(self.units_listz[self.zSliceVar.get()])
+            self.parent.RenewCanvas()
+
+    def xUpdateValue(self, e):
+        if self.xSliceVar.get() == self.parent.xSlice:
+            pass
+
+        else:
+            self.parent.MainParamDict['xSlice'] = float(self.xSliceVar.get())/self.parent.MaxXInd
+            self.xSliceVarC_omp.set(self.units_listx[self.xSliceVar.get()])
             self.parent.RenewCanvas()
 
     def yUpdateValue(self, e):
@@ -1523,6 +1577,24 @@ class SettingsFrame(Tk.Toplevel):
 
     def CheckIfSliceChanged(self):
         to_reload = False
+        try:
+            #make sure the user types in a float
+            self.xSliceVar.set(int(np.around(float(self.xSliceVarC_omp.get())*self.parent.c_omp/self.parent.istep)))
+            if int(self.xSliceVar.get()) < 0:
+                self.xSliceVar.set(0)
+
+            elif int(self.xSliceVar.get()) > self.parent.MaxXInd:
+                self.xSliceVar.set(self.parent.MaxXInd)
+            self.xSliceVarC_omp.set(self.units_listx[self.xSliceVar.get()])
+            if self.xSliceVar.get() != int(np.around(self.parent.MainParamDict['xSlice']*self.parent.MaxXInd)):
+                self.parent.MainParamDict['xSlice'] = float(self.xSliceVar.get())/self.parent.MaxXInd
+                self.sliderx.set(self.xSliceVar.get())
+                to_reload += True
+        except ValueError:
+            #if they type in random stuff, just set it to the param value
+            self.xSliceVarC_omp.set(self.units_listx[self.xSliceVar.get()])
+
+
         try:
             #make sure the user types in a float
             self.ySliceVar.set(int(np.around(float(self.ySliceVarC_omp.get())*self.parent.c_omp/self.parent.istep)))
@@ -1968,9 +2040,10 @@ class MainApp(Tk.Tk):
         # the dictionary that will hold the parameters for the program.
         # See ./iseult_configs/Default.cfg for a description of what each parameter does.
         self.MainParamDict = {'zSlice': 0.0, # THIS IS A float WHICH IS THE RELATIVE POSITION OF THE 2D SLICE 0->1
-                              '2DSlicePlane': 0, # 0 = x-y plane, 1 == x-z plane
+                              '2DSlicePlane': 0, # 0 = x-y plane, 1 == x-z plane, 2 == y-z plane
                               'Average1D': 0,
                               'ySlice': 0.5, # THIS IS A FLOAT WHICH IS THE RELATIVE POSITION OF THE 1D SLICE 0->1
+                              'xSlice': 0.5, # THIS IS A FLOAT WHICH IS THE RELATIVE POSITION OF THE 1D SLICE 0->1
                               'WindowSize': '1200x700',
                               'yTop': 100.0,
                               'yBottom': 0.0,
@@ -2402,6 +2475,7 @@ class MainApp(Tk.Tk):
 
         self.ySlice = int(np.around(self.MainParamDict['ySlice']*self.MaxYInd))
         self.zSlice = int(np.around(self.MainParamDict['zSlice']*self.MaxZInd))
+        self.xSlice = int(np.around(self.MainParamDict['xSlice']*self.MaxXInd))
 
         # See if we are in a new Directory
         if self.NewDirectory:

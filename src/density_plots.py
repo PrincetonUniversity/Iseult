@@ -165,6 +165,15 @@ class DensPanel:
         if self.GetPlotParam('twoD'):
             # Link up the spatial axes if desired
             if self.parent.MainParamDict['LinkSpatial'] != 0:
+                # Need to be smart about sharing axes. If we are in the y-z plane, and the other plot
+                # is not 2D, then we shouldn't share the x-axis (because the other plot is likely 1D X-axis)
+                share_x_ax = None
+                if self.FigWrap.pos != self.parent.first_x:
+                     share_x_ax = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes
+                     if self.parent.MainParamDict['2DSlicePlane'] == 2:
+                         if not self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].GetPlotParam('twoD'):
+                             share_x_ax = None
+
                 if self.FigWrap.pos == self.parent.first_x and self.FigWrap.pos == self.parent.first_y:
                     self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
                 elif self.FigWrap.pos == self.parent.first_x:
@@ -172,10 +181,10 @@ class DensPanel:
                     sharey = self.parent.SubPlotList[self.parent.first_y[0]][self.parent.first_y[1]].graph.axes)
                 elif self.FigWrap.pos == self.parent.first_y:
                     self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]],
-                    sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
+                    sharex = share_x_ax)
                 else:
                     self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]],
-                    sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes,
+                    sharex = share_x_ax,
                     sharey = self.parent.SubPlotList[self.parent.first_y[0]][self.parent.first_y[1]].graph.axes)
 
 
@@ -225,6 +234,12 @@ class DensPanel:
                     self.cax = self.axes.imshow(self.zval[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower')
                 else:
                     self.cax = self.axes.imshow(self.zval[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower',
+                                                aspect = 'auto')
+            elif self.parent.MainParamDict['2DSlicePlane'] ==2: # y-z plane
+                if self.parent.MainParamDict['ImageAspect']:
+                    self.cax = self.axes.imshow(self.zval[:,:,self.parent.xSlice], norm = self.norm(), origin = 'lower')
+                else:
+                    self.cax = self.axes.imshow(self.zval[:,:,self.parent.xSlice], norm = self.norm(), origin = 'lower',
                                                 aspect = 'auto')
 
 
@@ -330,6 +345,9 @@ class DensPanel:
             if self.parent.MainParamDict['2DSlicePlane'] == 0:
                 self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             if self.parent.MainParamDict['2DSlicePlane'] == 1:
+                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            if self.parent.MainParamDict['2DSlicePlane'] == 2:
+                self.axes.set_xlabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
                 self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
 
@@ -488,6 +506,8 @@ class DensPanel:
                     self.cax.set_data(self.dens[self.parent.zSlice,:,:])
                 elif self.parent.MainParamDict['2DSlicePlane'] == 1: # x-z plane
                     self.cax.set_data(self.dens[:,self.parent.ySlice,:])
+                elif self.parent.MainParamDict['2DSlicePlane'] == 2: # y-z plane
+                    self.cax.set_data(self.dens[:,:,self.parent.xSlice])
 
 
 
@@ -496,16 +516,22 @@ class DensPanel:
                     self.cax.set_data(self.densi[self.parent.zSlice,:,:])
                 elif self.parent.MainParamDict['2DSlicePlane'] == 1: # x-z plane
                     self.cax.set_data(self.densi[:,self.parent.ySlice,:])
+                elif self.parent.MainParamDict['2DSlicePlane'] == 2: # y-z plane
+                    self.cax.set_data(self.densi[:,:,self.parent.xSlice])
             elif self.GetPlotParam('dens_type')==2:
                 if self.parent.MainParamDict['2DSlicePlane'] == 0: # x-y plane
                     self.cax.set_data(self.dense[self.parent.zSlice,:,:])
                 elif self.parent.MainParamDict['2DSlicePlane'] == 1: # x-z plane
                     self.cax.set_data(self.dense[:,self.parent.ySlice,:])
+                elif self.parent.MainParamDict['2DSlicePlane'] == 2: # y-z plane
+                    self.cax.set_data(self.dense[:,:,self.parent.xSlice])
             elif self.GetPlotParam('dens_type')==3:
                 if self.parent.MainParamDict['2DSlicePlane'] == 0: # x-y plane
                     self.cax.set_data(self.rho[self.parent.zSlice,:,:])
                 elif self.parent.MainParamDict['2DSlicePlane'] == 1: # x-z plane
                     self.cax.set_data(self.rho[:,self.parent.ySlice,:])
+                elif self.parent.MainParamDict['2DSlicePlane'] == 2: # y-z plane
+                    self.cax.set_data(self.rho[:,:,self.parent.xSlice])
 
 
             if self.GetPlotParam('normalize_density'):
@@ -515,9 +541,9 @@ class DensPanel:
             self.ymin = 0
             self.ymax =  self.cax.get_array().shape[0]/self.c_omp*self.istep
             self.xmin = 0
-            self.xmax =  self.xaxis_values[-1]
+            self.xmax =  self.cax.get_array().shape[1]/self.c_omp*self.istep
             self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
-            if self.parent.MainParamDict['SetxLim']:
+            if self.parent.MainParamDict['SetxLim'] and self.parent.MainParamDict['2DSlicePlane'] != 2:
                 if self.parent.MainParamDict['xLimsRelative']:
                     self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
                                        self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
@@ -534,6 +560,9 @@ class DensPanel:
             if self.parent.MainParamDict['2DSlicePlane'] == 0:
                 self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             if self.parent.MainParamDict['2DSlicePlane'] == 1:
+                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            if self.parent.MainParamDict['2DSlicePlane'] == 2:
+                self.axes.set_xlabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
                 self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             self.vmin = self.cax.get_array().min()
             if self.GetPlotParam('set_v_min'):
