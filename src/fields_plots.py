@@ -915,7 +915,7 @@ class FieldsPanel:
                 self.clims = [self.cax.get_array().min(), self.cax.get_array().max()]
 
 
-            if self.parent.MainParamDict['SetxLim']:
+            if self.parent.MainParamDict['SetxLim'] and self.parent.MainParamDict['2DSlicePlane'] != 2:
                 if self.parent.MainParamDict['xLimsRelative']:
                     self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
                                        self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
