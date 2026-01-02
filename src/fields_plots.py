@@ -882,6 +882,8 @@ class FieldsPanel:
                     self.cax.set_data(self.fx[self.parent.zSlice,:,:])
                 elif self.parent.MainParamDict['2DSlicePlane'] == 1: #x-z plane
                     self.cax.set_data(self.fx[:,self.parent.ySlice,:])
+                elif self.parent.MainParamDict['2DSlicePlane'] == 2: #y-z plane
+                    self.cax.set_data(self.fx[:,:,self.parent.xSlice])
 
             elif self.GetPlotParam('show_y') and self.flagy >1:
                 self.plotFlag = 1
@@ -889,6 +891,8 @@ class FieldsPanel:
                     self.cax.set_data(self.fy[self.parent.zSlice,:,:])
                 elif self.parent.MainParamDict['2DSlicePlane'] == 1: #x-z plane
                     self.cax.set_data(self.fy[:,self.parent.ySlice,:])
+                elif self.parent.MainParamDict['2DSlicePlane'] == 2: #y-z plane
+                    self.cax.set_data(self.fy[:,:,self.parent.xSlice])
 
             elif self.GetPlotParam('show_z') and self.flagz>1:
                 self.plotFlag = 2
@@ -896,6 +900,8 @@ class FieldsPanel:
                     self.cax.set_data(self.fz[self.parent.zSlice,:,:])
                 elif self.parent.MainParamDict['2DSlicePlane'] == 1: #x-z plane
                     self.cax.set_data(self.fz[:,self.parent.ySlice,:])
+                elif self.parent.MainParamDict['2DSlicePlane'] == 2: #y-z plane
+                    self.cax.set_data(self.fz[:,:,self.parent.xSlice])
             else:
                 self.cax.set_data(np.ma.masked_array(np.empty([2,2]), mask = np.ones([2,2])))
                 self.clims = [None, None]
