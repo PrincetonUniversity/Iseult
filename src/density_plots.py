@@ -165,6 +165,15 @@ class DensPanel:
         if self.GetPlotParam('twoD'):
             # Link up the spatial axes if desired
             if self.parent.MainParamDict['LinkSpatial'] != 0:
+                # Need to be smart about sharing axes. If we are in the y-z plane, and the other plot
+                # is not 2D, then we shouldn't share the x-axis (because the other plot is likely 1D X-axis)
+                share_x_ax = None
+                if self.FigWrap.pos != self.parent.first_x:
+                     share_x_ax = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes
+                     if self.parent.MainParamDict['2DSlicePlane'] == 2:
+                         if not self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].GetPlotParam('twoD'):
+                             share_x_ax = None
+
                 if self.FigWrap.pos == self.parent.first_x and self.FigWrap.pos == self.parent.first_y:
                     self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
                 elif self.FigWrap.pos == self.parent.first_x:
@@ -172,10 +181,10 @@ class DensPanel:
                     sharey = self.parent.SubPlotList[self.parent.first_y[0]][self.parent.first_y[1]].graph.axes)
                 elif self.FigWrap.pos == self.parent.first_y:
                     self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]],
-                    sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
+                    sharex = share_x_ax)
                 else:
                     self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]],
-                    sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes,
+                    sharex = share_x_ax,
                     sharey = self.parent.SubPlotList[self.parent.first_y[0]][self.parent.first_y[1]].graph.axes)
 
 
