@@ -905,7 +905,7 @@ class FieldsPanel:
                 self.ymin = 0
                 self.ymax =  self.cax.get_array().shape[0]/self.c_omp*self.istep
                 self.xmin = 0
-                self.xmax =  self.xaxis_values[-1]
+                self.xmax =  self.cax.get_array().shape[1]/self.c_omp*self.istep
                 self.clims = [self.cax.get_array().min(), self.cax.get_array().max()]
 
 
@@ -952,6 +952,9 @@ class FieldsPanel:
             if self.parent.MainParamDict['2DSlicePlane'] == 0:
                 self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             if self.parent.MainParamDict['2DSlicePlane'] == 1:
+                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            if self.parent.MainParamDict['2DSlicePlane'] == 2:
+                self.axes.set_xlabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
                 self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
         if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):

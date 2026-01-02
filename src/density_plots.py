@@ -532,7 +532,7 @@ class DensPanel:
             self.ymin = 0
             self.ymax =  self.cax.get_array().shape[0]/self.c_omp*self.istep
             self.xmin = 0
-            self.xmax =  self.xaxis_values[-1]
+            self.xmax =  self.cax.get_array().shape[1]/self.c_omp*self.istep
             self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
             if self.parent.MainParamDict['SetxLim']:
                 if self.parent.MainParamDict['xLimsRelative']:
