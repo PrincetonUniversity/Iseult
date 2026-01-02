@@ -444,6 +444,12 @@ class FieldsPanel:
                     else:
                         self.cax = self.axes.imshow(self.fx[:,self.parent.ySlice,:], origin = 'lower', norm = self.norm(),
                                                     aspect= 'auto')
+                elif self.parent.MainParamDict['2DSlicePlane'] == 2: # Show the y-z plane
+                    if self.parent.MainParamDict['ImageAspect']:
+                        self.cax = self.axes.imshow(self.fx[:,:,self.parent.xSlice], norm = self.norm(), origin = 'lower')
+                    else:
+                        self.cax = self.axes.imshow(self.fx[:,:,self.parent.xSlice], origin = 'lower', norm = self.norm(),
+                                                    aspect= 'auto')
 
                 self.plotFlag = 0
                 self.SetPlotParam('show_y', 0, update_plot = False)
@@ -461,6 +467,12 @@ class FieldsPanel:
                         self.cax = self.axes.imshow(self.fy[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower')
                     else:
                         self.cax = self.axes.imshow(self.fy[:,self.parent.ySlice,:], origin = 'lower', norm = self.norm(),
+                                                    aspect= 'auto')
+                elif self.parent.MainParamDict['2DSlicePlane'] == 2: # Show the y-z plane
+                    if self.parent.MainParamDict['ImageAspect']:
+                        self.cax = self.axes.imshow(self.fy[:,:,self.parent.xSlice], norm = self.norm(), origin = 'lower')
+                    else:
+                        self.cax = self.axes.imshow(self.fy[:,:,self.parent.xSlice], origin = 'lower', norm = self.norm(),
                                                     aspect= 'auto')
                 self.plotFlag = 1
                 self.SetPlotParam('show_x', 0, update_plot = False)
@@ -481,6 +493,12 @@ class FieldsPanel:
                         self.cax = self.axes.imshow(self.fz[:,self.parent.ySlice,:], norm = self.norm(), origin = 'lower')
                     else:
                         self.cax = self.axes.imshow(self.fz[:,self.parent.ySlice,:], origin = 'lower', norm = self.norm(),
+                                                    aspect= 'auto')
+                elif self.parent.MainParamDict['2DSlicePlane'] == 2: # Show the y-z plane
+                    if self.parent.MainParamDict['ImageAspect']:
+                        self.cax = self.axes.imshow(self.fz[:,:,self.parent.xSlice], norm = self.norm(), origin = 'lower')
+                    else:
+                        self.cax = self.axes.imshow(self.fz[:,:,self.parent.xSlice], origin = 'lower', norm = self.norm(),
                                                     aspect= 'auto')
 
                 self.plotFlag = 2
@@ -598,10 +616,14 @@ class FieldsPanel:
                 self.axes.set_ylim(self.parent.MainParamDict['yBottom'],self.parent.MainParamDict['yTop'])
             else:
                 self.axes.set_ylim(self.ymin, self.ymax)
-            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             if self.parent.MainParamDict['2DSlicePlane'] == 0:
+                self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
                 self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             if self.parent.MainParamDict['2DSlicePlane'] == 1:
+                self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            if self.parent.MainParamDict['2DSlicePlane'] == 2:
+                self.axes.set_xlabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
                 self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
         else: # It's 1D
