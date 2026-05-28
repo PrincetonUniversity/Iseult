@@ -2356,6 +2356,7 @@ class MainApp(Tk.Tk):
         self.canvas.get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
         self.ReDrawCanvas()
         self.f.canvas.mpl_connect('button_press_event', self.onclick)
+        self.f.canvas.mpl_connect('button_release_event', self.on_release)
 
     def LoadConfig(self, config_file):
         # First get rid of any & all pop up windows:
@@ -3375,6 +3376,61 @@ class MainApp(Tk.Tk):
         SaveDialog(self)
     def OpenMovieDialog(self):
         MovieDialog(self)
+
+    def get_active_viewport(self):
+        if not hasattr(self, 'SubPlotList') or self.SubPlotList is None:
+            return None
+        for i in range(self.MainParamDict['NumOfRows']):
+            if i >= len(self.SubPlotList):
+                continue
+            for j in range(self.MainParamDict['NumOfCols']):
+                if j >= len(self.SubPlotList[i]):
+                    continue
+                subplot = self.SubPlotList[i][j]
+                if subplot.chartType in ['FieldsPlot', 'DensityPlot', 'MagPlots', 'Moments']:
+                    if subplot.graph and subplot.graph.GetPlotParam('twoD'):
+                        if hasattr(subplot.graph, 'axes') and subplot.graph.axes is not None:
+                            xlim = subplot.graph.axes.get_xlim()
+                            ylim = subplot.graph.axes.get_ylim()
+                            plane = self.MainParamDict['2DSlicePlane']
+                            xlim_min, xlim_max = min(xlim), max(xlim)
+                            ylim_min, ylim_max = min(ylim), max(ylim)
+                            return (xlim_min, xlim_max, ylim_min, ylim_max, plane)
+        return None
+
+    def on_release(self, event):
+        # Defer limit check slightly to let toolbar updates complete
+        self.after(100, self.check_limits_and_renew)
+
+    def check_limits_and_renew(self):
+        # Check if there is any PhasePlot with filter_by_viewport enabled
+        has_viewport_phase_plot = False
+        if hasattr(self, 'SubPlotList') and self.SubPlotList is not None:
+            for i in range(self.MainParamDict['NumOfRows']):
+                if i >= len(self.SubPlotList):
+                    continue
+                for j in range(self.MainParamDict['NumOfCols']):
+                    if j >= len(self.SubPlotList[i]):
+                        continue
+                    subplot = self.SubPlotList[i][j]
+                    if subplot.chartType in ['PhasePlot', 'Moments'] and subplot.graph:
+                        if subplot.graph.GetPlotParam('filter_by_viewport'):
+                            has_viewport_phase_plot = True
+                            break
+                if has_viewport_phase_plot:
+                    break
+
+        if not has_viewport_phase_plot:
+            return
+
+        # Get current active viewport
+        viewport = self.get_active_viewport()
+        if viewport is None:
+            return
+
+        # Compare with the last used viewport for phase plots
+        if not hasattr(self, 'last_phase_viewport') or self.last_phase_viewport != viewport:
+            self.RenewCanvas(keep_view=True)
 
     def onclick(self, event):
         '''After being clicked, we should use the x and y of the cursor to

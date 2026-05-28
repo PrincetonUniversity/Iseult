@@ -35,6 +35,7 @@ class  MomentsPanel:
                        'symmetric': False,
                        'logy': False,
                        'legend_loc': 'N/A',
+                       'filter_by_viewport': True,
                        'face_color': 'gainsboro'
                        } # legend_loc is a string that stores the
                          # location of the legend in figure pixels.
@@ -70,12 +71,73 @@ class  MomentsPanel:
 
 
 
+    def get_active_viewport_headless(self, output):
+        if not hasattr(self.parent, 'SubPlotList') or self.parent.SubPlotList is None:
+            return None
+        for i in range(self.parent.MainParamDict['NumOfRows']):
+            if i >= len(self.parent.SubPlotList):
+                continue
+            for j in range(self.parent.MainParamDict['NumOfCols']):
+                if j >= len(self.parent.SubPlotList[i]):
+                    continue
+                subplot = self.parent.SubPlotList[i][j]
+                chartType = getattr(subplot, 'chartType', '')
+                if chartType in ['FieldsPlot', 'DensityPlot', 'MagPlots', 'Moments']:
+                    twoD = False
+                    if hasattr(subplot, 'GetPlotParam'):
+                        twoD = subplot.GetPlotParam('twoD')
+                    elif hasattr(subplot, 'param_dict'):
+                        twoD = subplot.param_dict.get('twoD', False)
+                    if twoD:
+                        if hasattr(subplot, 'axes') and subplot.axes is not None:
+                            xlim = subplot.axes.get_xlim()
+                            ylim = subplot.axes.get_ylim()
+                        else:
+                            c_omp = getattr(output, 'c_omp', 1.0)
+                            istep = getattr(output, 'istep', 1.0)
+                            xlim_min = 0.0
+                            xlim_max = getattr(output, 'bx').shape[2] / c_omp * istep
+                            if self.parent.MainParamDict['SetxLim']:
+                                if self.parent.MainParamDict['xLimsRelative']:
+                                    shock_loc = getattr(self.parent, 'shock_loc', 0.0)
+                                    xlim_min = self.parent.MainParamDict['xLeft'] + shock_loc
+                                    xlim_max = self.parent.MainParamDict['xRight'] + shock_loc
+                                else:
+                                    xlim_min = self.parent.MainParamDict['xLeft']
+                                    xlim_max = self.parent.MainParamDict['xRight']
+                            
+                            ylim_min = 0.0
+                            plane = self.parent.MainParamDict['2DSlicePlane']
+                            if plane == 0:
+                                shape_val = getattr(output, 'bx').shape[1]
+                            elif plane == 1:
+                                shape_val = getattr(output, 'bx').shape[0]
+                            else:
+                                shape_val = getattr(output, 'bx').shape[0]
+                            ylim_max = shape_val / c_omp * istep
+                            
+                            if self.parent.MainParamDict['SetyLim']:
+                                ylim_min = self.parent.MainParamDict['yBottom']
+                                ylim_max = self.parent.MainParamDict['yTop']
+                            
+                            xlim = (xlim_min, xlim_max)
+                            ylim = (ylim_min, ylim_max)
+                            
+                        plane = self.parent.MainParamDict['2DSlicePlane']
+                        xlim_min, xlim_max = min(xlim), max(xlim)
+                        ylim_min, ylim_max = min(ylim), max(ylim)
+                        return (xlim_min, xlim_max, ylim_min, ylim_max, plane)
+        return None
+
     def update_data(self, output):
         ''' A function that draws the data. In the interest in speeding up the
         code, draw should only be called when you want to recreate the whole
         figure, i.e. it  will be slow. Most times you will only want to update
         what has changed in the figure. This will be done in a function called
         refresh, that should be much much faster.'''
+        self.viewport = None
+        if self.GetPlotParam('filter_by_viewport'):
+            self.viewport = self.get_active_viewport_headless(output)
 
         self.c_omp = getattr(output, 'c_omp')
         self.istep = getattr(output, 'istep')
@@ -106,15 +168,107 @@ class  MomentsPanel:
         self.iz = np.zeros(xbn)
         self.icounts = np.zeros(xbn)
 
+        if self.GetPlotParam('weighted'):
+            eweights = getattr(output, 'che')
+            iweights = getattr(output, 'chi')
+
+        # Filter by viewport if active
+        if self.viewport is not None:
+            xlim_0, xlim_1, ylim_0, ylim_1, plane = self.viewport
+            xlim_min, xlim_max = min(xlim_0, xlim_1), max(xlim_0, xlim_1)
+            ylim_min, ylim_max = min(ylim_0, ylim_1), max(ylim_0, ylim_1)
+
+            inRangeElectrons = np.ones(len(self.xe), dtype=bool)
+            inRangeIons = np.ones(len(self.xi), dtype=bool)
+
+            # Filter by x-coordinate
+            inRangeElectrons &= (self.xe/self.c_omp >= xlim_min) & (self.xe/self.c_omp <= xlim_max)
+            inRangeIons &= (self.xi/self.c_omp >= xlim_min) & (self.xi/self.c_omp <= xlim_max)
+
+            # Filter by transverse coordinate
+            if plane == 0: # x-y plane
+                if hasattr(output, 'ye'):
+                    try:
+                        ye = getattr(output, 'ye') / self.c_omp
+                        inRangeElectrons &= (ye >= ylim_min) & (ye <= ylim_max)
+                    except Exception:
+                        pass
+                if hasattr(output, 'yi'):
+                    try:
+                        yi = getattr(output, 'yi') / self.c_omp
+                        inRangeIons &= (yi >= ylim_min) & (yi <= ylim_max)
+                    except Exception:
+                        pass
+            elif plane == 1: # x-z plane
+                if hasattr(output, 'ze'):
+                    try:
+                        ze = getattr(output, 'ze') / self.c_omp
+                        inRangeElectrons &= (ze >= ylim_min) & (ze <= ylim_max)
+                    except Exception:
+                        pass
+                if hasattr(output, 'zi'):
+                    try:
+                        zi = getattr(output, 'zi') / self.c_omp
+                        inRangeIons &= (zi >= ylim_min) & (zi <= ylim_max)
+                    except Exception:
+                        pass
+            elif plane == 2: # y-z plane
+                if hasattr(output, 'ye'):
+                    try:
+                        ye = getattr(output, 'ye') / self.c_omp
+                        inRangeElectrons &= (ye >= xlim_min) & (ye <= xlim_max)
+                    except Exception:
+                        pass
+                if hasattr(output, 'ze'):
+                    try:
+                        ze = getattr(output, 'ze') / self.c_omp
+                        inRangeElectrons &= (ze >= ylim_min) & (ze <= ylim_max)
+                    except Exception:
+                        pass
+                if hasattr(output, 'yi'):
+                    try:
+                        yi = getattr(output, 'yi') / self.c_omp
+                        inRangeIons &= (yi >= xlim_min) & (yi <= xlim_max)
+                    except Exception:
+                        pass
+                if hasattr(output, 'zi'):
+                    try:
+                        zi = getattr(output, 'zi') / self.c_omp
+                        inRangeIons &= (zi >= ylim_min) & (zi <= ylim_max)
+                    except Exception:
+                        pass
+
+            # Apply filter to electron arrays
+            self.xe = self.xe[inRangeElectrons]
+            self.ue = self.ue[inRangeElectrons]
+            self.ve = self.ve[inRangeElectrons]
+            self.we = self.we[inRangeElectrons]
+            if self.GetPlotParam('weighted'):
+                eweights = eweights[inRangeElectrons]
+
+            # Apply filter to ion arrays
+            self.xi = self.xi[inRangeIons]
+            self.ui = self.ui[inRangeIons]
+            self.vi = self.vi[inRangeIons]
+            self.wi = self.wi[inRangeIons]
+            if self.GetPlotParam('weighted'):
+                iweights = iweights[inRangeIons]
+
         if self.memi==0:
-            self.xmin = np.min(self.xe)/self.c_omp
-            self.xmax = np.max(self.xe)/self.c_omp
+            self.xmin = 0.0 if len(self.xe) == 0 else np.min(self.xe)/self.c_omp
+            self.xmax = 0.0 if len(self.xe) == 0 else np.max(self.xe)/self.c_omp
             self.memi = 1.0
             self.SetPlotParam('show_ions', False, update_plot = False)
             self.ylabel_list = [r'$\langle \beta \rangle$',r'$\langle \gamma\beta\rangle$', r'$\langle KE \rangle/m_ec^2$']
         else:
-            self.xmin = min(np.min(self.xi), np.min(self.xe))/self.c_omp
-            self.xmax = max(np.max(self.xi), np.max(self.xe))/self.c_omp
+            self.xmin = min(0.0 if len(self.xi) == 0 else np.min(self.xi), 0.0 if len(self.xe) == 0 else np.min(self.xe))/self.c_omp
+            self.xmax = max(0.0 if len(self.xi) == 0 else np.max(self.xi), 0.0 if len(self.xe) == 0 else np.max(self.xe))/self.c_omp
+
+        if self.viewport is not None and plane in [0, 1]:
+            self.xmin = xlim_min
+            self.xmax = xlim_max
+
+        self.xmax = self.xmax if (self.xmax != self.xmin) else self.xmin + 1
         bin_width = (self.xmax-self.xmin)/float(xbn)*self.c_omp
         self.x_bins = np.linspace(self.xmin, self.xmax, num = xbn+1)
 
@@ -129,10 +283,10 @@ class  MomentsPanel:
                 CalcVHists(self.xe,self.ue, self.ve, self.we, ge, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
                 CalcVHists(self.xi,self.ui, self.vi, self.wi, gi, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
             else:
-                eweights = getattr(output, 'che')
+                eweights = eweights
                 CalcVWeightedHists(self.xe,self.ue, self.ve, self.we, ge,eweights, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
 
-                iweights = getattr(output, 'chi')
+                iweights = iweights
                 CalcVWeightedHists(self.xi,self.ui, self.vi, self.wi, gi, iweights, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
 
         if self.GetPlotParam('m_type') == 1:
@@ -141,9 +295,9 @@ class  MomentsPanel:
                 CalcPHists(self.xe,self.ue, self.ve, self.we, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
                 CalcPHists(self.xi,self.ui, self.vi, self.wi, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
             else:
-                eweights = getattr(output, 'che')
+                eweights = eweights
                 CalcPWeightedHists(self.xe,self.ue, self.ve, self.we, eweights, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
-                iweights = getattr(output, 'chi')
+                iweights = iweights
                 CalcPWeightedHists(self.xi,self.ui, self.vi, self.wi, iweights, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
 
             self.ex *= self.memi
@@ -170,8 +324,8 @@ class  MomentsPanel:
 
 
             else:
-                eweights = getattr(output, 'che')
-                iweights = getattr(output, 'chi')
+                eweights = eweights
+                iweights = iweights
                 # We'll put the Temp histograms into ex and ix, and Energy into ey and iy
                 CalcVxEWeightedHists(self.xe,self.ue, ge, eweights, bin_width, self.xmin, vex, self.ey, self.ecounts)
                 CalcVxEWeightedHists(self.xi,self.ui, gi, iweights, bin_width, self.xmin, vix, self.iy, self.icounts)
