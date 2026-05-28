@@ -157,7 +157,7 @@ class SubPlotWrapper:
             self.Changedto1D = not self.PlotParamsDict[self.chartType]['twoD']
             self.Changedto2D = self.PlotParamsDict[self.chartType]['twoD']
 
-        self.parent.RenewCanvas(ForceRedraw = True)
+        self.parent.after(100, lambda: self.parent.RenewCanvas(ForceRedraw = True))
 
     def GenParamDict(self):
         '''First we create dictionary of dictionarys that will store all of the
