@@ -189,9 +189,10 @@ class  MomentsPanel:
                 inRangeElectrons = np.ones(len(self.xe), dtype=bool)
                 inRangeIons = np.ones(len(self.xi), dtype=bool)
 
-                # Filter by x-coordinate
-                inRangeElectrons &= (self.xe/self.c_omp >= xlim_min) & (self.xe/self.c_omp <= xlim_max)
-                inRangeIons &= (self.xi/self.c_omp >= xlim_min) & (self.xi/self.c_omp <= xlim_max)
+                # Filter by x-coordinate if plane is x-y or x-z
+                if plane in [0, 1]:
+                    inRangeElectrons &= (self.xe/self.c_omp >= xlim_min) & (self.xe/self.c_omp <= xlim_max)
+                    inRangeIons &= (self.xi/self.c_omp >= xlim_min) & (self.xi/self.c_omp <= xlim_max)
 
                 # Filter by transverse coordinate
                 if plane == 0: # x-y plane
@@ -281,14 +282,11 @@ class  MomentsPanel:
                 ge = np.empty(len(self.ue))
                 LorentzFactor(self.ue, self.ve, self.we, ge)
                 if not self.GetPlotParam('weighted'):
-                    CalcVHists(self.xe,self.ue, self.ve, self.we, ge, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
-                    CalcVHists(self.xi,self.ui, self.vi, self.wi, gi, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
+                    CalcVHists(self.xe,self.ue, self.ve, self.we, ge, bin_width, self.xmin * self.c_omp, self.ex, self.ey, self.ez, self.ecounts)
+                    CalcVHists(self.xi,self.ui, self.vi, self.wi, gi, bin_width, self.xmin * self.c_omp, self.ix, self.iy, self.iz, self.icounts)
                 else:
-                    eweights = self.FigWrap.LoadKey('che')
-                    CalcVWeightedHists(self.xe,self.ue, self.ve, self.we, ge,eweights, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
-
-                    iweights = self.FigWrap.LoadKey('chi')
-                    CalcVWeightedHists(self.xi,self.ui, self.vi, self.wi, gi, iweights, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
+                    CalcVWeightedHists(self.xe,self.ue, self.ve, self.we, ge,eweights, bin_width, self.xmin * self.c_omp, self.ex, self.ey, self.ez, self.ecounts)
+                    CalcVWeightedHists(self.xi,self.ui, self.vi, self.wi, gi, iweights, bin_width, self.xmin * self.c_omp, self.ix, self.iy, self.iz, self.icounts)
 
                 self.parent.DataDict[self.key_name+'ex'] = self.ex
                 self.parent.DataDict[self.key_name+'ey'] = self.ey
@@ -303,13 +301,11 @@ class  MomentsPanel:
             if self.GetPlotParam('m_type') == 1:
                 # Calculate px, py, pz
                 if not self.GetPlotParam('weighted'):
-                    CalcPHists(self.xe,self.ue, self.ve, self.we, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
-                    CalcPHists(self.xi,self.ui, self.vi, self.wi, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
+                    CalcPHists(self.xe,self.ue, self.ve, self.we, bin_width, self.xmin * self.c_omp, self.ex, self.ey, self.ez, self.ecounts)
+                    CalcPHists(self.xi,self.ui, self.vi, self.wi, bin_width, self.xmin * self.c_omp, self.ix, self.iy, self.iz, self.icounts)
                 else:
-                    eweights = self.FigWrap.LoadKey('che')
-                    CalcPWeightedHists(self.xe,self.ue, self.ve, self.we, eweights, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
-                    iweights = self.FigWrap.LoadKey('chi')
-                    CalcPWeightedHists(self.xi,self.ui, self.vi, self.wi, iweights, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
+                    CalcPWeightedHists(self.xe,self.ue, self.ve, self.we, eweights, bin_width, self.xmin * self.c_omp, self.ex, self.ey, self.ez, self.ecounts)
+                    CalcPWeightedHists(self.xi,self.ui, self.vi, self.wi, iweights, bin_width, self.xmin * self.c_omp, self.ix, self.iy, self.iz, self.icounts)
 
                 self.ex *= self.memi
                 self.ey *= self.memi
@@ -336,22 +332,20 @@ class  MomentsPanel:
 
                 if not self.GetPlotParam('weighted'):
                     # We'll put the Energy histograms into ex and ix, and delE intos ey and iy
-                    CalcVxEHists(self.xe,self.ue, ge, bin_width, self.xmin,  vex, self.ey, self.ecounts)
-                    CalcVxEHists(self.xi,self.ui, gi, bin_width, self.xmin, vix, self.iy, self.icounts)
+                    CalcVxEHists(self.xe,self.ue, ge, bin_width, self.xmin * self.c_omp,  vex, self.ey, self.ecounts)
+                    CalcVxEHists(self.xi,self.ui, gi, bin_width, self.xmin * self.c_omp, vix, self.iy, self.icounts)
 
-                    CalcDelGamHists(self.xe, self.ue, self.ve, self.we, ge, vix, 1/np.sqrt(1-vix**2), bin_width, self.xmin, self.ecounts, self.ex)
-                    CalcDelGamHists(self.xi, self.ui, self.vi, self.wi, gi, vex, 1/np.sqrt(1-vex**2), bin_width, self.xmin, self.icounts, self.ix)
+                    CalcDelGamHists(self.xe, self.ue, self.ve, self.we, ge, vix, 1/np.sqrt(1-vix**2), bin_width, self.xmin * self.c_omp, self.ecounts, self.ex)
+                    CalcDelGamHists(self.xi, self.ui, self.vi, self.wi, gi, vex, 1/np.sqrt(1-vex**2), bin_width, self.xmin * self.c_omp, self.icounts, self.ix)
 
 
                 else:
-                    eweights = self.FigWrap.LoadKey('che')
-                    iweights = self.FigWrap.LoadKey('chi')
                     # We'll put the Temp histograms into ex and ix, and Energy into ey and iy
-                    CalcVxEWeightedHists(self.xe,self.ue, ge, eweights, bin_width, self.xmin, vex, self.ey, self.ecounts)
-                    CalcVxEWeightedHists(self.xi,self.ui, gi, iweights, bin_width, self.xmin, vix, self.iy, self.icounts)
+                    CalcVxEWeightedHists(self.xe,self.ue, ge, eweights, bin_width, self.xmin * self.c_omp, vex, self.ey, self.ecounts)
+                    CalcVxEWeightedHists(self.xi,self.ui, gi, iweights, bin_width, self.xmin * self.c_omp, vix, self.iy, self.icounts)
 
-                    CalcDelGamWeightedHists(self.xe, self.ue, self.ve, self.we, ge, eweights, vex,  1/np.sqrt(1-vex**2), bin_width, self.xmin, self.ecounts, self.ex)
-                    CalcDelGamWeightedHists(self.xi, self.ui, self.vi, self.wi, gi, iweights, vix,  1/np.sqrt(1-vix**2), bin_width, self.xmin, self.icounts, self.ix)
+                    CalcDelGamWeightedHists(self.xe, self.ue, self.ve, self.we, ge, eweights, vex,  1/np.sqrt(1-vex**2), bin_width, self.xmin * self.c_omp, self.ecounts, self.ex)
+                    CalcDelGamWeightedHists(self.xi, self.ui, self.vi, self.wi, gi, iweights, vix,  1/np.sqrt(1-vix**2), bin_width, self.xmin * self.c_omp, self.icounts, self.ix)
 
                 self.ex*=self.memi
                 self.ey*=self.memi

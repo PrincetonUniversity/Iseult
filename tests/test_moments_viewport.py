@@ -80,6 +80,53 @@ def test_moments_panel_with_viewport():
     assert len(panel.xe) == 2
     assert len(panel.xi) == 2
     assert np.allclose(panel.xe / panel.c_omp, [2.0, 3.0])
+    
+    # Moments should be correctly binned and not all zeros
+    assert np.any(panel.ex != 0)
+    assert np.any(panel.ey != 0)
+    assert np.any(panel.ez != 0)
+    assert np.any(panel.ix != 0)
+    
+    # Verify that particles are binned at the expected bin indices
+    # xmin * c_omp = 3.0, bin_width = 0.04
+    # x = 4.0: (4.0 - 3.0)/0.04 = 25
+    # x = 6.0: (6.0 - 3.0)/0.04 = 75
+    assert panel.ecounts[25] == 1.0
+    assert panel.ecounts[75] == 1.0
+    assert panel.ecounts[0] == 0.0
+
+def test_moments_panel_with_viewport_high_offset():
+    # A test case where xlim_min is large enough that the unit mismatch bug
+    # would bin all particles out of bounds, resulting in all-zero moments.
+    parent = MockParent()
+    panel = MomentsPanel(parent, (0,0), {'filter_by_viewport': True})
+    output = MockOutput()
+    
+    class MockSubPlot:
+        def __init__(self):
+            self.chartType = 'DensityPlot'
+            self.param_dict = {'twoD': True}
+            
+            class MockAxes:
+                def get_xlim(self):
+                    return (3.5, 4.5) # only xe/c_omp in [3.5, 4.5], i.e., index 3 (xe = 8.0 -> 4.0)
+                def get_ylim(self):
+                    return (3.5, 4.5) # ye/c_omp = 4.0
+            self.axes = MockAxes()
+
+    parent.SubPlotList = [[MockSubPlot()]]
+    panel.update_data(output)
+    
+    # Only index 3 particle is kept
+    assert len(panel.xe) == 1
+    assert len(panel.xi) == 1
+    
+    # Without the fix, this particle would bin to:
+    # l = int((8.0 - 3.5)/((4.5-3.5)/100*2.0)) = int(4.5 / 0.02) = 225 >= 100 (out of bounds)
+    # With the fix, it bins to:
+    # l = int((8.0 - 3.5*2.0)/0.02) = int(1.0 / 0.02) = 50 (in bounds)
+    assert panel.ecounts[50] == 1.0
+    assert np.any(panel.ex != 0)
 
 def test_moments_panel_with_unzoomed_viewport():
     parent = MockParent()

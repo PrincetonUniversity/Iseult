@@ -57,6 +57,18 @@ class MyCustomToolbar(NavigationToolbar2Tk):
         #print(self._nav_stack)
         self.parent = parent
 
+    def home(self, *args, **kwargs):
+        NavigationToolbar2Tk.home(self, *args, **kwargs)
+        self.parent.after(100, self.parent.check_limits_and_renew)
+
+    def back(self, *args, **kwargs):
+        NavigationToolbar2Tk.back(self, *args, **kwargs)
+        self.parent.after(100, self.parent.check_limits_and_renew)
+
+    def forward(self, *args, **kwargs):
+        NavigationToolbar2Tk.forward(self, *args, **kwargs)
+        self.parent.after(100, self.parent.check_limits_and_renew)
+
 class Spinbox(ttk.Entry):
     def __init__(self, master=None, **kw):
         ttk.Entry.__init__(self, master, "ttk::spinbox", **kw)
