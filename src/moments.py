@@ -95,7 +95,7 @@ class  MomentsPanel:
             self.preloaded = False
             self.arrs_needed = ['c_omp', 'bx', 'istep', 'me', 'mi', 'gamma0','xi', 'ui', 'vi', 'wi', 'xe','ue', 've', 'we']
 
-        if self.GetPlotParam('filter_by_viewport'):
+        if self.GetPlotParam('filter_by_viewport') and self.parent.is_viewport_zoomed():
             try:
                 import h5py
                 prtl_file = self.FigWrap.parent.PathDict['Prtl'][0]
@@ -120,7 +120,7 @@ class  MomentsPanel:
         already been calculated and if it hasn't, it calculates
         it then stores it.'''
         self.viewport = None
-        if self.GetPlotParam('filter_by_viewport'):
+        if self.GetPlotParam('filter_by_viewport') and self.parent.is_viewport_zoomed():
             self.viewport = self.parent.get_active_viewport()
             if self.viewport is not None:
                 self.parent.last_phase_viewport = self.viewport

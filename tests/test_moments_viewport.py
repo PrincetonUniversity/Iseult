@@ -80,3 +80,28 @@ def test_moments_panel_with_viewport():
     assert len(panel.xe) == 2
     assert len(panel.xi) == 2
     assert np.allclose(panel.xe / panel.c_omp, [2.0, 3.0])
+
+def test_moments_panel_with_unzoomed_viewport():
+    parent = MockParent()
+    panel = MomentsPanel(parent, (0,0), {'filter_by_viewport': True})
+    output = MockOutput()
+    
+    # We mock the active viewport on parent.SubPlotList to span the entire box size
+    class MockSubPlot:
+        def __init__(self):
+            self.chartType = 'DensityPlot'
+            self.param_dict = {'twoD': True}
+            
+            class MockAxes:
+                def get_xlim(self):
+                    return (0.0, 5.0) # spans full x range of bx (bx.shape[-1] = 10 -> 10/2*1 = 5.0)
+                def get_ylim(self):
+                    return (0.0, 5.0) # spans full y range
+            self.axes = MockAxes()
+
+    parent.SubPlotList = [[MockSubPlot()]]
+    panel.update_data(output)
+    
+    # Since it's unzoomed, filtering should be bypassed and keep all 5 particles
+    assert len(panel.xe) == 5
+    assert len(panel.xi) == 5

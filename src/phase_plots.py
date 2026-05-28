@@ -189,7 +189,7 @@ class PhasePanel:
             elif self.GetPlotParam('mom_dim') == 2:
                 self.arrs_needed.append('we')
 
-        if self.GetPlotParam('filter_by_viewport'):
+        if self.GetPlotParam('filter_by_viewport') and self.parent.is_viewport_zoomed():
             try:
                 import h5py
                 prtl_file = self.FigWrap.parent.PathDict['Prtl'][0]
@@ -214,7 +214,7 @@ class PhasePanel:
         already been calculated and if it hasn't, it calculates
         it then stores it.'''
         self.viewport = None
-        if self.GetPlotParam('filter_by_viewport'):
+        if self.GetPlotParam('filter_by_viewport') and self.parent.is_viewport_zoomed():
             self.viewport = self.parent.get_active_viewport()
             if self.viewport is not None:
                 self.parent.last_phase_viewport = self.viewport

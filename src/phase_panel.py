@@ -173,6 +173,22 @@ class PhasePanel:
         self.viewport = None
         if self.GetPlotParam('filter_by_viewport'):
             self.viewport = self.get_active_viewport_headless(output)
+            if self.viewport is not None:
+                xlim_0, xlim_1, ylim_0, ylim_1, plane = self.viewport
+                xlim_min, xlim_max = min(xlim_0, xlim_1), max(xlim_0, xlim_1)
+                ylim_min, ylim_max = min(ylim_0, ylim_1), max(ylim_0, ylim_1)
+                bx = getattr(output, 'bx', None)
+                if bx is not None:
+                    c_omp = getattr(output, 'c_omp', 1.0)
+                    istep = getattr(output, 'istep', 1.0)
+                    full_x_span = bx.shape[-1] / c_omp * istep
+                    if plane == 0:
+                        full_y_span = bx.shape[1] / c_omp * istep
+                    else:
+                        full_y_span = bx.shape[0] / c_omp * istep
+                    
+                    if (xlim_max - xlim_min) >= 0.98 * full_x_span and (ylim_max - ylim_min) >= 0.98 * full_y_span:
+                        self.viewport = None
 
         if self.parent.MainParamDict['DoLorentzBoost'] and np.abs(self.parent.MainParamDict['GammaBoost'])>1E-8:
             # Gotta boost it

@@ -432,7 +432,7 @@ class PlaybackBar(Tk.Frame):
         self.param.attach(self)
 
     def OnReload(self, *args):
-        _ = self.parent.checkAndFindFilePaths()
+        _ = self.parent.checkAndFindFilePaths(reload_mode = True)
         self.parent.RenewCanvas()
 
     def OnRefresh(self, *args):
@@ -3397,6 +3397,25 @@ class MainApp(Tk.Tk):
                             ylim_min, ylim_max = min(ylim), max(ylim)
                             return (xlim_min, xlim_max, ylim_min, ylim_max, plane)
         return None
+
+    def is_viewport_zoomed(self):
+        if not hasattr(self, 'diff_from_home') or not self.diff_from_home:
+            return False
+        m = 0
+        for i in range(self.MainParamDict['NumOfRows']):
+            if i >= len(self.SubPlotList):
+                continue
+            for j in range(self.MainParamDict['NumOfCols']):
+                if j >= len(self.SubPlotList[i]):
+                    continue
+                subplot = self.SubPlotList[i][j]
+                if subplot.chartType in ['FieldsPlot', 'DensityPlot', 'MagPlots', 'Moments']:
+                    if subplot.graph and subplot.graph.GetPlotParam('twoD'):
+                        if m < len(self.diff_from_home):
+                            if any(val != 'n/a' for val in self.diff_from_home[m]):
+                                return True
+                m += 1
+        return False
 
     def on_release(self, event):
         # Defer limit check slightly to let toolbar updates complete
