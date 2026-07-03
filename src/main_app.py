@@ -1911,6 +1911,7 @@ class MainApp(Tk.Tk):
                           u'time': 'Param',
                           u'splitratio': 'Param',
                           u'indi': 'Prtl',
+                          u'divE': 'Flds',
                           u'ppc0': 'Param'}
         self.prtl_keys = []
         for k, v in self.H5KeyDict.items():
