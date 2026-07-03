@@ -11,27 +11,30 @@ def add_vector_params(param_dictionary):
     """Add data to the parameter dictionary for controlling the vectors.
     """
     param_dictionary["show_vectors"] = False
+    param_dictionary["vector_type"] = 0  # 0: B, 1: E, 2: J, 3: Vi, 4: Ve
 
 
 def add_vector_plot_keys(panel):
-    """Add components of the current field type to arrs_needed.
+    """Add components of the selected vector type to arrs_needed.
     """
-    ftype = panel.GetPlotParam('field_type')
-    if ftype == 0:  # B Field
+    vtype = panel.GetPlotParam('vector_type')
+    if vtype == 0:  # B Field
         panel.arrs_needed.extend(['bx', 'by', 'bz'])
-    elif ftype == 1:  # E field
+    elif vtype == 1:  # E field
         panel.arrs_needed.extend(['ex', 'ey', 'ez'])
-    elif ftype == 2:  # J [current]
+    elif vtype == 2:  # J [current]
         panel.arrs_needed.extend(['jx', 'jy', 'jz'])
-    elif ftype == 4:  # Vi (ion vel)
+    elif vtype == 3:  # Vi (ion vel)
         panel.arrs_needed.extend(['v3xi', 'v3yi', 'v3zi'])
-    elif ftype == 5:  # Ve (electron vel)
+    elif vtype == 4:  # Ve (electron vel)
         panel.arrs_needed.extend(['v3x', 'v3y', 'v3z', 'v3xi', 'v3yi', 'v3zi', 'dens', 'densi'])
 
 
 def add_vector_buttons(settings, panel, starting_row):
-    """Add the vectors checkbox to the settings window next to streamlines.
+    """Add the vectors checkbox and dropdown selection to the settings window next to streamlines.
     """
+    settings.VectorList = ['B Field', 'E field', 'J [current]', 'Vi (ion vel)', 'Ve (electron vel)']
+
     settings.show_vectors = Tk.BooleanVar()
     settings.show_vectors.set(settings.parent.GetPlotParam("show_vectors"))
     Tk.ttk.Checkbutton(
@@ -40,6 +43,22 @@ def add_vector_buttons(settings, panel, starting_row):
         variable=settings.show_vectors,
         command=lambda: __show_vector_handler(settings, panel),
     ).grid(row=starting_row + 1, column=1, sticky=Tk.W)
+
+    settings.vector_type = Tk.StringVar()
+    vtype_val = settings.parent.GetPlotParam("vector_type")
+    # Clamp in case it's out of range of the list
+    if vtype_val >= len(settings.VectorList):
+        vtype_val = 0
+    settings.vector_type.set(settings.VectorList[vtype_val])
+
+    vector_chooser = Tk.ttk.OptionMenu(
+        settings.frm,
+        settings.vector_type,
+        settings.VectorList[vtype_val],
+        *tuple(settings.VectorList),
+        command=lambda val: __change_vector_type(settings, panel)
+    )
+    vector_chooser.grid(row=starting_row + 1, column=2, sticky=Tk.W + Tk.E)
 
 
 def __show_vector_handler(settings, panel):
@@ -52,7 +71,29 @@ def __show_vector_handler(settings, panel):
     if not settings.parent.GetPlotParam("show_vectors"):
         remove_vectors(panel)
     else:
+        # Reload keys first to ensure we have the correct vector data loaded
+        settings.parent.parent.LoadAllKeys()
         register_zoom_callback(panel)
+
+    settings.parent.parent.canvas.draw_idle()
+
+
+def __change_vector_type(settings, panel):
+    """Handle when the vector selection dropdown is changed.
+    """
+    selected_val = settings.vector_type.get()
+    try:
+        vtype_idx = settings.VectorList.index(selected_val)
+    except ValueError:
+        vtype_idx = 0
+
+    settings.parent.SetPlotParam("vector_type", vtype_idx, update_plot=False, NeedsRedraw=True)
+
+    # Reload keys since we might need new datasets (e.g. if we switched from B to Vi)
+    settings.parent.parent.LoadAllKeys()
+
+    if settings.parent.GetPlotParam("show_vectors"):
+        refresh_vectors(panel)
 
     settings.parent.parent.canvas.draw_idle()
 
@@ -81,7 +122,6 @@ def on_limits_changed(panel):
     """Triggered on axes zoom/pan. Recalculates and updates the quiver grid.
     """
     if panel.GetPlotParam("show_vectors"):
-        # Prevent callback re-entry loop during limits restoration
         if hasattr(panel, '_updating_vector_limits') and panel._updating_vector_limits:
             return
         refresh_vectors(panel)
@@ -94,10 +134,10 @@ def draw_vectors(panel):
     remove_vectors(panel)
 
     slice_plane = panel.parent.MainParamDict["2DSlicePlane"]
-    ftype = panel.GetPlotParam('field_type')
+    vtype = panel.GetPlotParam('vector_type')
 
     try:
-        if ftype == 0:  # B Field
+        if vtype == 0:  # B Field
             if slice_plane == 0:
                 U_full = panel.FigWrap.LoadKey('bx')[panel.parent.zSlice, :, :]
                 V_full = panel.FigWrap.LoadKey('by')[panel.parent.zSlice, :, :]
@@ -107,7 +147,7 @@ def draw_vectors(panel):
             elif slice_plane == 2:
                 U_full = panel.FigWrap.LoadKey('by')[:, :, panel.parent.xSlice]
                 V_full = panel.FigWrap.LoadKey('bz')[:, :, panel.parent.xSlice]
-        elif ftype == 1:  # E Field
+        elif vtype == 1:  # E Field
             if slice_plane == 0:
                 U_full = panel.FigWrap.LoadKey('ex')[panel.parent.zSlice, :, :]
                 V_full = panel.FigWrap.LoadKey('ey')[panel.parent.zSlice, :, :]
@@ -117,7 +157,7 @@ def draw_vectors(panel):
             elif slice_plane == 2:
                 U_full = panel.FigWrap.LoadKey('ey')[:, :, panel.parent.xSlice]
                 V_full = panel.FigWrap.LoadKey('ez')[:, :, panel.parent.xSlice]
-        elif ftype == 2:  # J Field
+        elif vtype == 2:  # J Field
             if slice_plane == 0:
                 U_full = panel.FigWrap.LoadKey('jx')[panel.parent.zSlice, :, :]
                 V_full = panel.FigWrap.LoadKey('jy')[panel.parent.zSlice, :, :]
@@ -127,7 +167,7 @@ def draw_vectors(panel):
             elif slice_plane == 2:
                 U_full = panel.FigWrap.LoadKey('jy')[:, :, panel.parent.xSlice]
                 V_full = panel.FigWrap.LoadKey('jz')[:, :, panel.parent.xSlice]
-        elif ftype == 4:  # Vi Field
+        elif vtype == 3:  # Vi Field
             if slice_plane == 0:
                 U_full = panel.FigWrap.LoadKey('v3xi')[panel.parent.zSlice, :, :]
                 V_full = panel.FigWrap.LoadKey('v3yi')[panel.parent.zSlice, :, :]
@@ -137,7 +177,7 @@ def draw_vectors(panel):
             elif slice_plane == 2:
                 U_full = panel.FigWrap.LoadKey('v3yi')[:, :, panel.parent.xSlice]
                 V_full = panel.FigWrap.LoadKey('v3zi')[:, :, panel.parent.xSlice]
-        elif ftype == 5:  # Ve Field
+        elif vtype == 4:  # Ve Field
             dens = panel.FigWrap.LoadKey('dens')
             densi = panel.FigWrap.LoadKey('densi')
             dense = np.maximum(dens - densi, 1e-5)
