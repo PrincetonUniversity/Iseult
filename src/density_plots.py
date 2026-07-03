@@ -83,8 +83,11 @@ class DensPanel:
         # Load ppc if we are normalizing the density
         self.arrs_needed.append('ppc0')
         # To plot rho we need both dens and densi
-        if self.GetPlotParam('dens_type') >0: # Load the ion density
+        if self.GetPlotParam('dens_type') > 0 and self.GetPlotParam('dens_type') != 4: # Load the ion density
             self.arrs_needed.append('densi')
+
+        if self.GetPlotParam('dens_type') == 4:
+            self.arrs_needed.append('divE')
 
         if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.add_streamline_plot_keys(self)
@@ -138,6 +141,14 @@ class DensPanel:
             else:
                 self.rho = 2*self.FigWrap.LoadKey('densi')[:,:,:] - self.dens
                 self.parent.DataDict['rho'] = self.rho
+
+        if self.GetPlotParam('dens_type') == 4:
+            if 'divE' in self.parent.DataDict.keys():
+                self.divE = self.parent.DataDict['divE']
+            else:
+                self.divE = self.FigWrap.LoadKey('divE')
+            if isinstance(self.divE, (float, int)) and np.isnan(self.divE):
+                self.divE = np.full_like(self.dens, np.nan)
 
         if 'xaxis_values' in self.parent.DataDict.keys():
             # Generate the x and y axes
@@ -229,6 +240,14 @@ class DensPanel:
                 else:
                     self.zval = self.rho
                     self.two_d_label = r'$\rho$'
+
+            if self.FigWrap.GetPlotParam('dens_type') == 4:
+                if self.FigWrap.GetPlotParam('normalize_density'):
+                    self.zval = self.divE*self.ppc0**(-1.0)
+                    self.two_d_label = r'${\rm divE}/n_0$'
+                else:
+                    self.zval = self.divE
+                    self.two_d_label = r'${\rm divE}$'
 
 
             if self.parent.MainParamDict['2DSlicePlane'] ==0: # x-y plane
@@ -711,7 +730,7 @@ class DensSettings(Tk.Toplevel):
         cb.grid(row = 1, sticky = Tk.W)
 
         # the Radiobox Control to choose the Field Type
-        self.DensList = ['dens', 'dens_i', 'dens_e', 'rho']
+        self.DensList = ['dens', 'dens_i', 'dens_e', 'rho', 'divE']
         self.DensTypeVar  = Tk.IntVar()
         self.DensTypeVar.set(self.parent.GetPlotParam('dens_type'))
 
@@ -1046,6 +1065,11 @@ class DensSettings(Tk.Toplevel):
                         self.parent.an_2d.set_text(r'$\rho/n_0$')
                     else:
                         self.parent.an_2d.set_text(r'$\rho$')
+                elif self.DensTypeVar.get() == 4:
+                    if self.parent.GetPlotParam('normalize_density'):
+                        self.parent.an_2d.set_text(r'${\rm divE}/n_0$')
+                    else:
+                        self.parent.an_2d.set_text(r'${\rm divE}$')
 
             else:
                 if self.DensTypeVar.get() == 0:
@@ -1071,6 +1095,11 @@ class DensSettings(Tk.Toplevel):
                         self.parent.axes.set_ylabel(r'$\rho\ [n_0]$', size = self.parent.parent.MainParamDict['AxLabelSize'])
                     else:
                         self.parent.axes.set_ylabel(r'$\rho$', size = self.parent.parent.MainParamDict['AxLabelSize'])
+                elif self.DensTypeVar.get() == 4:
+                    if self.parent.GetPlotParam('normalize_density'):
+                        self.parent.axes.set_ylabel(r'${\rm divE}\ [n_0]$', size = self.parent.parent.MainParamDict['AxLabelSize'])
+                    else:
+                        self.parent.axes.set_ylabel(r'${\rm divE}$', size = self.parent.parent.MainParamDict['AxLabelSize'])
 
 
             self.parent.SetPlotParam('dens_type', self.DensTypeVar.get())

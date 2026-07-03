@@ -2591,6 +2591,9 @@ class MainApp(Tk.Tk):
                                                     subplot.settings_window.FieldTypeVar.set(0)
                                     self.parent.after(100, self.LoadAllKeys)
                                     return
+                                elif elm == 'divE':
+                                    print("Warning: divE variable is missing in the file.")
+                                    self.DataDict[elm] = np.nan
                                 else:
                                     raise
 
@@ -2642,6 +2645,9 @@ class MainApp(Tk.Tk):
                                                     subplot.settings_window.FieldTypeVar.set(0)
                                     self.parent.after(100, self.LoadAllKeys)
                                     return
+                                elif elm == 'divE':
+                                    print("Warning: divE variable is missing in the file.")
+                                    self.DataDict[elm] = np.nan
                                 else:
                                     raise
 
