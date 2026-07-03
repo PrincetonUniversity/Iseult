@@ -2580,6 +2580,17 @@ class MainApp(Tk.Tk):
                                     mx0   = data_loading.load_dataset(filepath, 'mx0', slice(0,1))
                                     tmpSize = ((self.MaxXInd+1)*istep)//(mx0-5)
                                     self.DataDict[elm] = np.ones(tmpSize)*mx0
+                                elif elm in ['v3x', 'v3y', 'v3z', 'v3xi', 'v3yi', 'v3zi']:
+                                    messagebox.showwarning("Missing Data", f"The velocity array '{elm}' was not found in the fields file.\nVelocity plotting is unavailable.")
+                                    for row in range(self.MainParamDict['NumOfRows']):
+                                        for col in range(self.MainParamDict['NumOfCols']):
+                                            subplot = self.SubPlotList[row][col]
+                                            if subplot.chartType == 'FieldsPlot' and subplot.GetPlotParam('field_type') in [4, 5]:
+                                                subplot.SetPlotParam('field_type', 0, update_plot=False)
+                                                if hasattr(subplot, 'settings_window') and subplot.settings_window is not None:
+                                                    subplot.settings_window.FieldTypeVar.set(0)
+                                    self.parent.after(100, self.LoadAllKeys)
+                                    return
                                 else:
                                     raise
 
@@ -2620,6 +2631,17 @@ class MainApp(Tk.Tk):
                                     mx0   = data_loading.load_dataset(filepath, 'mx0', slice(0,1))
                                     tmpSize = ((self.MaxXInd+1)*istep)//(mx0-5)
                                     self.DataDict[elm] = np.ones(tmpSize)*mx0
+                                elif elm in ['v3x', 'v3y', 'v3z', 'v3xi', 'v3yi', 'v3zi']:
+                                    messagebox.showwarning("Missing Data", f"The velocity array '{elm}' was not found in the fields file.\nVelocity plotting is unavailable.")
+                                    for row in range(self.MainParamDict['NumOfRows']):
+                                        for col in range(self.MainParamDict['NumOfCols']):
+                                            subplot = self.SubPlotList[row][col]
+                                            if subplot.chartType == 'FieldsPlot' and subplot.GetPlotParam('field_type') in [4, 5]:
+                                                subplot.SetPlotParam('field_type', 0, update_plot=False)
+                                                if hasattr(subplot, 'settings_window') and subplot.settings_window is not None:
+                                                    subplot.settings_window.FieldTypeVar.set(0)
+                                    self.parent.after(100, self.LoadAllKeys)
+                                    return
                                 else:
                                     raise
 

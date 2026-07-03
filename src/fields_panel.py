@@ -39,15 +39,19 @@ class FieldsPanel:
                        'cmdstr2': example,
                        'cmdstr3': example,
                        'OneDOnly': [False, False, False],
-                       'yaxis_label': ['$B$','$E$','$J$','$B$'],
+                       'yaxis_label': ['$B$','$E$','$J$','$B$', '$V_i$', '$V_e$'],
                        '2D_label': [['$B_x$','$B_y$','$B_z$'],
                                     ['$E_x$','$E_y$','$E_z$'],
                                     ['$J_x$','$J_y$','$J_z$'],
-                                    ['$B_\mathrm{tot}$','$B_\mathrm{tot}$','$B_\mathrm{tot}$']],
+                                    ['$B_\mathrm{tot}$','$B_\mathrm{tot}$','$B_\mathrm{tot}$'],
+                                    ['$V_{i,x}$','$V_{i,y}$','$V_{i,z}$'],
+                                    ['$V_{e,x}$','$V_{e,y}$','$V_{e,z}$']],
                        '1D_label': [['$B_x$','$B_y$','$B_z$'],
                                     ['$E_x$','$E_y$','$E_z$'],
                                     ['$J_x$','$J_y$','$J_z$'],
-                                    ['$B_\mathrm{tot}$','$B_\mathrm{tot}$','$B_\mathrm{tot}$']],
+                                    ['$B_\mathrm{tot}$','$B_\mathrm{tot}$','$B_\mathrm{tot}$'],
+                                    ['$V_{i,x}$','$V_{i,y}$','$V_{i,z}$'],
+                                    ['$V_{e,x}$','$V_{e,y}$','$V_{e,z}$']],
                        'show_x' : 1,
                        'show_y' : 1,
                        'show_z' : 1,
@@ -137,6 +141,26 @@ class FieldsPanel:
             self.xaxis_values = np.arange(getattr(output,'ex').shape[2])/self.c_omp*self.istep
         elif self.GetPlotParam('field_type') ==2:
             self.xaxis_values = np.arange(getattr(output,'jx').shape[2])/self.c_omp*self.istep
+        elif self.GetPlotParam('field_type') == 4:
+            vkey = 'v3xi' if self.GetPlotParam('show_x') else ('v3yi' if self.GetPlotParam('show_y') else ('v3zi' if self.GetPlotParam('show_z') else 'v3xi'))
+            try:
+                self.xaxis_values = np.arange(getattr(output, vkey).shape[2])/self.c_omp*self.istep
+            except (AttributeError, KeyError):
+                fallback_key = 'bx' if hasattr(output, 'bx') else ('ex' if hasattr(output, 'ex') else None)
+                if fallback_key:
+                    self.xaxis_values = np.arange(getattr(output, fallback_key).shape[2])/self.c_omp*self.istep
+                else:
+                    self.xaxis_values = np.arange(10)/self.c_omp*self.istep
+        elif self.GetPlotParam('field_type') == 5:
+            vkey = 'v3x' if self.GetPlotParam('show_x') else ('v3y' if self.GetPlotParam('show_y') else ('v3z' if self.GetPlotParam('show_z') else 'v3x'))
+            try:
+                self.xaxis_values = np.arange(getattr(output, vkey).shape[2])/self.c_omp*self.istep
+            except (AttributeError, KeyError):
+                fallback_key = 'bx' if hasattr(output, 'bx') else ('ex' if hasattr(output, 'ex') else None)
+                if fallback_key:
+                    self.xaxis_values = np.arange(getattr(output, fallback_key).shape[2])/self.c_omp*self.istep
+                else:
+                    self.xaxis_values = np.arange(10)/self.c_omp*self.istep
 
         self.flagx = 0 # 0 means it didn't plot, 1 means it is 1D only, 2 means it returned a 3d object
         self.flagy = 0
@@ -198,6 +222,41 @@ class FieldsPanel:
             if self.GetPlotParam('show_z'):
                 self.fz = getattr(output,'jz')
                 self.flagz = 2
+
+        elif self.GetPlotParam('field_type') == 4: # Vi (ion vel)
+            try:
+                if self.GetPlotParam('show_x'):
+                    self.fx = getattr(output, 'v3xi')
+                    self.flagx = 2
+                if self.GetPlotParam('show_y'):
+                    self.fy = getattr(output, 'v3yi')
+                    self.flagy = 2
+                if self.GetPlotParam('show_z'):
+                    self.fz = getattr(output, 'v3zi')
+                    self.flagz = 2
+            except (AttributeError, KeyError):
+                self.flagx = 0
+                self.flagy = 0
+                self.flagz = 0
+
+        elif self.GetPlotParam('field_type') == 5: # Ve (electron vel)
+            try:
+                dens = getattr(output, 'dens')
+                densi = getattr(output, 'densi')
+                dense = np.maximum(dens - densi, 1e-5)
+                if self.GetPlotParam('show_x'):
+                    self.fx = (dens * getattr(output, 'v3x') - densi * getattr(output, 'v3xi')) / dense
+                    self.flagx = 2
+                if self.GetPlotParam('show_y'):
+                    self.fy = (dens * getattr(output, 'v3y') - densi * getattr(output, 'v3yi')) / dense
+                    self.flagy = 2
+                if self.GetPlotParam('show_z'):
+                    self.fz = (dens * getattr(output, 'v3z') - densi * getattr(output, 'v3zi')) / dense
+                    self.flagz = 2
+            except (AttributeError, KeyError):
+                self.flagx = 0
+                self.flagy = 0
+                self.flagz = 0
 
         elif self.GetPlotParam('field_type') == 3: # User Defined fields
             if self.GetPlotParam('show_x'):
