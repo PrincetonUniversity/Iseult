@@ -12,6 +12,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
 import matplotlib.transforms as mtransforms
 import streamlines
+import vector_arrows
 
 class FieldsPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
@@ -41,15 +42,19 @@ class FieldsPanel:
                        'cmdstr2': example,
                        'cmdstr3': example,
                        'OneDOnly': [False, False, False],
-                       'yaxis_label': ['$B$','$E$','$J$','$B$'],
+                       'yaxis_label': ['$B$','$E$','$J$','$B$', '$V_i$', '$V_e$'],
                        '2D_label': [[r'$B_x$',r'$B_y$',r'$B_z$'],
                                     [r'$E_x$',r'$E_y$',r'$E_z$'],
                                     [r'$J_x$',r'$J_y$',r'$J_z$'],
-                                    [r'$B_\mathrm{tot}$',r'$B_\mathrm{tot}$',r'$B_\mathrm{tot}$']],
+                                    [r'$B_\mathrm{tot}$',r'$B_\mathrm{tot}$',r'$B_\mathrm{tot}$'],
+                                    [r'$V_{i,x}$',r'$V_{i,y}$',r'$V_{i,z}$'],
+                                    [r'$V_{e,x}$',r'$V_{e,y}$',r'$V_{e,z}$']],
                        '1D_label': [[r'$B_x$',r'$B_y$',r'$B_z$'],
                                     [r'$E_x$',r'$E_y$',r'$E_z$'],
                                     [r'$J_x$',r'$J_y$',r'$J_z$'],
-                                    [r'$B_\mathrm{tot}$',r'$B_\mathrm{tot}$',r'$B_\mathrm{tot}$']],
+                                    [r'$B_\mathrm{tot}$',r'$B_\mathrm{tot}$',r'$B_\mathrm{tot}$'],
+                                    [r'$V_{i,x}$',r'$V_{i,y}$',r'$V_{i,z}$'],
+                                    [r'$V_{e,x}$',r'$V_{e,y}$',r'$V_{e,z}$']],
                        'show_x' : 1,
                        'show_y' : 1,
                        'show_z' : 1,
@@ -75,6 +80,7 @@ class FieldsPanel:
                        'face_color': 'gainsboro' }
 
     streamlines.add_streamline_params(plot_param_dict)
+    vector_arrows.add_vector_params(plot_param_dict)
 
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))
@@ -152,8 +158,29 @@ class FieldsPanel:
                         self.f3args = [elm.strip() for elm in line[15:-2].split(',')]
                         self.arrs_needed += self.f3args
 
+        if self.GetPlotParam('field_type') == 4: # Vi
+            self.arrs_needed = ['c_omp', 'istep']
+            if self.GetPlotParam('show_x'):
+                self.arrs_needed.append('v3xi')
+            if self.GetPlotParam('show_y'):
+                self.arrs_needed.append('v3yi')
+            if self.GetPlotParam('show_z'):
+                self.arrs_needed.append('v3zi')
+
+        if self.GetPlotParam('field_type') == 5: # Ve
+            self.arrs_needed = ['c_omp', 'istep', 'dens', 'densi']
+            if self.GetPlotParam('show_x'):
+                self.arrs_needed.extend(['v3x', 'v3xi'])
+            if self.GetPlotParam('show_y'):
+                self.arrs_needed.extend(['v3y', 'v3yi'])
+            if self.GetPlotParam('show_z'):
+                self.arrs_needed.extend(['v3z', 'v3zi'])
+
         if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.add_streamline_plot_keys(self)
+
+        if self.GetPlotParam('show_vectors') and self.GetPlotParam('twoD'):
+            vector_arrows.add_vector_plot_keys(self)
 
         return self.arrs_needed
 
@@ -189,6 +216,26 @@ class FieldsPanel:
                 self.xaxis_values = np.arange(self.FigWrap.LoadKey('ex').shape[2])/self.c_omp*self.istep
             elif self.GetPlotParam('field_type') ==2:
                 self.xaxis_values = np.arange(self.FigWrap.LoadKey('jx').shape[2])/self.c_omp*self.istep
+            elif self.GetPlotParam('field_type') == 4:
+                vkey = 'v3xi' if self.GetPlotParam('show_x') else ('v3yi' if self.GetPlotParam('show_y') else ('v3zi' if self.GetPlotParam('show_z') else 'v3xi'))
+                try:
+                    self.xaxis_values = np.arange(self.FigWrap.LoadKey(vkey).shape[2])/self.c_omp*self.istep
+                except (AttributeError, KeyError):
+                    fallback_key = 'bx' if 'bx' in self.parent.DataDict else ('ex' if 'ex' in self.parent.DataDict else None)
+                    if fallback_key:
+                        self.xaxis_values = np.arange(self.FigWrap.LoadKey(fallback_key).shape[2])/self.c_omp*self.istep
+                    else:
+                        self.xaxis_values = np.arange(10)/self.c_omp*self.istep
+            elif self.GetPlotParam('field_type') == 5:
+                vkey = 'v3x' if self.GetPlotParam('show_x') else ('v3y' if self.GetPlotParam('show_y') else ('v3z' if self.GetPlotParam('show_z') else 'v3x'))
+                try:
+                    self.xaxis_values = np.arange(self.FigWrap.LoadKey(vkey).shape[2])/self.c_omp*self.istep
+                except (AttributeError, KeyError):
+                    fallback_key = 'bx' if 'bx' in self.parent.DataDict else ('ex' if 'ex' in self.parent.DataDict else None)
+                    if fallback_key:
+                        self.xaxis_values = np.arange(self.FigWrap.LoadKey(fallback_key).shape[2])/self.c_omp*self.istep
+                    else:
+                        self.xaxis_values = np.arange(10)/self.c_omp*self.istep
             self.parent.DataDict['xaxis_values'] = np.copy(self.xaxis_values)
 
         self.flagx = 0 # 0 means it didn't plot, 1 means it is 1D only, 2 means it returned a 3d object
@@ -251,6 +298,41 @@ class FieldsPanel:
             if self.GetPlotParam('show_z'):
                 self.fz = self.FigWrap.LoadKey('jz')
                 self.flagz = 2
+
+        elif self.GetPlotParam('field_type') == 4: # Vi (ion vel)
+            try:
+                if self.GetPlotParam('show_x'):
+                    self.fx = self.FigWrap.LoadKey('v3xi')
+                    self.flagx = 2
+                if self.GetPlotParam('show_y'):
+                    self.fy = self.FigWrap.LoadKey('v3yi')
+                    self.flagy = 2
+                if self.GetPlotParam('show_z'):
+                    self.fz = self.FigWrap.LoadKey('v3zi')
+                    self.flagz = 2
+            except (AttributeError, KeyError):
+                self.flagx = 0
+                self.flagy = 0
+                self.flagz = 0
+
+        elif self.GetPlotParam('field_type') == 5: # Ve (electron vel)
+            try:
+                dens = self.FigWrap.LoadKey('dens')
+                densi = self.FigWrap.LoadKey('densi')
+                dense = np.maximum(dens - densi, 1e-5)
+                if self.GetPlotParam('show_x'):
+                    self.fx = (dens * self.FigWrap.LoadKey('v3x') - densi * self.FigWrap.LoadKey('v3xi')) / dense
+                    self.flagx = 2
+                if self.GetPlotParam('show_y'):
+                    self.fy = (dens * self.FigWrap.LoadKey('v3y') - densi * self.FigWrap.LoadKey('v3yi')) / dense
+                    self.flagy = 2
+                if self.GetPlotParam('show_z'):
+                    self.fz = (dens * self.FigWrap.LoadKey('v3z') - densi * self.FigWrap.LoadKey('v3zi')) / dense
+                    self.flagz = 2
+            except (AttributeError, KeyError):
+                self.flagx = 0
+                self.flagy = 0
+                self.flagz = 0
 
         elif self.GetPlotParam('field_type') == 3: # User Defined fields
             if self.GetPlotParam('show_x'):
@@ -384,6 +466,9 @@ class FieldsPanel:
                         self.flagz = 0
 
     def draw(self):
+        self.vector_cid_x = None
+        self.vector_cid_y = None
+        self.vector_quiver = None
 
         ''' A function that draws the data. In the interest in speeding up the
         code, draw should only be called when you want to recreate the whole
@@ -788,6 +873,9 @@ class FieldsPanel:
         if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.draw_streamlines(self)
 
+        if self.GetPlotParam('show_vectors') and self.GetPlotParam('twoD'):
+            vector_arrows.draw_vectors(self)
+
         if self.GetPlotParam('show_cpu_domains'):
             self.FigWrap.SetCpuDomainLines()
     def refresh(self):
@@ -976,6 +1064,9 @@ class FieldsPanel:
         if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.refresh_streamlines(self)
 
+        if self.GetPlotParam('show_vectors') and self.GetPlotParam('twoD'):
+            vector_arrows.refresh_vectors(self)
+
         if self.GetPlotParam('show_cpu_domains'):
             self.FigWrap.UpdateCpuDomainLines()
 
@@ -1089,7 +1180,7 @@ class FieldSettings(Tk.Toplevel):
         cb.grid(row = 1, sticky = Tk.W)
 
         # the Radiobox Control to choose the Field Type
-        self.FieldList = ['B Field', 'E field', 'J [current]', 'User Defined']
+        self.FieldList = ['B Field', 'E field', 'J [current]', 'User Defined', 'Vi (ion vel)', 'Ve (electron vel)']
         self.FieldTypeVar  = Tk.IntVar()
         self.FieldTypeVar.set(self.parent.GetPlotParam('field_type'))
 
@@ -1140,12 +1231,13 @@ class FieldSettings(Tk.Toplevel):
             self.cbz.config(text='Show F3')
             self.label.config(text='Choose Function:')
         # Control whether or not Cbar is shown
+        start_row = 3 + len(self.FieldList)
         self.CbarVar = Tk.IntVar()
         self.CbarVar.set(self.parent.GetPlotParam('show_cbar'))
         cb = ttk.Checkbutton(self.frm, text = "Show Color bar",
                         variable = self.CbarVar,
                         command = self.CbarHandler)
-        cb.grid(row = 7, sticky = Tk.W)
+        cb.grid(row = start_row, sticky = Tk.W)
 
         # Control whether or not diverging cmap is used
         self.DivVar = Tk.IntVar()
@@ -1153,7 +1245,7 @@ class FieldSettings(Tk.Toplevel):
         cb = ttk.Checkbutton(self.frm, text = "Use Diverging Cmap",
                         variable = self.DivVar,
                         command = self.DivHandler)
-        cb.grid(row = 8, sticky = Tk.W)
+        cb.grid(row = start_row + 1, sticky = Tk.W)
 
         # Use full div cmap
         self.StretchVar = Tk.IntVar()
@@ -1161,7 +1253,7 @@ class FieldSettings(Tk.Toplevel):
         cb = ttk.Checkbutton(self.frm, text = "Symmetric about zero",
                         variable = self.StretchVar,
                         command = self.StretchHandler)
-        cb.grid(row = 8, column = 1, sticky = Tk.W)
+        cb.grid(row = start_row + 1, column = 1, sticky = Tk.W)
 
         # Create the OptionMenu to chooses the cnorm_type:
         self.cnormvar = Tk.StringVar(self)
@@ -1220,30 +1312,31 @@ class FieldSettings(Tk.Toplevel):
         cb = ttk.Checkbutton(self.frm, text = "Show Shock",
                         variable = self.ShockVar,
                         command = self.ShockVarHandler)
-        cb.grid(row = 9, column = 1, sticky = Tk.W)
+        cb.grid(row = start_row + 2, column = 1, sticky = Tk.W)
 
         self.FFTVar = Tk.IntVar()
         self.FFTVar.set(self.parent.GetPlotParam('show_FFT_region'))
         cb = ttk.Checkbutton(self.frm, text = "Show FFT Region",
                         variable = self.FFTVar,
                         command = self.FFTVarHandler)
-        cb.grid(row = 9, column = 0, sticky = Tk.W)
+        cb.grid(row = start_row + 2, column = 0, sticky = Tk.W)
 
         self.CPUVar = Tk.IntVar()
         self.CPUVar.set(self.parent.GetPlotParam('show_cpu_domains'))
         cb = ttk.Checkbutton(self.frm, text = "Show CPU domains",
                         variable = self.CPUVar,
                         command = self.CPUVarHandler)
-        cb.grid(row = 10, column = 0, sticky = Tk.W)
+        cb.grid(row = start_row + 3, column = 0, sticky = Tk.W)
 
         self.NormFieldVar = Tk.IntVar()
         self.NormFieldVar.set(self.parent.GetPlotParam('normalize_fields'))
         cb = ttk.Checkbutton(self.frm, text = "Normalize Fields",
                         variable = self.NormFieldVar,
                         command = self.NormFieldHandler)
-        cb.grid(row = 7, column = 1, sticky = Tk.W)
+        cb.grid(row = start_row, column = 1, sticky = Tk.W)
 
-        streamlines.add_streamline_buttons(self, self.parent, starting_row=11)
+        streamlines.add_streamline_buttons(self, self.parent, starting_row=start_row + 4)
+        vector_arrows.add_vector_buttons(self, self.parent, starting_row=start_row + 4)
 
     def CbarHandler(self, *args):
         if self.parent.GetPlotParam('show_cbar')== self.CbarVar.get():

@@ -36,6 +36,7 @@ class  MomentsPanel:
                        'symmetric': False,
                        'logy': False,
                        'legend_loc': 'N/A',
+                       'filter_by_viewport': True,
                        'face_color': 'gainsboro'
                        } # legend_loc is a string that stores the
                                          # location of the legend in figure pixels.
@@ -93,17 +94,45 @@ class  MomentsPanel:
         else:
             self.preloaded = False
             self.arrs_needed = ['c_omp', 'bx', 'istep', 'me', 'mi', 'gamma0','xi', 'ui', 'vi', 'wi', 'xe','ue', 've', 'we']
+
+        if self.GetPlotParam('filter_by_viewport') and self.parent.is_viewport_zoomed():
+            try:
+                import h5py
+                prtl_file = self.FigWrap.parent.PathDict['Prtl'][0]
+                with h5py.File(prtl_file, 'r') as f:
+                    if self.GetPlotParam('show_ions'):
+                        if 'yi' in f or 'y_2' in f:
+                            self.arrs_needed.append('yi')
+                        if 'zi' in f or 'z_2' in f:
+                            self.arrs_needed.append('zi')
+                    if self.GetPlotParam('show_electrons'):
+                        if 'ye' in f or 'y_1' in f:
+                            self.arrs_needed.append('ye')
+                        if 'ze' in f or 'z_1' in f:
+                            self.arrs_needed.append('ze')
+            except Exception:
+                pass
+
         return self.arrs_needed
 
     def LoadData(self):
         ''' A helper function that checks if the histogram has
         already been calculated and if it hasn't, it calculates
         it then stores it.'''
+        self.viewport = None
+        if self.GetPlotParam('filter_by_viewport') and self.parent.is_viewport_zoomed():
+            self.viewport = self.parent.get_active_viewport()
+            if self.viewport is not None:
+                self.parent.last_phase_viewport = self.viewport
 
         self.c_omp = self.FigWrap.LoadKey('c_omp')
         self.istep = self.FigWrap.LoadKey('istep')
         self.memi = self.FigWrap.LoadKey('me')/self.FigWrap.LoadKey('mi')
         self.totalcolor = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.0)
+
+        if self.viewport is not None:
+            xlim_0, xlim_1, ylim_0, ylim_1, plane = self.viewport
+            self.key_name += f'_vp_{xlim_0:.4f}_{xlim_1:.4f}_{ylim_0:.4f}_{ylim_1:.4f}_{plane}'
 
         if 'xaxis_values' in self.parent.DataDict.keys():
             self.xaxis_values = self.parent.DataDict['xaxis_values']
@@ -147,15 +176,100 @@ class  MomentsPanel:
             self.iz = np.zeros(xbn)
             self.icounts = np.zeros(xbn)
 
+            if self.GetPlotParam('weighted'):
+                eweights = self.FigWrap.LoadKey('che')
+                iweights = self.FigWrap.LoadKey('chi')
+
+            # Filter by viewport if active
+            if self.viewport is not None:
+                xlim_0, xlim_1, ylim_0, ylim_1, plane = self.viewport
+                xlim_min, xlim_max = min(xlim_0, xlim_1), max(xlim_0, xlim_1)
+                ylim_min, ylim_max = min(ylim_0, ylim_1), max(ylim_0, ylim_1)
+
+                inRangeElectrons = np.ones(len(self.xe), dtype=bool)
+                inRangeIons = np.ones(len(self.xi), dtype=bool)
+
+                # Filter by x-coordinate if plane is x-y or x-z
+                if plane in [0, 1]:
+                    inRangeElectrons &= (self.xe/self.c_omp >= xlim_min) & (self.xe/self.c_omp <= xlim_max)
+                    inRangeIons &= (self.xi/self.c_omp >= xlim_min) & (self.xi/self.c_omp <= xlim_max)
+
+                # Filter by transverse coordinate
+                if plane == 0: # x-y plane
+                    try:
+                        ye = self.FigWrap.LoadKey('ye') / self.c_omp
+                        inRangeElectrons &= (ye >= ylim_min) & (ye <= ylim_max)
+                    except KeyError:
+                        pass
+                    try:
+                        yi = self.FigWrap.LoadKey('yi') / self.c_omp
+                        inRangeIons &= (yi >= ylim_min) & (yi <= ylim_max)
+                    except KeyError:
+                        pass
+                elif plane == 1: # x-z plane
+                    try:
+                        ze = self.FigWrap.LoadKey('ze') / self.c_omp
+                        inRangeElectrons &= (ze >= ylim_min) & (ze <= ylim_max)
+                    except KeyError:
+                        pass
+                    try:
+                        zi = self.FigWrap.LoadKey('zi') / self.c_omp
+                        inRangeIons &= (zi >= ylim_min) & (zi <= ylim_max)
+                    except KeyError:
+                        pass
+                elif plane == 2: # y-z plane
+                    try:
+                        ye = self.FigWrap.LoadKey('ye') / self.c_omp
+                        inRangeElectrons &= (ye >= xlim_min) & (ye <= xlim_max)
+                    except KeyError:
+                        pass
+                    try:
+                        ze = self.FigWrap.LoadKey('ze') / self.c_omp
+                        inRangeElectrons &= (ze >= ylim_min) & (ze <= ylim_max)
+                    except KeyError:
+                        pass
+                    try:
+                        yi = self.FigWrap.LoadKey('yi') / self.c_omp
+                        inRangeIons &= (yi >= xlim_min) & (yi <= xlim_max)
+                    except KeyError:
+                        pass
+                    try:
+                        zi = self.FigWrap.LoadKey('zi') / self.c_omp
+                        inRangeIons &= (zi >= ylim_min) & (zi <= ylim_max)
+                    except KeyError:
+                        pass
+
+                # Apply filter to electron arrays
+                self.xe = self.xe[inRangeElectrons]
+                self.ue = self.ue[inRangeElectrons]
+                self.ve = self.ve[inRangeElectrons]
+                self.we = self.we[inRangeElectrons]
+                if self.GetPlotParam('weighted'):
+                    eweights = eweights[inRangeElectrons]
+
+                # Apply filter to ion arrays
+                self.xi = self.xi[inRangeIons]
+                self.ui = self.ui[inRangeIons]
+                self.vi = self.vi[inRangeIons]
+                self.wi = self.wi[inRangeIons]
+                if self.GetPlotParam('weighted'):
+                    iweights = iweights[inRangeIons]
+
             if self.memi==0:
-                self.xmin = np.min(self.xe)/self.c_omp
-                self.xmax = np.max(self.xe)/self.c_omp
+                self.xmin = 0.0 if len(self.xe) == 0 else np.min(self.xe)/self.c_omp
+                self.xmax = 0.0 if len(self.xe) == 0 else np.max(self.xe)/self.c_omp
                 self.memi = 1.0
                 self.SetPlotParam('show_ions', False, update_plot = False)
                 self.ylabel_list = [r'$\langle \beta \rangle$',r'$\langle \gamma\beta\rangle$', r'$\langle KE \rangle/m_ec^2$']
             else:
-                self.xmin = min(np.min(self.xi), np.min(self.xe))/self.c_omp
-                self.xmax = max(np.max(self.xi), np.max(self.xe))/self.c_omp
+                self.xmin = min(0.0 if len(self.xi) == 0 else np.min(self.xi), 0.0 if len(self.xe) == 0 else np.min(self.xe))/self.c_omp
+                self.xmax = max(0.0 if len(self.xi) == 0 else np.max(self.xi), 0.0 if len(self.xe) == 0 else np.max(self.xe))/self.c_omp
+
+            if self.viewport is not None and plane in [0, 1]:
+                self.xmin = xlim_min
+                self.xmax = xlim_max
+
+            self.xmax = self.xmax if (self.xmax != self.xmin) else self.xmin + 1
             bin_width = (self.xmax-self.xmin)/float(xbn)*self.c_omp
             self.x_bins = np.linspace(self.xmin, self.xmax, num = xbn+1)
             self.parent.DataDict[self.key_name+'x_bins'] = self.x_bins
@@ -168,14 +282,11 @@ class  MomentsPanel:
                 ge = np.empty(len(self.ue))
                 LorentzFactor(self.ue, self.ve, self.we, ge)
                 if not self.GetPlotParam('weighted'):
-                    CalcVHists(self.xe,self.ue, self.ve, self.we, ge, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
-                    CalcVHists(self.xi,self.ui, self.vi, self.wi, gi, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
+                    CalcVHists(self.xe,self.ue, self.ve, self.we, ge, bin_width, self.xmin * self.c_omp, self.ex, self.ey, self.ez, self.ecounts)
+                    CalcVHists(self.xi,self.ui, self.vi, self.wi, gi, bin_width, self.xmin * self.c_omp, self.ix, self.iy, self.iz, self.icounts)
                 else:
-                    eweights = self.FigWrap.LoadKey('che')
-                    CalcVWeightedHists(self.xe,self.ue, self.ve, self.we, ge,eweights, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
-
-                    iweights = self.FigWrap.LoadKey('chi')
-                    CalcVWeightedHists(self.xi,self.ui, self.vi, self.wi, gi, iweights, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
+                    CalcVWeightedHists(self.xe,self.ue, self.ve, self.we, ge,eweights, bin_width, self.xmin * self.c_omp, self.ex, self.ey, self.ez, self.ecounts)
+                    CalcVWeightedHists(self.xi,self.ui, self.vi, self.wi, gi, iweights, bin_width, self.xmin * self.c_omp, self.ix, self.iy, self.iz, self.icounts)
 
                 self.parent.DataDict[self.key_name+'ex'] = self.ex
                 self.parent.DataDict[self.key_name+'ey'] = self.ey
@@ -190,13 +301,11 @@ class  MomentsPanel:
             if self.GetPlotParam('m_type') == 1:
                 # Calculate px, py, pz
                 if not self.GetPlotParam('weighted'):
-                    CalcPHists(self.xe,self.ue, self.ve, self.we, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
-                    CalcPHists(self.xi,self.ui, self.vi, self.wi, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
+                    CalcPHists(self.xe,self.ue, self.ve, self.we, bin_width, self.xmin * self.c_omp, self.ex, self.ey, self.ez, self.ecounts)
+                    CalcPHists(self.xi,self.ui, self.vi, self.wi, bin_width, self.xmin * self.c_omp, self.ix, self.iy, self.iz, self.icounts)
                 else:
-                    eweights = self.FigWrap.LoadKey('che')
-                    CalcPWeightedHists(self.xe,self.ue, self.ve, self.we, eweights, bin_width, self.xmin, self.ex, self.ey, self.ez, self.ecounts)
-                    iweights = self.FigWrap.LoadKey('chi')
-                    CalcPWeightedHists(self.xi,self.ui, self.vi, self.wi, iweights, bin_width, self.xmin, self.ix, self.iy, self.iz, self.icounts)
+                    CalcPWeightedHists(self.xe,self.ue, self.ve, self.we, eweights, bin_width, self.xmin * self.c_omp, self.ex, self.ey, self.ez, self.ecounts)
+                    CalcPWeightedHists(self.xi,self.ui, self.vi, self.wi, iweights, bin_width, self.xmin * self.c_omp, self.ix, self.iy, self.iz, self.icounts)
 
                 self.ex *= self.memi
                 self.ey *= self.memi
@@ -223,22 +332,20 @@ class  MomentsPanel:
 
                 if not self.GetPlotParam('weighted'):
                     # We'll put the Energy histograms into ex and ix, and delE intos ey and iy
-                    CalcVxEHists(self.xe,self.ue, ge, bin_width, self.xmin,  vex, self.ey, self.ecounts)
-                    CalcVxEHists(self.xi,self.ui, gi, bin_width, self.xmin, vix, self.iy, self.icounts)
+                    CalcVxEHists(self.xe,self.ue, ge, bin_width, self.xmin * self.c_omp,  vex, self.ey, self.ecounts)
+                    CalcVxEHists(self.xi,self.ui, gi, bin_width, self.xmin * self.c_omp, vix, self.iy, self.icounts)
 
-                    CalcDelGamHists(self.xe, self.ue, self.ve, self.we, ge, vix, 1/np.sqrt(1-vix**2), bin_width, self.xmin, self.ecounts, self.ex)
-                    CalcDelGamHists(self.xi, self.ui, self.vi, self.wi, gi, vex, 1/np.sqrt(1-vex**2), bin_width, self.xmin, self.icounts, self.ix)
+                    CalcDelGamHists(self.xe, self.ue, self.ve, self.we, ge, vix, 1/np.sqrt(1-vix**2), bin_width, self.xmin * self.c_omp, self.ecounts, self.ex)
+                    CalcDelGamHists(self.xi, self.ui, self.vi, self.wi, gi, vex, 1/np.sqrt(1-vex**2), bin_width, self.xmin * self.c_omp, self.icounts, self.ix)
 
 
                 else:
-                    eweights = self.FigWrap.LoadKey('che')
-                    iweights = self.FigWrap.LoadKey('chi')
                     # We'll put the Temp histograms into ex and ix, and Energy into ey and iy
-                    CalcVxEWeightedHists(self.xe,self.ue, ge, eweights, bin_width, self.xmin, vex, self.ey, self.ecounts)
-                    CalcVxEWeightedHists(self.xi,self.ui, gi, iweights, bin_width, self.xmin, vix, self.iy, self.icounts)
+                    CalcVxEWeightedHists(self.xe,self.ue, ge, eweights, bin_width, self.xmin * self.c_omp, vex, self.ey, self.ecounts)
+                    CalcVxEWeightedHists(self.xi,self.ui, gi, iweights, bin_width, self.xmin * self.c_omp, vix, self.iy, self.icounts)
 
-                    CalcDelGamWeightedHists(self.xe, self.ue, self.ve, self.we, ge, eweights, vex,  1/np.sqrt(1-vex**2), bin_width, self.xmin, self.ecounts, self.ex)
-                    CalcDelGamWeightedHists(self.xi, self.ui, self.vi, self.wi, gi, iweights, vix,  1/np.sqrt(1-vix**2), bin_width, self.xmin, self.icounts, self.ix)
+                    CalcDelGamWeightedHists(self.xe, self.ue, self.ve, self.we, ge, eweights, vex,  1/np.sqrt(1-vex**2), bin_width, self.xmin * self.c_omp, self.ecounts, self.ex)
+                    CalcDelGamWeightedHists(self.xi, self.ui, self.vi, self.wi, gi, iweights, vix,  1/np.sqrt(1-vix**2), bin_width, self.xmin * self.c_omp, self.icounts, self.ix)
 
                 self.ex*=self.memi
                 self.ey*=self.memi
@@ -764,6 +871,14 @@ class MomentsSettings(Tk.Toplevel):
         self.xBins.set(str(self.parent.GetPlotParam('xbins')))
         ttk.Label(frm, text ='# of xbins').grid(row = 7, column = 0, sticky = Tk.W)
         ttk.Entry(frm, textvariable=self.xBins, width=8).grid(row = 7, column = 1)
+
+        self.FilterVPVar = Tk.IntVar()
+        self.FilterVPVar.set(self.parent.GetPlotParam('filter_by_viewport'))
+        cb = ttk.Checkbutton(frm, text = "Restrict to viewport",
+                        variable = self.FilterVPVar,
+                        command = lambda:
+                        self.parent.SetPlotParam('filter_by_viewport', self.FilterVPVar.get()))
+        cb.grid(row = 7, column = 2, sticky = Tk.W)
 
         self.ShowLegVar = Tk.IntVar(self)
         self.ShowLegVar.set(self.parent.GetPlotParam('show_legend'))

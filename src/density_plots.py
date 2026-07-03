@@ -11,6 +11,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
 from matplotlib.ticker import FuncFormatter
 import streamlines
+import vector_arrows
 
 class DensPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
@@ -40,6 +41,7 @@ class DensPanel:
                        'face_color': 'gainsboro'}
 
     streamlines.add_streamline_params(plot_param_dict)
+    vector_arrows.add_vector_params(plot_param_dict)
 
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))
@@ -81,11 +83,17 @@ class DensPanel:
         # Load ppc if we are normalizing the density
         self.arrs_needed.append('ppc0')
         # To plot rho we need both dens and densi
-        if self.GetPlotParam('dens_type') >0: # Load the ion density
+        if self.GetPlotParam('dens_type') > 0 and self.GetPlotParam('dens_type') != 4: # Load the ion density
             self.arrs_needed.append('densi')
+
+        if self.GetPlotParam('dens_type') == 4:
+            self.arrs_needed.append('divE')
 
         if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.add_streamline_plot_keys(self)
+
+        if self.GetPlotParam('show_vectors') and self.GetPlotParam('twoD'):
+            vector_arrows.add_vector_plot_keys(self)
 
         return self.arrs_needed
     def LoadData(self):
@@ -134,6 +142,14 @@ class DensPanel:
                 self.rho = 2*self.FigWrap.LoadKey('densi')[:,:,:] - self.dens
                 self.parent.DataDict['rho'] = self.rho
 
+        if self.GetPlotParam('dens_type') == 4:
+            if 'divE' in self.parent.DataDict.keys():
+                self.divE = self.parent.DataDict['divE']
+            else:
+                self.divE = self.FigWrap.LoadKey('divE')
+            if isinstance(self.divE, (float, int)) and np.isnan(self.divE):
+                self.divE = np.full_like(self.dens, np.nan)
+
         if 'xaxis_values' in self.parent.DataDict.keys():
             # Generate the x and y axes
             self.xaxis_values = self.parent.DataDict['xaxis_values']
@@ -144,6 +160,9 @@ class DensPanel:
         # self.y_values =  np.arange(self.zval.shape[0])/self.c_omp*self.istep
 
     def draw(self):
+        self.vector_cid_x = None
+        self.vector_cid_y = None
+        self.vector_quiver = None
         if self.GetPlotParam('OutlineText'):
             self.annotate_kwargs = {'horizontalalignment': 'right',
             'verticalalignment': 'top',
@@ -221,6 +240,14 @@ class DensPanel:
                 else:
                     self.zval = self.rho
                     self.two_d_label = r'$\rho$'
+
+            if self.FigWrap.GetPlotParam('dens_type') == 4:
+                if self.FigWrap.GetPlotParam('normalize_density'):
+                    self.zval = self.divE*self.ppc0**(-1.0)
+                    self.two_d_label = r'${\rm divE}/n_0$'
+                else:
+                    self.zval = self.divE
+                    self.two_d_label = r'${\rm divE}$'
 
 
             if self.parent.MainParamDict['2DSlicePlane'] ==0: # x-y plane
@@ -383,6 +410,11 @@ class DensPanel:
                     self.linedens[0].set_data(self.xaxis_values, np.average(self.rho.reshape(-1,self.rho.shape[-1]), axis = 0))
                 else: # x-y plane
                     self.linedens[0].set_data(self.xaxis_values, self.rho[self.parent.zSlice,self.parent.ySlice,:])
+            if self.GetPlotParam('dens_type')==4:
+                if self.parent.MainParamDict['Average1D']:
+                    self.linedens[0].set_data(self.xaxis_values, np.average(self.divE.reshape(-1,self.divE.shape[-1]), axis = 0))
+                else: # x-y plane
+                    self.linedens[0].set_data(self.xaxis_values, self.divE[self.parent.zSlice,self.parent.ySlice,:])
             if self.GetPlotParam('normalize_density'):
                 self.linedens[0].set_data(self.linedens[0].get_data()[0], self.linedens[0].get_data()[1]*self.ppc0**(-1))
 
@@ -437,6 +469,9 @@ class DensPanel:
         if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.draw_streamlines(self)
 
+        if self.GetPlotParam('show_vectors') and self.GetPlotParam('twoD'):
+            vector_arrows.draw_vectors(self)
+
         if self.GetPlotParam('show_cpu_domains'):
             self.FigWrap.SetCpuDomainLines()
 
@@ -471,6 +506,11 @@ class DensPanel:
                     self.linedens[0].set_data(self.xaxis_values, np.average(self.rho.reshape(-1,self.rho.shape[-1]), axis = 0))
                 else:
                     self.linedens[0].set_data(self.xaxis_values, self.rho[self.parent.zSlice,self.parent.ySlice,:])
+            elif self.GetPlotParam('dens_type')==4:
+                if self.parent.MainParamDict['Average1D']:
+                    self.linedens[0].set_data(self.xaxis_values, np.average(self.divE.reshape(-1,self.divE.shape[-1]), axis = 0))
+                else:
+                    self.linedens[0].set_data(self.xaxis_values, self.divE[self.parent.zSlice,self.parent.ySlice,:])
             if self.GetPlotParam('normalize_density'):
                 self.linedens[0].set_data(self.linedens[0].get_data()[0], self.linedens[0].get_data()[1]*self.ppc0**(-1))
 
@@ -532,6 +572,13 @@ class DensPanel:
                     self.cax.set_data(self.rho[:,self.parent.ySlice,:])
                 elif self.parent.MainParamDict['2DSlicePlane'] == 2: # y-z plane
                     self.cax.set_data(self.rho[:,:,self.parent.xSlice])
+            elif self.GetPlotParam('dens_type')==4:
+                if self.parent.MainParamDict['2DSlicePlane'] == 0: # x-y plane
+                    self.cax.set_data(self.divE[self.parent.zSlice,:,:])
+                elif self.parent.MainParamDict['2DSlicePlane'] == 1: # x-z plane
+                    self.cax.set_data(self.divE[:,self.parent.ySlice,:])
+                elif self.parent.MainParamDict['2DSlicePlane'] == 2: # y-z plane
+                    self.cax.set_data(self.divE[:,:,self.parent.xSlice])
 
 
             if self.GetPlotParam('normalize_density'):
@@ -584,6 +631,9 @@ class DensPanel:
 
         if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.refresh_streamlines(self)
+
+        if self.GetPlotParam('show_vectors') and self.GetPlotParam('twoD'):
+            vector_arrows.refresh_vectors(self)
 
         if self.GetPlotParam('show_cpu_domains'):
             self.FigWrap.UpdateCpuDomainLines()
@@ -697,7 +747,7 @@ class DensSettings(Tk.Toplevel):
         cb.grid(row = 1, sticky = Tk.W)
 
         # the Radiobox Control to choose the Field Type
-        self.DensList = ['dens', 'dens_i', 'dens_e', 'rho']
+        self.DensList = ['dens', 'dens_i', 'dens_e', 'rho', 'divE']
         self.DensTypeVar  = Tk.IntVar()
         self.DensTypeVar.set(self.parent.GetPlotParam('dens_type'))
 
@@ -817,6 +867,7 @@ class DensSettings(Tk.Toplevel):
         self.ZmaxEnter.grid(row = 4, column = 3)
 
         streamlines.add_streamline_buttons(self, self.parent, starting_row=11)
+        vector_arrows.add_vector_buttons(self, self.parent, starting_row=11)
 
     def ShockVarHandler(self, *args):
         if self.parent.GetPlotParam('show_shock')== self.ShockVar.get():
@@ -881,6 +932,8 @@ class DensSettings(Tk.Toplevel):
                     tmp_str += r'$n_e$'
                 if self.parent.GetPlotParam('dens_type') == 3:
                     tmp_str += r'$\rho$'
+                if self.parent.GetPlotParam('dens_type') == 4:
+                    tmp_str += r'${\rm divE}$'
                 if self.NormDVar.get():
                     tmp_str += r'$\ [n_0]$'
                 self.parent.an_2d.set_text(tmp_str)
@@ -906,6 +959,11 @@ class DensSettings(Tk.Toplevel):
                         self.parent.axes.set_ylabel(r'$\rho\ [n_0]$', size = self.parent.parent.MainParamDict['AxLabelSize'])
                     else:
                         self.parent.axes.set_ylabel(r'$\rho$', size = self.parent.parent.MainParamDict['AxLabelSize'])
+                if self.parent.GetPlotParam('dens_type') == 4:
+                    if self.NormDVar.get():
+                        self.parent.axes.set_ylabel(r'${\rm divE}\ [n_0]$', size = self.parent.parent.MainParamDict['AxLabelSize'])
+                    else:
+                        self.parent.axes.set_ylabel(r'${\rm divE}$', size = self.parent.parent.MainParamDict['AxLabelSize'])
 
             self.parent.SetPlotParam('normalize_density', self.NormDVar.get())#, update_plot = self.parent.GetPlotParam('dens_type')==0)
 
@@ -1031,6 +1089,11 @@ class DensSettings(Tk.Toplevel):
                         self.parent.an_2d.set_text(r'$\rho/n_0$')
                     else:
                         self.parent.an_2d.set_text(r'$\rho$')
+                elif self.DensTypeVar.get() == 4:
+                    if self.parent.GetPlotParam('normalize_density'):
+                        self.parent.an_2d.set_text(r'${\rm divE}/n_0$')
+                    else:
+                        self.parent.an_2d.set_text(r'${\rm divE}$')
 
             else:
                 if self.DensTypeVar.get() == 0:
@@ -1056,6 +1119,11 @@ class DensSettings(Tk.Toplevel):
                         self.parent.axes.set_ylabel(r'$\rho\ [n_0]$', size = self.parent.parent.MainParamDict['AxLabelSize'])
                     else:
                         self.parent.axes.set_ylabel(r'$\rho$', size = self.parent.parent.MainParamDict['AxLabelSize'])
+                elif self.DensTypeVar.get() == 4:
+                    if self.parent.GetPlotParam('normalize_density'):
+                        self.parent.axes.set_ylabel(r'${\rm divE}\ [n_0]$', size = self.parent.parent.MainParamDict['AxLabelSize'])
+                    else:
+                        self.parent.axes.set_ylabel(r'${\rm divE}$', size = self.parent.parent.MainParamDict['AxLabelSize'])
 
 
             self.parent.SetPlotParam('dens_type', self.DensTypeVar.get())

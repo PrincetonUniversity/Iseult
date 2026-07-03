@@ -42,6 +42,7 @@ class PhasePanel:
                        'spatial_y': False,
                        'symmetric': False,
                        'interpolation': 'nearest',
+                       'filter_by_viewport': True,
                        'face_color': 'gainsboro'}
 
 
@@ -187,12 +188,37 @@ class PhasePanel:
                 self.arrs_needed.append('ve')
             elif self.GetPlotParam('mom_dim') == 2:
                 self.arrs_needed.append('we')
+
+        if self.GetPlotParam('filter_by_viewport') and self.parent.is_viewport_zoomed():
+            try:
+                import h5py
+                prtl_file = self.FigWrap.parent.PathDict['Prtl'][0]
+                with h5py.File(prtl_file, 'r') as f:
+                    if self.GetPlotParam('prtl_type') == 0:
+                        if 'yi' in f or 'y_2' in f:
+                            self.arrs_needed.append('yi')
+                        if 'zi' in f or 'z_2' in f:
+                            self.arrs_needed.append('zi')
+                    else:
+                        if 'ye' in f or 'y_1' in f:
+                            self.arrs_needed.append('ye')
+                        if 'ze' in f or 'z_1' in f:
+                            self.arrs_needed.append('ze')
+            except Exception:
+                pass
+
         return self.arrs_needed
 
     def LoadData(self):
         ''' A helper function that checks if the histogram has
         already been calculated and if it hasn't, it calculates
         it then stores it.'''
+        self.viewport = None
+        if self.GetPlotParam('filter_by_viewport') and self.parent.is_viewport_zoomed():
+            self.viewport = self.parent.get_active_viewport()
+            if self.viewport is not None:
+                self.parent.last_phase_viewport = self.viewport
+
         self.key_name = str(self.GetPlotParam('pbins')) + 'x' + str(self.GetPlotParam('xbins'))
 
         if self.GetPlotParam('masked'):
@@ -213,6 +239,10 @@ class PhasePanel:
         self.key_name += self.prtl_opts[self.GetPlotParam('prtl_type')]
         self.key_name += self.direction_opts[self.GetPlotParam('mom_dim')]
         self.key_name += str(int(self.parent.MainParamDict['PrtlStride']))
+
+        if self.viewport is not None:
+            xlim_0, xlim_1, ylim_0, ylim_1, plane = self.viewport
+            self.key_name += f'_vp_{xlim_0:.4f}_{xlim_1:.4f}_{ylim_0:.4f}_{ylim_1:.4f}_{plane}'
 
         if self.key_name in self.parent.DataDict.keys():
             self.hist2d = self.parent.DataDict[self.key_name]
@@ -245,7 +275,7 @@ class PhasePanel:
 
 
             # Now load the data. We require all 3 dimensions to determine
-            # the velociy and LF in the boosted frame.
+            # the velocity and LF in the boosted frame.
             if self.GetPlotParam('prtl_type') == 0:
                 # first load everything downstream frame
                 self.x_values = self.FigWrap.LoadKey('xi')/self.c_omp
@@ -276,7 +306,7 @@ class PhasePanel:
             vy = v/gamma_ds
             vz = w/gamma_ds
 
-            # Now calulate the velocities in the boosted frames
+            # Now calculate the velocities in the boosted frames
             tmp_helper = 1-vx*self.betaBoost
             vx_prime = (vx-self.betaBoost)/tmp_helper
             vy_prime = vy/self.GammaBoost/tmp_helper
@@ -286,9 +316,6 @@ class PhasePanel:
             # Initial rapidity
             rap_prtl = np.arccosh(gamma_ds)
             rap_boost = np.arccosh(self.GammaBoost)
-
-            #v_tot_sq = vx_prime**2 + vy_prime**2 + vz_prime**2
-            #gamma_old_way = 1/np.sqrt(1-v_tot_sq)
 
             gamma_prime = gamma_ds*self.GammaBoost-np.sign(u)*np.sign(self.betaBoost)*np.sinh(rap_prtl)*np.sinh(rap_boost)/np.sqrt(1+(v/u)**2+(w/u)**2)
 
@@ -300,14 +327,9 @@ class PhasePanel:
                 self.y_values  = vz_prime*gamma_prime
 
             # Some of the values are becoming NaN.
-            # ignore them, but I don't think this should be happening anymore....
             nan_ind = np.isnan(self.y_values)
 
-
-            self.pmin = 0.0 if len(self.y_values) == 0 else min(self.y_values)
-            self.pmax = 0.0 if len(self.y_values) == 0 else max(self.y_values)
-            self.pmax = self.pmax if (self.pmax != self.pmin) else self.pmin + 1
-
+            inRange = np.ones(len(self.y_values), dtype=bool)
 
             if self.GetPlotParam('set_E_min') or self.GetPlotParam('set_E_max'):
                 # We need to calculate the total energy in units m_e c^2
@@ -318,23 +340,62 @@ class PhasePanel:
 
                 # Now find the particles that fall in our range
                 if self.GetPlotParam('set_E_min'):
-                    inRange = energy >= self.FigWrap.GetPlotParam('E_min')
-                    if self.GetPlotParam('set_E_max'):
-                        inRange *= energy <= self.GetPlotParam('E_max')
-                elif self.GetPlotParam('set_E_max'):
-                    inRange = energy <= self.GetPlotParam('E_max')
-                inRange *= np.logical_not(nan_ind)
-                if self.GetPlotParam('weighted'):
-                    self.hist2d = Fast2DWeightedHist(self.y_values[inRange], self.x_values[inRange], self.weights[inRange], self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
+                    inRange &= energy >= self.FigWrap.GetPlotParam('E_min')
+                if self.GetPlotParam('set_E_max'):
+                    inRange &= energy <= self.FigWrap.GetPlotParam('E_max')
 
-                else:
-                    self.hist2d = Fast2DHist(self.y_values[inRange], self.x_values[inRange], self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
+            # Filter by viewport if active
+            if self.viewport is not None:
+                xlim_0, xlim_1, ylim_0, ylim_1, plane = self.viewport
+                xlim_min, xlim_max = min(xlim_0, xlim_1), max(xlim_0, xlim_1)
+                ylim_min, ylim_max = min(ylim_0, ylim_1), max(ylim_0, ylim_1)
 
+                if plane in [0, 1]:
+                    inRange &= (self.x_values >= xlim_min) & (self.x_values <= xlim_max)
+                    self.xmin = xlim_min
+                    self.xmax = xlim_max
+
+                prtl_type = self.GetPlotParam('prtl_type')
+                if plane == 0: # x-y plane
+                    y_key = 'yi' if prtl_type == 0 else 'ye'
+                    try:
+                        y_coord = self.FigWrap.LoadKey(y_key) / self.c_omp
+                        inRange &= (y_coord >= ylim_min) & (y_coord <= ylim_max)
+                    except KeyError:
+                        pass
+                elif plane == 1: # x-z plane
+                    z_key = 'zi' if prtl_type == 0 else 'ze'
+                    try:
+                        z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                        inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                    except KeyError:
+                        pass
+                elif plane == 2: # y-z plane
+                    y_key = 'yi' if prtl_type == 0 else 'ye'
+                    z_key = 'zi' if prtl_type == 0 else 'ze'
+                    try:
+                        y_coord = self.FigWrap.LoadKey(y_key) / self.c_omp
+                        inRange &= (y_coord >= xlim_min) & (y_coord <= xlim_max)
+                    except KeyError:
+                        pass
+                    try:
+                        z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                        inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                    except KeyError:
+                        pass
+
+            inRange &= np.logical_not(nan_ind)
+
+            # Calculate pmin and pmax after filtering!
+            self.pmin = 0.0 if len(self.y_values[inRange]) == 0 else min(self.y_values[inRange])
+            self.pmax = 0.0 if len(self.y_values[inRange]) == 0 else max(self.y_values[inRange])
+            self.pmax = self.pmax if (self.pmax != self.pmin) else self.pmin + 1
+
+            if self.GetPlotParam('weighted'):
+                self.hist2d = Fast2DWeightedHist(self.y_values[inRange], self.x_values[inRange], self.weights[inRange], self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
             else:
-                if self.GetPlotParam('weighted'):
-                    self.hist2d = Fast2DWeightedHist(self.y_values, self.x_values, self.weights, self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
-                else:
-                    self.hist2d = Fast2DHist(self.y_values, self.x_values, self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
+                self.hist2d = Fast2DHist(self.y_values[inRange], self.x_values[inRange], self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
+
             try:
                 if self.GetPlotParam('masked'):
                     zval = ma.masked_array(self.hist2d[0])
@@ -385,13 +446,11 @@ class PhasePanel:
                 if self.GetPlotParam('mom_dim') == 2:
                     self.y_values = self.FigWrap.LoadKey('we')
 
-            self.pmin = 0.0 if len(self.y_values) == 0 else min(self.y_values)
-            self.pmax = 0.0 if len(self.y_values) == 0 else max(self.y_values)
-            self.pmax = self.pmax if (self.pmax != self.pmin) else self.pmin + 1
-
             self.xmin = 0
             self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.istep
             self.xmax = self.xmax if (self.xmax != self.xmin) else self.xmin + 1
+
+            inRange = np.ones(len(self.y_values), dtype=bool)
 
             if self.GetPlotParam('set_E_min') or self.GetPlotParam('set_E_max'):
                 # We need to calculate the total energy of each particle in
@@ -405,7 +464,6 @@ class PhasePanel:
                     w = self.FigWrap.LoadKey('wi')
 
                 if self.GetPlotParam('prtl_type') == 1: #electons
-                    self.x_values = self.FigWrap.LoadKey('xe')/self.c_omp
                     u = self.FigWrap.LoadKey('ue')
                     v = self.FigWrap.LoadKey('ve')
                     w = self.FigWrap.LoadKey('we')
@@ -419,20 +477,59 @@ class PhasePanel:
 
                 # Now find the particles that fall in our range
                 if self.GetPlotParam('set_E_min'):
-                    inRange = energy >= self.FigWrap.GetPlotParam('E_min')
-                    if self.GetPlotParam('set_E_max'):
-                        inRange *= energy <= self.GetPlotParam('E_max')
-                elif self.GetPlotParam('set_E_max'):
-                    inRange = energy <= self.GetPlotParam('E_max')
-                if self.GetPlotParam('weighted'):
-                    self.hist2d = Fast2DWeightedHist(self.y_values[inRange], self.x_values[inRange], self.weights[inRange], self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
-                else:
-                    self.hist2d = Fast2DHist(self.y_values[inRange], self.x_values[inRange], self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
+                    inRange &= energy >= self.FigWrap.GetPlotParam('E_min')
+                if self.GetPlotParam('set_E_max'):
+                    inRange &= energy <= self.FigWrap.GetPlotParam('E_max')
+
+            # Filter by viewport if active
+            if self.viewport is not None:
+                xlim_0, xlim_1, ylim_0, ylim_1, plane = self.viewport
+                xlim_min, xlim_max = min(xlim_0, xlim_1), max(xlim_0, xlim_1)
+                ylim_min, ylim_max = min(ylim_0, ylim_1), max(ylim_0, ylim_1)
+
+                if plane in [0, 1]:
+                    inRange &= (self.x_values >= xlim_min) & (self.x_values <= xlim_max)
+                    self.xmin = xlim_min
+                    self.xmax = xlim_max
+
+                prtl_type = self.GetPlotParam('prtl_type')
+                if plane == 0: # x-y plane
+                    y_key = 'yi' if prtl_type == 0 else 'ye'
+                    try:
+                        y_coord = self.FigWrap.LoadKey(y_key) / self.c_omp
+                        inRange &= (y_coord >= ylim_min) & (y_coord <= ylim_max)
+                    except KeyError:
+                        pass
+                elif plane == 1: # x-z plane
+                    z_key = 'zi' if prtl_type == 0 else 'ze'
+                    try:
+                        z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                        inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                    except KeyError:
+                        pass
+                elif plane == 2: # y-z plane
+                    y_key = 'yi' if prtl_type == 0 else 'ye'
+                    z_key = 'zi' if prtl_type == 0 else 'ze'
+                    try:
+                        y_coord = self.FigWrap.LoadKey(y_key) / self.c_omp
+                        inRange &= (y_coord >= xlim_min) & (y_coord <= xlim_max)
+                    except KeyError:
+                        pass
+                    try:
+                        z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                        inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                    except KeyError:
+                        pass
+
+            # Calculate pmin and pmax after filtering!
+            self.pmin = 0.0 if len(self.y_values[inRange]) == 0 else min(self.y_values[inRange])
+            self.pmax = 0.0 if len(self.y_values[inRange]) == 0 else max(self.y_values[inRange])
+            self.pmax = self.pmax if (self.pmax != self.pmin) else self.pmin + 1
+
+            if self.GetPlotParam('weighted'):
+                self.hist2d = Fast2DWeightedHist(self.y_values[inRange], self.x_values[inRange], self.weights[inRange], self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
             else:
-                if self.GetPlotParam('weighted'):
-                    self.hist2d = Fast2DWeightedHist(self.y_values, self.x_values, self.weights, self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
-                else:
-                    self.hist2d = Fast2DHist(self.y_values, self.x_values, self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
+                self.hist2d = Fast2DHist(self.y_values[inRange], self.x_values[inRange], self.pmin,self.pmax, self.GetPlotParam('pbins'), self.xmin,self.xmax, self.GetPlotParam('xbins')), [self.pmin, self.pmax], [self.xmin, self.xmax]
 
             try:
                 if self.GetPlotParam('masked'):
@@ -816,6 +913,14 @@ class PhaseSettings(Tk.Toplevel):
         self.xBins.set(str(self.parent.GetPlotParam('xbins')))
         ttk.Label(frm, text ='# of xbins').grid(row = 10, column = 0, sticky = Tk.W)
         ttk.Entry(frm, textvariable=self.xBins, width=7).grid(row = 10, column = 1)
+
+        self.FilterVPVar = Tk.IntVar()
+        self.FilterVPVar.set(self.parent.GetPlotParam('filter_by_viewport'))
+        cb = ttk.Checkbutton(frm, text = "Restrict to viewport",
+                        variable = self.FilterVPVar,
+                        command = lambda:
+                        self.parent.SetPlotParam('filter_by_viewport', self.FilterVPVar.get()))
+        cb.grid(row = 9, column = 2, sticky = Tk.W)
 
 
 #        ttk.Label(frm, text = 'If the zero values are not masked they are set to z_min/2').grid(row =9, columnspan =2)

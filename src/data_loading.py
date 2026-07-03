@@ -428,3 +428,5 @@ def load_dataset(file_path: str | pathlib.Path, dataset_name: str, dataset_slice
 
         return loaded_data
 # =============================================================================
+load_data = load_dataset
+

@@ -57,6 +57,18 @@ class MyCustomToolbar(NavigationToolbar2Tk):
         #print(self._nav_stack)
         self.parent = parent
 
+    def home(self, *args, **kwargs):
+        NavigationToolbar2Tk.home(self, *args, **kwargs)
+        self.parent.after(100, self.parent.check_limits_and_renew)
+
+    def back(self, *args, **kwargs):
+        NavigationToolbar2Tk.back(self, *args, **kwargs)
+        self.parent.after(100, self.parent.check_limits_and_renew)
+
+    def forward(self, *args, **kwargs):
+        NavigationToolbar2Tk.forward(self, *args, **kwargs)
+        self.parent.after(100, self.parent.check_limits_and_renew)
+
 class Spinbox(ttk.Entry):
     def __init__(self, master=None, **kw):
         ttk.Entry.__init__(self, master, "ttk::spinbox", **kw)
@@ -145,7 +157,7 @@ class SubPlotWrapper:
             self.Changedto1D = not self.PlotParamsDict[self.chartType]['twoD']
             self.Changedto2D = self.PlotParamsDict[self.chartType]['twoD']
 
-        self.parent.RenewCanvas(ForceRedraw = True)
+        self.parent.after(100, lambda: self.parent.RenewCanvas(ForceRedraw = True))
 
     def GenParamDict(self):
         '''First we create dictionary of dictionarys that will store all of the
@@ -432,7 +444,7 @@ class PlaybackBar(Tk.Frame):
         self.param.attach(self)
 
     def OnReload(self, *args):
-        _ = self.parent.checkAndFindFilePaths()
+        _ = self.parent.checkAndFindFilePaths(reload_mode = True)
         self.parent.RenewCanvas()
 
     def OnRefresh(self, *args):
@@ -1899,6 +1911,7 @@ class MainApp(Tk.Tk):
                           u'time': 'Param',
                           u'splitratio': 'Param',
                           u'indi': 'Prtl',
+                          u'divE': 'Flds',
                           u'ppc0': 'Param'}
         self.prtl_keys = []
         for k, v in self.H5KeyDict.items():
@@ -2356,6 +2369,7 @@ class MainApp(Tk.Tk):
         self.canvas.get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
         self.ReDrawCanvas()
         self.f.canvas.mpl_connect('button_press_event', self.onclick)
+        self.f.canvas.mpl_connect('button_release_event', self.on_release)
 
     def LoadConfig(self, config_file):
         # First get rid of any & all pop up windows:
@@ -2567,6 +2581,20 @@ class MainApp(Tk.Tk):
                                     mx0   = data_loading.load_dataset(filepath, 'mx0', slice(0,1))
                                     tmpSize = ((self.MaxXInd+1)*istep)//(mx0-5)
                                     self.DataDict[elm] = np.ones(tmpSize)*mx0
+                                elif elm in ['v3x', 'v3y', 'v3z', 'v3xi', 'v3yi', 'v3zi']:
+                                    messagebox.showwarning("Missing Data", f"The velocity array '{elm}' was not found in the fields file.\nVelocity plotting is unavailable.")
+                                    for row in range(self.MainParamDict['NumOfRows']):
+                                        for col in range(self.MainParamDict['NumOfCols']):
+                                            subplot = self.SubPlotList[row][col]
+                                            if subplot.chartType == 'FieldsPlot' and subplot.GetPlotParam('field_type') in [4, 5]:
+                                                subplot.SetPlotParam('field_type', 0, update_plot=False)
+                                                if hasattr(subplot, 'settings_window') and subplot.settings_window is not None:
+                                                    subplot.settings_window.FieldTypeVar.set(0)
+                                    self.parent.after(100, self.LoadAllKeys)
+                                    return
+                                elif elm == 'divE':
+                                    print("Warning: divE variable is missing in the file.")
+                                    self.DataDict[elm] = np.nan
                                 else:
                                     raise
 
@@ -2607,6 +2635,20 @@ class MainApp(Tk.Tk):
                                     mx0   = data_loading.load_dataset(filepath, 'mx0', slice(0,1))
                                     tmpSize = ((self.MaxXInd+1)*istep)//(mx0-5)
                                     self.DataDict[elm] = np.ones(tmpSize)*mx0
+                                elif elm in ['v3x', 'v3y', 'v3z', 'v3xi', 'v3yi', 'v3zi']:
+                                    messagebox.showwarning("Missing Data", f"The velocity array '{elm}' was not found in the fields file.\nVelocity plotting is unavailable.")
+                                    for row in range(self.MainParamDict['NumOfRows']):
+                                        for col in range(self.MainParamDict['NumOfCols']):
+                                            subplot = self.SubPlotList[row][col]
+                                            if subplot.chartType == 'FieldsPlot' and subplot.GetPlotParam('field_type') in [4, 5]:
+                                                subplot.SetPlotParam('field_type', 0, update_plot=False)
+                                                if hasattr(subplot, 'settings_window') and subplot.settings_window is not None:
+                                                    subplot.settings_window.FieldTypeVar.set(0)
+                                    self.parent.after(100, self.LoadAllKeys)
+                                    return
+                                elif elm == 'divE':
+                                    print("Warning: divE variable is missing in the file.")
+                                    self.DataDict[elm] = np.nan
                                 else:
                                     raise
 
@@ -3375,6 +3417,80 @@ class MainApp(Tk.Tk):
         SaveDialog(self)
     def OpenMovieDialog(self):
         MovieDialog(self)
+
+    def get_active_viewport(self):
+        if not hasattr(self, 'SubPlotList') or self.SubPlotList is None:
+            return None
+        for i in range(self.MainParamDict['NumOfRows']):
+            if i >= len(self.SubPlotList):
+                continue
+            for j in range(self.MainParamDict['NumOfCols']):
+                if j >= len(self.SubPlotList[i]):
+                    continue
+                subplot = self.SubPlotList[i][j]
+                if subplot.chartType in ['FieldsPlot', 'DensityPlot', 'MagPlots', 'Moments']:
+                    if subplot.graph and subplot.graph.GetPlotParam('twoD'):
+                        if hasattr(subplot.graph, 'axes') and subplot.graph.axes is not None:
+                            xlim = subplot.graph.axes.get_xlim()
+                            ylim = subplot.graph.axes.get_ylim()
+                            plane = self.MainParamDict['2DSlicePlane']
+                            xlim_min, xlim_max = min(xlim), max(xlim)
+                            ylim_min, ylim_max = min(ylim), max(ylim)
+                            return (xlim_min, xlim_max, ylim_min, ylim_max, plane)
+        return None
+
+    def is_viewport_zoomed(self):
+        if not hasattr(self, 'diff_from_home') or not self.diff_from_home:
+            return False
+        m = 0
+        for i in range(self.MainParamDict['NumOfRows']):
+            if i >= len(self.SubPlotList):
+                continue
+            for j in range(self.MainParamDict['NumOfCols']):
+                if j >= len(self.SubPlotList[i]):
+                    continue
+                subplot = self.SubPlotList[i][j]
+                if subplot.chartType in ['FieldsPlot', 'DensityPlot', 'MagPlots', 'Moments']:
+                    if subplot.graph and subplot.graph.GetPlotParam('twoD'):
+                        if m < len(self.diff_from_home):
+                            if any(val != 'n/a' for val in self.diff_from_home[m]):
+                                return True
+                m += 1
+        return False
+
+    def on_release(self, event):
+        # Defer limit check slightly to let toolbar updates complete
+        self.after(100, self.check_limits_and_renew)
+
+    def check_limits_and_renew(self):
+        # Check if there is any PhasePlot with filter_by_viewport enabled
+        has_viewport_phase_plot = False
+        if hasattr(self, 'SubPlotList') and self.SubPlotList is not None:
+            for i in range(self.MainParamDict['NumOfRows']):
+                if i >= len(self.SubPlotList):
+                    continue
+                for j in range(self.MainParamDict['NumOfCols']):
+                    if j >= len(self.SubPlotList[i]):
+                        continue
+                    subplot = self.SubPlotList[i][j]
+                    if subplot.chartType in ['PhasePlot', 'Moments'] and subplot.graph:
+                        if subplot.graph.GetPlotParam('filter_by_viewport'):
+                            has_viewport_phase_plot = True
+                            break
+                if has_viewport_phase_plot:
+                    break
+
+        if not has_viewport_phase_plot:
+            return
+
+        # Get current active viewport
+        viewport = self.get_active_viewport()
+        if viewport is None:
+            return
+
+        # Compare with the last used viewport for phase plots
+        if not hasattr(self, 'last_phase_viewport') or self.last_phase_viewport != viewport:
+            self.RenewCanvas(keep_view=True)
 
     def onclick(self, event):
         '''After being clicked, we should use the x and y of the cursor to
