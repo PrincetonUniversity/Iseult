@@ -11,6 +11,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
 from matplotlib.ticker import FuncFormatter
 import streamlines
+import vector_arrows
 
 class DensPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
@@ -40,6 +41,7 @@ class DensPanel:
                        'face_color': 'gainsboro'}
 
     streamlines.add_streamline_params(plot_param_dict)
+    vector_arrows.add_vector_params(plot_param_dict)
 
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))
@@ -86,6 +88,9 @@ class DensPanel:
 
         if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.add_streamline_plot_keys(self)
+
+        if self.GetPlotParam('show_vectors') and self.GetPlotParam('twoD'):
+            vector_arrows.add_vector_plot_keys(self)
 
         return self.arrs_needed
     def LoadData(self):
@@ -144,6 +149,9 @@ class DensPanel:
         # self.y_values =  np.arange(self.zval.shape[0])/self.c_omp*self.istep
 
     def draw(self):
+        self.vector_cid_x = None
+        self.vector_cid_y = None
+        self.vector_quiver = None
         if self.GetPlotParam('OutlineText'):
             self.annotate_kwargs = {'horizontalalignment': 'right',
             'verticalalignment': 'top',
@@ -437,6 +445,9 @@ class DensPanel:
         if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.draw_streamlines(self)
 
+        if self.GetPlotParam('show_vectors') and self.GetPlotParam('twoD'):
+            vector_arrows.draw_vectors(self)
+
         if self.GetPlotParam('show_cpu_domains'):
             self.FigWrap.SetCpuDomainLines()
 
@@ -584,6 +595,9 @@ class DensPanel:
 
         if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.refresh_streamlines(self)
+
+        if self.GetPlotParam('show_vectors') and self.GetPlotParam('twoD'):
+            vector_arrows.refresh_vectors(self)
 
         if self.GetPlotParam('show_cpu_domains'):
             self.FigWrap.UpdateCpuDomainLines()
@@ -817,6 +831,7 @@ class DensSettings(Tk.Toplevel):
         self.ZmaxEnter.grid(row = 4, column = 3)
 
         streamlines.add_streamline_buttons(self, self.parent, starting_row=11)
+        vector_arrows.add_vector_buttons(self, self.parent, starting_row=11)
 
     def ShockVarHandler(self, *args):
         if self.parent.GetPlotParam('show_shock')== self.ShockVar.get():
