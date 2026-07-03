@@ -12,6 +12,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.patheffects as PathEffects
 import matplotlib.transforms as mtransforms
 import streamlines
+import vector_arrows
 
 class FieldsPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
@@ -79,6 +80,7 @@ class FieldsPanel:
                        'face_color': 'gainsboro' }
 
     streamlines.add_streamline_params(plot_param_dict)
+    vector_arrows.add_vector_params(plot_param_dict)
 
     gradient =  np.linspace(0, 1, 256)# A way to make the colorbar display better
     gradient = np.vstack((gradient, gradient))
@@ -176,6 +178,9 @@ class FieldsPanel:
 
         if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.add_streamline_plot_keys(self)
+
+        if self.GetPlotParam('show_vectors') and self.GetPlotParam('twoD'):
+            vector_arrows.add_vector_plot_keys(self)
 
         return self.arrs_needed
 
@@ -461,6 +466,9 @@ class FieldsPanel:
                         self.flagz = 0
 
     def draw(self):
+        self.vector_cid_x = None
+        self.vector_cid_y = None
+        self.vector_quiver = None
 
         ''' A function that draws the data. In the interest in speeding up the
         code, draw should only be called when you want to recreate the whole
@@ -865,6 +873,9 @@ class FieldsPanel:
         if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.draw_streamlines(self)
 
+        if self.GetPlotParam('show_vectors') and self.GetPlotParam('twoD'):
+            vector_arrows.draw_vectors(self)
+
         if self.GetPlotParam('show_cpu_domains'):
             self.FigWrap.SetCpuDomainLines()
     def refresh(self):
@@ -1052,6 +1063,9 @@ class FieldsPanel:
 
         if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.refresh_streamlines(self)
+
+        if self.GetPlotParam('show_vectors') and self.GetPlotParam('twoD'):
+            vector_arrows.refresh_vectors(self)
 
         if self.GetPlotParam('show_cpu_domains'):
             self.FigWrap.UpdateCpuDomainLines()
@@ -1322,6 +1336,7 @@ class FieldSettings(Tk.Toplevel):
         cb.grid(row = start_row, column = 1, sticky = Tk.W)
 
         streamlines.add_streamline_buttons(self, self.parent, starting_row=start_row + 4)
+        vector_arrows.add_vector_buttons(self, self.parent, starting_row=start_row + 4)
 
     def CbarHandler(self, *args):
         if self.parent.GetPlotParam('show_cbar')== self.CbarVar.get():
