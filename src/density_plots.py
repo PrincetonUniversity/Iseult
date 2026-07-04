@@ -474,6 +474,7 @@ class DensPanel:
 
         if self.GetPlotParam('show_cpu_domains'):
             self.FigWrap.SetCpuDomainLines()
+        vector_arrows.register_zoom_callback(self)
 
     def refresh(self):
         '''This is a function that will be called only if self.axes already
