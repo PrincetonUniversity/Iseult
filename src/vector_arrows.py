@@ -119,24 +119,11 @@ def register_zoom_callback(panel):
 
 
 def on_limits_changed(panel):
-    """Triggered on axes zoom/pan. Recalculates and updates the quiver grid for all active panels.
+    """Triggered on axes zoom/pan. Recalculates and updates the quiver grid for this panel.
     """
-    main_app = panel.parent
-    if hasattr(main_app, '_updating_vector_limits') and main_app._updating_vector_limits:
-        return
-    main_app._updating_vector_limits = True
-    try:
-        for row in range(main_app.MainParamDict['NumOfRows']):
-            for col in range(main_app.MainParamDict['NumOfCols']):
-                subplot = main_app.SubPlotList[row][col]
-                if subplot is not None and hasattr(subplot, 'graph') and subplot.graph is not None:
-                    g = subplot.graph
-                    if hasattr(g, 'GetPlotParam') and g.GetPlotParam("show_vectors"):
-                        if hasattr(g, 'c_omp') and hasattr(g, 'istep'):
-                            refresh_vectors(g)
-        main_app.canvas.draw_idle()
-    finally:
-        main_app._updating_vector_limits = False
+    if panel.GetPlotParam("show_vectors"):
+        refresh_vectors(panel)
+        panel.parent.canvas.draw_idle()
 
 
 def draw_vectors(panel):
