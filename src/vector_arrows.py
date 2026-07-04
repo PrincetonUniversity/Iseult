@@ -269,13 +269,13 @@ def draw_vectors(panel):
     U = U_full[IY, IX]
     V = V_full[IY, IX]
 
-    panel._updating_vector_limits = True
+    # Temporarily turn off autoscale so quiver doesn't alter axes limits
+    autoscale_on = panel.axes.get_autoscale_on()
+    panel.axes.set_autoscale_on(False)
     try:
         panel.vector_quiver = panel.axes.quiver(X, Y, U, V, pivot='middle', color='black')
-        panel.axes.set_xlim(xlim)
-        panel.axes.set_ylim(ylim)
     finally:
-        panel._updating_vector_limits = False
+        panel.axes.set_autoscale_on(autoscale_on)
 
 
 def refresh_vectors(panel):
