@@ -466,6 +466,7 @@ class FieldsPanel:
                         self.flagz = 0
 
     def draw(self):
+        self._in_refresh = True
         self.vector_cid_x = None
         self.vector_cid_y = None
         self.vector_quiver = None
@@ -879,7 +880,9 @@ class FieldsPanel:
         if self.GetPlotParam('show_cpu_domains'):
             self.FigWrap.SetCpuDomainLines()
         vector_arrows.register_zoom_callback(self)
+        self._in_refresh = False
     def refresh(self):
+        self._in_refresh = True
 
         '''This is a function that will be called only if self.axes already
         holds a fields type plot. We only update things that have changed & are
@@ -1070,6 +1073,7 @@ class FieldsPanel:
 
         if self.GetPlotParam('show_cpu_domains'):
             self.FigWrap.UpdateCpuDomainLines()
+        self._in_refresh = False
 
     def CbarTickFormatter(self):
         ''' A helper function that sets the cbar ticks & labels. This used to be

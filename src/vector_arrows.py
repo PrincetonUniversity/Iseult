@@ -121,6 +121,8 @@ def register_zoom_callback(panel):
 def on_limits_changed(panel):
     """Triggered on axes zoom/pan. Schedules a deferred vector update to run after limits settle.
     """
+    if hasattr(panel, '_in_refresh') and panel._in_refresh:
+        return
     main_app = panel.parent
     if hasattr(main_app, '_zoom_timer_id') and main_app._zoom_timer_id is not None:
         try:
