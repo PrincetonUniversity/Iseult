@@ -3248,9 +3248,10 @@ class MainApp(Tk.Tk):
                 subplot = self.SubPlotList[i][col]
                 if subplot is not None and hasattr(subplot, 'graph') and subplot.graph is not None:
                     g = subplot.graph
-                    if hasattr(g, 'GetPlotParam') and g.GetPlotParam("show_vectors"):
-                        if hasattr(g, 'c_omp') and hasattr(g, 'istep'):
-                            vector_arrows.refresh_vectors(g)
+                    if subplot.chartType in ['FieldsPlot', 'DensityPlot']:
+                        if hasattr(g, 'GetPlotParam') and g.GetPlotParam("show_vectors"):
+                            if hasattr(g, 'c_omp') and hasattr(g, 'istep'):
+                                vector_arrows.refresh_vectors(g)
 
         # Reset _in_refresh flag to False
         for i in range(self.MainParamDict['NumOfRows']):
@@ -3348,9 +3349,10 @@ class MainApp(Tk.Tk):
                 subplot = self.SubPlotList[i][col]
                 if subplot is not None and hasattr(subplot, 'graph') and subplot.graph is not None:
                     g = subplot.graph
-                    if hasattr(g, 'GetPlotParam') and g.GetPlotParam("show_vectors"):
-                        if hasattr(g, 'c_omp') and hasattr(g, 'istep'):
-                            vector_arrows.refresh_vectors(g)
+                    if subplot.chartType in ['FieldsPlot', 'DensityPlot']:
+                        if hasattr(g, 'GetPlotParam') and g.GetPlotParam("show_vectors"):
+                            if hasattr(g, 'c_omp') and hasattr(g, 'istep'):
+                                vector_arrows.refresh_vectors(g)
 
         # Reset _in_refresh flag to False
         for i in range(self.MainParamDict['NumOfRows']):
