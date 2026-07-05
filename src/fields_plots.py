@@ -874,7 +874,8 @@ class FieldsPanel:
             streamlines.draw_streamlines(self)
 
         if self.GetPlotParam('show_vectors') and self.GetPlotParam('twoD'):
-            vector_arrows.draw_vectors(self)
+            if not (hasattr(self, '_in_refresh') and self._in_refresh):
+                vector_arrows.draw_vectors(self)
 
         if self.GetPlotParam('show_cpu_domains'):
             self.FigWrap.SetCpuDomainLines()
@@ -1066,7 +1067,8 @@ class FieldsPanel:
             streamlines.refresh_streamlines(self)
 
         if self.GetPlotParam('show_vectors') and self.GetPlotParam('twoD'):
-            vector_arrows.refresh_vectors(self)
+            if not (hasattr(self, '_in_refresh') and self._in_refresh):
+                vector_arrows.refresh_vectors(self)
 
         if self.GetPlotParam('show_cpu_domains'):
             self.FigWrap.UpdateCpuDomainLines()

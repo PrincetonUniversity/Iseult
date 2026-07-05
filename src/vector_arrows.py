@@ -119,13 +119,20 @@ def register_zoom_callback(panel):
 
 
 def on_limits_changed(panel):
-    """Triggered on axes zoom/pan. Recalculates and updates the quiver grid for all active panels.
+    """Triggered on axes zoom/pan. Schedules a deferred vector update to run after limits settle.
     """
-    main_app = panel.parent
-    if hasattr(main_app, '_updating_vector_limits') and main_app._updating_vector_limits:
+    if hasattr(panel, '_in_refresh') and panel._in_refresh:
         return
-    main_app._updating_vector_limits = True
-    try:
+    main_app = panel.parent
+    if hasattr(main_app, '_zoom_timer_id') and main_app._zoom_timer_id is not None:
+        try:
+            main_app.after_cancel(main_app._zoom_timer_id)
+        except Exception:
+            pass
+        main_app._zoom_timer_id = None
+
+    def execute_update():
+        main_app._zoom_timer_id = None
         for row in range(main_app.MainParamDict['NumOfRows']):
             for col in range(main_app.MainParamDict['NumOfCols']):
                 subplot = main_app.SubPlotList[row][col]
@@ -135,8 +142,9 @@ def on_limits_changed(panel):
                         if hasattr(g, 'c_omp') and hasattr(g, 'istep'):
                             refresh_vectors(g)
         main_app.canvas.draw_idle()
-    finally:
-        main_app._updating_vector_limits = False
+
+    # Schedule the update to run after 50ms (after limits-changed propagation has fully completed)
+    main_app._zoom_timer_id = main_app.after(50, execute_update)
 
 
 def draw_vectors(panel):
@@ -269,13 +277,13 @@ def draw_vectors(panel):
     U = U_full[IY, IX]
     V = V_full[IY, IX]
 
-    panel._updating_vector_limits = True
+    # Temporarily turn off autoscale so quiver doesn't alter axes limits
+    autoscale_on = panel.axes.get_autoscale_on()
+    panel.axes.set_autoscale_on(False)
     try:
         panel.vector_quiver = panel.axes.quiver(X, Y, U, V, pivot='middle', color='black')
-        panel.axes.set_xlim(xlim)
-        panel.axes.set_ylim(ylim)
     finally:
-        panel._updating_vector_limits = False
+        panel.axes.set_autoscale_on(autoscale_on)
 
 
 def refresh_vectors(panel):
