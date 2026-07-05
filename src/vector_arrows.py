@@ -119,18 +119,30 @@ def register_zoom_callback(panel):
 
 
 def on_limits_changed(panel):
-    """Triggered on axes zoom/pan. Recalculates and updates the quiver grid for all active panels.
+    """Triggered on axes zoom/pan. Schedules a deferred vector update to run after limits settle.
     """
     main_app = panel.parent
-    for row in range(main_app.MainParamDict['NumOfRows']):
-        for col in range(main_app.MainParamDict['NumOfCols']):
-            subplot = main_app.SubPlotList[row][col]
-            if subplot is not None and hasattr(subplot, 'graph') and subplot.graph is not None:
-                g = subplot.graph
-                if hasattr(g, 'GetPlotParam') and g.GetPlotParam("show_vectors"):
-                    if hasattr(g, 'c_omp') and hasattr(g, 'istep'):
-                        refresh_vectors(g)
-    main_app.canvas.draw_idle()
+    if hasattr(main_app, '_zoom_timer_id') and main_app._zoom_timer_id is not None:
+        try:
+            main_app.after_cancel(main_app._zoom_timer_id)
+        except Exception:
+            pass
+        main_app._zoom_timer_id = None
+
+    def execute_update():
+        main_app._zoom_timer_id = None
+        for row in range(main_app.MainParamDict['NumOfRows']):
+            for col in range(main_app.MainParamDict['NumOfCols']):
+                subplot = main_app.SubPlotList[row][col]
+                if subplot is not None and hasattr(subplot, 'graph') and subplot.graph is not None:
+                    g = subplot.graph
+                    if hasattr(g, 'GetPlotParam') and g.GetPlotParam("show_vectors"):
+                        if hasattr(g, 'c_omp') and hasattr(g, 'istep'):
+                            refresh_vectors(g)
+        main_app.canvas.draw_idle()
+
+    # Schedule the update to run after 50ms (after limits-changed propagation has fully completed)
+    main_app._zoom_timer_id = main_app.after(50, execute_update)
 
 
 def draw_vectors(panel):
