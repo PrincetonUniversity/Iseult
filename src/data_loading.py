@@ -227,6 +227,45 @@ def __load_tristan_v2_density(field_file_path: pathlib.Path, field_file: h5py.Fi
 # =============================================================================
 
 # =============================================================================
+def __load_tristan_v2_density_by_charge(field_file_path: pathlib.Path, field_file: h5py.File, dataset_slice: tuple | slice, sign: str) -> np.ndarray:
+    """Sum the per-species number density (dens#/m#) over all species whose charge matches `sign`.
+
+    Parameters
+    ----------
+    sign : str
+        One of 'all', 'positive', or 'negative'. Selects which species (by the sign of
+        particles:ch#) to include in the sum. 'positive' -> ion-like density,
+        'negative' -> electron-like density, 'all' -> total density.
+    """
+    # Find the parameter file
+    param_file_name = 'params' + field_file_path.suffix
+    param_file_path = field_file_path.parents[0] / param_file_name
+    if not param_file_path.is_file():
+        param_file_path = field_file_path.parents[1] / param_file_name
+
+    total = None
+    with h5py.File(param_file_path, 'r') as param_file:
+        nspec = int(param_file['particles:nspec'][0])
+        for species in range(1, nspec + 1):
+            dataset = 'dens' + str(species)
+            if dataset not in field_file:
+                continue
+            charge = param_file['particles:ch' + str(species)][0]
+            if sign == 'positive' and charge <= 0:
+                continue
+            if sign == 'negative' and charge >= 0:
+                continue
+            mass = param_file['particles:m' + str(species)][0]
+            contribution = field_file[dataset][dataset_slice] / mass
+            total = contribution if total is None else total + contribution
+
+    if total is None:
+        warnings.warn(f'No species with {sign} charge found in {field_file_path}. Returning zero valued data.')
+        total = np.zeros(10)
+    return total
+# =============================================================================
+
+# =============================================================================
 def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: str, dataset_slice: tuple | slice, cli_args: argparse.Namespace) -> np.ndarray | int | np.float64:
     """Load Tristan v2 data and perform any necessary transformation to convert it to the same format as Tristan v1 data
 
@@ -301,8 +340,8 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
               'jx':'jx',
               'jy':'jy',
               'jz':'jz',
-              'dens':'compute_dens', # dens1 + dens2
-              'densi':'compute_dens2',
+              'dens':'compute_dens', # number density summed over all species
+              'densi':'compute_dens2', # number density summed over positively charged species
               # Spectra
               # HACK: These mappings are all first pass guesses, they still need to be verified
               'gamma':'ebins',
@@ -336,9 +375,13 @@ def __handle_tristan_v2(file_path: pathlib.Path, file: h5py.File, dataset_name: 
 
     # Datasets that need special handling
     if dataset_name == v2_map['dens']:
-        return __load_tristan_v2_density(file_path, file, 1, dataset_slice) + __load_tristan_v2_density(file_path, file, 2, dataset_slice)
+        # Total density: number density (dens#/m#) summed over every species
+        return __load_tristan_v2_density_by_charge(file_path, file, dataset_slice, 'all')
     if dataset_name == v2_map['densi']:
-        return __load_tristan_v2_density(file_path, file, 2, dataset_slice)
+        # "Ion" density: number density summed over all positively charged species.
+        # Iseult derives the electron density downstream as dens - densi, which then
+        # equals the sum over all negatively charged species.
+        return __load_tristan_v2_density_by_charge(file_path, file, dataset_slice, 'positive')
     elif dataset_name == v2_map['gamma0']:
         warnings.warn('"gamma0" is not present in Tristan v2 datasets. Setting gamma0=1')
         return np.array([1])
