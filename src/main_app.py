@@ -3656,7 +3656,11 @@ class MainApp(Tk.Tk):
         c_omp      = data_loading.load_dataset(filepath, 'c_omp')
 
         # Find out where the shock is at the last time step.
-        jstart = int(min(10*c_omp/istep, nxf0))
+        # Clamp against dens_arr's own width (not nxf0, which comes from the
+        # first Flds file and can be >= the last file's width), leaving at
+        # least one column so the slice below is never empty.
+        jstart = int(min(10*c_omp/istep, nxf0, dens_arr.shape[1]-1))
+        jstart = max(jstart, 0)
         # build the final x_axis of the plot
 
         xaxis_final = np.arange(dens_arr.shape[1])/c_omp*istep
