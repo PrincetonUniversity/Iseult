@@ -176,7 +176,7 @@ class FieldsPanel:
             if self.GetPlotParam('show_z'):
                 self.arrs_needed.extend(['v3z', 'v3zi'])
 
-        if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
+        if (self.GetPlotParam('show_streamlines') or self.GetPlotParam('show_az_contours')) and self.GetPlotParam('twoD'):
             streamlines.add_streamline_plot_keys(self)
 
         if self.GetPlotParam('show_vectors') and self.GetPlotParam('twoD'):
@@ -500,25 +500,28 @@ class FieldsPanel:
                 # Need to be smart about sharing axes. If we are in the y-z plane, and the other plot
                 # is not 2D, then we shouldn't share the x-axis (because the other plot is likely 1D X-axis)
                 share_x_ax = None
-                if self.FigWrap.pos != self.parent.first_x:
+                if self.parent.first_x is not None and self.FigWrap.pos != self.parent.first_x:
                      share_x_ax = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes
                      if self.parent.MainParamDict['2DSlicePlane'] == 2:
                          if not self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].GetPlotParam('twoD'):
                              share_x_ax = None
 
+                share_y_ax = None
+                if self.parent.first_y is not None and self.FigWrap.pos != self.parent.first_y:
+                    share_y_ax = self.parent.SubPlotList[self.parent.first_y[0]][self.parent.first_y[1]].graph.axes
 
                 if self.FigWrap.pos == self.parent.first_x and self.FigWrap.pos == self.parent.first_y:
                     self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
                 elif self.FigWrap.pos == self.parent.first_x:
                     self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]],
-                    sharey = self.parent.SubPlotList[self.parent.first_y[0]][self.parent.first_y[1]].graph.axes)
+                    sharey = share_y_ax)
                 elif self.FigWrap.pos == self.parent.first_y:
                     self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]],
                     sharex = share_x_ax)
                 else:
                     self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]],
                     sharex = share_x_ax,
-                    sharey = self.parent.SubPlotList[self.parent.first_y[0]][self.parent.first_y[1]].graph.axes)
+                    sharey = share_y_ax)
 
             else:
                 self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
@@ -873,6 +876,9 @@ class FieldsPanel:
         if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.draw_streamlines(self)
 
+        if self.GetPlotParam('show_az_contours') and self.GetPlotParam('twoD'):
+            streamlines.draw_az_contours(self)
+
         if self.GetPlotParam('show_vectors') and self.GetPlotParam('twoD'):
             if not (hasattr(self, '_in_refresh') and self._in_refresh):
                 vector_arrows.draw_vectors(self)
@@ -1065,6 +1071,9 @@ class FieldsPanel:
 
         if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.refresh_streamlines(self)
+
+        if self.GetPlotParam('show_az_contours') and self.GetPlotParam('twoD'):
+            streamlines.refresh_az_contours(self)
 
         if self.GetPlotParam('show_vectors') and self.GetPlotParam('twoD'):
             if not (hasattr(self, '_in_refresh') and self._in_refresh):
@@ -1646,6 +1655,7 @@ class FieldSettings(Tk.Toplevel):
 
     def TxtEnter(self, e):
         streamlines.streamlines_callback(self, update_plot=False)
+        streamlines.az_contours_callback(self, update_plot=False)
         self.FieldsCallback()
         self.GammaCallback()
 

@@ -1,58 +1,72 @@
 #!/usr/bin/env python
-"""This file contains the functions to control and generate the magnetic
-streamline overlays. Due to the highly coupled nature of the classes that
-control the figures these functions have many side effects. This isn't ideal
-but it's better than having this code duplicated in half a dozen different
-places.
+"""This file contains the functions to control and generate magnetic
+streamline and vector potential (Az) contour overlays for Iseult.
 """
 
 import tkinter as Tk
 import numpy as np
 import matplotlib
+import matplotlib.patches
 
 
 def add_streamline_plot_keys(panel):
-    if panel.parent.MainParamDict["2DSlicePlane"] == 0:  # x-y plane
-        panel.arrs_needed.append("bx")
-        panel.arrs_needed.append("by")
-    elif panel.parent.MainParamDict["2DSlicePlane"] == 1:  # x-z plane
-        panel.arrs_needed.append("bx")
-        panel.arrs_needed.append("bz")
+    """Add magnetic and electric field components needed for streamlines or Az contours."""
+    slice_plane = panel.parent.MainParamDict["2DSlicePlane"]
+    if slice_plane == 0:  # x-y plane
+        panel.arrs_needed.extend(["bx", "by"])
+        if panel.GetPlotParam("show_az_contours") and panel.GetPlotParam("az_contours_gauge_tracking"):
+            panel.arrs_needed.append("ez")
+    elif slice_plane == 1:  # x-z plane
+        panel.arrs_needed.extend(["bx", "bz"])
+        if panel.GetPlotParam("show_az_contours") and panel.GetPlotParam("az_contours_gauge_tracking"):
+            panel.arrs_needed.append("ey")
+    elif slice_plane == 2:  # y-z plane
+        panel.arrs_needed.extend(["by", "bz"])
+        if panel.GetPlotParam("show_az_contours") and panel.GetPlotParam("az_contours_gauge_tracking"):
+            panel.arrs_needed.append("ex")
 
 
 def add_streamline_params(param_dictionary):
-    """Add data to the parameter dictionary for controlling the streamlines.
+    """Add data to the parameter dictionary for controlling streamlines and Az contours.
 
     Parameters
     ----------
     param_dictionary : dict
         The dictionary to add elements to.
     """
+    # Streamlines parameters
     param_dictionary["show_streamlines"] = False
     param_dictionary["streamlines_stride"] = 10
     param_dictionary["streamlines_density"] = 1
     param_dictionary["streamlines_color"] = "black"
 
+    # Az Contours parameters
+    param_dictionary["show_az_contours"] = False
+    param_dictionary["az_contours_count"] = 18
+    param_dictionary["az_contours_color"] = "black"
+    param_dictionary["az_contours_width"] = 1.0
+    param_dictionary["az_contours_stride"] = 1
+    param_dictionary["az_contours_gauge_tracking"] = True
+
 
 def add_streamline_buttons(settings, panel, starting_row):
-    """Add the various buttons, fields, etc for the streamlines to the settings pane
+    """Add buttons and fields for streamlines and Az contours to the settings pane.
 
     Parameters
     ----------
     settings :
         The settings object for the panel being drawn in
     panel :
-        The Panel object the streamlines are being drawn in
+        The Panel object the streamlines/contours are being drawn in
     starting_row :
         The row to start adding settings at
     """
 
-    # Label
+    # --- 1. Streamlines Section ---
     Tk.ttk.Label(settings.frm, text="Streamline Settings: (2D only)").grid(
         row=starting_row, columnspan=2, sticky=Tk.W
     )
 
-    # Create checkbox to toggle the streamlines
     settings.show_streamlines = Tk.BooleanVar()
     settings.show_streamlines.set(settings.parent.GetPlotParam("show_streamlines"))
     Tk.ttk.Checkbutton(
@@ -60,134 +74,228 @@ def add_streamline_buttons(settings, panel, starting_row):
         text="Display Streamlines",
         variable=settings.show_streamlines,
         command=lambda: __show_streamline_handler(settings, panel),
-    ).grid(row=starting_row + 1, sticky=Tk.W)
+    ).grid(row=starting_row + 1, column=0, sticky=Tk.W)
 
-    # Set stride
     settings.streamlines_stride = Tk.IntVar(
         value=settings.parent.GetPlotParam("streamlines_stride")
     )
-    Tk.ttk.Label(settings.frm, text="Stride:").grid(row=starting_row + 2, sticky=Tk.W)
+    Tk.ttk.Label(settings.frm, text="Stride:").grid(row=starting_row + 2, column=0, sticky=Tk.W)
     Tk.ttk.Entry(settings.frm, textvariable=settings.streamlines_stride, width=7).grid(
-        row=starting_row + 2, sticky=Tk.E
+        row=starting_row + 2, column=0, sticky=Tk.E
     )
 
-    # Set line density
     settings.streamlines_density = Tk.DoubleVar(
         value=settings.parent.GetPlotParam("streamlines_density")
     )
     Tk.ttk.Label(settings.frm, text="Line Density:").grid(
-        row=starting_row + 3, sticky=Tk.W
+        row=starting_row + 3, column=0, sticky=Tk.W
     )
     Tk.ttk.Entry(settings.frm, textvariable=settings.streamlines_density, width=7).grid(
-        row=starting_row + 3, sticky=Tk.E
+        row=starting_row + 3, column=0, sticky=Tk.E
     )
 
-    # Set line color
     settings.streamlines_color = Tk.StringVar(
         value=settings.parent.GetPlotParam("streamlines_color")
     )
     Tk.ttk.Label(settings.frm, text="Line Color:").grid(
-        row=starting_row + 4, sticky=Tk.W
+        row=starting_row + 4, column=0, sticky=Tk.W
     )
     Tk.ttk.Entry(settings.frm, textvariable=settings.streamlines_color, width=7).grid(
-        row=starting_row + 4, sticky=Tk.E
+        row=starting_row + 4, column=0, sticky=Tk.E
+    )
+
+    # --- 2. Az Contours Section ---
+    az_row = starting_row + 5
+    Tk.ttk.Label(settings.frm, text="Az Contour Settings: (2D only)").grid(
+        row=az_row, columnspan=2, sticky=Tk.W
+    )
+
+    settings.show_az_contours = Tk.BooleanVar()
+    settings.show_az_contours.set(settings.parent.GetPlotParam("show_az_contours"))
+    Tk.ttk.Checkbutton(
+        settings.frm,
+        text="Display Az Contours",
+        variable=settings.show_az_contours,
+        command=lambda: __show_az_contours_handler(settings, panel),
+    ).grid(row=az_row + 1, column=0, sticky=Tk.W)
+
+    settings.az_contours_gauge_tracking = Tk.BooleanVar()
+    settings.az_contours_gauge_tracking.set(settings.parent.GetPlotParam("az_contours_gauge_tracking"))
+    Tk.ttk.Checkbutton(
+        settings.frm,
+        text="Track Gauge (Faraday)",
+        variable=settings.az_contours_gauge_tracking,
+        command=lambda: __show_az_contours_handler(settings, panel),
+    ).grid(row=az_row + 1, column=1, sticky=Tk.W)
+
+    settings.az_contours_count = Tk.IntVar(
+        value=settings.parent.GetPlotParam("az_contours_count")
+    )
+    Tk.ttk.Label(settings.frm, text="Count:").grid(row=az_row + 2, column=0, sticky=Tk.W)
+    Tk.ttk.Entry(settings.frm, textvariable=settings.az_contours_count, width=7).grid(
+        row=az_row + 2, column=0, sticky=Tk.E
+    )
+
+    settings.az_contours_width = Tk.DoubleVar(
+        value=settings.parent.GetPlotParam("az_contours_width")
+    )
+    Tk.ttk.Label(settings.frm, text="Line Width:").grid(row=az_row + 2, column=1, sticky=Tk.W)
+    Tk.ttk.Entry(settings.frm, textvariable=settings.az_contours_width, width=7).grid(
+        row=az_row + 2, column=1, sticky=Tk.E
+    )
+
+    settings.az_contours_color = Tk.StringVar(
+        value=settings.parent.GetPlotParam("az_contours_color")
+    )
+    Tk.ttk.Label(settings.frm, text="Line Color:").grid(row=az_row + 3, column=0, sticky=Tk.W)
+    Tk.ttk.Entry(settings.frm, textvariable=settings.az_contours_color, width=7).grid(
+        row=az_row + 3, column=0, sticky=Tk.E
+    )
+
+    settings.az_contours_stride = Tk.IntVar(
+        value=settings.parent.GetPlotParam("az_contours_stride")
+    )
+    Tk.ttk.Label(settings.frm, text="Stride:").grid(row=az_row + 3, column=1, sticky=Tk.W)
+    Tk.ttk.Entry(settings.frm, textvariable=settings.az_contours_stride, width=7).grid(
+        row=az_row + 3, column=1, sticky=Tk.E
     )
 
 
 def __show_streamline_handler(settings, panel):
-    """Handle what happens when the `show_streamlines` button is toggledself.
-
-    Parameters
-    ----------
-    settings :
-        The settings object for the panel being drawn in
-    panel :
-        The Panel object the streamlines are being drawn in
-    """
-    # Write value to the settings dictionary
+    """Handle what happens when the `show_streamlines` button is toggled."""
     settings.parent.SetPlotParam(
         "show_streamlines", settings.show_streamlines.get(), update_plot=False, NeedsRedraw=True
     )
-
-    # Remove streamlines if the checkbox is unchecked
     if not settings.parent.GetPlotParam("show_streamlines"):
         remove_streamlines(panel)
+    else:
+        settings.parent.parent.LoadAllKeys()
 
-    # Update everything
     settings.parent.parent.canvas.draw()
     settings.parent.parent.canvas.get_tk_widget().update_idletasks()
 
 
-def __update_parameter(settings, param_name, value):
-    settings.parent.SetPlotParam(param_name, value, update_plot=True)
+def __show_az_contours_handler(settings, panel):
+    """Handle what happens when the `show_az_contours` or `az_contours_gauge_tracking` button is toggled."""
+    settings.parent.SetPlotParam(
+        "show_az_contours", settings.show_az_contours.get(), update_plot=False, NeedsRedraw=True
+    )
+    settings.parent.SetPlotParam(
+        "az_contours_gauge_tracking", settings.az_contours_gauge_tracking.get(), update_plot=False, NeedsRedraw=True
+    )
+    if not settings.parent.GetPlotParam("show_az_contours"):
+        remove_az_contours(panel)
+    else:
+        # Invalidate base level cache so levels recompute cleanly
+        if hasattr(settings.parent.parent, "_az_base_level_cache"):
+            settings.parent.parent._az_base_level_cache = None
+        settings.parent.parent.LoadAllKeys()
+
+    settings.parent.parent.canvas.draw()
+    settings.parent.parent.canvas.get_tk_widget().update_idletasks()
 
 
 def streamlines_callback(settings, update_plot=True):
-    # Don't update the plot if there's no streamplot active
+    """Update streamline settings from GUI entries."""
     if not settings.parent.GetPlotParam("show_streamlines"):
         update_plot = False
 
-    # Handle streamline stride
-    if settings.streamlines_stride.get() != settings.parent.plot_param_dict['streamlines_stride']:
-        settings.parent.plot_param_dict['streamlines_stride'] = settings.streamlines_stride.get()
+    if settings.streamlines_stride.get() != settings.parent.plot_param_dict["streamlines_stride"]:
+        settings.parent.plot_param_dict["streamlines_stride"] = settings.streamlines_stride.get()
+        settings.parent.SetPlotParam("streamlines_stride", settings.streamlines_stride.get(), update_plot=update_plot)
 
-        settings.parent.SetPlotParam(
-            "streamlines_stride",
-            settings.streamlines_stride.get(),
-            update_plot=update_plot,
-        )
+    if settings.streamlines_density.get() != settings.parent.plot_param_dict["streamlines_density"]:
+        settings.parent.plot_param_dict["streamlines_density"] = settings.streamlines_density.get()
+        settings.parent.SetPlotParam("streamlines_density", settings.streamlines_density.get(), update_plot=update_plot)
 
-    # Handle streamline density
-    if settings.streamlines_density.get() != settings.parent.plot_param_dict['streamlines_density']:
-        settings.parent.plot_param_dict['streamlines_density'] = settings.streamlines_density.get()
+    if settings.streamlines_color.get() != settings.parent.plot_param_dict["streamlines_color"]:
+        settings.parent.plot_param_dict["streamlines_color"] = settings.streamlines_color.get()
+        settings.parent.SetPlotParam("streamlines_color", settings.streamlines_color.get(), update_plot=update_plot)
 
-        settings.parent.SetPlotParam(
-            "streamlines_density",
-            settings.streamlines_density.get(),
-            update_plot=update_plot,
-        )
 
-    # Handle streamline color
-    if settings.streamlines_color.get() != settings.parent.plot_param_dict['streamlines_color']:
-        settings.parent.plot_param_dict['streamlines_color'] = settings.streamlines_color.get()
+def az_contours_callback(settings, update_plot=True):
+    """Update Az contour settings from GUI entries."""
+    if not settings.parent.GetPlotParam("show_az_contours"):
+        update_plot = False
 
-        settings.parent.SetPlotParam(
-            "streamlines_color",
-            settings.streamlines_color.get(),
-            update_plot=update_plot,
-        )
+    # Count
+    if hasattr(settings, "az_contours_count") and settings.az_contours_count.get() != settings.parent.plot_param_dict.get("az_contours_count"):
+        try:
+            val = int(settings.az_contours_count.get())
+            settings.parent.plot_param_dict["az_contours_count"] = val
+            settings.parent.SetPlotParam("az_contours_count", val, update_plot=update_plot)
+            if hasattr(settings.parent.parent, "_az_base_level_cache"):
+                settings.parent.parent._az_base_level_cache = None
+        except ValueError:
+            pass
 
+    # Color
+    if hasattr(settings, "az_contours_color") and settings.az_contours_color.get() != settings.parent.plot_param_dict.get("az_contours_color"):
+        val = settings.az_contours_color.get()
+        settings.parent.plot_param_dict["az_contours_color"] = val
+        settings.parent.SetPlotParam("az_contours_color", val, update_plot=update_plot)
+
+    # Width
+    if hasattr(settings, "az_contours_width") and settings.az_contours_width.get() != settings.parent.plot_param_dict.get("az_contours_width"):
+        try:
+            val = float(settings.az_contours_width.get())
+            settings.parent.plot_param_dict["az_contours_width"] = val
+            settings.parent.SetPlotParam("az_contours_width", val, update_plot=update_plot)
+        except ValueError:
+            pass
+
+    # Stride
+    if hasattr(settings, "az_contours_stride") and settings.az_contours_stride.get() != settings.parent.plot_param_dict.get("az_contours_stride"):
+        try:
+            val = int(settings.az_contours_stride.get())
+            settings.parent.plot_param_dict["az_contours_stride"] = val
+            settings.parent.SetPlotParam("az_contours_stride", val, update_plot=update_plot)
+        except ValueError:
+            pass
+
+    # Gauge tracking
+    if hasattr(settings, "az_contours_gauge_tracking") and settings.az_contours_gauge_tracking.get() != settings.parent.plot_param_dict.get("az_contours_gauge_tracking"):
+        val = bool(settings.az_contours_gauge_tracking.get())
+        settings.parent.plot_param_dict["az_contours_gauge_tracking"] = val
+        settings.parent.SetPlotParam("az_contours_gauge_tracking", val, update_plot=update_plot)
+
+
+# ------------------------------------------------------------------------------
+# 3. STREAMLINES DRAWING
+# ------------------------------------------------------------------------------
 
 def draw_streamlines(panel):
-    """Draw streamlines.
-
-    Parameters
-    ----------
-    panel :
-        The Panel object the streamlines are being drawn in
-    """
-
-    # Choose which pair of fields to plot and compute the slice to use
+    """Draw streamlines using matplotlib.streamplot."""
     stride = panel.GetPlotParam("streamlines_stride")
-    if panel.parent.MainParamDict["2DSlicePlane"] == 0:  # x-y plane
+    slice_plane = panel.parent.MainParamDict["2DSlicePlane"]
+    if slice_plane == 0:  # x-y plane
         bx_name, by_name = "bx", "by"
         slice_tuple = np.s_[panel.parent.zSlice, ::stride, ::stride]
-    elif panel.parent.MainParamDict["2DSlicePlane"] == 1:  # x-z plane
+    elif slice_plane == 1:  # x-z plane
         bx_name, by_name = "bx", "bz"
         slice_tuple = np.s_[::stride, panel.parent.ySlice, ::stride]
+    else:
+        bx_name, by_name = "by", "bz"
+        slice_tuple = np.s_[::stride, ::stride, panel.parent.xSlice]
 
-    # Grab the data and slice appropriately
+    if bx_name not in panel.parent.DataDict or by_name not in panel.parent.DataDict:
+        return
+
     bx = panel.parent.DataDict[bx_name][slice_tuple]
     by = panel.parent.DataDict[by_name][slice_tuple]
 
-    # Create meshgrid
-    x_min, x_max = panel.FigWrap.graph.axes.get_xlim()
-    y_min, y_max = panel.FigWrap.graph.axes.get_ylim()
-    coords_x = np.linspace(x_min, x_max, bx.shape[1])
-    coords_y = np.linspace(y_min, y_max, bx.shape[0])
+    if bx.ndim != 2 or by.ndim != 2:
+        return
+
+    xmin = getattr(panel, "xmin", 0.0)
+    xmax = getattr(panel, "xmax", float(bx.shape[1]))
+    ymin = getattr(panel, "ymin", 0.0)
+    ymax = getattr(panel, "ymax", float(bx.shape[0]))
+
+    coords_x = np.linspace(xmin, xmax, bx.shape[1])
+    coords_y = np.linspace(ymin, ymax, bx.shape[0])
     coords_x, coords_y = np.meshgrid(coords_x, coords_y)
 
-    # Draw plots
     panel.FigWrap.streamlines = panel.FigWrap.graph.axes.streamplot(
         coords_x,
         coords_y,
@@ -199,29 +307,272 @@ def draw_streamlines(panel):
 
 
 def refresh_streamlines(panel):
-    """Refresh the streamlines. Since the StreamplotSet object has no set_data() method we will just clear the streamlines and redraw them
-
-    Parameters
-    ----------
-    panel :
-        The panel object the streamlines are being drawn in
-    """
+    """Refresh the streamlines."""
     remove_streamlines(panel)
     draw_streamlines(panel)
 
 
 def remove_streamlines(panel):
-    """Remove streamlines.
+    """Remove streamlines."""
+    if hasattr(panel.FigWrap, "streamlines") and panel.FigWrap.streamlines is not None:
+        try:
+            panel.FigWrap.streamlines.lines.remove()
+        except Exception:
+            pass
+        for artist in panel.FigWrap.graph.axes.get_children():
+            if isinstance(artist, matplotlib.patches.FancyArrowPatch):
+                try:
+                    artist.remove()
+                except Exception:
+                    pass
+        panel.FigWrap.streamlines = None
+
+
+# ------------------------------------------------------------------------------
+# 4. AZ (VECTOR POTENTIAL) CONTOURS
+# ------------------------------------------------------------------------------
+
+def compute_vector_potential_2d(bx, by, stride=1):
+    """Computes the 2D magnetic vector potential Az(x,y) from Bx, By components.
+
+    By definition:
+        Bx =  ∂Az / ∂y
+        By = -∂Az / ∂x
 
     Parameters
     ----------
-    panel :
-        The Panel object that the streamlines are being drawn in
-    """
-    # Remove lines
-    panel.FigWrap.streamlines.lines.remove()
+    bx : np.ndarray (ny, nx)
+    by : np.ndarray (ny, nx)
+    stride : int or float
+        Grid stride factor
 
-    # Remove arrows
-    for artist in panel.FigWrap.graph.axes.get_children():
-        if isinstance(artist, matplotlib.patches.FancyArrowPatch):
-            artist.remove()
+    Returns
+    -------
+    np.ndarray (ny, nx)
+        Vector potential Az on the 2D grid
+    """
+    ny, nx = bx.shape
+    ymid = ny // 2
+    Az = np.zeros((ny, nx), dtype=np.float32)
+    dx = float(stride)
+
+    # 1. Integrate along midplane x: dAz = -By dx -> Az(x, ymid) = - ∫ By(x, ymid) dx
+    Az[ymid, 1:] = -np.cumsum(0.5 * (by[ymid, 1:] + by[ymid, :-1]) * dx)
+
+    # 2. Integrate upward in y: dAz = Bx dy -> Az(y, x) = Az(ymid, x) + ∫ Bx dy
+    if ymid < ny - 1:
+        dAz_up = 0.5 * (bx[ymid+1:, :] + bx[ymid:-1, :]) * dx
+        Az[ymid+1:, :] = Az[ymid, :] + np.cumsum(dAz_up, axis=0)
+
+    # 3. Integrate downward in y: dAz = -Bx dy
+    if ymid > 0:
+        dAz_down = -0.5 * (bx[ymid-1::-1, :] + bx[ymid:0:-1, :]) * dx
+        Az[ymid-1::-1, :] = Az[ymid, :] + np.cumsum(dAz_down, axis=0)
+
+    return Az
+
+
+def find_dynamic_levels(level0, delta, minval, maxval):
+    """Finds all levels in { level0 + n * delta } within [minval, maxval]."""
+    if delta <= 0 or maxval <= minval:
+        return np.array([level0], dtype=np.float32)
+    n_start = int(np.floor((minval - level0) / delta))
+    n_end = int(np.ceil((maxval - level0) / delta))
+    n_vals = np.arange(n_start, n_end + 1)
+    lvls = level0 + n_vals * delta
+    lvls = lvls[(lvls >= minval) & (lvls <= maxval)]
+    if len(lvls) == 0:
+        lvls = np.linspace(minval, maxval, 5)
+    return np.sort(lvls)
+
+
+def _get_gauge_integral(panel, cur_step, ny, nx, zSlice):
+    """Computes or retrieves cached inductive gauge shift G(s) = ∫ Ez(xref, ymid) * c_omp * dt."""
+    parent = panel.parent
+    if not hasattr(parent, "_az_gauge_cache") or parent._az_gauge_cache is None:
+        parent._az_gauge_cache = {}
+
+    num_flds = len(parent.PathDict.get("Flds", []))
+    if num_flds == 0:
+        return 0.0
+
+    cache = parent._az_gauge_cache
+    if "G" not in cache or len(cache["G"]) != num_flds:
+        c_omp = getattr(parent, "c_omp", 1.0)
+        if isinstance(c_omp, np.ndarray) and c_omp.size > 0:
+            c_omp = float(c_omp.flat[0])
+        elif not isinstance(c_omp, (int, float)):
+            c_omp = 1.0
+
+        ymid = ny // 2
+        xref = max(0, nx - max(2, nx // 20))
+
+        times = []
+        ez_vals = []
+
+        for idx, fpath in enumerate(parent.PathDict["Flds"]):
+            try:
+                import h5py
+                with h5py.File(fpath, "r") as f:
+                    if "ez" in f:
+                        ez_arr = f["ez"]
+                        if len(ez_arr.shape) == 3:
+                            zs = min(zSlice, ez_arr.shape[0] - 1)
+                            ym = min(ymid, ez_arr.shape[1] - 1)
+                            xr = min(xref, ez_arr.shape[2] - 1)
+                            ez_val = float(ez_arr[zs, ym, xr])
+                        elif len(ez_arr.shape) == 2:
+                            ym = min(ymid, ez_arr.shape[0] - 1)
+                            xr = min(xref, ez_arr.shape[1] - 1)
+                            ez_val = float(ez_arr[ym, xr])
+                        else:
+                            ez_val = 0.0
+                    else:
+                        ez_val = 0.0
+                    ez_vals.append(ez_val)
+                    if idx == 0 and "c_omp" in f:
+                        c_omp = float(f["c_omp"][0])
+            except Exception:
+                ez_vals.append(0.0)
+
+            param_paths = parent.PathDict.get("Param", [])
+            t_val = None
+            if idx < len(param_paths):
+                try:
+                    import h5py
+                    with h5py.File(param_paths[idx], "r") as fp:
+                        if "time" in fp:
+                            t_val = float(fp["time"][0])
+                except Exception:
+                    pass
+            if t_val is None:
+                t_val = float(idx)
+            times.append(t_val)
+
+        times = np.array(times, dtype=np.float64)
+        ez_vals = np.array(ez_vals, dtype=np.float64)
+        dt = np.diff(times)
+        G = np.zeros(num_flds, dtype=np.float64)
+        for i in range(1, num_flds):
+            dt_step = dt[i-1] if i-1 < len(dt) else 1.0
+            G[i] = G[i-1] + 0.5 * (ez_vals[i] + ez_vals[i-1]) * c_omp * dt_step
+
+        cache["G"] = G
+        cache["xref"] = xref
+        cache["ymid"] = ymid
+
+    step_idx = max(0, min(cur_step - 1, len(cache["G"]) - 1))
+    return float(cache["G"][step_idx])
+
+
+def _get_az_contour_levels(panel, Az, ny, nx, zSlice, n_contours, gauge_tracking):
+    """Computes contour levels for Az, with optional inductive gauge tracking."""
+    parent = panel.parent
+    cur_step = parent.TimeStep.value
+
+    if not gauge_tracking:
+        az_min, az_max = float(Az.min()), float(Az.max())
+        width = max(az_max - az_min, 1e-4)
+        return np.linspace(az_min + 0.04 * width, az_max - 0.04 * width, n_contours), Az
+
+    # Inductive gauge tracking anchored near right wall
+    ymid = ny // 2
+    xref = max(0, nx - max(2, nx // 20))
+    ref_val = float(Az[ymid, xref])
+    Az_corr = Az - ref_val
+
+    G_val = _get_gauge_integral(panel, cur_step, ny, nx, zSlice)
+
+    if not hasattr(parent, "_az_base_level_cache") or parent._az_base_level_cache is None or parent._az_base_level_cache.get("n_contours") != n_contours:
+        az_min1, az_max1 = float(Az_corr.min()), float(Az_corr.max())
+        width1 = max(az_max1 - az_min1, 1e-4)
+        left_level = az_min1 + 0.04 * width1
+        right_level = az_max1 - 0.04 * width1
+        delta = (right_level - left_level) / max(1, n_contours - 1)
+        A0 = left_level - G_val
+        parent._az_base_level_cache = {"A0": A0, "delta": delta, "n_contours": n_contours}
+    else:
+        A0 = parent._az_base_level_cache["A0"]
+        delta = parent._az_base_level_cache["delta"]
+
+    az_min_s, az_max_s = float(Az_corr.min()), float(Az_corr.max())
+    level0 = A0 + G_val
+    levels = find_dynamic_levels(level0, delta, az_min_s, az_max_s)
+    return levels, Az_corr
+
+
+def draw_az_contours(panel):
+    """Draws magnetic vector potential Az contours on the 2D panel."""
+    remove_az_contours(panel)
+
+    stride = max(1, int(panel.GetPlotParam("az_contours_stride")))
+    slice_plane = panel.parent.MainParamDict["2DSlicePlane"]
+
+    if slice_plane == 0:  # x-y plane
+        bx_name, by_name = "bx", "by"
+        zSlice = panel.parent.zSlice
+        slice_tuple = np.s_[zSlice, ::stride, ::stride]
+    elif slice_plane == 1:  # x-z plane
+        bx_name, by_name = "bx", "bz"
+        zSlice = panel.parent.ySlice
+        slice_tuple = np.s_[::stride, zSlice, ::stride]
+    else:  # y-z plane
+        bx_name, by_name = "by", "bz"
+        zSlice = panel.parent.xSlice
+        slice_tuple = np.s_[::stride, ::stride, zSlice]
+
+    if bx_name not in panel.parent.DataDict or by_name not in panel.parent.DataDict:
+        return
+
+    bx = panel.parent.DataDict[bx_name][slice_tuple]
+    by = panel.parent.DataDict[by_name][slice_tuple]
+
+    if bx.ndim != 2 or by.ndim != 2:
+        return
+
+    Az = compute_vector_potential_2d(bx, by, stride=stride)
+
+    n_contours = max(2, int(panel.GetPlotParam("az_contours_count")))
+    gauge_tracking = bool(panel.GetPlotParam("az_contours_gauge_tracking"))
+
+    levels, Az_plot = _get_az_contour_levels(panel, Az, bx.shape[0], bx.shape[1], zSlice, n_contours, gauge_tracking)
+
+    xmin = getattr(panel, "xmin", 0.0)
+    xmax = getattr(panel, "xmax", float(bx.shape[1]))
+    ymin = getattr(panel, "ymin", 0.0)
+    ymax = getattr(panel, "ymax", float(bx.shape[0]))
+
+    coords_x = np.linspace(xmin, xmax, bx.shape[1])
+    coords_y = np.linspace(ymin, ymax, bx.shape[0])
+
+    color = panel.GetPlotParam("az_contours_color")
+    width = float(panel.GetPlotParam("az_contours_width"))
+
+    panel.FigWrap.az_contours = panel.FigWrap.graph.axes.contour(
+        coords_x,
+        coords_y,
+        Az_plot,
+        levels=levels,
+        colors=color,
+        linewidths=width,
+    )
+
+
+def refresh_az_contours(panel):
+    """Refreshes Az contours by clearing and redrawing."""
+    remove_az_contours(panel)
+    draw_az_contours(panel)
+
+
+def remove_az_contours(panel):
+    """Removes Az contours from the figure."""
+    if hasattr(panel.FigWrap, "az_contours") and panel.FigWrap.az_contours is not None:
+        try:
+            panel.FigWrap.az_contours.remove()
+        except (AttributeError, TypeError):
+            for coll in getattr(panel.FigWrap.az_contours, "collections", []):
+                try:
+                    coll.remove()
+                except Exception:
+                    pass
+        panel.FigWrap.az_contours = None
