@@ -555,6 +555,7 @@ def draw_az_contours(panel):
         levels=levels,
         colors=color,
         linewidths=width,
+        linestyles="solid",
     )
 
 
