@@ -431,10 +431,7 @@ class LagrangianFieldLineTracker:
 
     def init_step(self, step, nx, ny):
         ymid = ny // 2
-        n_half = max(1, self.n_contours // 2)
-        xs_left = np.linspace(nx * 0.05, nx * 0.45, n_half)
-        xs_right = np.linspace(nx * 0.55, nx * 0.95, n_half)
-        xs = np.concatenate([xs_left, xs_right]).astype(np.float32)
+        xs = np.linspace(nx * 0.04, nx * 0.48, self.n_contours).astype(np.float32)
         ys = np.full(len(xs), float(ymid), dtype=np.float32)
         self.history[step] = (xs, ys)
         return xs, ys
@@ -494,15 +491,11 @@ class LagrangianFieldLineTracker:
                 cur_xs = np.clip(cur_xs + vx, 0.0, nx - 1.0)
                 cur_ys = np.clip(cur_ys + vy, 0.0, ny - 1.0)
 
-            # Replenish outer boundary markers if needed
+            # Replenish left boundary markers if needed
             new_xs, new_ys = list(cur_xs), list(cur_ys)
             left_xs = [x for x in cur_xs if x < xmid]
             if len(left_xs) == 0 or min(left_xs) > nx * 0.10:
                 new_xs.append(nx * 0.02)
-                new_ys.append(float(ymid))
-            right_xs = [x for x in cur_xs if x > xmid]
-            if len(right_xs) == 0 or max(right_xs) < nx * 0.90:
-                new_xs.append(nx * 0.98)
                 new_ys.append(float(ymid))
 
             xs = np.array(new_xs, dtype=np.float32)
