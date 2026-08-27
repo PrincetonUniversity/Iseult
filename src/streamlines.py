@@ -46,7 +46,7 @@ def add_streamline_params(param_dictionary):
     param_dictionary["az_contours_color"] = "black"
     param_dictionary["az_contours_width"] = 1.0
     param_dictionary["az_contours_stride"] = 1
-    param_dictionary["az_contours_gauge_tracking"] = True
+    param_dictionary["az_contours_gauge_tracking"] = False
 
 
 def add_streamline_buttons(settings, panel, starting_row):
@@ -465,7 +465,7 @@ def _get_gauge_integral(panel, cur_step, ny, nx, zSlice):
     return float(cache["G"][step_idx])
 
 
-def _compute_frame0_base_levels(parent, n_contours, zSlice, stride):
+def _compute_frame0_base_levels(parent, n_contours, zSlice, stride, gauge_tracking=False):
     """Computes base A0 and delta using the first available snapshot in PathDict['Flds']."""
     num_flds = len(parent.PathDict.get("Flds", []))
     if num_flds == 0:
@@ -491,11 +491,12 @@ def _compute_frame0_base_levels(parent, n_contours, zSlice, stride):
 
         Az0 = compute_vector_potential_2d(bx0, by0, stride=stride)
         ny0, nx0 = Az0.shape
-        ymid0 = ny0 // 2
-        xref0 = max(0, nx0 - max(2, nx0 // 20))
-        Az0_corr = Az0 - Az0[ymid0, xref0]
+        if gauge_tracking:
+            ymid0 = ny0 // 2
+            xref0 = max(0, nx0 - max(2, nx0 // 20))
+            Az0 = Az0 - Az0[ymid0, xref0]
 
-        az_min0, az_max0 = float(Az0_corr.min()), float(Az0_corr.max())
+        az_min0, az_max0 = float(Az0.min()), float(Az0.max())
         width0 = max(az_max0 - az_min0, 1e-4)
         left_level = az_min0 + 0.04 * width0
         right_level = az_max0 - 0.04 * width0
@@ -507,22 +508,24 @@ def _compute_frame0_base_levels(parent, n_contours, zSlice, stride):
 
 
 def _get_az_contour_levels(panel, Az, ny, nx, zSlice, n_contours, gauge_tracking):
-    """Computes contour levels for Az, anchored to the initial state flux spacing."""
+    """Computes contour levels for Az."""
     parent = panel.parent
     cur_step = parent.TimeStep.value
     stride = max(1, int(panel.GetPlotParam("az_contours_stride")))
 
-    # Inductive gauge tracking anchored near right wall
-    ymid = ny // 2
-    xref = max(0, nx - max(2, nx // 20))
-    ref_val = float(Az[ymid, xref])
-    Az_corr = Az - ref_val
+    if gauge_tracking:
+        ymid = ny // 2
+        xref = max(0, nx - max(2, nx // 20))
+        ref_val = float(Az[ymid, xref])
+        Az_corr = Az - ref_val
+    else:
+        Az_corr = Az
 
     # Ensure base level cache is established from Frame 0
     cache = getattr(parent, "_az_base_level_cache", None)
-    if cache is None or cache.get("n_contours") != n_contours:
-        A0, delta = _compute_frame0_base_levels(parent, n_contours, zSlice, stride)
-        parent._az_base_level_cache = {"A0": A0, "delta": delta, "n_contours": n_contours}
+    if cache is None or cache.get("n_contours") != n_contours or cache.get("gauge_tracking") != gauge_tracking:
+        A0, delta = _compute_frame0_base_levels(parent, n_contours, zSlice, stride, gauge_tracking=gauge_tracking)
+        parent._az_base_level_cache = {"A0": A0, "delta": delta, "n_contours": n_contours, "gauge_tracking": gauge_tracking}
     else:
         A0 = parent._az_base_level_cache["A0"]
         delta = parent._az_base_level_cache["delta"]
