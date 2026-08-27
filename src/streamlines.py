@@ -465,15 +465,52 @@ def _get_gauge_integral(panel, cur_step, ny, nx, zSlice):
     return float(cache["G"][step_idx])
 
 
+def _compute_frame0_base_levels(parent, n_contours, zSlice, stride):
+    """Computes base A0 and delta using the first available snapshot in PathDict['Flds']."""
+    num_flds = len(parent.PathDict.get("Flds", []))
+    if num_flds == 0:
+        return 0.0, 0.05
+
+    first_file = parent.PathDict["Flds"][0]
+    try:
+        import h5py
+        with h5py.File(first_file, "r") as f:
+            slice_plane = parent.MainParamDict["2DSlicePlane"]
+            if slice_plane == 0:
+                bx_name, by_name = "bx", "by"
+                sl = np.s_[min(zSlice, f[bx_name].shape[0] - 1), ::stride, ::stride]
+            elif slice_plane == 1:
+                bx_name, by_name = "bx", "bz"
+                sl = np.s_[::stride, min(zSlice, f[bx_name].shape[1] - 1), ::stride]
+            else:
+                bx_name, by_name = "by", "bz"
+                sl = np.s_[::stride, ::stride, min(zSlice, f[bx_name].shape[2] - 1)]
+
+            bx0 = f[bx_name][sl]
+            by0 = f[by_name][sl]
+
+        Az0 = compute_vector_potential_2d(bx0, by0, stride=stride)
+        ny0, nx0 = Az0.shape
+        ymid0 = ny0 // 2
+        xref0 = max(0, nx0 - max(2, nx0 // 20))
+        Az0_corr = Az0 - Az0[ymid0, xref0]
+
+        az_min0, az_max0 = float(Az0_corr.min()), float(Az0_corr.max())
+        width0 = max(az_max0 - az_min0, 1e-4)
+        left_level = az_min0 + 0.04 * width0
+        right_level = az_max0 - 0.04 * width0
+        delta = (right_level - left_level) / max(1, n_contours - 1)
+        A0 = left_level
+        return A0, delta
+    except Exception as err:
+        return 0.0, 0.05
+
+
 def _get_az_contour_levels(panel, Az, ny, nx, zSlice, n_contours, gauge_tracking):
-    """Computes contour levels for Az, with optional inductive gauge tracking."""
+    """Computes contour levels for Az, anchored to the initial state flux spacing."""
     parent = panel.parent
     cur_step = parent.TimeStep.value
-
-    if not gauge_tracking:
-        az_min, az_max = float(Az.min()), float(Az.max())
-        width = max(az_max - az_min, 1e-4)
-        return np.linspace(az_min + 0.04 * width, az_max - 0.04 * width, n_contours), Az
+    stride = max(1, int(panel.GetPlotParam("az_contours_stride")))
 
     # Inductive gauge tracking anchored near right wall
     ymid = ny // 2
@@ -481,19 +518,19 @@ def _get_az_contour_levels(panel, Az, ny, nx, zSlice, n_contours, gauge_tracking
     ref_val = float(Az[ymid, xref])
     Az_corr = Az - ref_val
 
-    G_val = _get_gauge_integral(panel, cur_step, ny, nx, zSlice)
-
-    if not hasattr(parent, "_az_base_level_cache") or parent._az_base_level_cache is None or parent._az_base_level_cache.get("n_contours") != n_contours:
-        az_min1, az_max1 = float(Az_corr.min()), float(Az_corr.max())
-        width1 = max(az_max1 - az_min1, 1e-4)
-        left_level = az_min1 + 0.04 * width1
-        right_level = az_max1 - 0.04 * width1
-        delta = (right_level - left_level) / max(1, n_contours - 1)
-        A0 = left_level - G_val
+    # Ensure base level cache is established from Frame 0
+    cache = getattr(parent, "_az_base_level_cache", None)
+    if cache is None or cache.get("n_contours") != n_contours:
+        A0, delta = _compute_frame0_base_levels(parent, n_contours, zSlice, stride)
         parent._az_base_level_cache = {"A0": A0, "delta": delta, "n_contours": n_contours}
     else:
         A0 = parent._az_base_level_cache["A0"]
         delta = parent._az_base_level_cache["delta"]
+
+    if gauge_tracking:
+        G_val = _get_gauge_integral(panel, cur_step, ny, nx, zSlice)
+    else:
+        G_val = 0.0
 
     az_min_s, az_max_s = float(Az_corr.min()), float(Az_corr.max())
     level0 = A0 + G_val
