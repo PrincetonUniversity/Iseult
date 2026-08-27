@@ -14,15 +14,15 @@ def add_streamline_plot_keys(panel):
     slice_plane = panel.parent.MainParamDict["2DSlicePlane"]
     if slice_plane == 0:  # x-y plane
         panel.arrs_needed.extend(["bx", "by"])
-        if panel.GetPlotParam("show_az_contours") and panel.GetPlotParam("az_contours_lagrangian"):
+        if panel.GetPlotParam("show_az_contours"):
             panel.arrs_needed.append("ez")
     elif slice_plane == 1:  # x-z plane
         panel.arrs_needed.extend(["bx", "bz"])
-        if panel.GetPlotParam("show_az_contours") and panel.GetPlotParam("az_contours_lagrangian"):
+        if panel.GetPlotParam("show_az_contours"):
             panel.arrs_needed.append("ey")
     elif slice_plane == 2:  # y-z plane
         panel.arrs_needed.extend(["by", "bz"])
-        if panel.GetPlotParam("show_az_contours") and panel.GetPlotParam("az_contours_lagrangian"):
+        if panel.GetPlotParam("show_az_contours"):
             panel.arrs_needed.append("ex")
 
 
@@ -511,6 +511,86 @@ class LagrangianFieldLineTracker:
             return xs, ys
 
 
+def _get_gauge_integral(parent, cur_step, ny, nx, zSlice, stride=1):
+    """Computes or retrieves cached inductive gauge shift G(s) = ∫ Ez(xref, ymid) * c_omp * dt."""
+    if not hasattr(parent, "_az_gauge_cache") or parent._az_gauge_cache is None:
+        parent._az_gauge_cache = {}
+
+    num_flds = len(parent.PathDict.get("Flds", []))
+    if num_flds == 0:
+        return 0.0
+
+    cache = parent._az_gauge_cache
+    if "G" not in cache or len(cache["G"]) != num_flds:
+        c_omp = getattr(parent, "c_omp", 1.0)
+        if isinstance(c_omp, np.ndarray) and c_omp.size > 0:
+            c_omp = float(c_omp.flat[0])
+        elif not isinstance(c_omp, (int, float)):
+            c_omp = 1.0
+
+        ymid = ny // 2
+        xref = max(0, nx - max(2, nx // 20))
+
+        times = []
+        ez_vals = []
+
+        slice_plane = parent.MainParamDict["2DSlicePlane"]
+        for idx, fpath in enumerate(parent.PathDict["Flds"]):
+            try:
+                import h5py
+                with h5py.File(fpath, "r") as f:
+                    ez_name = "ez" if slice_plane == 0 else ("ey" if slice_plane == 1 else "ex")
+                    if ez_name in f:
+                        ez_arr = f[ez_name]
+                        if len(ez_arr.shape) == 3:
+                            zs = min(zSlice, ez_arr.shape[0] - 1)
+                            ym = min(ymid * stride, ez_arr.shape[1] - 1)
+                            xr = min(xref * stride, ez_arr.shape[2] - 1)
+                            ez_val = float(ez_arr[zs, ym, xr])
+                        elif len(ez_arr.shape) == 2:
+                            ym = min(ymid * stride, ez_arr.shape[0] - 1)
+                            xr = min(xref * stride, ez_arr.shape[1] - 1)
+                            ez_val = float(ez_arr[ym, xr])
+                        else:
+                            ez_val = 0.0
+                    else:
+                        ez_val = 0.0
+                    ez_vals.append(ez_val)
+                    if idx == 0 and "c_omp" in f:
+                        c_omp = float(f["c_omp"][0])
+            except Exception:
+                ez_vals.append(0.0)
+
+            param_paths = parent.PathDict.get("Param", [])
+            t_val = None
+            if idx < len(param_paths):
+                try:
+                    import h5py
+                    with h5py.File(param_paths[idx], "r") as fp:
+                        if "time" in fp:
+                            t_val = float(fp["time"][0])
+                except Exception:
+                    pass
+            if t_val is None:
+                t_val = float(idx)
+            times.append(t_val)
+
+        times = np.array(times, dtype=np.float64)
+        ez_vals = np.array(ez_vals, dtype=np.float64)
+        dt = np.diff(times)
+        G = np.zeros(num_flds, dtype=np.float64)
+        for i in range(1, num_flds):
+            dt_step = dt[i-1] if i-1 < len(dt) else 1.0
+            G[i] = G[i-1] + 0.5 * (ez_vals[i] + ez_vals[i-1]) * c_omp * dt_step
+
+        cache["G"] = G
+        cache["xref"] = xref
+        cache["ymid"] = ymid
+
+    step_idx = max(0, min(cur_step - 1, len(cache["G"]) - 1))
+    return float(cache["G"][step_idx])
+
+
 def _compute_frame0_base_levels(parent, n_contours, zSlice, stride):
     """Computes base A0 and delta using the first available snapshot in PathDict['Flds']."""
     num_flds = len(parent.PathDict.get("Flds", []))
@@ -536,7 +616,12 @@ def _compute_frame0_base_levels(parent, n_contours, zSlice, stride):
             by0 = f[by_name][sl]
 
         Az0 = compute_vector_potential_2d(bx0, by0, stride=stride)
-        az_min0, az_max0 = float(Az0.min()), float(Az0.max())
+        ny0, nx0 = Az0.shape
+        ymid0 = ny0 // 2
+        xref0 = max(0, nx0 - max(2, nx0 // 20))
+        Az0_corr = Az0 - Az0[ymid0, xref0]
+
+        az_min0, az_max0 = float(Az0_corr.min()), float(Az0_corr.max())
         width0 = max(az_max0 - az_min0, 1e-4)
         left_level = az_min0 + 0.04 * width0
         right_level = az_max0 - 0.04 * width0
@@ -548,12 +633,21 @@ def _compute_frame0_base_levels(parent, n_contours, zSlice, stride):
 
 
 def _get_az_contour_levels(panel, Az, ny, nx, zSlice, n_contours, lagrangian, stride=1):
-    """Computes contour levels for Az (Lagrangian fluid tracking or Eulerian fixed flux)."""
+    """Computes contour levels for Az (Lagrangian fluid tracking or Faraday calibrated physical potential)."""
     parent = panel.parent
     cur_step = parent.TimeStep.value
 
+    # Inductive gauge reference point near wall
+    ymid = ny // 2
+    xref = max(0, nx - max(2, nx // 20))
+    ref_val = float(Az[ymid, xref])
+    Az_corr = Az - ref_val
+
     if not lagrangian:
-        # Eulerian Fixed Flux Surfaces (Option 1)
+        # Faraday Calibrated Physical Potential
+        G_val = _get_gauge_integral(parent, cur_step, ny, nx, zSlice, stride=stride)
+        Az_physical = Az_corr - G_val
+
         cache = getattr(parent, "_az_base_level_cache", None)
         if cache is None or cache.get("n_contours") != n_contours:
             A0, delta = _compute_frame0_base_levels(parent, n_contours, zSlice, stride)
@@ -562,9 +656,9 @@ def _get_az_contour_levels(panel, Az, ny, nx, zSlice, n_contours, lagrangian, st
             A0 = parent._az_base_level_cache["A0"]
             delta = parent._az_base_level_cache["delta"]
 
-        az_min_s, az_max_s = float(Az.min()), float(Az.max())
+        az_min_s, az_max_s = float(Az_physical.min()), float(Az_physical.max())
         levels = find_dynamic_levels(A0, delta, az_min_s, az_max_s)
-        return levels, Az
+        return levels, Az_physical
 
     # Lagrangian Fluid Tracking
     tracker = getattr(parent, "_lagrangian_tracker", None)
