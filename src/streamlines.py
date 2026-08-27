@@ -47,7 +47,7 @@ def add_streamline_params(param_dictionary):
     param_dictionary["az_contours_width"] = 1.0
     param_dictionary["az_contours_stride"] = 1
     param_dictionary["az_contours_gauge_tracking"] = False
-    param_dictionary["az_contours_lagrangian"] = True
+    param_dictionary["az_contours_lagrangian"] = False
 
 
 def add_streamline_buttons(settings, panel, starting_row):
