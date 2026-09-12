@@ -345,7 +345,7 @@ def remove_streamlines(panel):
 # 4. AZ (VECTOR POTENTIAL) CONTOURS
 # ------------------------------------------------------------------------------
 
-def compute_vector_potential_2d(bx, by, stride=1):
+def compute_vector_potential_2d(bx, by, stride=1, dx=None):
     """Computes the 2D magnetic vector potential Az(x,y) from Bx, By components.
 
     By definition:
@@ -358,6 +358,9 @@ def compute_vector_potential_2d(bx, by, stride=1):
     by : np.ndarray (ny, nx)
     stride : int or float
         Grid stride factor
+    dx : float, optional
+        Effective physical grid spacing in simulation cells (stride * istep).
+        If None, defaults to float(stride).
 
     Returns
     -------
@@ -367,19 +370,19 @@ def compute_vector_potential_2d(bx, by, stride=1):
     ny, nx = bx.shape
     ymid = ny // 2
     Az = np.zeros((ny, nx), dtype=np.float32)
-    dx = float(stride)
+    step_dx = float(stride) if dx is None else float(dx)
 
     # 1. Integrate along midplane x: dAz = -By dx -> Az(x, ymid) = - ∫ By(x, ymid) dx
-    Az[ymid, 1:] = -np.cumsum(0.5 * (by[ymid, 1:] + by[ymid, :-1]) * dx)
+    Az[ymid, 1:] = -np.cumsum(0.5 * (by[ymid, 1:] + by[ymid, :-1]) * step_dx)
 
     # 2. Integrate upward in y: dAz = Bx dy -> Az(y, x) = Az(ymid, x) + ∫ Bx dy
     if ymid < ny - 1:
-        dAz_up = 0.5 * (bx[ymid+1:, :] + bx[ymid:-1, :]) * dx
+        dAz_up = 0.5 * (bx[ymid+1:, :] + bx[ymid:-1, :]) * step_dx
         Az[ymid+1:, :] = Az[ymid, :] + np.cumsum(dAz_up, axis=0)
 
     # 3. Integrate downward in y: dAz = -Bx dy
     if ymid > 0:
-        dAz_down = -0.5 * (bx[ymid-1::-1, :] + bx[ymid:0:-1, :]) * dx
+        dAz_down = -0.5 * (bx[ymid-1::-1, :] + bx[ymid:0:-1, :]) * step_dx
         Az[ymid-1::-1, :] = Az[ymid, :] + np.cumsum(dAz_down, axis=0)
 
     return Az
@@ -436,7 +439,7 @@ class LagrangianFieldLineTracker:
         self.history[step] = (xs, ys)
         return xs, ys
 
-    def get_markers(self, parent, cur_step, bx, by, ez, c_omp):
+    def get_markers(self, parent, cur_step, bx, by, ez, c_omp, istep=1.0, stride=1):
         ny, nx = bx.shape
         ymid = ny // 2
         xmid = nx // 2
@@ -480,14 +483,15 @@ class LagrangianFieldLineTracker:
             cur_xs = prev_xs.copy()
             cur_ys = prev_ys.copy()
 
+            eff_dx = max(1e-4, float(istep * stride))
             for sub in range(n_sub):
                 frac = (sub + 0.5) / n_sub
                 bx_sub = (1.0 - frac) * sample_bilinear_vec(prev_bx, cur_xs, cur_ys) + frac * sample_bilinear_vec(bx, cur_xs, cur_ys)
                 by_sub = (1.0 - frac) * sample_bilinear_vec(prev_by, cur_xs, cur_ys) + frac * sample_bilinear_vec(by, cur_xs, cur_ys)
                 ez_sub = (1.0 - frac) * sample_bilinear_vec(prev_ez, cur_xs, cur_ys) + frac * sample_bilinear_vec(ez, cur_xs, cur_ys)
                 b2 = np.maximum(bx_sub**2 + by_sub**2, 1e-8)
-                vx = - ez_sub * by_sub / b2 * c_omp * dt_sub
-                vy =   ez_sub * bx_sub / b2 * c_omp * dt_sub
+                vx = (- ez_sub * by_sub / b2 * c_omp * dt_sub) / eff_dx
+                vy = (  ez_sub * bx_sub / b2 * c_omp * dt_sub) / eff_dx
                 cur_xs = np.clip(cur_xs + vx, 0.0, nx - 1.0)
                 cur_ys = np.clip(cur_ys + vy, 0.0, ny - 1.0)
 
@@ -509,6 +513,42 @@ class LagrangianFieldLineTracker:
             self.last_step = cur_step
             self.last_flds = (bx, by, ez)
             return xs, ys
+
+
+def _get_istep(obj):
+    """Safely retrieves the istep downsampling factor from a panel or parent object."""
+    istep = None
+    if hasattr(obj, "istep"):
+        istep = getattr(obj, "istep")
+    elif hasattr(obj, "parent") and hasattr(obj.parent, "istep"):
+        istep = getattr(obj.parent, "istep")
+    elif hasattr(obj, "parent") and hasattr(obj.parent, "DataDict") and "istep" in obj.parent.DataDict:
+        istep = obj.parent.DataDict["istep"]
+    elif hasattr(obj, "DataDict") and "istep" in obj.DataDict:
+        istep = obj.DataDict["istep"]
+
+    if istep is None:
+        target_pathdict = None
+        if hasattr(obj, "PathDict"):
+            target_pathdict = obj.PathDict
+        elif hasattr(obj, "parent") and hasattr(obj.parent, "PathDict"):
+            target_pathdict = obj.parent.PathDict
+
+        if target_pathdict and "Param" in target_pathdict and len(target_pathdict["Param"]) > 0:
+            try:
+                import h5py
+                with h5py.File(target_pathdict["Param"][0], "r") as fp:
+                    if "istep" in fp:
+                        istep = float(fp["istep"][0])
+            except Exception:
+                pass
+
+    if istep is not None:
+        if isinstance(istep, np.ndarray) and istep.size > 0:
+            return float(istep.flat[0])
+        elif isinstance(istep, (int, float)):
+            return float(istep)
+    return 1.0
 
 
 def _get_gauge_integral(parent, cur_step, ny, nx, zSlice, stride=1):
@@ -591,7 +631,7 @@ def _get_gauge_integral(parent, cur_step, ny, nx, zSlice, stride=1):
     return float(cache["G"][step_idx])
 
 
-def _compute_frame0_base_levels(parent, n_contours, zSlice, stride):
+def _compute_frame0_base_levels(parent, n_contours, zSlice, stride, istep=1.0):
     """Computes base A0 and delta using the first available snapshot in PathDict['Flds']."""
     num_flds = len(parent.PathDict.get("Flds", []))
     if num_flds == 0:
@@ -615,7 +655,8 @@ def _compute_frame0_base_levels(parent, n_contours, zSlice, stride):
             bx0 = f[bx_name][sl]
             by0 = f[by_name][sl]
 
-        Az0 = compute_vector_potential_2d(bx0, by0, stride=stride)
+        dx0 = float(stride * istep)
+        Az0 = compute_vector_potential_2d(bx0, by0, stride=stride, dx=dx0)
         ny0, nx0 = Az0.shape
         ymid0 = ny0 // 2
         xref0 = max(0, nx0 - max(2, nx0 // 20))
@@ -632,7 +673,7 @@ def _compute_frame0_base_levels(parent, n_contours, zSlice, stride):
         return 0.0, 0.05
 
 
-def _get_az_contour_levels(panel, Az, ny, nx, zSlice, n_contours, lagrangian, stride=1):
+def _get_az_contour_levels(panel, Az, ny, nx, zSlice, n_contours, lagrangian, stride=1, istep=1.0):
     """Computes contour levels for Az (Lagrangian fluid tracking or Faraday calibrated physical potential)."""
     parent = panel.parent
     cur_step = parent.TimeStep.value
@@ -649,9 +690,9 @@ def _get_az_contour_levels(panel, Az, ny, nx, zSlice, n_contours, lagrangian, st
         Az_physical = Az_corr - G_val
 
         cache = getattr(parent, "_az_base_level_cache", None)
-        if cache is None or cache.get("n_contours") != n_contours:
-            A0, delta = _compute_frame0_base_levels(parent, n_contours, zSlice, stride)
-            parent._az_base_level_cache = {"A0": A0, "delta": delta, "n_contours": n_contours}
+        if cache is None or cache.get("n_contours") != n_contours or cache.get("istep") != istep:
+            A0, delta = _compute_frame0_base_levels(parent, n_contours, zSlice, stride, istep=istep)
+            parent._az_base_level_cache = {"A0": A0, "delta": delta, "n_contours": n_contours, "istep": istep}
         else:
             A0 = parent._az_base_level_cache["A0"]
             delta = parent._az_base_level_cache["delta"]
@@ -687,7 +728,7 @@ def _get_az_contour_levels(panel, Az, ny, nx, zSlice, n_contours, lagrangian, st
     by = parent.DataDict[by_name][sl]
     ez = parent.DataDict[ez_name][sl] if ez_name in parent.DataDict else np.zeros_like(bx)
 
-    xs, ys = tracker.get_markers(parent, cur_step, bx, by, ez, c_omp)
+    xs, ys = tracker.get_markers(parent, cur_step, bx, by, ez, c_omp, istep=istep, stride=stride)
     sampled_lvls = sample_bilinear_vec(Az, xs, ys)
     unique_lvls = np.unique(np.round(sampled_lvls, 5))
     if len(unique_lvls) == 0:
@@ -700,6 +741,8 @@ def draw_az_contours(panel):
     remove_az_contours(panel)
 
     stride = max(1, int(panel.GetPlotParam("az_contours_stride")))
+    istep = _get_istep(panel)
+    dx = float(stride * istep)
     slice_plane = panel.parent.MainParamDict["2DSlicePlane"]
 
     if slice_plane == 0:  # x-y plane
@@ -724,12 +767,12 @@ def draw_az_contours(panel):
     if bx.ndim != 2 or by.ndim != 2:
         return
 
-    Az = compute_vector_potential_2d(bx, by, stride=stride)
+    Az = compute_vector_potential_2d(bx, by, stride=stride, dx=dx)
 
     n_contours = max(2, int(panel.GetPlotParam("az_contours_count")))
     lagrangian = bool(panel.GetPlotParam("az_contours_lagrangian"))
 
-    levels, Az_plot = _get_az_contour_levels(panel, Az, bx.shape[0], bx.shape[1], zSlice, n_contours, lagrangian, stride=stride)
+    levels, Az_plot = _get_az_contour_levels(panel, Az, bx.shape[0], bx.shape[1], zSlice, n_contours, lagrangian, stride=stride, istep=istep)
 
     xmin = getattr(panel, "xmin", 0.0)
     xmax = getattr(panel, "xmax", float(bx.shape[1]))
