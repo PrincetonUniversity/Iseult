@@ -857,15 +857,15 @@ class MovieDialog(Tk.Toplevel):
         self.e4 = ttk.Entry(master, width=17)
         self.e4.grid(row=3, column=1, sticky=Tk.E + Tk.W)
 
-        ttk.Label(master, text="Frames Per Second:").grid(row=4)
+        ttk.Label(master, text="Frames Per Second:").grid(row=5)
         self.e5 = ttk.Entry(master, width=17)
-        self.e5.grid(row=4, column=1, sticky=Tk.E + Tk.W)
+        self.e5.grid(row=5, column=1, sticky=Tk.E + Tk.W)
 
-        ttk.Label(master, text="Movie Directory:").grid(row=5)
+        ttk.Label(master, text="Movie Directory:").grid(row=6)
         self.e6 = ttk.Entry(master, width=30)
         self.e6.delete(0, Tk.END)
         self.e6.insert(0, directory)
-        self.e6.grid(row=5, column=1, sticky=Tk.E + Tk.W)
+        self.e6.grid(row=6, column=1, sticky=Tk.E + Tk.W)
 
 
     def buttonbox(self):
@@ -1068,26 +1068,39 @@ class SettingsFrame(Tk.Toplevel):
         cmapChooser = ttk.OptionMenu(frm, self.div_cmapvar, self.parent.MainParamDict['DivColorMap'], *tuple(new_cmaps.diverging))
         cmapChooser.grid(row =3, column = 1, sticky = Tk.W + Tk.E)
 
+        # Control which length the spatial axes are normalized by. Built as
+        # an option menu to match the color map choosers above.
+        cur_norm_name = length_norms.norm_name(self.parent.MainParamDict['LengthNorm'])
+        self.lengthNormVar = Tk.StringVar(self)
+        self.lengthNormVar.set(cur_norm_name)
+        self.lengthNormVar.trace('w', self.LengthNormChanged)
+
+        ttk.Label(frm, text="Length unit:").grid(row=4)
+        lengthNormChooser = ttk.OptionMenu(frm, self.lengthNormVar, cur_norm_name,
+                                           *tuple(length_norms.NORM_NAMES))
+        lengthNormChooser.grid(row =4, column = 1, sticky = Tk.W + Tk.E)
+
+
         # Make an entry to change the number of columns
         self.columnNum = Tk.StringVar(self)
         self.columnNum.set(self.parent.MainParamDict['NumOfCols']) # default value
         self.columnNum.trace('w', self.ColumnNumChanged)
-        ttk.Label(frm, text="# of columns:").grid(row=4)
+        ttk.Label(frm, text="# of columns:").grid(row=5)
         self.ColumnSpin = Spinbox(frm,  from_=1, to=self.parent.MainParamDict['MaxCols'], textvariable=self.columnNum, width = 6)
-        self.ColumnSpin.grid(row =4, column = 1, sticky = Tk.W + Tk.E)
+        self.ColumnSpin.grid(row =5, column = 1, sticky = Tk.W + Tk.E)
 
         # Make an entry to change the number of columns
         self.rowNum = Tk.StringVar(self)
         self.rowNum.set(self.parent.MainParamDict['NumOfRows']) # default value
         self.rowNum.trace('w', self.RowNumChanged)
-        ttk.Label(frm, text="# of rows:").grid(row=5)
+        ttk.Label(frm, text="# of rows:").grid(row=6)
         self.RowSpin = Spinbox(frm, from_=1, to=self.parent.MainParamDict['MaxRows'], textvariable=self.rowNum, width = 6)
-        self.RowSpin.grid(row =5, column = 1, sticky = Tk.W + Tk.E)
+        self.RowSpin.grid(row =6, column = 1, sticky = Tk.W + Tk.E)
 
         self.PrtlStrideVar = Tk.StringVar()
         self.PrtlStrideVar.set(str(self.parent.MainParamDict['PrtlStride']))
-        ttk.Entry(frm, textvariable = self.PrtlStrideVar, width =6).grid(row =6, column =1, sticky = Tk.W +Tk.E)
-        ttk.Label(frm, text='Particle stride').grid(row= 6,column =0)
+        ttk.Entry(frm, textvariable = self.PrtlStrideVar, width =6).grid(row =7, column =1, sticky = Tk.W +Tk.E)
+        ttk.Label(frm, text='Particle stride').grid(row= 7,column =0)
 
         # Control whether or not Title is shown
         self.TitleVar = Tk.IntVar()
@@ -1104,13 +1117,13 @@ class SettingsFrame(Tk.Toplevel):
         self.xright.set(str(self.parent.MainParamDict['xRight']))
 
 
-        ttk.Label(frm, text = 'min').grid(row= 7, column = 1, sticky = Tk.N)
-        ttk.Label(frm, text = 'max').grid(row= 7, column = 2, sticky = Tk.N)
+        ttk.Label(frm, text = 'min').grid(row= 8, column = 1, sticky = Tk.N)
+        ttk.Label(frm, text = 'max').grid(row= 8, column = 2, sticky = Tk.N)
         cb = ttk.Checkbutton(frm, text ='Set xlim',
                         variable = self.LimVar)
-        cb.grid(row = 8, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.xleft, width = 8).grid(row = 8, column =1, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.xright, width = 8).grid(row = 8, column =2, sticky = Tk.N)
+        cb.grid(row = 9, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.xleft, width = 8).grid(row = 9, column =1, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.xright, width = 8).grid(row = 9, column =2, sticky = Tk.N)
 
 
 
@@ -1127,9 +1140,9 @@ class SettingsFrame(Tk.Toplevel):
 
 
         ttk.Checkbutton(frm, text ='Set ylim',
-                        variable = self.yLimVar).grid(row = 9, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.yleft, width = 8 ).grid(row = 9, column =1, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.yright, width =8 ).grid(row = 9, column =2, sticky = Tk.N)
+                        variable = self.yLimVar).grid(row = 10, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.yleft, width = 8 ).grid(row = 10, column =1, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.yright, width =8 ).grid(row = 10, column =2, sticky = Tk.N)
 
         self.kLimVar = Tk.IntVar()
         self.kLimVar.set(self.parent.MainParamDict['SetkLim'])
@@ -1143,15 +1156,15 @@ class SettingsFrame(Tk.Toplevel):
         self.kright.set(str(self.parent.MainParamDict['kRight']))
 
 
-        ttk.Checkbutton(frm, text ='Set klim', variable = self.kLimVar).grid(row = 10, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.kleft, width = 8 ).grid(row = 10, column =1, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.kright, width =8 ).grid(row = 10, column =2, sticky = Tk.N)
+        ttk.Checkbutton(frm, text ='Set klim', variable = self.kLimVar).grid(row = 11, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.kleft, width = 8 ).grid(row = 11, column =1, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.kright, width =8 ).grid(row = 11, column =2, sticky = Tk.N)
 
         self.xRelVar = Tk.IntVar()
         self.xRelVar.set(self.parent.MainParamDict['xLimsRelative'])
         self.xRelVar.trace('w', self.xRelChanged)
         ttk.Checkbutton(frm, text = "x limits & zooms relative to shock",
-                        variable = self.xRelVar).grid(row = 11, columnspan = 3, sticky = Tk.W)
+                        variable = self.xRelVar).grid(row = 12, columnspan = 3, sticky = Tk.W)
 
         framecb = ttk.Frame(frm)
 
@@ -1176,7 +1189,7 @@ class SettingsFrame(Tk.Toplevel):
                             command = self.RadioPlane,
                             value=2)
         self.yzbutton.pack(side = Tk.LEFT, expand = 0)
-        framecb.grid(row = 12, columnspan = 4)
+        framecb.grid(row = 13, columnspan = 4)
 
         framex = ttk.Frame(frm)
         self.xSliceVar = Tk.IntVar()
@@ -1209,7 +1222,7 @@ class SettingsFrame(Tk.Toplevel):
         self.sliderx.bind("<ButtonRelease-1>", self.xUpdateValue)
 
 
-        framex.grid(row = 13, columnspan =4)
+        framex.grid(row = 14, columnspan =4)
 
         framey = ttk.Frame(frm)
         self.ySliceVar = Tk.IntVar()
@@ -1242,7 +1255,7 @@ class SettingsFrame(Tk.Toplevel):
         self.slidery.bind("<ButtonRelease-1>", self.yUpdateValue)
 
 
-        framey.grid(row = 14, columnspan =4)
+        framey.grid(row = 15, columnspan =4)
 
         framez = ttk.Frame(frm)
         self.zSliceVar = Tk.IntVar()
@@ -1275,11 +1288,11 @@ class SettingsFrame(Tk.Toplevel):
             self.sliderz.state(['disabled'])
 
 
-        framez.grid(row = 15, columnspan =4)
+        framez.grid(row = 16, columnspan =4)
 
         cb = ttk.Checkbutton(frm, text = "Show Title",
                         variable = self.TitleVar)
-        cb.grid(row = 16, sticky = Tk.W)
+        cb.grid(row = 17, sticky = Tk.W)
         # Control whether or not axes are shared with a radio box:
         self.toLinkList = ['None', 'All spatial', 'All non p-x', 'All 2-D spatial']
         self.LinkedVar = Tk.IntVar()
@@ -1300,7 +1313,7 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Aspect = 1",
                                 variable = self.AspectVar)
-        cb.grid(row = 16, column = 1, sticky = Tk.W)
+        cb.grid(row = 17, column = 1, sticky = Tk.W)
 
         self.ConstantShockVar = Tk.IntVar()
         self.ConstantShockVar.set(self.parent.MainParamDict['ConstantShockVel'])
@@ -1308,12 +1321,12 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Constant Shock v",
                                 variable = self.ConstantShockVar)
-        cb.grid(row = 16, column = 2, sticky = Tk.W)
+        cb.grid(row = 17, column = 2, sticky = Tk.W)
 
         self.Average1DVar = Tk.IntVar()
         self.Average1DVar.set(self.parent.MainParamDict['Average1D'])
         self.Average1DVar.trace('w', self.AverageChanged)
-        ttk.Checkbutton(frm, text='1D Average',variable = self.Average1DVar).grid(row = 17, column = 2, sticky = Tk.W)
+        ttk.Checkbutton(frm, text='1D Average',variable = self.Average1DVar).grid(row = 18, column = 2, sticky = Tk.W)
 
         self.CbarOrientation = Tk.IntVar()
         self.CbarOrientation.set(self.parent.MainParamDict['HorizontalCbars'])
@@ -1321,7 +1334,7 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Horizontal Cbars",
                                 variable = self.CbarOrientation)
-        cb.grid(row = 17, sticky = Tk.W)
+        cb.grid(row = 18, sticky = Tk.W)
 
 
         self.LinkKVar = Tk.IntVar()
@@ -1330,18 +1343,18 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Share k-axes",
                                 variable = self.LinkKVar)
-        cb.grid(row = 17, column =1, sticky = Tk.W)
+        cb.grid(row = 18, column =1, sticky = Tk.W)
 
 
 
         self.LorentzBoostVar = Tk.IntVar()
         self.LorentzBoostVar.set(self.parent.MainParamDict['DoLorentzBoost'])
         self.LorentzBoostVar.trace('w', self.LorentzBoostChanged)
-        cb = ttk.Checkbutton(frm, text='Boost PhasePlots', variable =  self.LorentzBoostVar).grid(row = 18, sticky = Tk.W)
-        ttk.Label(frm, text='Gamma/Beta = \r (- for left boost)').grid(row= 18, rowspan = 2,column =1, sticky = Tk.E)
+        cb = ttk.Checkbutton(frm, text='Boost PhasePlots', variable =  self.LorentzBoostVar).grid(row = 19, sticky = Tk.W)
+        ttk.Label(frm, text='Gamma/Beta = \r (- for left boost)').grid(row= 19, rowspan = 2,column =1, sticky = Tk.E)
         self.GammaVar = Tk.StringVar()
         self.GammaVar.set(str(self.parent.MainParamDict['GammaBoost']))
-        ttk.Entry(frm, textvariable=self.GammaVar, width = 7).grid(row = 18, column = 2, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.GammaVar, width = 7).grid(row = 19, column = 2, sticky = Tk.N)
 
     def xScaleHandler(self, e):
         # if changing the scale will change the value of the parameter, do so
@@ -1450,6 +1463,68 @@ class SettingsFrame(Tk.Toplevel):
         else:
             self.parent.MainParamDict['LinkSpatial'] = self.LinkedVar.get()
             self.parent.RenewCanvas(ForceRedraw = True)
+    def LengthNormChanged(self, *args):
+        '''Changing the spatial normalization changes the meaning of every
+        stored length, so the view limits are converted into the new units
+        (the user keeps looking at the same physical region) and every cached
+        quantity expressed in the old units is thrown away.'''
+        new_norm = length_norms.norm_from_name(self.lengthNormVar.get())
+        if new_norm == self.parent.MainParamDict['LengthNorm']:
+            return
+
+        old_scale = float(getattr(self.parent, 'length_scale', 0.0) or 0.0)
+        self.parent.MainParamDict['LengthNorm'] = new_norm
+        new_scale = float(self.parent.UpdateLengthScale())
+
+        # If the requested normalization is undefined for this run,
+        # length_norms falls back; snap the menu to what is really being
+        # plotted so the GUI does not lie. MainParamDict is set first, so the
+        # re-entrant trace this write fires returns at the guard above.
+        self.parent.MainParamDict['LengthNorm'] = self.parent.length_norm
+        self.lengthNormVar.set(length_norms.norm_name(self.parent.length_norm))
+
+        if old_scale > 0 and new_scale > 0:
+            ratio = old_scale / new_scale
+            for key in ('xLeft', 'xRight', 'yBottom', 'yTop'):
+                self.parent.MainParamDict[key] *= ratio
+            # FFT bounds are lengths too, but are stored as ints.
+            for key in ('FFTLeft', 'FFTRight'):
+                self.parent.MainParamDict[key] = int(round(
+                    self.parent.MainParamDict[key] * ratio))
+            # k is an inverse length, so it transforms the other way.
+            for key in ('kLeft', 'kRight'):
+                self.parent.MainParamDict[key] /= ratio
+
+            self.xleft.set(str(self.parent.MainParamDict['xLeft']))
+            self.xright.set(str(self.parent.MainParamDict['xRight']))
+            self.yleft.set(str(self.parent.MainParamDict['yBottom']))
+            self.yright.set(str(self.parent.MainParamDict['yTop']))
+            self.kleft.set(str(self.parent.MainParamDict['kLeft']))
+            self.kright.set(str(self.parent.MainParamDict['kRight']))
+
+        # Relabel and rescale the slice sliders.
+        unit = length_norms.unit_plain(self.parent.length_norm)
+        for axis, max_ind in (('x', self.parent.MaxXInd),
+                              ('y', self.parent.MaxYInd),
+                              ('z', self.parent.MaxZInd)):
+            getattr(self, axis + 'UnitLabel').config(text='[' + unit + ']')
+            setattr(self, 'units_list' + axis,
+                    [str(i * self.parent.istep / self.parent.length_scale)
+                     for i in range(max_ind + 1)])
+        self.xSliceVarC_omp.set(self.units_listx[self.xSliceVar.get()])
+        self.ySliceVarC_omp.set(self.units_listy[self.ySliceVar.get()])
+        self.zSliceVarC_omp.set(self.units_listz[self.zSliceVar.get()])
+
+        self.parent.InvalidateLengthCache()
+        # The toolbar's zoom history holds limits in the old units, so the
+        # back/forward buttons would jump to the wrong region. Private
+        # matplotlib API, hence the guard.
+        try:
+            self.parent.toolbar._nav_stack.clear()
+        except AttributeError:
+            pass
+        self.parent.RenewCanvas(keep_view = False, ForceRedraw = True)
+
     def RadioPlane(self, *args):
         # If the shared axes are changed, the whole plot must be redrawn
         if self.PlaneVar.get() == self.parent.MainParamDict['2DSlicePlane']:
@@ -1744,7 +1819,7 @@ class MeasureFrame(Tk.Toplevel):
         self.FFTRelVar.trace('w', self.FFTRelChanged)
         cb = ttk.Checkbutton(frm, text = "FFT Region relative to shock?",
                         variable = self.FFTRelVar)
-        cb.grid(row = 4, columnspan = 3, sticky = Tk.W)
+        cb.grid(row = 5, columnspan = 3, sticky = Tk.W)
 
 
     def CheckIfFloatChanged(self, tkVar, paramKey):
