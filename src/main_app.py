@@ -26,6 +26,7 @@ from energy_plots import EnergyPanel
 from fft_plots import FFTPanel
 from total_energy_plots import TotEnergyPanel
 from moments import MomentsPanel
+import length_norms
 from functools import partial
 import subprocess, yaml
 from PIL import Image
@@ -1067,7 +1068,6 @@ class SettingsFrame(Tk.Toplevel):
         cmapChooser = ttk.OptionMenu(frm, self.div_cmapvar, self.parent.MainParamDict['DivColorMap'], *tuple(new_cmaps.diverging))
         cmapChooser.grid(row =3, column = 1, sticky = Tk.W + Tk.E)
 
-
         # Make an entry to change the number of columns
         self.columnNum = Tk.StringVar(self)
         self.columnNum.set(self.parent.MainParamDict['NumOfCols']) # default value
@@ -1183,7 +1183,7 @@ class SettingsFrame(Tk.Toplevel):
         self.xSliceVar.set(self.parent.xSlice)
         self.units_listx = []
         for i in range(self.parent.MaxXInd+1):
-            self.units_listx.append(str(i*self.parent.istep/self.parent.c_omp))
+            self.units_listx.append(str(i*self.parent.istep/self.parent.length_scale))
 
         self.xSliceVarC_omp = Tk.StringVar()
         self.xSliceVarC_omp.set(self.units_listx[self.xSliceVar.get()])
@@ -1203,7 +1203,8 @@ class SettingsFrame(Tk.Toplevel):
         if self.parent.MaxXInd ==0:
             self.txtEnterx.state(['disabled'])
             self.sliderx.state(['disabled'])
-        ttk.Label(framex, text='[c_omp]').pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+        self.xUnitLabel = ttk.Label(framex, text='['+length_norms.unit_plain(self.parent.MainParamDict['LengthNorm'])+']')
+        self.xUnitLabel.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
         # bind releasing the moust button to updating the plots.
         self.sliderx.bind("<ButtonRelease-1>", self.xUpdateValue)
 
@@ -1215,7 +1216,7 @@ class SettingsFrame(Tk.Toplevel):
         self.ySliceVar.set(self.parent.ySlice)
         self.units_listy = []
         for i in range(self.parent.MaxYInd+1):
-            self.units_listy.append(str(i*self.parent.istep/self.parent.c_omp))
+            self.units_listy.append(str(i*self.parent.istep/self.parent.length_scale))
 
         self.ySliceVarC_omp = Tk.StringVar()
         self.ySliceVarC_omp.set(self.units_listy[self.ySliceVar.get()])
@@ -1235,7 +1236,8 @@ class SettingsFrame(Tk.Toplevel):
         if self.parent.MaxYInd ==0:
             self.txtEntery.state(['disabled'])
             self.slidery.state(['disabled'])
-        ttk.Label(framey, text='[c_omp]').pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+        self.yUnitLabel = ttk.Label(framey, text='['+length_norms.unit_plain(self.parent.MainParamDict['LengthNorm'])+']')
+        self.yUnitLabel.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
         # bind releasing the moust button to updating the plots.
         self.slidery.bind("<ButtonRelease-1>", self.yUpdateValue)
 
@@ -1248,7 +1250,7 @@ class SettingsFrame(Tk.Toplevel):
 
         self.units_listz = []
         for i in range(self.parent.MaxZInd+1):
-            self.units_listz.append(str(i*self.parent.istep/self.parent.c_omp))
+            self.units_listz.append(str(i*self.parent.istep/self.parent.length_scale))
 
         self.zSliceVarC_omp = Tk.StringVar()
         self.zSliceVarC_omp.set(self.units_listz[self.zSliceVar.get()])
@@ -1263,7 +1265,8 @@ class SettingsFrame(Tk.Toplevel):
 
         self.txtEnterz = ttk.Entry(framez, textvariable=self.zSliceVarC_omp, width=6)
         self.txtEnterz.pack(side=Tk.LEFT, fill = Tk.BOTH, expand = 0)
-        ttk.Label(framez, text='[c_omp]').pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
+        self.zUnitLabel = ttk.Label(framez, text='['+length_norms.unit_plain(self.parent.MainParamDict['LengthNorm'])+']')
+        self.zUnitLabel.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=0)
         # bind releasing the moust button to updating the plots.
         self.sliderz.bind("<ButtonRelease-1>", self.zUpdateValue)
         if self.parent.MaxZInd ==0:
@@ -1609,7 +1612,7 @@ class SettingsFrame(Tk.Toplevel):
         to_reload = False
         try:
             #make sure the user types in a float
-            self.xSliceVar.set(int(np.around(float(self.xSliceVarC_omp.get())*self.parent.c_omp/self.parent.istep)))
+            self.xSliceVar.set(int(np.around(float(self.xSliceVarC_omp.get())*self.parent.length_scale/self.parent.istep)))
             if int(self.xSliceVar.get()) < 0:
                 self.xSliceVar.set(0)
 
@@ -1627,7 +1630,7 @@ class SettingsFrame(Tk.Toplevel):
 
         try:
             #make sure the user types in a float
-            self.ySliceVar.set(int(np.around(float(self.ySliceVarC_omp.get())*self.parent.c_omp/self.parent.istep)))
+            self.ySliceVar.set(int(np.around(float(self.ySliceVarC_omp.get())*self.parent.length_scale/self.parent.istep)))
             if int(self.ySliceVar.get()) < 0:
                 self.ySliceVar.set(0)
 
@@ -1644,7 +1647,7 @@ class SettingsFrame(Tk.Toplevel):
 
         try:
             #make sure the user types in a float
-            self.zSliceVar.set(int(np.around(float(self.zSliceVarC_omp.get())*self.parent.c_omp/self.parent.istep)))
+            self.zSliceVar.set(int(np.around(float(self.zSliceVarC_omp.get())*self.parent.length_scale/self.parent.istep)))
             if int(self.zSliceVar.get()) < 0:
                 self.zSliceVar.set(0)
 
@@ -1948,6 +1951,12 @@ class MainApp(Tk.Tk):
 
         self.GenMainParamDict()
 
+        # Placeholders so that anything touching the spatial normalization
+        # before the first LoadAllKeys() sees something sane. The real values
+        # are set by UpdateLengthScale() once c_omp has been read.
+        self.length_scale = 1.0
+        self.length_norm = self.MainParamDict['LengthNorm']
+
         # now root.geometry() returns valid size/placement
         self.minsize(self.winfo_width(), self.winfo_height())
         self.geometry(self.MainParamDict['WindowSize'])
@@ -2121,6 +2130,10 @@ class MainApp(Tk.Tk):
                               'xLimsRelative': False,
                               'ConstantShockVel': True,
                               'xRight': 100.0,
+                              # Which length the spatial axes are normalized
+                              # by. See src/length_norms.py; 0 == electron skin
+                              # depth, which is what Iseult has always used.
+                              'LengthNorm': length_norms.DEFAULT_NORM,
                               'LinkSpatial': 1,
                               'HCbarExtent': [0, 4, 0, -1],
                               'Recording': False,
@@ -2144,6 +2157,10 @@ class MainApp(Tk.Tk):
                               'legendLabelSize':11}
         for key, val in cfgDict['MainParamDict'].items():
             self.MainParamDict[key] = val
+        # Views saved before the normalization was selectable have no
+        # 'LengthNorm' key, and a hand-edited .yml may hold anything at all.
+        self.MainParamDict['LengthNorm'] = length_norms.sanitize(
+            self.MainParamDict['LengthNorm'])
         self.electron_color = self.MainParamDict['electron_color']
         self.ion_color = self.MainParamDict['ion_color']
         self.shock_color = self.MainParamDict['shock_color']
@@ -2470,6 +2487,75 @@ class MainApp(Tk.Tk):
         self.gs0 = gridspec.GridSpec(self.MainParamDict['NumOfRows'],self.MainParamDict['NumOfCols'])
         self.RenewCanvas(keep_view = False, ForceRedraw = True)
 
+    # Derived quantities that are cached in the per-timestep DataDicts and
+    # whose values are expressed in the normalized spatial units. They all
+    # have to be thrown away when the normalization changes.
+    def UpdateLengthScale(self, param_filepath = None):
+        '''Recompute the spatial length scale, in cells, that every panel
+        divides by. Sets self.length_scale and self.length_norm, where
+        self.length_norm is the normalization actually in use -- it can differ
+        from MainParamDict['LengthNorm'] if the requested one is undefined for
+        this run (e.g. ion skin depths when mi/me cannot be read).'''
+        if param_filepath is None:
+            param_filepath = self.PathDict['Param'][self.TimeStep.value-1]
+
+        requested = length_norms.sanitize(self.MainParamDict['LengthNorm'])
+
+        # mi & me are only needed by the ion skin depth. They are written to
+        # the output param file by both Tristan v1 and v2, but a failure here
+        # must still not be fatal -- length_norms falls back to electron skin
+        # depths. Nothing here may read an input-only parameter.
+        params = {}
+        for key in ('mi', 'me'):
+            try:
+                params[key] = data_loading.load_dataset(param_filepath, key, slice(0,1))
+            except (KeyError, OSError, ValueError):
+                params[key] = None
+
+        self.length_scale, self.length_norm, msg = length_norms.length_scale(
+            requested, self.c_omp, **params)
+        length_norms.warn_about(msg)
+        return self.length_scale
+
+    def LengthLabel(self, axis = 'x', prime = False):
+        '''The matplotlib axis label for a spatial axis, in the units that are
+        currently selected.'''
+        return length_norms.axis_label(getattr(self, 'length_norm',
+                                               self.MainParamDict['LengthNorm']),
+                                       axis, prime = prime)
+
+    def KLabel(self):
+        '''The matplotlib axis label for a Fourier-space axis.'''
+        return length_norms.k_axis_label(getattr(self, 'length_norm',
+                                                 self.MainParamDict['LengthNorm']))
+
+    def InvalidateLengthCache(self):
+        '''Drop every cached quantity that could be expressed in normalized
+        spatial units.
+
+        Rather than enumerate the derived keys, this keeps only the raw
+        datasets read from file -- the ones named in H5KeyDict -- and drops
+        everything else. The panels cache derived results under dynamically
+        built keys ('xaxis_values', 'shock_loc', 'FFTs', the phase/moment
+        histograms keyed by their bin counts, the spectra), several of which
+        carry an x-extent or bin edges in the plotted unit, so a fixed list
+        of names would silently miss them.
+
+        Iseult keeps one DataDict per visited timestep in self.ListOfDataDict,
+        so purging only the current one would leave stale axes behind on any
+        timestep the user has already looked at.'''
+        raw_keys = set(self.H5KeyDict.keys())
+        dicts = list(getattr(self, 'ListOfDataDict', []))
+        cur = getattr(self, 'DataDict', None)
+        if cur is not None and not any(cur is d for d in dicts):
+            dicts.append(cur)
+        for d in dicts:
+            for key in [k for k in d.keys() if k not in raw_keys]:
+                d.pop(key, None)
+        # The saved-image cache (SavedHashes/SavedImgStr) needs no attention:
+        # HashIseultState() hashes every MainParamDict key that is not in its
+        # SkipList, so 'LengthNorm' already invalidates it.
+
     def LoadAllKeys(self):
         ''' A function that will find out will arrays need to be loaded for
         to draw the graphs. Then it will save all the data necessary to
@@ -2502,6 +2588,10 @@ class MainApp(Tk.Tk):
         filepath = self.PathDict['Param'][self.TimeStep.value-1]
         self.c_omp = data_loading.load_dataset(filepath, 'c_omp', slice(0,1))
         self.istep = data_loading.load_dataset(filepath, 'istep', slice(0,1))
+        # Work out the length the spatial axes are normalized by. Everything
+        # downstream divides by self.length_scale (in cells) rather than by
+        # c_omp, so this is the single place the convention is set.
+        self.UpdateLengthScale(filepath)
 
         # FIND THE SLICE
         filepath = self.PathDict['Flds'][self.TimeStep.value-1]
@@ -2750,14 +2840,14 @@ class MainApp(Tk.Tk):
                 # should be the same.
 
                 # First calculate the new shock location
-                self.shock_loc = self.DataDict['time']*self.shock_speed
+                self.shock_loc = self.DataDict['time']*self.shock_speed/self.length_scale
                 # Set previous shock loc to current location
                 self.prev_shock_loc = np.copy(self.shock_loc)
             else:
                 # First save the previous shock location,
                 self.prev_shock_loc = np.copy(self.shock_loc)
                 # Now calculate the new shock location
-                self.shock_loc = self.DataDict['time']*self.shock_speed
+                self.shock_loc = self.DataDict['time']*self.shock_speed/self.length_scale
 
         else:
             # Let's see if the shock_loc is in the DataDict
@@ -2765,7 +2855,7 @@ class MainApp(Tk.Tk):
                 # Have to figure out where the shock is
 
                 jstart = int(min(10*self.DataDict['c_omp']/self.DataDict['istep'], self.DataDict['dens'][0,:,:].shape[1]))
-                cur_xaxis = np.arange(self.DataDict['dens'][0,:,:].shape[1])/self.DataDict['c_omp']*self.DataDict['istep']
+                cur_xaxis = np.arange(self.DataDict['dens'][0,:,:].shape[1])/self.length_scale*self.DataDict['istep']
                 # Find the shock by seeing where the density is 1/2 of it's
                 # max value.
 
@@ -2791,8 +2881,8 @@ class MainApp(Tk.Tk):
                 # Now calculate the new shock location
                 self.shock_loc = self.DataDict['shock_loc']
 
-        self.cpu_x_locs = np.cumsum(self.DataDict['mx']-5)/self.DataDict['c_omp']
-        self.cpu_y_locs = np.cumsum(self.DataDict['my']-5)/self.DataDict['c_omp']
+        self.cpu_x_locs = np.cumsum(self.DataDict['mx']-5)/self.length_scale
+        self.cpu_y_locs = np.cumsum(self.DataDict['my']-5)/self.length_scale
         # Now that the DataDict is created, iterate over all the subplots and
         # load the data into them:
         for i in range(self.MainParamDict['NumOfRows']):
@@ -3387,7 +3477,7 @@ class MainApp(Tk.Tk):
                     if subplot.chartType in ['FieldsPlot', 'DensityPlot']:
                         try:
                             if hasattr(g, 'GetPlotParam') and g.GetPlotParam("show_vectors"):
-                                if hasattr(g, 'c_omp') and hasattr(g, 'istep'):
+                                if hasattr(g, 'length_scale') and hasattr(g, 'istep'):
                                     vector_arrows.refresh_vectors(g)
                         except (KeyError, AttributeError):
                             pass
@@ -3491,7 +3581,7 @@ class MainApp(Tk.Tk):
                     if subplot.chartType in ['FieldsPlot', 'DensityPlot']:
                         try:
                             if hasattr(g, 'GetPlotParam') and g.GetPlotParam("show_vectors"):
-                                if hasattr(g, 'c_omp') and hasattr(g, 'istep'):
+                                if hasattr(g, 'length_scale') and hasattr(g, 'istep'):
                                     vector_arrows.refresh_vectors(g)
                         except (KeyError, AttributeError):
                             pass
@@ -3801,7 +3891,11 @@ class MainApp(Tk.Tk):
         jstart = int(min(10*c_omp/istep, nxf0))
         # build the final x_axis of the plot
 
-        xaxis_final = np.arange(dens_arr.shape[1])/c_omp*istep
+        # Kept in cells, NOT in normalized units: shock_finder() runs once at
+        # startup, so a unit-dependent shock_speed would go stale as soon as
+        # the user changed the length normalization. It is converted to the
+        # current units at the point of use in RefreshTimeStep().
+        xaxis_final = np.arange(dens_arr.shape[1])*istep
         # Find the shock by seeing where the density is 1/2 of it's
         # max value.
 
@@ -3811,6 +3905,7 @@ class MainApp(Tk.Tk):
         # than half max
         ishock_final = np.where(dens_arr[dens_arr.shape[0]//2,jstart:]>=dens_half_max)[0][-1]
         xshock_final = xaxis_final[ishock_final]
+        # In cells per unit time -- see the comment above xaxis_final.
         self.shock_speed = xshock_final/final_time
         self.prev_shock_loc = np.nan
 

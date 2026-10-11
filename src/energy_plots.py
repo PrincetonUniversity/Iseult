@@ -167,6 +167,10 @@ class EnergyPanel:
         else:
             # Generate the X-axis values
             self.c_omp = self.FigWrap.LoadKey('c_omp')
+            # The length, in cells, that the spatial axes are normalized by.
+            # Set centrally by MainApp.UpdateLengthScale(); equals c_omp when
+            # the electron-skin-depth normalization is selected.
+            self.length_scale = self.parent.length_scale
             self.istep = self.FigWrap.LoadKey('istep')
             self.weights = None
             self.x_values = None
@@ -175,7 +179,7 @@ class EnergyPanel:
             # Choose the particle type and px, py, or pz
             if self.GetPlotParam('prtl_type') == 0: #protons
                 self.energy_color = self.parent.ion_color
-                self.x_values = self.FigWrap.LoadKey('xi')/self.c_omp
+                self.x_values = self.FigWrap.LoadKey('xi')/self.length_scale
                 if self.GetPlotParam('weighted'):
                     self.weights = self.FigWrap.LoadKey('chi')
 
@@ -185,7 +189,7 @@ class EnergyPanel:
 
             if self.GetPlotParam('prtl_type') == 1: #electons
                 self.energy_color = self.parent.electron_color
-                self.x_values = self.FigWrap.LoadKey('xe')/self.c_omp
+                self.x_values = self.FigWrap.LoadKey('xe')/self.length_scale
 
                 if self.GetPlotParam('weighted'):
                     self.weights = self.FigWrap.LoadKey('che')
@@ -201,7 +205,7 @@ class EnergyPanel:
             self.Ymax = self.Ymax if ( self.Ymin != self.Ymax ) else self.Ymin+1
 
             self.xmin = 0
-            self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.istep
+            self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.length_scale*self.istep
             self.xmax = self.xmax if ( self.xmin != self.xmax ) else self.xmin+1
 
             self.hist2d = np.histogram2d(self.y_values, self.x_values,
@@ -224,7 +228,7 @@ class EnergyPanel:
             self.parent.DataDict[self.key_name] = self.hist2d
 
     def UpdateLabelsandColors(self):
-        self.x_label = r'$x\ [c/\omega_{\rm pe}]$'
+        self.x_label = self.parent.LengthLabel('x')
 
         if self.GetPlotParam('prtl_type') == 0: #protons
             self.energy_color = self.parent.ion_color

@@ -269,6 +269,10 @@ class PhasePanel:
         elif self.parent.MainParamDict['DoLorentzBoost'] and np.abs(self.parent.MainParamDict['GammaBoost'])>1E-8:
             # Gotta boost it
             self.c_omp = self.FigWrap.LoadKey('c_omp')
+            # The length, in cells, that the spatial axes are normalized by.
+            # Set centrally by MainApp.UpdateLengthScale(); equals c_omp when
+            # the electron-skin-depth normalization is selected.
+            self.length_scale = self.parent.length_scale
             self.istep = self.FigWrap.LoadKey('istep')
             self.weights = None
             self.x_values = None
@@ -277,7 +281,7 @@ class PhasePanel:
             # x_min & x_max before boostin'
             self.xmin = 0
             shape_idx = 1 if is_vs_y else 2
-            self.xmax = self.FigWrap.LoadKey('bx').shape[shape_idx]/self.c_omp*self.istep
+            self.xmax = self.FigWrap.LoadKey('bx').shape[shape_idx]/self.length_scale*self.istep
             self.xmax = self.xmax if (self.xmax != self.xmin) else self.xmin + 1
 
             # First calculate beta and gamma
@@ -299,7 +303,7 @@ class PhasePanel:
             if self.GetPlotParam('prtl_type') == 0:
                 # first load everything downstream frame
                 coord_key = 'yi' if is_vs_y else 'xi'
-                self.x_values = self.FigWrap.LoadKey(coord_key)/self.c_omp
+                self.x_values = self.FigWrap.LoadKey(coord_key)/self.length_scale
 
                 u = self.FigWrap.LoadKey('ui')
                 v = self.FigWrap.LoadKey('vi')
@@ -309,7 +313,7 @@ class PhasePanel:
 
             if self.GetPlotParam('prtl_type') == 1: #electons
                 coord_key = 'ye' if is_vs_y else 'xe'
-                self.x_values = self.FigWrap.LoadKey(coord_key)/self.c_omp
+                self.x_values = self.FigWrap.LoadKey(coord_key)/self.length_scale
                 u = self.FigWrap.LoadKey('ue')
                 v = self.FigWrap.LoadKey('ve')
                 w = self.FigWrap.LoadKey('we')
@@ -380,7 +384,7 @@ class PhasePanel:
                         self.xmax = ylim_max
                         x_key = 'xi' if prtl_type == 0 else 'xe'
                         try:
-                            x_coord = self.FigWrap.LoadKey(x_key) / self.c_omp
+                            x_coord = self.FigWrap.LoadKey(x_key) / self.length_scale
                             inRange &= (x_coord >= xlim_min) & (x_coord <= xlim_max)
                         except KeyError:
                             pass
@@ -388,12 +392,12 @@ class PhasePanel:
                         x_key = 'xi' if prtl_type == 0 else 'xe'
                         z_key = 'zi' if prtl_type == 0 else 'ze'
                         try:
-                            x_coord = self.FigWrap.LoadKey(x_key) / self.c_omp
+                            x_coord = self.FigWrap.LoadKey(x_key) / self.length_scale
                             inRange &= (x_coord >= xlim_min) & (x_coord <= xlim_max)
                         except KeyError:
                             pass
                         try:
-                            z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                            z_coord = self.FigWrap.LoadKey(z_key) / self.length_scale
                             inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
                         except KeyError:
                             pass
@@ -403,7 +407,7 @@ class PhasePanel:
                         self.xmax = xlim_max
                         z_key = 'zi' if prtl_type == 0 else 'ze'
                         try:
-                            z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                            z_coord = self.FigWrap.LoadKey(z_key) / self.length_scale
                             inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
                         except KeyError:
                             pass
@@ -416,14 +420,14 @@ class PhasePanel:
                     if plane == 0: # x-y plane
                         y_key = 'yi' if prtl_type == 0 else 'ye'
                         try:
-                            y_coord = self.FigWrap.LoadKey(y_key) / self.c_omp
+                            y_coord = self.FigWrap.LoadKey(y_key) / self.length_scale
                             inRange &= (y_coord >= ylim_min) & (y_coord <= ylim_max)
                         except KeyError:
                             pass
                     elif plane == 1: # x-z plane
                         z_key = 'zi' if prtl_type == 0 else 'ze'
                         try:
-                            z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                            z_coord = self.FigWrap.LoadKey(z_key) / self.length_scale
                             inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
                         except KeyError:
                             pass
@@ -431,12 +435,12 @@ class PhasePanel:
                         y_key = 'yi' if prtl_type == 0 else 'ye'
                         z_key = 'zi' if prtl_type == 0 else 'ze'
                         try:
-                            y_coord = self.FigWrap.LoadKey(y_key) / self.c_omp
+                            y_coord = self.FigWrap.LoadKey(y_key) / self.length_scale
                             inRange &= (y_coord >= xlim_min) & (y_coord <= xlim_max)
                         except KeyError:
                             pass
                         try:
-                            z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                            z_coord = self.FigWrap.LoadKey(z_key) / self.length_scale
                             inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
                         except KeyError:
                             pass
@@ -474,6 +478,10 @@ class PhasePanel:
         else:
             # Generate the X-axis values
             self.c_omp = self.FigWrap.LoadKey('c_omp')
+            # The length, in cells, that the spatial axes are normalized by.
+            # Set centrally by MainApp.UpdateLengthScale(); equals c_omp when
+            # the electron-skin-depth normalization is selected.
+            self.length_scale = self.parent.length_scale
             self.istep = self.FigWrap.LoadKey('istep')
             self.weights = None
             self.x_values = None
@@ -482,7 +490,7 @@ class PhasePanel:
             # Choose the particle type and px, py, or pz
             if self.GetPlotParam('prtl_type') == 0: #protons
                 coord_key = 'yi' if is_vs_y else 'xi'
-                self.x_values = self.FigWrap.LoadKey(coord_key)/self.c_omp
+                self.x_values = self.FigWrap.LoadKey(coord_key)/self.length_scale
                 if self.GetPlotParam('weighted'):
                     self.weights = self.FigWrap.LoadKey('chi')
                 if self.GetPlotParam('mom_dim') == 0:
@@ -495,7 +503,7 @@ class PhasePanel:
             if self.GetPlotParam('prtl_type') == 1: #electons
                 self.energy_color = self.parent.electron_color
                 coord_key = 'ye' if is_vs_y else 'xe'
-                self.x_values = self.FigWrap.LoadKey(coord_key)/self.c_omp
+                self.x_values = self.FigWrap.LoadKey(coord_key)/self.length_scale
                 if self.GetPlotParam('weighted'):
                     self.weights = self.FigWrap.LoadKey('che')
                 if self.GetPlotParam('mom_dim') == 0:
@@ -507,7 +515,7 @@ class PhasePanel:
 
             self.xmin = 0
             shape_idx = 1 if is_vs_y else 2
-            self.xmax = self.FigWrap.LoadKey('bx').shape[shape_idx]/self.c_omp*self.istep
+            self.xmax = self.FigWrap.LoadKey('bx').shape[shape_idx]/self.length_scale*self.istep
             self.xmax = self.xmax if (self.xmax != self.xmin) else self.xmin + 1
 
             inRange = np.ones(len(self.y_values), dtype=bool)
@@ -555,7 +563,7 @@ class PhasePanel:
                         self.xmax = ylim_max
                         x_key = 'xi' if prtl_type == 0 else 'xe'
                         try:
-                            x_coord = self.FigWrap.LoadKey(x_key) / self.c_omp
+                            x_coord = self.FigWrap.LoadKey(x_key) / self.length_scale
                             inRange &= (x_coord >= xlim_min) & (x_coord <= xlim_max)
                         except KeyError:
                             pass
@@ -563,12 +571,12 @@ class PhasePanel:
                         x_key = 'xi' if prtl_type == 0 else 'xe'
                         z_key = 'zi' if prtl_type == 0 else 'ze'
                         try:
-                            x_coord = self.FigWrap.LoadKey(x_key) / self.c_omp
+                            x_coord = self.FigWrap.LoadKey(x_key) / self.length_scale
                             inRange &= (x_coord >= xlim_min) & (x_coord <= xlim_max)
                         except KeyError:
                             pass
                         try:
-                            z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                            z_coord = self.FigWrap.LoadKey(z_key) / self.length_scale
                             inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
                         except KeyError:
                             pass
@@ -578,7 +586,7 @@ class PhasePanel:
                         self.xmax = xlim_max
                         z_key = 'zi' if prtl_type == 0 else 'ze'
                         try:
-                            z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                            z_coord = self.FigWrap.LoadKey(z_key) / self.length_scale
                             inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
                         except KeyError:
                             pass
@@ -591,14 +599,14 @@ class PhasePanel:
                     if plane == 0: # x-y plane
                         y_key = 'yi' if prtl_type == 0 else 'ye'
                         try:
-                            y_coord = self.FigWrap.LoadKey(y_key) / self.c_omp
+                            y_coord = self.FigWrap.LoadKey(y_key) / self.length_scale
                             inRange &= (y_coord >= ylim_min) & (y_coord <= ylim_max)
                         except KeyError:
                             pass
                     elif plane == 1: # x-z plane
                         z_key = 'zi' if prtl_type == 0 else 'ze'
                         try:
-                            z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                            z_coord = self.FigWrap.LoadKey(z_key) / self.length_scale
                             inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
                         except KeyError:
                             pass
@@ -606,12 +614,12 @@ class PhasePanel:
                         y_key = 'yi' if prtl_type == 0 else 'ye'
                         z_key = 'zi' if prtl_type == 0 else 'ze'
                         try:
-                            y_coord = self.FigWrap.LoadKey(y_key) / self.c_omp
+                            y_coord = self.FigWrap.LoadKey(y_key) / self.length_scale
                             inRange &= (y_coord >= xlim_min) & (y_coord <= xlim_max)
                         except KeyError:
                             pass
                         try:
-                            z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                            z_coord = self.FigWrap.LoadKey(z_key) / self.length_scale
                             inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
                         except KeyError:
                             pass
@@ -654,11 +662,11 @@ class PhasePanel:
         #set the xlabels
         is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
         if is_vs_y:
-            self.x_label = r'$y\ [c/\omega_{\rm pe}]$'
+            self.x_label = self.parent.LengthLabel('y')
         elif self.parent.MainParamDict['DoLorentzBoost'] and np.abs(self.parent.MainParamDict['GammaBoost'])>1E-8:
-            self.x_label = r'$x\prime\ [c/\omega_{\rm pe}]$'
+            self.x_label = self.parent.LengthLabel('x', prime = True)
         else:
-            self.x_label = r'$x\ [c/\omega_{\rm pe}]$'
+            self.x_label = self.parent.LengthLabel('x')
         #set the ylabel
         self.y_label  = self.ylabel_list[self.parent.MainParamDict['DoLorentzBoost']][self.GetPlotParam('prtl_type')][self.GetPlotParam('mom_dim')]
 

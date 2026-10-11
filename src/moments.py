@@ -140,6 +140,10 @@ class  MomentsPanel:
                 self.parent.last_phase_viewport = self.viewport
 
         self.c_omp = self.FigWrap.LoadKey('c_omp')
+        # The length, in cells, that the spatial axes are normalized by.
+        # Set centrally by MainApp.UpdateLengthScale(); equals c_omp when
+        # the electron-skin-depth normalization is selected.
+        self.length_scale = self.parent.length_scale
         self.istep = self.FigWrap.LoadKey('istep')
         self.memi = self.FigWrap.LoadKey('me')/self.FigWrap.LoadKey('mi')
         self.totalcolor = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.0)
@@ -156,7 +160,7 @@ class  MomentsPanel:
             self.xaxis_values = self.parent.DataDict['xaxis_values']
         else:
             # x-values haven't been calculated yet, generate them then save them to the dictionary for later.
-            self.xaxis_values = np.arange(self.FigWrap.LoadKey('bx').shape[-1])/self.c_omp*self.istep
+            self.xaxis_values = np.arange(self.FigWrap.LoadKey('bx').shape[-1])/self.length_scale*self.istep
             self.parent.DataDict['xaxis_values'] = np.copy(self.xaxis_values)
         self.fxmin = 0
         self.fxmax = self.xaxis_values[-1]
@@ -166,7 +170,7 @@ class  MomentsPanel:
         else:
             bx_val = self.FigWrap.LoadKey('bx')
             ny = bx_val.shape[1] if len(bx_val.shape) > 1 else 1
-            self.yaxis_values = np.arange(ny)/self.c_omp*self.istep
+            self.yaxis_values = np.arange(ny)/self.length_scale*self.istep
             self.parent.DataDict['yaxis_values'] = np.copy(self.yaxis_values)
         self.fymin = 0
         self.fymax = self.yaxis_values[-1] if len(self.yaxis_values) > 1 else 1.0
@@ -225,50 +229,50 @@ class  MomentsPanel:
 
                 # Filter by x-coordinate if plane is x-y or x-z
                 if plane in [0, 1]:
-                    inRangeElectrons &= (self.xe/self.c_omp >= xlim_min) & (self.xe/self.c_omp <= xlim_max)
-                    inRangeIons &= (self.xi/self.c_omp >= xlim_min) & (self.xi/self.c_omp <= xlim_max)
+                    inRangeElectrons &= (self.xe/self.length_scale >= xlim_min) & (self.xe/self.length_scale <= xlim_max)
+                    inRangeIons &= (self.xi/self.length_scale >= xlim_min) & (self.xi/self.length_scale <= xlim_max)
 
                 # Filter by transverse coordinate
                 if plane == 0: # x-y plane
                     try:
-                        ye = self.ye / self.c_omp if is_vs_y else self.FigWrap.LoadKey('ye') / self.c_omp
+                        ye = self.ye / self.length_scale if is_vs_y else self.FigWrap.LoadKey('ye') / self.length_scale
                         inRangeElectrons &= (ye >= ylim_min) & (ye <= ylim_max)
                     except KeyError:
                         pass
                     try:
-                        yi = self.yi / self.c_omp if is_vs_y else self.FigWrap.LoadKey('yi') / self.c_omp
+                        yi = self.yi / self.length_scale if is_vs_y else self.FigWrap.LoadKey('yi') / self.length_scale
                         inRangeIons &= (yi >= ylim_min) & (yi <= ylim_max)
                     except KeyError:
                         pass
                 elif plane == 1: # x-z plane
                     try:
-                        ze = self.FigWrap.LoadKey('ze') / self.c_omp
+                        ze = self.FigWrap.LoadKey('ze') / self.length_scale
                         inRangeElectrons &= (ze >= ylim_min) & (ze <= ylim_max)
                     except KeyError:
                         pass
                     try:
-                        zi = self.FigWrap.LoadKey('zi') / self.c_omp
+                        zi = self.FigWrap.LoadKey('zi') / self.length_scale
                         inRangeIons &= (zi >= ylim_min) & (zi <= ylim_max)
                     except KeyError:
                         pass
                 elif plane == 2: # y-z plane
                     try:
-                        ye = self.ye / self.c_omp if is_vs_y else self.FigWrap.LoadKey('ye') / self.c_omp
+                        ye = self.ye / self.length_scale if is_vs_y else self.FigWrap.LoadKey('ye') / self.length_scale
                         inRangeElectrons &= (ye >= xlim_min) & (ye <= xlim_max)
                     except KeyError:
                         pass
                     try:
-                        ze = self.FigWrap.LoadKey('ze') / self.c_omp
+                        ze = self.FigWrap.LoadKey('ze') / self.length_scale
                         inRangeElectrons &= (ze >= ylim_min) & (ze <= ylim_max)
                     except KeyError:
                         pass
                     try:
-                        yi = self.yi / self.c_omp if is_vs_y else self.FigWrap.LoadKey('yi') / self.c_omp
+                        yi = self.yi / self.length_scale if is_vs_y else self.FigWrap.LoadKey('yi') / self.length_scale
                         inRangeIons &= (yi >= xlim_min) & (yi <= xlim_max)
                     except KeyError:
                         pass
                     try:
-                        zi = self.FigWrap.LoadKey('zi') / self.c_omp
+                        zi = self.FigWrap.LoadKey('zi') / self.length_scale
                         inRangeIons &= (zi >= ylim_min) & (zi <= ylim_max)
                     except KeyError:
                         pass
@@ -297,14 +301,14 @@ class  MomentsPanel:
                 pos_e = self.ye
                 pos_i = self.yi
                 if self.memi == 0:
-                    self.ymin = 0.0 if len(self.ye) == 0 else np.min(self.ye)/self.c_omp
-                    self.ymax = 0.0 if len(self.ye) == 0 else np.max(self.ye)/self.c_omp
+                    self.ymin = 0.0 if len(self.ye) == 0 else np.min(self.ye)/self.length_scale
+                    self.ymax = 0.0 if len(self.ye) == 0 else np.max(self.ye)/self.length_scale
                     self.memi = 1.0
                     self.SetPlotParam('show_ions', False, update_plot = False)
                     self.ylabel_list = [r'$\langle \beta \rangle$',r'$\langle \gamma\beta\rangle$', r'$\langle KE \rangle/m_ec^2$']
                 else:
-                    self.ymin = min(0.0 if len(self.yi) == 0 else np.min(self.yi), 0.0 if len(self.ye) == 0 else np.min(self.ye))/self.c_omp
-                    self.ymax = max(0.0 if len(self.yi) == 0 else np.max(self.yi), 0.0 if len(self.ye) == 0 else np.max(self.ye))/self.c_omp
+                    self.ymin = min(0.0 if len(self.yi) == 0 else np.min(self.yi), 0.0 if len(self.ye) == 0 else np.min(self.ye))/self.length_scale
+                    self.ymax = max(0.0 if len(self.yi) == 0 else np.max(self.yi), 0.0 if len(self.ye) == 0 else np.max(self.ye))/self.length_scale
 
                 if self.viewport is not None:
                     if plane == 0:
@@ -315,32 +319,32 @@ class  MomentsPanel:
                         self.ymax = xlim_max
 
                 self.ymax = self.ymax if (self.ymax != self.ymin) else self.ymin + 1
-                bin_width = (self.ymax - self.ymin) / float(xbn) * self.c_omp
+                bin_width = (self.ymax - self.ymin) / float(xbn) * self.length_scale
                 self.x_bins = np.linspace(self.ymin, self.ymax, num = xbn+1)
-                coord_min = self.ymin * self.c_omp
+                coord_min = self.ymin * self.length_scale
                 self.fymin = self.ymin
                 self.fymax = self.ymax
             else:
                 pos_e = self.xe
                 pos_i = self.xi
                 if self.memi==0:
-                    self.xmin = 0.0 if len(self.xe) == 0 else np.min(self.xe)/self.c_omp
-                    self.xmax = 0.0 if len(self.xe) == 0 else np.max(self.xe)/self.c_omp
+                    self.xmin = 0.0 if len(self.xe) == 0 else np.min(self.xe)/self.length_scale
+                    self.xmax = 0.0 if len(self.xe) == 0 else np.max(self.xe)/self.length_scale
                     self.memi = 1.0
                     self.SetPlotParam('show_ions', False, update_plot = False)
                     self.ylabel_list = [r'$\langle \beta \rangle$',r'$\langle \gamma\beta\rangle$', r'$\langle KE \rangle/m_ec^2$']
                 else:
-                    self.xmin = min(0.0 if len(self.xi) == 0 else np.min(self.xi), 0.0 if len(self.xe) == 0 else np.min(self.xe))/self.c_omp
-                    self.xmax = max(0.0 if len(self.xi) == 0 else np.max(self.xi), 0.0 if len(self.xe) == 0 else np.max(self.xe))/self.c_omp
+                    self.xmin = min(0.0 if len(self.xi) == 0 else np.min(self.xi), 0.0 if len(self.xe) == 0 else np.min(self.xe))/self.length_scale
+                    self.xmax = max(0.0 if len(self.xi) == 0 else np.max(self.xi), 0.0 if len(self.xe) == 0 else np.max(self.xe))/self.length_scale
 
                 if self.viewport is not None and plane in [0, 1]:
                     self.xmin = xlim_min
                     self.xmax = xlim_max
 
                 self.xmax = self.xmax if (self.xmax != self.xmin) else self.xmin + 1
-                bin_width = (self.xmax-self.xmin)/float(xbn)*self.c_omp
+                bin_width = (self.xmax-self.xmin)/float(xbn)*self.length_scale
                 self.x_bins = np.linspace(self.xmin, self.xmax, num = xbn+1)
-                coord_min = self.xmin * self.c_omp
+                coord_min = self.xmin * self.length_scale
 
             self.parent.DataDict[self.key_name+'x_bins'] = self.x_bins
 
@@ -659,7 +663,7 @@ class  MomentsPanel:
                 self.axes.set_xlim(self.parent.MainParamDict['yBottom'], self.parent.MainParamDict['yTop'])
             else:
                 self.axes.set_xlim(self.fymin, self.fymax)
-            self.axes.set_xlabel(r'$y\  [c/\omega_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            self.axes.set_xlabel(self.parent.LengthLabel('y'), labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
         else:
             if self.parent.MainParamDict['SetxLim']:
                 if self.parent.MainParamDict['xLimsRelative']:
@@ -669,7 +673,7 @@ class  MomentsPanel:
                     self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
             else:
                 self.axes.set_xlim(self.fxmin,self.fxmax)
-            self.axes.set_xlabel(r'$x\  [c/\omega_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            self.axes.set_xlabel(self.parent.LengthLabel('x'), labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
         self.axes.set_ylabel(self.ylabel_list[self.GetPlotParam('m_type')], labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
     def refresh(self):

@@ -141,7 +141,7 @@ def on_limits_changed(panel):
                         g = subplot.graph
                         try:
                             if hasattr(g, 'GetPlotParam') and g.GetPlotParam("show_vectors"):
-                                if hasattr(g, 'c_omp') and hasattr(g, 'istep'):
+                                if hasattr(g, 'length_scale') and hasattr(g, 'istep'):
                                     refresh_vectors(g)
                         except (KeyError, AttributeError):
                             pass
@@ -239,15 +239,17 @@ def draw_vectors(panel):
     xlim = panel.axes.get_xlim()
     ylim = panel.axes.get_ylim()
 
-    c_omp = panel.c_omp
+    # The spatial axes are in whatever length unit the user selected, so the
+    # conversion to cell indices goes through panel.length_scale, not c_omp.
+    length_scale = panel.length_scale
     istep = panel.istep
 
     Ny_grid, Nx_grid = U_full.shape
 
-    i_min = int(np.floor(xlim[0] * c_omp / istep))
-    i_max = int(np.ceil(xlim[1] * c_omp / istep))
-    j_min = int(np.floor(ylim[0] * c_omp / istep))
-    j_max = int(np.ceil(ylim[1] * c_omp / istep))
+    i_min = int(np.floor(xlim[0] * length_scale / istep))
+    i_max = int(np.ceil(xlim[1] * length_scale / istep))
+    j_min = int(np.floor(ylim[0] * length_scale / istep))
+    j_max = int(np.ceil(ylim[1] * length_scale / istep))
 
     # Clamp indices
     i_min = max(0, min(i_min, Nx_grid - 1))
@@ -275,8 +277,8 @@ def draw_vectors(panel):
 
     IX, IY = np.meshgrid(ix, iy)
 
-    X = IX * (istep / c_omp)
-    Y = IY * (istep / c_omp)
+    X = IX * (istep / length_scale)
+    Y = IY * (istep / length_scale)
 
     U = U_full[IY, IX]
     V = V_full[IY, IX]
