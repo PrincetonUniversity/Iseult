@@ -3760,7 +3760,7 @@ class MainApp(Tk.Tk):
             if abs_sigma == 0:
                 self.btheta = np.nan
             else:
-                self.btheta = self.c_omp = data_loading.load_dataset(filepath, 'btheta', slice(0,1))
+                self.btheta = data_loading.load_dataset(filepath, 'btheta', slice(0,1))
         except KeyError:
             self.btheta = np.nan
 
