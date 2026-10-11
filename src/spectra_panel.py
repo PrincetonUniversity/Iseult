@@ -82,9 +82,13 @@ class SpectralPanel:
 
     def update_data(self, output):
         self.c_omp = getattr(output, 'c_omp')
+        # The length, in cells, that the spatial axes are normalized by.
+        # Set centrally by Oengus.UpdateLengthScale(); equals c_omp when
+        # the electron-skin-depth normalization is selected.
+        self.length_scale = self.parent.length_scale
         self.istep = getattr(output, 'istep')
 #        self.gamma0 = getattr(output, 'gamma0')[0]
-        self.xsl = getattr(output, 'xsl')/self.c_omp
+        self.xsl = getattr(output, 'xsl')/self.length_scale
         # Load gamma-1 of the spectra
         self.gamma = getattr(output, 'gamma')
         self.massRatio = getattr(output, 'mi')/getattr(output, 'me')

@@ -19,6 +19,7 @@ from energy_panel import EnergyPanel
 from fft_panel import FFTPanel
 from total_energy_panel import TotEnergyPanel
 from moments_panel import MomentsPanel
+import length_norms
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from PIL import Image
 
@@ -154,7 +155,10 @@ class Oengus():
         jstart = int(min(10*c_omp/istep, nxf0))
         # build the final x_axis of the plot
 
-        xaxis_final = np.arange(dens_arr.shape[1])/c_omp*istep
+        # Kept in cells, NOT in normalized units: shock_speed is computed
+        # once here, so a unit-dependent value would go stale. It is converted
+        # to the current units at the point of use.
+        xaxis_final = np.arange(dens_arr.shape[1])*istep
         # Find the shock by seeing where the density is 1/2 of it's
         # max value.
 
@@ -164,7 +168,8 @@ class Oengus():
         # than half max
         ishock_final = np.where(dens_arr[dens_arr.shape[0]//2,jstart:]>=dens_half_max)[0][-1]
         xshock_final = xaxis_final[ishock_final]
-        xshock_final -= np.min(self.sim[-1].xe[self.sim[-1].xe!=0])/self.sim[-1].c_omp
+        xshock_final -= np.min(self.sim[-1].xe[self.sim[-1].xe!=0])
+        # In cells per unit time -- see the comment above xaxis_final.
         self.shock_speed = xshock_final/final_time
         self.create_graphs()
     def GenMainParamDict(self, config_file = None):
@@ -226,6 +231,10 @@ class Oengus():
                               'xLimsRelative': False,
                               'ConstantShockVel': True,
                               'xRight': 100.0,
+                              # Which length the spatial axes are normalized
+                              # by. See src/length_norms.py; 0 == electron skin
+                              # depth, which is what Iseult has always used.
+                              'LengthNorm': length_norms.DEFAULT_NORM,
                               'LinkSpatial': 1,
                               'HCbarExtent': [0, 4, 0, -1],
                               'Recording': False,
@@ -251,6 +260,14 @@ class Oengus():
                               'legendLabelSize':11}
         for key, val in self.cfgDict['MainParamDict'].items():
             self.MainParamDict[key] = val
+        # Views saved before the normalization was selectable have no
+        # 'LengthNorm' key, and a hand-edited .yml may hold anything at all.
+        self.MainParamDict['LengthNorm'] = length_norms.sanitize(
+            self.MainParamDict['LengthNorm'])
+        # Placeholder until the first output is in hand; UpdateLengthScale()
+        # sets the real value.
+        self.length_scale = 1.0
+        self.length_norm = self.MainParamDict['LengthNorm']
         self.electron_color = self.MainParamDict['electron_color']
         self.ion_color = self.MainParamDict['ion_color']
         self.shock_color = self.MainParamDict['shock_color']
@@ -258,6 +275,44 @@ class Oengus():
         self.electron_fit_color = self.MainParamDict['electron_fit_color']
         self.FFT_color = self.MainParamDict['FFT_color']
 
+
+    def UpdateLengthScale(self, output):
+        '''Recompute the spatial length scale, in cells, that every panel
+        divides by. Sets self.length_scale and self.length_norm, where
+        self.length_norm is the normalization actually in use -- it can differ
+        from MainParamDict['LengthNorm'] if the requested one is undefined for
+        this run (e.g. ion skin depths when mi/me cannot be read).'''
+        requested = length_norms.sanitize(self.MainParamDict['LengthNorm'])
+
+        # mi & me are only needed by the ion skin depth, and must not be
+        # fatal if absent -- length_norms falls back to electron skin depths.
+        params = {}
+        for key in ('mi', 'me'):
+            try:
+                params[key] = getattr(output, key)
+            except (AttributeError, KeyError, OSError, ValueError):
+                params[key] = None
+        try:
+            c_omp = getattr(output, 'c_omp')
+        except (AttributeError, KeyError, OSError, ValueError):
+            c_omp = None
+
+        self.length_scale, self.length_norm, msg = length_norms.length_scale(
+            requested, c_omp, **params)
+        length_norms.warn_about(msg)
+        return self.length_scale
+
+    def LengthLabel(self, axis = 'x', prime = False):
+        '''The matplotlib axis label for a spatial axis, in the units that are
+        currently selected.'''
+        return length_norms.axis_label(getattr(self, 'length_norm',
+                                               self.MainParamDict['LengthNorm']),
+                                       axis, prime = prime)
+
+    def KLabel(self):
+        '''The matplotlib axis label for a Fourier-space axis.'''
+        return length_norms.k_axis_label(getattr(self, 'length_norm',
+                                                 self.MainParamDict['LengthNorm']))
 
     def calc_total_energy(self):
         self.TotalEnergyTimes = []
@@ -303,6 +358,9 @@ class Oengus():
 
     def create_graphs(self):
         o = self.sim[0]
+        # Work out the length the spatial axes are normalized by
+        # before anything below divides by it.
+        self.UpdateLengthScale(o)
         # FIND THE SLICE
         self.MaxZInd = o.bx.shape[0]-1
         self.MaxYInd = o.bx.shape[1]-1
@@ -311,11 +369,11 @@ class Oengus():
         self.ySlice = int(np.around(self.MainParamDict['ySlice']*self.MaxYInd))
         self.zSlice = int(np.around(self.MainParamDict['zSlice']*self.MaxZInd))
         if self.MainParamDict['ConstantShockVel']:
-            self.shock_loc = o.time*self.shock_speed
-            self.shock_loc += np.min(o.xe[o.xe!=0])/o.c_omp
+            self.shock_loc = o.time*self.shock_speed/self.length_scale
+            self.shock_loc += np.min(o.xe[o.xe!=0])/self.length_scale
         else:
             jstart = int(min(10*o.c_omp/o.istep, o.dens[0,:,:].shape[1]))
-            cur_xaxis = np.arange(o.dens[0,:,:].shape[1])/o.c_omp*o.istep
+            cur_xaxis = np.arange(o.dens[0,:,:].shape[1])/self.length_scale*o.istep
             # Find the shock by seeing where the density is 1/2 of it's
             # max value.
 
@@ -340,15 +398,15 @@ class Oengus():
                 self.SubPlotList[i][j].draw()
         if self.showingCPUs:
             if 'my' in self.sim._h5Key2FileDict.keys():
-                cpu_y_locs = np.cumsum(o.my-5)/o.c_omp
+                cpu_y_locs = np.cumsum(o.my-5)/self.length_scale
             else:
                 tmpSize = ((self.MaxYInd+1)*o.istep)//(o.my0-5)
-                cpu_y_locs = np.cumsum(np.ones(tmpSize)*(o.my0)-5)/o.c_omp
+                cpu_y_locs = np.cumsum(np.ones(tmpSize)*(o.my0)-5)/self.length_scale
             if 'mx' in self.sim._h5Key2FileDict.keys():
-                cpu_x_locs = np.cumsum(o.mx-5)/o.c_omp
+                cpu_x_locs = np.cumsum(o.mx-5)/self.length_scale
             else:
                 tmpSize = ((self.MaxXInd+1)*o.istep)//(o.mx0-5)
-                cpu_x_locs = np.cumsum(np.ones(tmpSize)*(o.mx0)-5)/o.c_omp
+                cpu_x_locs = np.cumsum(np.ones(tmpSize)*(o.mx0)-5)/self.length_scale
 
 
             for i in range(self.MainParamDict['NumOfRows']):
@@ -425,6 +483,9 @@ class Oengus():
 
     def draw_output(self, n):
         o = self.sim[n]
+        # Work out the length the spatial axes are normalized by
+        # before anything below divides by it.
+        self.UpdateLengthScale(o)
         # FIND THE SLICE
         self.MaxZInd = o.bx.shape[0]-1
         self.MaxYInd = o.bx.shape[1]-1
@@ -433,11 +494,11 @@ class Oengus():
         self.ySlice = int(np.around(self.MainParamDict['ySlice']*self.MaxYInd))
         self.zSlice = int(np.around(self.MainParamDict['zSlice']*self.MaxZInd))
         if self.MainParamDict['ConstantShockVel']:
-            self.shock_loc = o.time*self.shock_speed
-            self.shock_loc += np.min(o.xe[o.xe!=0])/o.c_omp
+            self.shock_loc = o.time*self.shock_speed/self.length_scale
+            self.shock_loc += np.min(o.xe[o.xe!=0])/self.length_scale
         else:
             jstart = int(min(10*o.c_omp/o.istep, o.dens[0,:,:].shape[1]))
-            cur_xaxis = np.arange(o.dens[0,:,:].shape[1])/o.c_omp*o.istep
+            cur_xaxis = np.arange(o.dens[0,:,:].shape[1])/self.length_scale*o.istep
             # Find the shock by seeing where the density is 1/2 of it's
             # max value.
 
@@ -462,15 +523,15 @@ class Oengus():
                 self.SubPlotList[i][j].refresh()
         if self.showingCPUs:
             if 'my' in self.sim._h5Key2FileDict.keys():
-                cpu_y_locs = np.cumsum(o.my-5)/o.c_omp
+                cpu_y_locs = np.cumsum(o.my-5)/self.length_scale
             else:
                 tmpSize = ((self.MaxYInd+1)*o.istep)//(o.my0-5)
-                cpu_y_locs = np.cumsum(np.ones(tmpSize)*(o.my0)-5)/o.c_omp
+                cpu_y_locs = np.cumsum(np.ones(tmpSize)*(o.my0)-5)/self.length_scale
             if 'mx' in self.sim._h5Key2FileDict.keys():
-                cpu_x_locs = np.cumsum(o.mx-5)/o.c_omp
+                cpu_x_locs = np.cumsum(o.mx-5)/self.length_scale
             else:
                 tmpSize = ((self.MaxXInd+1)*o.istep)//(o.mx0-5)
-                cpu_x_locs = np.cumsum(np.ones(tmpSize)*(o.mx0)-5)/o.c_omp
+                cpu_x_locs = np.cumsum(np.ones(tmpSize)*(o.mx0)-5)/self.length_scale
 
 
             for i in range(self.MainParamDict['NumOfRows']):

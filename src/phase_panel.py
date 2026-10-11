@@ -111,11 +111,11 @@ class PhasePanel:
         #set the xlabels
         is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
         if is_vs_y:
-            self.x_label = r'$y\ [c/\omega_{\rm pe}]$'
+            self.x_label = self.parent.LengthLabel('y')
         elif self.parent.MainParamDict['DoLorentzBoost'] and np.abs(self.parent.MainParamDict['GammaBoost'])>1E-8:
-            self.x_label = r'$x\prime\ [c/\omega_{\rm pe}]$'
+            self.x_label = self.parent.LengthLabel('x', prime = True)
         else:
-            self.x_label = r'$x\ [c/\omega_{\rm pe}]$'
+            self.x_label = self.parent.LengthLabel('x')
         #set the ylabel
         self.y_label  = self.ylabel_list[self.parent.MainParamDict['DoLorentzBoost']][self.GetPlotParam('prtl_type')][self.GetPlotParam('mom_dim')]
 
@@ -141,10 +141,10 @@ class PhasePanel:
                             xlim = subplot.axes.get_xlim()
                             ylim = subplot.axes.get_ylim()
                         else:
-                            c_omp = getattr(output, 'c_omp', 1.0)
+                            length_scale = getattr(self.parent, 'length_scale', 1.0)
                             istep = getattr(output, 'istep', 1.0)
                             xlim_min = 0.0
-                            xlim_max = getattr(output, 'bx').shape[2] / c_omp * istep
+                            xlim_max = getattr(output, 'bx').shape[2] / length_scale * istep
                             if self.parent.MainParamDict['SetxLim']:
                                 if self.parent.MainParamDict['xLimsRelative']:
                                     shock_loc = getattr(self.parent, 'shock_loc', 0.0)
@@ -162,7 +162,7 @@ class PhasePanel:
                                 shape_val = getattr(output, 'bx').shape[0]
                             else:
                                 shape_val = getattr(output, 'bx').shape[0]
-                            ylim_max = shape_val / c_omp * istep
+                            ylim_max = shape_val / length_scale * istep
                             
                             if self.parent.MainParamDict['SetyLim']:
                                 ylim_min = self.parent.MainParamDict['yBottom']
@@ -187,13 +187,13 @@ class PhasePanel:
                 ylim_min, ylim_max = min(ylim_0, ylim_1), max(ylim_0, ylim_1)
                 bx = getattr(output, 'bx', None)
                 if bx is not None:
-                    c_omp = getattr(output, 'c_omp', 1.0)
+                    length_scale = getattr(self.parent, 'length_scale', 1.0)
                     istep = getattr(output, 'istep', 1.0)
-                    full_x_span = bx.shape[-1] / c_omp * istep
+                    full_x_span = bx.shape[-1] / length_scale * istep
                     if plane == 0:
-                        full_y_span = bx.shape[1] / c_omp * istep
+                        full_y_span = bx.shape[1] / length_scale * istep
                     else:
-                        full_y_span = bx.shape[0] / c_omp * istep
+                        full_y_span = bx.shape[0] / length_scale * istep
                     
                     if (xlim_max - xlim_min) >= 0.98 * full_x_span and (ylim_max - ylim_min) >= 0.98 * full_y_span:
                         self.viewport = None
@@ -202,6 +202,10 @@ class PhasePanel:
         if self.parent.MainParamDict['DoLorentzBoost'] and np.abs(self.parent.MainParamDict['GammaBoost'])>1E-8:
             # Gotta boost it
             self.c_omp = getattr(output,'c_omp')
+            # The length, in cells, that the spatial axes are normalized by.
+            # Set centrally by Oengus.UpdateLengthScale(); equals c_omp when
+            # the electron-skin-depth normalization is selected.
+            self.length_scale = self.parent.length_scale
             self.istep = getattr(output,'istep')
             self.weights = None
             self.x_values = None
@@ -210,7 +214,7 @@ class PhasePanel:
             # x_min & x_max before boostin'
             self.xmin = 0
             shape_idx = 1 if is_vs_y else 2
-            self.xmax = getattr(output,'bx').shape[shape_idx]/self.c_omp*self.istep
+            self.xmax = getattr(output,'bx').shape[shape_idx]/self.length_scale*self.istep
             self.xmax = self.xmax if (self.xmax != self.xmin) else self.xmin + 1
 
             # First calculate beta and gamma
@@ -232,7 +236,7 @@ class PhasePanel:
             if self.GetPlotParam('prtl_type') == 0:
                 # first load everything downstream frame
                 coord_key = 'yi' if is_vs_y else 'xi'
-                self.x_values = getattr(output, coord_key)/self.c_omp
+                self.x_values = getattr(output, coord_key)/self.length_scale
 
                 u = getattr(output,'ui')
                 v = getattr(output,'vi')
@@ -242,7 +246,7 @@ class PhasePanel:
 
             if self.GetPlotParam('prtl_type') == 1: #electons
                 coord_key = 'ye' if is_vs_y else 'xe'
-                self.x_values = getattr(output, coord_key)/self.c_omp
+                self.x_values = getattr(output, coord_key)/self.length_scale
                 u = getattr(output,'ue')
                 v = getattr(output,'ve')
                 w = getattr(output,'we')
@@ -314,7 +318,7 @@ class PhasePanel:
                         x_key = 'xi' if prtl_type == 0 else 'xe'
                         if hasattr(output, x_key):
                             try:
-                                x_coord = getattr(output, x_key) / self.c_omp
+                                x_coord = getattr(output, x_key) / self.length_scale
                                 inRange &= (x_coord >= xlim_min) & (x_coord <= xlim_max)
                             except Exception:
                                 pass
@@ -323,13 +327,13 @@ class PhasePanel:
                         z_key = 'zi' if prtl_type == 0 else 'ze'
                         if hasattr(output, x_key):
                             try:
-                                x_coord = getattr(output, x_key) / self.c_omp
+                                x_coord = getattr(output, x_key) / self.length_scale
                                 inRange &= (x_coord >= xlim_min) & (x_coord <= xlim_max)
                             except Exception:
                                 pass
                         if hasattr(output, z_key):
                             try:
-                                z_coord = getattr(output, z_key) / self.c_omp
+                                z_coord = getattr(output, z_key) / self.length_scale
                                 inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
                             except Exception:
                                 pass
@@ -340,7 +344,7 @@ class PhasePanel:
                         z_key = 'zi' if prtl_type == 0 else 'ze'
                         if hasattr(output, z_key):
                             try:
-                                z_coord = getattr(output, z_key) / self.c_omp
+                                z_coord = getattr(output, z_key) / self.length_scale
                                 inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
                             except Exception:
                                 pass
@@ -354,7 +358,7 @@ class PhasePanel:
                         y_key = 'yi' if prtl_type == 0 else 'ye'
                         if hasattr(output, y_key):
                             try:
-                                y_coord = getattr(output, y_key) / self.c_omp
+                                y_coord = getattr(output, y_key) / self.length_scale
                                 inRange &= (y_coord >= ylim_min) & (y_coord <= ylim_max)
                             except Exception:
                                 pass
@@ -362,7 +366,7 @@ class PhasePanel:
                         z_key = 'zi' if prtl_type == 0 else 'ze'
                         if hasattr(output, z_key):
                             try:
-                                z_coord = getattr(output, z_key) / self.c_omp
+                                z_coord = getattr(output, z_key) / self.length_scale
                                 inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
                             except Exception:
                                 pass
@@ -371,13 +375,13 @@ class PhasePanel:
                         z_key = 'zi' if prtl_type == 0 else 'ze'
                         if hasattr(output, y_key):
                             try:
-                                y_coord = getattr(output, y_key) / self.c_omp
+                                y_coord = getattr(output, y_key) / self.length_scale
                                 inRange &= (y_coord >= xlim_min) & (y_coord <= xlim_max)
                             except Exception:
                                 pass
                         if hasattr(output, z_key):
                             try:
-                                z_coord = getattr(output, z_key) / self.c_omp
+                                z_coord = getattr(output, z_key) / self.length_scale
                                 inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
                             except Exception:
                                 pass
@@ -415,6 +419,10 @@ class PhasePanel:
         else:
             # Generate the X-axis values
             self.c_omp = getattr(output,'c_omp')
+            # The length, in cells, that the spatial axes are normalized by.
+            # Set centrally by Oengus.UpdateLengthScale(); equals c_omp when
+            # the electron-skin-depth normalization is selected.
+            self.length_scale = self.parent.length_scale
             self.istep = getattr(output,'istep')
             self.weights = None
             self.x_values = None
@@ -423,7 +431,7 @@ class PhasePanel:
             # Choose the particle type and px, py, or pz
             if self.GetPlotParam('prtl_type') == 0: #protons
                 coord_key = 'yi' if is_vs_y else 'xi'
-                self.x_values = getattr(output, coord_key)/self.c_omp
+                self.x_values = getattr(output, coord_key)/self.length_scale
                 if self.GetPlotParam('weighted'):
                     self.weights = getattr(output,'chi')
                 if self.GetPlotParam('mom_dim') == 0:
@@ -436,7 +444,7 @@ class PhasePanel:
             if self.GetPlotParam('prtl_type') == 1: #electons
                 self.energy_color = self.parent.electron_color
                 coord_key = 'ye' if is_vs_y else 'xe'
-                self.x_values = getattr(output, coord_key)/self.c_omp
+                self.x_values = getattr(output, coord_key)/self.length_scale
                 if self.GetPlotParam('weighted'):
                     self.weights = getattr(output,'che')
                 if self.GetPlotParam('mom_dim') == 0:
@@ -448,7 +456,7 @@ class PhasePanel:
 
             self.xmin = 0
             shape_idx = 1 if is_vs_y else 2
-            self.xmax = getattr(output,'bx').shape[shape_idx]/self.c_omp*self.istep
+            self.xmax = getattr(output,'bx').shape[shape_idx]/self.length_scale*self.istep
             self.xmax = self.xmax if (self.xmax != self.xmin) else self.xmin + 1
 
             inRange = np.ones(len(self.y_values), dtype=bool)
@@ -497,7 +505,7 @@ class PhasePanel:
                         x_key = 'xi' if prtl_type == 0 else 'xe'
                         if hasattr(output, x_key):
                             try:
-                                x_coord = getattr(output, x_key) / self.c_omp
+                                x_coord = getattr(output, x_key) / self.length_scale
                                 inRange &= (x_coord >= xlim_min) & (x_coord <= xlim_max)
                             except Exception:
                                 pass
@@ -506,13 +514,13 @@ class PhasePanel:
                         z_key = 'zi' if prtl_type == 0 else 'ze'
                         if hasattr(output, x_key):
                             try:
-                                x_coord = getattr(output, x_key) / self.c_omp
+                                x_coord = getattr(output, x_key) / self.length_scale
                                 inRange &= (x_coord >= xlim_min) & (x_coord <= xlim_max)
                             except Exception:
                                 pass
                         if hasattr(output, z_key):
                             try:
-                                z_coord = getattr(output, z_key) / self.c_omp
+                                z_coord = getattr(output, z_key) / self.length_scale
                                 inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
                             except Exception:
                                 pass
@@ -523,7 +531,7 @@ class PhasePanel:
                         z_key = 'zi' if prtl_type == 0 else 'ze'
                         if hasattr(output, z_key):
                             try:
-                                z_coord = getattr(output, z_key) / self.c_omp
+                                z_coord = getattr(output, z_key) / self.length_scale
                                 inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
                             except Exception:
                                 pass
@@ -537,7 +545,7 @@ class PhasePanel:
                         y_key = 'yi' if prtl_type == 0 else 'ye'
                         if hasattr(output, y_key):
                             try:
-                                y_coord = getattr(output, y_key) / self.c_omp
+                                y_coord = getattr(output, y_key) / self.length_scale
                                 inRange &= (y_coord >= ylim_min) & (y_coord <= ylim_max)
                             except Exception:
                                 pass
@@ -545,7 +553,7 @@ class PhasePanel:
                         z_key = 'zi' if prtl_type == 0 else 'ze'
                         if hasattr(output, z_key):
                             try:
-                                z_coord = getattr(output, z_key) / self.c_omp
+                                z_coord = getattr(output, z_key) / self.length_scale
                                 inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
                             except Exception:
                                 pass
@@ -554,13 +562,13 @@ class PhasePanel:
                         z_key = 'zi' if prtl_type == 0 else 'ze'
                         if hasattr(output, y_key):
                             try:
-                                y_coord = getattr(output, y_key) / self.c_omp
+                                y_coord = getattr(output, y_key) / self.length_scale
                                 inRange &= (y_coord >= xlim_min) & (y_coord <= xlim_max)
                             except Exception:
                                 pass
                         if hasattr(output, z_key):
                             try:
-                                z_coord = getattr(output, z_key) / self.c_omp
+                                z_coord = getattr(output, z_key) / self.length_scale
                                 inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
                             except Exception:
                                 pass

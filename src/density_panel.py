@@ -98,6 +98,10 @@ class DensPanel:
         self.dens_color = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.5)
         # get c_omp and istep to convert cells to physical units
         self.c_omp = getattr(output, 'c_omp')
+        # The length, in cells, that the spatial axes are normalized by.
+        # Set centrally by Oengus.UpdateLengthScale(); equals c_omp when
+        # the electron-skin-depth normalization is selected.
+        self.length_scale = self.parent.length_scale
         self.istep = getattr(output, 'istep')
         self.dens = getattr(output, 'dens')[:,:,:]
 
@@ -111,8 +115,8 @@ class DensPanel:
         if self.GetPlotParam('dens_type')== 3: # rho
             self.rho = 2*getattr(output, 'densi')[:,:,:] - self.dens
 
-        self.xaxis_values = np.arange(self.dens.shape[2])/self.c_omp*self.istep
-        self.yaxis_values = np.arange(self.dens.shape[1])/self.c_omp*self.istep
+        self.xaxis_values = np.arange(self.dens.shape[2])/self.length_scale*self.istep
+        self.yaxis_values = np.arange(self.dens.shape[1])/self.length_scale*self.istep
 
     def draw(self):
         if self.GetPlotParam('OutlineText'):
@@ -184,9 +188,9 @@ class DensPanel:
 
 
             self.ymin = 0
-            self.ymax =  self.cax.get_array().shape[0]/self.c_omp*self.istep
+            self.ymax =  self.cax.get_array().shape[0]/self.length_scale*self.istep
             self.xmin = 0
-            self.xmax =  self.cax.get_array().shape[1]/self.c_omp*self.istep
+            self.xmax =  self.cax.get_array().shape[1]/self.length_scale*self.istep
 
             self.vmin = self.cax.get_array().min()
             if self.GetPlotParam('set_v_min'):
@@ -278,14 +282,14 @@ class DensPanel:
                 self.axes.set_xlim(self.xmin,self.xmax)
 
             if self.parent.MainParamDict['SetyLim']:
-                self.axes.set_ylim(self.parent.MainParamDict['yBottom']*self.c_omp/self.istep, self.parent.MainParamDict['yTop']*self.c_omp/self.istep)
+                self.axes.set_ylim(self.parent.MainParamDict['yBottom']*self.length_scale/self.istep, self.parent.MainParamDict['yTop']*self.length_scale/self.istep)
             else:
                 self.axes.set_ylim(self.ymin, self.ymax)
-            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            self.axes.set_xlabel(self.parent.LengthLabel('x'), labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             if self.parent.MainParamDict['2DSlicePlane'] == 0:
-                self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_ylabel(self.parent.LengthLabel('y'), labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             if self.parent.MainParamDict['2DSlicePlane'] == 1:
-                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_ylabel(self.parent.LengthLabel('z'), labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
 
         else:
@@ -344,7 +348,7 @@ class DensPanel:
                     self.axes.set_xlim(self.parent.MainParamDict['yBottom'], self.parent.MainParamDict['yTop'])
                 else:
                     self.axes.set_xlim(self.yaxis_values[0], self.yaxis_values[-1])
-                self.axes.set_xlabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_xlabel(self.parent.LengthLabel('y'), labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             else:
                 if self.parent.MainParamDict['SetxLim']:
                     if self.parent.MainParamDict['xLimsRelative']:
@@ -354,7 +358,7 @@ class DensPanel:
                         self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
                 else:
                     self.axes.set_xlim(self.xaxis_values[0],self.xaxis_values[-1])
-                self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_xlabel(self.parent.LengthLabel('x'), labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
             if self.GetPlotParam('set_v_min'):
                 self.axes.set_ylim(bottom = self.GetPlotParam('v_min'))
@@ -537,7 +541,7 @@ class DensPanel:
 
 
             self.ymin = 0
-            self.ymax =  self.cax.get_array().shape[0]/self.c_omp*self.istep
+            self.ymax =  self.cax.get_array().shape[0]/self.length_scale*self.istep
             self.xmin = 0
             self.xmax =  self.xaxis_values[-1]
             self.cax.set_extent([self.xmin,self.xmax, self.ymin, self.ymax])
@@ -556,9 +560,9 @@ class DensPanel:
                 self.axes.set_ylim(self.ymin,self.ymax)
 
             if self.parent.MainParamDict['2DSlicePlane'] == 0:
-                self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_ylabel(self.parent.LengthLabel('y'), labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             if self.parent.MainParamDict['2DSlicePlane'] == 1:
-                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_ylabel(self.parent.LengthLabel('z'), labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             self.vmin = self.cax.get_array().min()
             if self.GetPlotParam('set_v_min'):
                 self.vmin = self.GetPlotParam('v_min')
