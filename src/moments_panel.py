@@ -30,8 +30,9 @@ class  MomentsPanel:
                        'weighted': False,
                        'xbins': 100,
                        'spatial_x': True,
-                       'show_legend': True,
                        'spatial_y': False,
+                       'oneD_axis': 'x',
+                       'show_legend': True,
                        'symmetric': False,
                        'logy': False,
                        'legend_loc': 'N/A',
@@ -54,6 +55,12 @@ class  MomentsPanel:
         self.parent = parent
         self.chartType = 'Moments'
         self.figure = self.parent.figure
+        if self.GetPlotParam('oneD_axis') == 'y':
+            self.param_dict['spatial_x'] = False
+            self.param_dict['spatial_y'] = False
+        else:
+            self.param_dict['spatial_x'] = True
+            self.param_dict['spatial_y'] = False
         #self.ylabel_list = [[r'$\langle \beta \rangle$',r'$\langle \beta \rangle$' + ' upstream frame'],[r'$\langle m\gamma\beta\rangle/m_i$', r'$\langle m\gamma\beta \rangle/m_i$' + ' upstream frame']]
         self.ylabel_list = [r'$\langle \beta \rangle$',r'$\langle m\gamma\beta\rangle/m_i$', r'$\langle KE \rangle/m_ic^2$']
         self.legend_labels = [[[r'$\langle\beta_{ix}\rangle$',r'$\langle\beta_{iy}\rangle$',r'$\langle\beta_{iz}\rangle$'],
@@ -165,11 +172,18 @@ class  MomentsPanel:
         self.fxmin = 0
         self.fxmax = self.xaxis_values[-1]
 
+        self.yaxis_values = np.arange(getattr(output, 'bx').shape[1])/self.c_omp*self.istep if getattr(output, 'bx').ndim > 1 else np.array([0.0])
+        self.fymin = 0
+        self.fymax = self.yaxis_values[-1] if len(self.yaxis_values) > 1 else 1.0
+
+        is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
         xbn = self.GetPlotParam('xbins')
         self.xe = np.copy(getattr(output, 'xe'))
         self.ue = getattr(output, 'ue')
         self.ve = getattr(output, 've')
         self.we = getattr(output, 'we')
+        if is_vs_y and hasattr(output, 'ye'):
+            self.ye = np.copy(getattr(output, 'ye'))
         self.ex = np.zeros(xbn)
         self.ey = np.zeros(xbn)
         self.ez = np.zeros(xbn)
@@ -179,6 +193,8 @@ class  MomentsPanel:
         self.ui = getattr(output, 'ui')
         self.vi = getattr(output, 'vi')
         self.wi = getattr(output, 'wi')
+        if is_vs_y and hasattr(output, 'yi'):
+            self.yi = np.copy(getattr(output, 'yi'))
         self.ix = np.zeros(xbn)
         self.iy = np.zeros(xbn)
         self.iz = np.zeros(xbn)
@@ -206,13 +222,13 @@ class  MomentsPanel:
             if plane == 0: # x-y plane
                 if hasattr(output, 'ye'):
                     try:
-                        ye = getattr(output, 'ye') / self.c_omp
+                        ye = self.ye / self.c_omp if is_vs_y else getattr(output, 'ye') / self.c_omp
                         inRangeElectrons &= (ye >= ylim_min) & (ye <= ylim_max)
                     except Exception:
                         pass
                 if hasattr(output, 'yi'):
                     try:
-                        yi = getattr(output, 'yi') / self.c_omp
+                        yi = self.yi / self.c_omp if is_vs_y else getattr(output, 'yi') / self.c_omp
                         inRangeIons &= (yi >= ylim_min) & (yi <= ylim_max)
                     except Exception:
                         pass
@@ -232,7 +248,7 @@ class  MomentsPanel:
             elif plane == 2: # y-z plane
                 if hasattr(output, 'ye'):
                     try:
-                        ye = getattr(output, 'ye') / self.c_omp
+                        ye = self.ye / self.c_omp if is_vs_y else getattr(output, 'ye') / self.c_omp
                         inRangeElectrons &= (ye >= xlim_min) & (ye <= xlim_max)
                     except Exception:
                         pass
@@ -244,7 +260,7 @@ class  MomentsPanel:
                         pass
                 if hasattr(output, 'yi'):
                     try:
-                        yi = getattr(output, 'yi') / self.c_omp
+                        yi = self.yi / self.c_omp if is_vs_y else getattr(output, 'yi') / self.c_omp
                         inRangeIons &= (yi >= xlim_min) & (yi <= xlim_max)
                     except Exception:
                         pass
@@ -260,6 +276,8 @@ class  MomentsPanel:
             self.ue = self.ue[inRangeElectrons]
             self.ve = self.ve[inRangeElectrons]
             self.we = self.we[inRangeElectrons]
+            if is_vs_y and hasattr(self, 'ye'):
+                self.ye = self.ye[inRangeElectrons]
             if self.GetPlotParam('weighted'):
                 eweights = eweights[inRangeElectrons]
 
@@ -268,26 +286,59 @@ class  MomentsPanel:
             self.ui = self.ui[inRangeIons]
             self.vi = self.vi[inRangeIons]
             self.wi = self.wi[inRangeIons]
+            if is_vs_y and hasattr(self, 'yi'):
+                self.yi = self.yi[inRangeIons]
             if self.GetPlotParam('weighted'):
                 iweights = iweights[inRangeIons]
 
-        if self.memi==0:
-            self.xmin = 0.0 if len(self.xe) == 0 else np.min(self.xe)/self.c_omp
-            self.xmax = 0.0 if len(self.xe) == 0 else np.max(self.xe)/self.c_omp
-            self.memi = 1.0
-            self.SetPlotParam('show_ions', False, update_plot = False)
-            self.ylabel_list = [r'$\langle \beta \rangle$',r'$\langle \gamma\beta\rangle$', r'$\langle KE \rangle/m_ec^2$']
+        if is_vs_y:
+            pos_e = self.ye if hasattr(self, 'ye') else self.xe
+            pos_i = self.yi if hasattr(self, 'yi') else self.xi
+            if self.memi == 0:
+                self.ymin = 0.0 if len(pos_e) == 0 else np.min(pos_e)/self.c_omp
+                self.ymax = 0.0 if len(pos_e) == 0 else np.max(pos_e)/self.c_omp
+                self.memi = 1.0
+                self.SetPlotParam('show_ions', False, update_plot = False)
+                self.ylabel_list = [r'$\langle \beta \rangle$',r'$\langle \gamma\beta\rangle$', r'$\langle KE \rangle/m_ec^2$']
+            else:
+                self.ymin = min(0.0 if len(pos_i) == 0 else np.min(pos_i), 0.0 if len(pos_e) == 0 else np.min(pos_e))/self.c_omp
+                self.ymax = max(0.0 if len(pos_i) == 0 else np.max(pos_i), 0.0 if len(pos_e) == 0 else np.max(pos_e))/self.c_omp
+
+            if self.viewport is not None:
+                if plane == 0:
+                    self.ymin = ylim_min
+                    self.ymax = ylim_max
+                elif plane == 2:
+                    self.ymin = xlim_min
+                    self.ymax = xlim_max
+
+            self.ymax = self.ymax if (self.ymax != self.ymin) else self.ymin + 1
+            bin_width = (self.ymax - self.ymin) / float(xbn) * self.c_omp
+            self.x_bins = np.linspace(self.ymin, self.ymax, num = xbn+1)
+            coord_min = self.ymin * self.c_omp
+            self.fymin = self.ymin
+            self.fymax = self.ymax
         else:
-            self.xmin = min(0.0 if len(self.xi) == 0 else np.min(self.xi), 0.0 if len(self.xe) == 0 else np.min(self.xe))/self.c_omp
-            self.xmax = max(0.0 if len(self.xi) == 0 else np.max(self.xi), 0.0 if len(self.xe) == 0 else np.max(self.xe))/self.c_omp
+            pos_e = self.xe
+            pos_i = self.xi
+            if self.memi==0:
+                self.xmin = 0.0 if len(self.xe) == 0 else np.min(self.xe)/self.c_omp
+                self.xmax = 0.0 if len(self.xe) == 0 else np.max(self.xe)/self.c_omp
+                self.memi = 1.0
+                self.SetPlotParam('show_ions', False, update_plot = False)
+                self.ylabel_list = [r'$\langle \beta \rangle$',r'$\langle \gamma\beta\rangle$', r'$\langle KE \rangle/m_ec^2$']
+            else:
+                self.xmin = min(0.0 if len(self.xi) == 0 else np.min(self.xi), 0.0 if len(self.xe) == 0 else np.min(self.xe))/self.c_omp
+                self.xmax = max(0.0 if len(self.xi) == 0 else np.max(self.xi), 0.0 if len(self.xe) == 0 else np.max(self.xe))/self.c_omp
 
-        if self.viewport is not None and plane in [0, 1]:
-            self.xmin = xlim_min
-            self.xmax = xlim_max
+            if self.viewport is not None and plane in [0, 1]:
+                self.xmin = xlim_min
+                self.xmax = xlim_max
 
-        self.xmax = self.xmax if (self.xmax != self.xmin) else self.xmin + 1
-        bin_width = (self.xmax-self.xmin)/float(xbn)*self.c_omp
-        self.x_bins = np.linspace(self.xmin, self.xmax, num = xbn+1)
+            self.xmax = self.xmax if (self.xmax != self.xmin) else self.xmin + 1
+            bin_width = (self.xmax-self.xmin)/float(xbn)*self.c_omp
+            self.x_bins = np.linspace(self.xmin, self.xmax, num = xbn+1)
+            coord_min = self.xmin * self.c_omp
 
         if self.GetPlotParam('m_type') == 0:
             # Calculate vx, vy, vz
@@ -297,25 +348,25 @@ class  MomentsPanel:
             ge = np.empty(len(self.ue))
             LorentzFactor(self.ue, self.ve, self.we, ge)
             if not self.GetPlotParam('weighted'):
-                CalcVHists(self.xe,self.ue, self.ve, self.we, ge, bin_width, self.xmin * self.c_omp, self.ex, self.ey, self.ez, self.ecounts)
-                CalcVHists(self.xi,self.ui, self.vi, self.wi, gi, bin_width, self.xmin * self.c_omp, self.ix, self.iy, self.iz, self.icounts)
+                CalcVHists(pos_e, self.ue, self.ve, self.we, ge, bin_width, coord_min, self.ex, self.ey, self.ez, self.ecounts)
+                CalcVHists(pos_i, self.ui, self.vi, self.wi, gi, bin_width, coord_min, self.ix, self.iy, self.iz, self.icounts)
             else:
                 eweights = eweights
-                CalcVWeightedHists(self.xe,self.ue, self.ve, self.we, ge,eweights, bin_width, self.xmin * self.c_omp, self.ex, self.ey, self.ez, self.ecounts)
+                CalcVWeightedHists(pos_e, self.ue, self.ve, self.we, ge, eweights, bin_width, coord_min, self.ex, self.ey, self.ez, self.ecounts)
 
                 iweights = iweights
-                CalcVWeightedHists(self.xi,self.ui, self.vi, self.wi, gi, iweights, bin_width, self.xmin * self.c_omp, self.ix, self.iy, self.iz, self.icounts)
+                CalcVWeightedHists(pos_i, self.ui, self.vi, self.wi, gi, iweights, bin_width, coord_min, self.ix, self.iy, self.iz, self.icounts)
 
         if self.GetPlotParam('m_type') == 1:
             # Calculate px, py, pz
             if not self.GetPlotParam('weighted'):
-                CalcPHists(self.xe,self.ue, self.ve, self.we, bin_width, self.xmin * self.c_omp, self.ex, self.ey, self.ez, self.ecounts)
-                CalcPHists(self.xi,self.ui, self.vi, self.wi, bin_width, self.xmin * self.c_omp, self.ix, self.iy, self.iz, self.icounts)
+                CalcPHists(pos_e, self.ue, self.ve, self.we, bin_width, coord_min, self.ex, self.ey, self.ez, self.ecounts)
+                CalcPHists(pos_i, self.ui, self.vi, self.wi, bin_width, coord_min, self.ix, self.iy, self.iz, self.icounts)
             else:
                 eweights = eweights
-                CalcPWeightedHists(self.xe,self.ue, self.ve, self.we, eweights, bin_width, self.xmin * self.c_omp, self.ex, self.ey, self.ez, self.ecounts)
+                CalcPWeightedHists(pos_e, self.ue, self.ve, self.we, eweights, bin_width, coord_min, self.ex, self.ey, self.ez, self.ecounts)
                 iweights = iweights
-                CalcPWeightedHists(self.xi,self.ui, self.vi, self.wi, iweights, bin_width, self.xmin * self.c_omp, self.ix, self.iy, self.iz, self.icounts)
+                CalcPWeightedHists(pos_i, self.ui, self.vi, self.wi, iweights, bin_width, coord_min, self.ix, self.iy, self.iz, self.icounts)
 
             self.ex *= self.memi
             self.ey *= self.memi
@@ -333,22 +384,22 @@ class  MomentsPanel:
 
             if not self.GetPlotParam('weighted'):
                 # We'll put the Energy histograms into ex and ix, and delE intos ey and iy
-                CalcVxEHists(self.xe,self.ue, ge, bin_width, self.xmin * self.c_omp,  vex, self.ey, self.ecounts)
-                CalcVxEHists(self.xi,self.ui, gi, bin_width, self.xmin * self.c_omp, vix, self.iy, self.icounts)
+                CalcVxEHists(pos_e, self.ue, ge, bin_width, coord_min,  vex, self.ey, self.ecounts)
+                CalcVxEHists(pos_i, self.ui, gi, bin_width, coord_min, vix, self.iy, self.icounts)
 
-                CalcDelGamHists(self.xe, self.ue, self.ve, self.we, ge, vix, 1/np.sqrt(1-vix**2), bin_width, self.xmin * self.c_omp, self.ecounts, self.ex)
-                CalcDelGamHists(self.xi, self.ui, self.vi, self.wi, gi, vex, 1/np.sqrt(1-vex**2), bin_width, self.xmin * self.c_omp, self.icounts, self.ix)
+                CalcDelGamHists(pos_e, self.ue, self.ve, self.we, ge, vix, 1/np.sqrt(1-vix**2), bin_width, coord_min, self.ecounts, self.ex)
+                CalcDelGamHists(pos_i, self.ui, self.vi, self.wi, gi, vex, 1/np.sqrt(1-vex**2), bin_width, coord_min, self.icounts, self.ix)
 
 
             else:
                 eweights = eweights
                 iweights = iweights
                 # We'll put the Temp histograms into ex and ix, and Energy into ey and iy
-                CalcVxEWeightedHists(self.xe,self.ue, ge, eweights, bin_width, self.xmin * self.c_omp, vex, self.ey, self.ecounts)
-                CalcVxEWeightedHists(self.xi,self.ui, gi, iweights, bin_width, self.xmin * self.c_omp, vix, self.iy, self.icounts)
+                CalcVxEWeightedHists(pos_e, self.ue, ge, eweights, bin_width, coord_min, vex, self.ey, self.ecounts)
+                CalcVxEWeightedHists(pos_i, self.ui, gi, iweights, bin_width, coord_min, vix, self.iy, self.icounts)
 
-                CalcDelGamWeightedHists(self.xe, self.ue, self.ve, self.we, ge, eweights, vex,  1/np.sqrt(1-vex**2), bin_width, self.xmin * self.c_omp, self.ecounts, self.ex)
-                CalcDelGamWeightedHists(self.xi, self.ui, self.vi, self.wi, gi, iweights, vix,  1/np.sqrt(1-vix**2), bin_width, self.xmin * self.c_omp, self.icounts, self.ix)
+                CalcDelGamWeightedHists(pos_e, self.ue, self.ve, self.we, ge, eweights, vex,  1/np.sqrt(1-vex**2), bin_width, coord_min, self.ecounts, self.ex)
+                CalcDelGamWeightedHists(pos_i, self.ui, self.vi, self.wi, gi, iweights, vix,  1/np.sqrt(1-vix**2), bin_width, coord_min, self.icounts, self.ix)
 
             self.ex*=self.memi
             self.ey*=self.memi
@@ -537,18 +588,23 @@ class  MomentsPanel:
         if self.GetPlotParam('set_v_max'):
             self.axes.set_ylim(top = self.GetPlotParam('v_max'))
 
-        if self.parent.MainParamDict['SetxLim']:
-            if self.parent.MainParamDict['xLimsRelative']:
-                self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
-                                   self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+        is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
+        if is_vs_y:
+            if self.parent.MainParamDict['SetyLim']:
+                self.axes.set_xlim(self.parent.MainParamDict['yBottom'], self.parent.MainParamDict['yTop'])
             else:
-                self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+                self.axes.set_xlim(self.fymin, self.fymax)
+            self.axes.set_xlabel(r'$y\  [c/\omega_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
         else:
-            self.axes.set_xlim(self.fxmin,self.fxmax)
-
-
-
-        self.axes.set_xlabel(r'$x\  [c/\omega_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            if self.parent.MainParamDict['SetxLim']:
+                if self.parent.MainParamDict['xLimsRelative']:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+            else:
+                self.axes.set_xlim(self.fxmin,self.fxmax)
+            self.axes.set_xlabel(r'$x\  [c/\omega_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
         self.axes.set_ylabel(self.ylabel_list[self.GetPlotParam('m_type')], labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
     def refresh(self):
@@ -650,14 +706,21 @@ class  MomentsPanel:
             self.axes.set_ylim(top = self.GetPlotParam('v_max'))
 
 
-        if self.parent.MainParamDict['SetxLim']:
-            if self.parent.MainParamDict['xLimsRelative']:
-                self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
-                                   self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+        is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
+        if is_vs_y:
+            if self.parent.MainParamDict['SetyLim']:
+                self.axes.set_xlim(self.parent.MainParamDict['yBottom'], self.parent.MainParamDict['yTop'])
             else:
-                self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+                self.axes.set_xlim(self.fymin, self.fymax)
         else:
-            self.axes.set_xlim(self.fxmin,self.fxmax)
+            if self.parent.MainParamDict['SetxLim']:
+                if self.parent.MainParamDict['xLimsRelative']:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+            else:
+                self.axes.set_xlim(self.fxmin,self.fxmax)
 
     def GetPlotParam(self, keyname):
         return self.param_dict[keyname]

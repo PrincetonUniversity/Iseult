@@ -136,11 +136,15 @@ def on_limits_changed(panel):
         for row in range(main_app.MainParamDict['NumOfRows']):
             for col in range(main_app.MainParamDict['NumOfCols']):
                 subplot = main_app.SubPlotList[row][col]
-                if subplot is not None and hasattr(subplot, 'graph') and subplot.graph is not None:
-                    g = subplot.graph
-                    if hasattr(g, 'GetPlotParam') and g.GetPlotParam("show_vectors"):
-                        if hasattr(g, 'c_omp') and hasattr(g, 'istep'):
-                            refresh_vectors(g)
+                if subplot is not None and getattr(subplot, 'chartType', None) in ['FieldsPlot', 'DensityPlot']:
+                    if hasattr(subplot, 'graph') and subplot.graph is not None:
+                        g = subplot.graph
+                        try:
+                            if hasattr(g, 'GetPlotParam') and g.GetPlotParam("show_vectors"):
+                                if hasattr(g, 'c_omp') and hasattr(g, 'istep'):
+                                    refresh_vectors(g)
+                        except (KeyError, AttributeError):
+                            pass
         main_app.canvas.draw_idle()
 
     # Schedule the update to run after 50ms (after limits-changed propagation has fully completed)

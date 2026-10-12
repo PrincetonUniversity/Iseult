@@ -31,8 +31,9 @@ class  MomentsPanel:
                        'weighted': False,
                        'xbins': 100,
                        'spatial_x': True,
-                       'show_legend': True,
                        'spatial_y': False,
+                       'oneD_axis': 'x',
+                       'show_legend': True,
                        'symmetric': False,
                        'logy': False,
                        'legend_loc': 'N/A',
@@ -49,6 +50,12 @@ class  MomentsPanel:
         self.settings_window = None
         self.FigWrap = figwrapper
         self.parent = parent
+        if self.GetPlotParam('oneD_axis') == 'y':
+            self.SetPlotParam('spatial_x', False, update_plot=False)
+            self.SetPlotParam('spatial_y', False, update_plot=False)
+        else:
+            self.SetPlotParam('spatial_x', True, update_plot=False)
+            self.SetPlotParam('spatial_y', False, update_plot=False)
 
         #self.ylabel_list = [[r'$\langle \beta \rangle$',r'$\langle \beta \rangle$' + ' upstream frame'],[r'$\langle m\gamma\beta\rangle/m_i$', r'$\langle m\gamma\beta \rangle/m_i$' + ' upstream frame']]
         self.ylabel_list = [r'$\langle \beta \rangle$',r'$\langle m\gamma\beta\rangle/m_i$', r'$\langle KE \rangle/m_ic^2$']
@@ -95,20 +102,27 @@ class  MomentsPanel:
             self.preloaded = False
             self.arrs_needed = ['c_omp', 'bx', 'istep', 'me', 'mi', 'gamma0','xi', 'ui', 'vi', 'wi', 'xe','ue', 've', 'we']
 
+        if self.GetPlotParam('oneD_axis') == 'y':
+            self.key_name += '_axis_y'
+            if 'ye' not in self.arrs_needed:
+                self.arrs_needed.append('ye')
+            if 'yi' not in self.arrs_needed:
+                self.arrs_needed.append('yi')
+
         if self.GetPlotParam('filter_by_viewport') and self.parent.is_viewport_zoomed():
             try:
                 import h5py
                 prtl_file = self.FigWrap.parent.PathDict['Prtl'][0]
                 with h5py.File(prtl_file, 'r') as f:
                     if self.GetPlotParam('show_ions'):
-                        if 'yi' in f or 'y_2' in f:
+                        if 'yi' not in self.arrs_needed and ('yi' in f or 'y_2' in f):
                             self.arrs_needed.append('yi')
-                        if 'zi' in f or 'z_2' in f:
+                        if 'zi' not in self.arrs_needed and ('zi' in f or 'z_2' in f):
                             self.arrs_needed.append('zi')
                     if self.GetPlotParam('show_electrons'):
-                        if 'ye' in f or 'y_1' in f:
+                        if 'ye' not in self.arrs_needed and ('ye' in f or 'y_1' in f):
                             self.arrs_needed.append('ye')
-                        if 'ze' in f or 'z_1' in f:
+                        if 'ze' not in self.arrs_needed and ('ze' in f or 'z_1' in f):
                             self.arrs_needed.append('ze')
             except Exception:
                 pass
@@ -130,6 +144,10 @@ class  MomentsPanel:
         self.memi = self.FigWrap.LoadKey('me')/self.FigWrap.LoadKey('mi')
         self.totalcolor = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.0)
 
+        is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
+        if is_vs_y:
+            self.key_name += '_axis_y'
+
         if self.viewport is not None:
             xlim_0, xlim_1, ylim_0, ylim_1, plane = self.viewport
             self.key_name += f'_vp_{xlim_0:.4f}_{xlim_1:.4f}_{ylim_0:.4f}_{ylim_1:.4f}_{plane}'
@@ -139,10 +157,19 @@ class  MomentsPanel:
         else:
             # x-values haven't been calculated yet, generate them then save them to the dictionary for later.
             self.xaxis_values = np.arange(self.FigWrap.LoadKey('bx').shape[-1])/self.c_omp*self.istep
-        #            print self.xaxis_values
             self.parent.DataDict['xaxis_values'] = np.copy(self.xaxis_values)
         self.fxmin = 0
         self.fxmax = self.xaxis_values[-1]
+
+        if 'yaxis_values' in self.parent.DataDict.keys():
+            self.yaxis_values = self.parent.DataDict['yaxis_values']
+        else:
+            bx_val = self.FigWrap.LoadKey('bx')
+            ny = bx_val.shape[1] if len(bx_val.shape) > 1 else 1
+            self.yaxis_values = np.arange(ny)/self.c_omp*self.istep
+            self.parent.DataDict['yaxis_values'] = np.copy(self.yaxis_values)
+        self.fymin = 0
+        self.fymax = self.yaxis_values[-1] if len(self.yaxis_values) > 1 else 1.0
 
         if self.key_name+'ex' in self.parent.DataDict.keys():
             self.x_bins = self.parent.DataDict[self.key_name+'x_bins']
@@ -155,6 +182,9 @@ class  MomentsPanel:
             self.iy = self.parent.DataDict[self.key_name+'iy']
             self.iz = self.parent.DataDict[self.key_name+'iz']
             self.icounts = self.parent.DataDict[self.key_name+'icounts']
+            if is_vs_y:
+                self.fymin = self.x_bins[0]
+                self.fymax = self.x_bins[-1]
 
         else: #We have to calculate everything
             xbn = self.GetPlotParam('xbins')
@@ -162,6 +192,8 @@ class  MomentsPanel:
             self.ue = self.FigWrap.LoadKey('ue')
             self.ve = self.FigWrap.LoadKey('ve')
             self.we = self.FigWrap.LoadKey('we')
+            if is_vs_y:
+                self.ye = np.copy(self.FigWrap.LoadKey('ye'))
             self.ex = np.zeros(xbn)
             self.ey = np.zeros(xbn)
             self.ez = np.zeros(xbn)
@@ -171,6 +203,8 @@ class  MomentsPanel:
             self.ui = self.FigWrap.LoadKey('ui')
             self.vi = self.FigWrap.LoadKey('vi')
             self.wi = self.FigWrap.LoadKey('wi')
+            if is_vs_y:
+                self.yi = np.copy(self.FigWrap.LoadKey('yi'))
             self.ix = np.zeros(xbn)
             self.iy = np.zeros(xbn)
             self.iz = np.zeros(xbn)
@@ -197,12 +231,12 @@ class  MomentsPanel:
                 # Filter by transverse coordinate
                 if plane == 0: # x-y plane
                     try:
-                        ye = self.FigWrap.LoadKey('ye') / self.c_omp
+                        ye = self.ye / self.c_omp if is_vs_y else self.FigWrap.LoadKey('ye') / self.c_omp
                         inRangeElectrons &= (ye >= ylim_min) & (ye <= ylim_max)
                     except KeyError:
                         pass
                     try:
-                        yi = self.FigWrap.LoadKey('yi') / self.c_omp
+                        yi = self.yi / self.c_omp if is_vs_y else self.FigWrap.LoadKey('yi') / self.c_omp
                         inRangeIons &= (yi >= ylim_min) & (yi <= ylim_max)
                     except KeyError:
                         pass
@@ -219,7 +253,7 @@ class  MomentsPanel:
                         pass
                 elif plane == 2: # y-z plane
                     try:
-                        ye = self.FigWrap.LoadKey('ye') / self.c_omp
+                        ye = self.ye / self.c_omp if is_vs_y else self.FigWrap.LoadKey('ye') / self.c_omp
                         inRangeElectrons &= (ye >= xlim_min) & (ye <= xlim_max)
                     except KeyError:
                         pass
@@ -229,7 +263,7 @@ class  MomentsPanel:
                     except KeyError:
                         pass
                     try:
-                        yi = self.FigWrap.LoadKey('yi') / self.c_omp
+                        yi = self.yi / self.c_omp if is_vs_y else self.FigWrap.LoadKey('yi') / self.c_omp
                         inRangeIons &= (yi >= xlim_min) & (yi <= xlim_max)
                     except KeyError:
                         pass
@@ -244,6 +278,8 @@ class  MomentsPanel:
                 self.ue = self.ue[inRangeElectrons]
                 self.ve = self.ve[inRangeElectrons]
                 self.we = self.we[inRangeElectrons]
+                if is_vs_y:
+                    self.ye = self.ye[inRangeElectrons]
                 if self.GetPlotParam('weighted'):
                     eweights = eweights[inRangeElectrons]
 
@@ -252,26 +288,60 @@ class  MomentsPanel:
                 self.ui = self.ui[inRangeIons]
                 self.vi = self.vi[inRangeIons]
                 self.wi = self.wi[inRangeIons]
+                if is_vs_y:
+                    self.yi = self.yi[inRangeIons]
                 if self.GetPlotParam('weighted'):
                     iweights = iweights[inRangeIons]
 
-            if self.memi==0:
-                self.xmin = 0.0 if len(self.xe) == 0 else np.min(self.xe)/self.c_omp
-                self.xmax = 0.0 if len(self.xe) == 0 else np.max(self.xe)/self.c_omp
-                self.memi = 1.0
-                self.SetPlotParam('show_ions', False, update_plot = False)
-                self.ylabel_list = [r'$\langle \beta \rangle$',r'$\langle \gamma\beta\rangle$', r'$\langle KE \rangle/m_ec^2$']
+            if is_vs_y:
+                pos_e = self.ye
+                pos_i = self.yi
+                if self.memi == 0:
+                    self.ymin = 0.0 if len(self.ye) == 0 else np.min(self.ye)/self.c_omp
+                    self.ymax = 0.0 if len(self.ye) == 0 else np.max(self.ye)/self.c_omp
+                    self.memi = 1.0
+                    self.SetPlotParam('show_ions', False, update_plot = False)
+                    self.ylabel_list = [r'$\langle \beta \rangle$',r'$\langle \gamma\beta\rangle$', r'$\langle KE \rangle/m_ec^2$']
+                else:
+                    self.ymin = min(0.0 if len(self.yi) == 0 else np.min(self.yi), 0.0 if len(self.ye) == 0 else np.min(self.ye))/self.c_omp
+                    self.ymax = max(0.0 if len(self.yi) == 0 else np.max(self.yi), 0.0 if len(self.ye) == 0 else np.max(self.ye))/self.c_omp
+
+                if self.viewport is not None:
+                    if plane == 0:
+                        self.ymin = ylim_min
+                        self.ymax = ylim_max
+                    elif plane == 2:
+                        self.ymin = xlim_min
+                        self.ymax = xlim_max
+
+                self.ymax = self.ymax if (self.ymax != self.ymin) else self.ymin + 1
+                bin_width = (self.ymax - self.ymin) / float(xbn) * self.c_omp
+                self.x_bins = np.linspace(self.ymin, self.ymax, num = xbn+1)
+                coord_min = self.ymin * self.c_omp
+                self.fymin = self.ymin
+                self.fymax = self.ymax
             else:
-                self.xmin = min(0.0 if len(self.xi) == 0 else np.min(self.xi), 0.0 if len(self.xe) == 0 else np.min(self.xe))/self.c_omp
-                self.xmax = max(0.0 if len(self.xi) == 0 else np.max(self.xi), 0.0 if len(self.xe) == 0 else np.max(self.xe))/self.c_omp
+                pos_e = self.xe
+                pos_i = self.xi
+                if self.memi==0:
+                    self.xmin = 0.0 if len(self.xe) == 0 else np.min(self.xe)/self.c_omp
+                    self.xmax = 0.0 if len(self.xe) == 0 else np.max(self.xe)/self.c_omp
+                    self.memi = 1.0
+                    self.SetPlotParam('show_ions', False, update_plot = False)
+                    self.ylabel_list = [r'$\langle \beta \rangle$',r'$\langle \gamma\beta\rangle$', r'$\langle KE \rangle/m_ec^2$']
+                else:
+                    self.xmin = min(0.0 if len(self.xi) == 0 else np.min(self.xi), 0.0 if len(self.xe) == 0 else np.min(self.xe))/self.c_omp
+                    self.xmax = max(0.0 if len(self.xi) == 0 else np.max(self.xi), 0.0 if len(self.xe) == 0 else np.max(self.xe))/self.c_omp
 
-            if self.viewport is not None and plane in [0, 1]:
-                self.xmin = xlim_min
-                self.xmax = xlim_max
+                if self.viewport is not None and plane in [0, 1]:
+                    self.xmin = xlim_min
+                    self.xmax = xlim_max
 
-            self.xmax = self.xmax if (self.xmax != self.xmin) else self.xmin + 1
-            bin_width = (self.xmax-self.xmin)/float(xbn)*self.c_omp
-            self.x_bins = np.linspace(self.xmin, self.xmax, num = xbn+1)
+                self.xmax = self.xmax if (self.xmax != self.xmin) else self.xmin + 1
+                bin_width = (self.xmax-self.xmin)/float(xbn)*self.c_omp
+                self.x_bins = np.linspace(self.xmin, self.xmax, num = xbn+1)
+                coord_min = self.xmin * self.c_omp
+
             self.parent.DataDict[self.key_name+'x_bins'] = self.x_bins
 
             if self.GetPlotParam('m_type') == 0:
@@ -282,11 +352,11 @@ class  MomentsPanel:
                 ge = np.empty(len(self.ue))
                 LorentzFactor(self.ue, self.ve, self.we, ge)
                 if not self.GetPlotParam('weighted'):
-                    CalcVHists(self.xe,self.ue, self.ve, self.we, ge, bin_width, self.xmin * self.c_omp, self.ex, self.ey, self.ez, self.ecounts)
-                    CalcVHists(self.xi,self.ui, self.vi, self.wi, gi, bin_width, self.xmin * self.c_omp, self.ix, self.iy, self.iz, self.icounts)
+                    CalcVHists(pos_e, self.ue, self.ve, self.we, ge, bin_width, coord_min, self.ex, self.ey, self.ez, self.ecounts)
+                    CalcVHists(pos_i, self.ui, self.vi, self.wi, gi, bin_width, coord_min, self.ix, self.iy, self.iz, self.icounts)
                 else:
-                    CalcVWeightedHists(self.xe,self.ue, self.ve, self.we, ge,eweights, bin_width, self.xmin * self.c_omp, self.ex, self.ey, self.ez, self.ecounts)
-                    CalcVWeightedHists(self.xi,self.ui, self.vi, self.wi, gi, iweights, bin_width, self.xmin * self.c_omp, self.ix, self.iy, self.iz, self.icounts)
+                    CalcVWeightedHists(pos_e, self.ue, self.ve, self.we, ge, eweights, bin_width, coord_min, self.ex, self.ey, self.ez, self.ecounts)
+                    CalcVWeightedHists(pos_i, self.ui, self.vi, self.wi, gi, iweights, bin_width, coord_min, self.ix, self.iy, self.iz, self.icounts)
 
                 self.parent.DataDict[self.key_name+'ex'] = self.ex
                 self.parent.DataDict[self.key_name+'ey'] = self.ey
@@ -301,11 +371,11 @@ class  MomentsPanel:
             if self.GetPlotParam('m_type') == 1:
                 # Calculate px, py, pz
                 if not self.GetPlotParam('weighted'):
-                    CalcPHists(self.xe,self.ue, self.ve, self.we, bin_width, self.xmin * self.c_omp, self.ex, self.ey, self.ez, self.ecounts)
-                    CalcPHists(self.xi,self.ui, self.vi, self.wi, bin_width, self.xmin * self.c_omp, self.ix, self.iy, self.iz, self.icounts)
+                    CalcPHists(pos_e, self.ue, self.ve, self.we, bin_width, coord_min, self.ex, self.ey, self.ez, self.ecounts)
+                    CalcPHists(pos_i, self.ui, self.vi, self.wi, bin_width, coord_min, self.ix, self.iy, self.iz, self.icounts)
                 else:
-                    CalcPWeightedHists(self.xe,self.ue, self.ve, self.we, eweights, bin_width, self.xmin * self.c_omp, self.ex, self.ey, self.ez, self.ecounts)
-                    CalcPWeightedHists(self.xi,self.ui, self.vi, self.wi, iweights, bin_width, self.xmin * self.c_omp, self.ix, self.iy, self.iz, self.icounts)
+                    CalcPWeightedHists(pos_e, self.ue, self.ve, self.we, eweights, bin_width, coord_min, self.ex, self.ey, self.ez, self.ecounts)
+                    CalcPWeightedHists(pos_i, self.ui, self.vi, self.wi, iweights, bin_width, coord_min, self.ix, self.iy, self.iz, self.icounts)
 
                 self.ex *= self.memi
                 self.ey *= self.memi
@@ -332,20 +402,20 @@ class  MomentsPanel:
 
                 if not self.GetPlotParam('weighted'):
                     # We'll put the Energy histograms into ex and ix, and delE intos ey and iy
-                    CalcVxEHists(self.xe,self.ue, ge, bin_width, self.xmin * self.c_omp,  vex, self.ey, self.ecounts)
-                    CalcVxEHists(self.xi,self.ui, gi, bin_width, self.xmin * self.c_omp, vix, self.iy, self.icounts)
+                    CalcVxEHists(pos_e, self.ue, ge, bin_width, coord_min,  vex, self.ey, self.ecounts)
+                    CalcVxEHists(pos_i, self.ui, gi, bin_width, coord_min, vix, self.iy, self.icounts)
 
-                    CalcDelGamHists(self.xe, self.ue, self.ve, self.we, ge, vix, 1/np.sqrt(1-vix**2), bin_width, self.xmin * self.c_omp, self.ecounts, self.ex)
-                    CalcDelGamHists(self.xi, self.ui, self.vi, self.wi, gi, vex, 1/np.sqrt(1-vex**2), bin_width, self.xmin * self.c_omp, self.icounts, self.ix)
+                    CalcDelGamHists(pos_e, self.ue, self.ve, self.we, ge, vix, 1/np.sqrt(1-vix**2), bin_width, coord_min, self.ecounts, self.ex)
+                    CalcDelGamHists(pos_i, self.ui, self.vi, self.wi, gi, vex, 1/np.sqrt(1-vex**2), bin_width, coord_min, self.icounts, self.ix)
 
 
                 else:
                     # We'll put the Temp histograms into ex and ix, and Energy into ey and iy
-                    CalcVxEWeightedHists(self.xe,self.ue, ge, eweights, bin_width, self.xmin * self.c_omp, vex, self.ey, self.ecounts)
-                    CalcVxEWeightedHists(self.xi,self.ui, gi, iweights, bin_width, self.xmin * self.c_omp, vix, self.iy, self.icounts)
+                    CalcVxEWeightedHists(pos_e, self.ue, ge, eweights, bin_width, coord_min, vex, self.ey, self.ecounts)
+                    CalcVxEWeightedHists(pos_i, self.ui, gi, iweights, bin_width, coord_min, vix, self.iy, self.icounts)
 
-                    CalcDelGamWeightedHists(self.xe, self.ue, self.ve, self.we, ge, eweights, vex,  1/np.sqrt(1-vex**2), bin_width, self.xmin * self.c_omp, self.ecounts, self.ex)
-                    CalcDelGamWeightedHists(self.xi, self.ui, self.vi, self.wi, gi, iweights, vix,  1/np.sqrt(1-vix**2), bin_width, self.xmin * self.c_omp, self.icounts, self.ix)
+                    CalcDelGamWeightedHists(pos_e, self.ue, self.ve, self.we, ge, eweights, vex,  1/np.sqrt(1-vex**2), bin_width, coord_min, self.ecounts, self.ex)
+                    CalcDelGamWeightedHists(pos_i, self.ui, self.vi, self.wi, gi, iweights, vix,  1/np.sqrt(1-vix**2), bin_width, coord_min, self.icounts, self.ix)
 
                 self.ex*=self.memi
                 self.ey*=self.memi
@@ -377,14 +447,25 @@ class  MomentsPanel:
         # Create a gridspec to handle spacing better
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])
 
-        if self.parent.MainParamDict['LinkSpatial'] != 0 and self.parent.MainParamDict['LinkSpatial'] != 3:
-            if self.FigWrap.pos == self.parent.first_x:
-                self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
+        is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
+        if is_vs_y:
+            if self.parent.MainParamDict['LinkSpatial'] in [1, 2]:
+                if self.parent.first_y_1d is not None and self.FigWrap.pos != self.parent.first_y_1d:
+                    self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]],
+                    sharex = self.parent.SubPlotList[self.parent.first_y_1d[0]][self.parent.first_y_1d[1]].graph.axes)
+                else:
+                    self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
             else:
-                self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]],
-                sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
+                self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
         else:
-            self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
+            if self.parent.MainParamDict['LinkSpatial'] != 0 and self.parent.MainParamDict['LinkSpatial'] != 3:
+                if self.parent.first_x is not None and self.FigWrap.pos != self.parent.first_x:
+                    self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]],
+                    sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
+                else:
+                    self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
+            else:
+                self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
 
 
         self.ex_plot = self.axes.plot(0,0,
@@ -573,18 +654,22 @@ class  MomentsPanel:
         if self.GetPlotParam('set_v_max'):
             self.axes.set_ylim(top = self.GetPlotParam('v_max'))
 
-        if self.parent.MainParamDict['SetxLim']:
-            if self.parent.MainParamDict['xLimsRelative']:
-                self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
-                                   self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+        if is_vs_y:
+            if self.parent.MainParamDict['SetyLim']:
+                self.axes.set_xlim(self.parent.MainParamDict['yBottom'], self.parent.MainParamDict['yTop'])
             else:
-                self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+                self.axes.set_xlim(self.fymin, self.fymax)
+            self.axes.set_xlabel(r'$y\  [c/\omega_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
         else:
-            self.axes.set_xlim(self.fxmin,self.fxmax)
-
-
-
-        self.axes.set_xlabel(r'$x\  [c/\omega_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            if self.parent.MainParamDict['SetxLim']:
+                if self.parent.MainParamDict['xLimsRelative']:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+            else:
+                self.axes.set_xlim(self.fxmin,self.fxmax)
+            self.axes.set_xlabel(r'$x\  [c/\omega_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
         self.axes.set_ylabel(self.ylabel_list[self.GetPlotParam('m_type')], labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
     def refresh(self):
@@ -689,14 +774,21 @@ class  MomentsPanel:
             self.axes.set_ylim(top = self.GetPlotParam('v_max'))
 
 
-        if self.parent.MainParamDict['SetxLim']:
-            if self.parent.MainParamDict['xLimsRelative']:
-                self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
-                                   self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+        is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
+        if is_vs_y:
+            if self.parent.MainParamDict['SetyLim']:
+                self.axes.set_xlim(self.parent.MainParamDict['yBottom'], self.parent.MainParamDict['yTop'])
             else:
-                self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+                self.axes.set_xlim(self.fymin, self.fymax)
         else:
-            self.axes.set_xlim(self.fxmin,self.fxmax)
+            if self.parent.MainParamDict['SetxLim']:
+                if self.parent.MainParamDict['xLimsRelative']:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+            else:
+                self.axes.set_xlim(self.fxmin,self.fxmax)
 
 
     def GetPlotParam(self, keyname):
@@ -733,6 +825,17 @@ class MomentsSettings(Tk.Toplevel):
         ttk.Label(frm, text="Choose Chart Type:").grid(row=0, column = 0)
         ctypeChooser = ttk.OptionMenu(frm, self.ctypevar, self.parent.chartType, *tuple(self.parent.ChartTypes))
         ctypeChooser.grid(row =0, column = 1, sticky = Tk.W + Tk.E)
+
+        ttk.Label(frm, text="Plot vs:").grid(row=0, column=2, sticky=Tk.E)
+        axis_frame = ttk.Frame(frm)
+        axis_frame.grid(row=0, column=3, sticky=Tk.W)
+        self.AxisVar = Tk.StringVar(self)
+        self.AxisVar.set(self.parent.GetPlotParam('oneD_axis'))
+        ttk.Radiobutton(axis_frame, text="x", variable=self.AxisVar, value="x", command=self.AxisChanged).pack(side=Tk.LEFT, padx=2)
+        self.rb_axis_y = ttk.Radiobutton(axis_frame, text="y", variable=self.AxisVar, value="y", command=self.AxisChanged)
+        self.rb_axis_y.pack(side=Tk.LEFT, padx=2)
+        if hasattr(self.parent.parent, 'MaxYInd') and self.parent.parent.MaxYInd == 0:
+            self.rb_axis_y.state(['disabled'])
 
         # the Radiobox Control to choose the moment
         self.momList = ['avg velocity', 'avg momentum', 'Kinetic Energy']
@@ -834,18 +937,20 @@ class MomentsSettings(Tk.Toplevel):
         self.Vmax.set(str(self.parent.GetPlotParam('v_max')))
 
 
-        cb = ttk.Checkbutton(frm, text ='Set y min',
+        cb = ttk.Checkbutton(frm, text ='Set moment min',
                         variable = self.setVminVar)
         cb.grid(row = 5, column = 3, sticky = Tk.W)
         self.VminEnter = ttk.Entry(frm, textvariable=self.Vmin, width=7)
         self.VminEnter.grid(row = 5, column = 4)
+        self.VminEnter.bind('<FocusOut>', lambda e: self.FieldsCallback())
 
-        cb = ttk.Checkbutton(frm, text ='Set y max',
+        cb = ttk.Checkbutton(frm, text ='Set moment max',
                         variable = self.setVmaxVar)
         cb.grid(row = 6, column = 3, sticky = Tk.W)
 
         self.VmaxEnter = ttk.Entry(frm, textvariable=self.Vmax, width=7)
         self.VmaxEnter.grid(row = 6, column = 4)
+        self.VmaxEnter.bind('<FocusOut>', lambda e: self.FieldsCallback())
 
 
         self.LogY = Tk.IntVar()
@@ -862,15 +967,16 @@ class MomentsSettings(Tk.Toplevel):
                         command = self.SymmetricHandler)
         cb.grid(row = 6, column = 1, sticky = Tk.W)
 
-        self.VminEnter = ttk.Entry(frm, textvariable=self.Vmin, width=7)
-        self.VminEnter.grid(row = 5, column = 4)
-
         self.TrueVar = Tk.IntVar()
         self.TrueVar.set(1)
         self.xBins = Tk.StringVar()
         self.xBins.set(str(self.parent.GetPlotParam('xbins')))
-        ttk.Label(frm, text ='# of xbins').grid(row = 7, column = 0, sticky = Tk.W)
-        ttk.Entry(frm, textvariable=self.xBins, width=8).grid(row = 7, column = 1)
+        axis_prefix = 'y' if self.parent.GetPlotParam('oneD_axis') == 'y' else 'x'
+        self.bins_label = ttk.Label(frm, text = f'# of {axis_prefix}bins')
+        self.bins_label.grid(row = 7, column = 0, sticky = Tk.W)
+        self.xBinsEnter = ttk.Entry(frm, textvariable=self.xBins, width=8)
+        self.xBinsEnter.grid(row = 7, column = 1)
+        self.xBinsEnter.bind('<FocusOut>', lambda e: self.FieldsCallback())
 
         self.FilterVPVar = Tk.IntVar()
         self.FilterVPVar.set(self.parent.GetPlotParam('filter_by_viewport'))
@@ -917,15 +1023,27 @@ class MomentsSettings(Tk.Toplevel):
         if self.setVminVar.get() == self.parent.GetPlotParam('set_v_min'):
             pass
         else:
+            self.FieldsCallback()
             self.parent.SetPlotParam('set_v_min', self.setVminVar.get())
 
     def setVmaxChanged(self, *args):
         if self.setVmaxVar.get() == self.parent.GetPlotParam('set_v_max'):
             pass
         else:
+            self.FieldsCallback()
             self.parent.SetPlotParam('set_v_max', self.setVmaxVar.get())
 
-
+    def AxisChanged(self):
+        new_axis = self.AxisVar.get()
+        if hasattr(self, 'bins_label'):
+            self.bins_label.config(text=f'# of {new_axis}bins')
+        if new_axis == 'y':
+            self.parent.SetPlotParam('spatial_x', False, update_plot=False)
+            self.parent.SetPlotParam('spatial_y', False, update_plot=False)
+        else:
+            self.parent.SetPlotParam('spatial_x', True, update_plot=False)
+            self.parent.SetPlotParam('spatial_y', False, update_plot=False)
+        self.parent.SetPlotParam('oneD_axis', new_axis)
 
     def RadioMom(self):
         if self.pvar.get() == self.parent.GetPlotParam('m_type'):

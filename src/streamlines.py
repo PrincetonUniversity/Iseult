@@ -48,6 +48,8 @@ def add_streamline_params(param_dictionary):
     param_dictionary["az_contours_stride"] = 1
     param_dictionary["az_contours_gauge_tracking"] = False
     param_dictionary["az_contours_lagrangian"] = False
+    param_dictionary["az_contours_fiducial_axis"] = "X"
+    param_dictionary["az_contours_fiducial_x"] = 200.0
 
 
 def add_streamline_buttons(settings, panel, starting_row):
@@ -161,6 +163,28 @@ def add_streamline_buttons(settings, panel, starting_row):
         row=az_row + 3, column=1, sticky=Tk.E
     )
 
+    settings.az_contours_fiducial_axis = Tk.StringVar(
+        value=settings.parent.GetPlotParam("az_contours_fiducial_axis") or "X"
+    )
+    Tk.ttk.Label(settings.frm, text="Fiducial Axis:").grid(row=az_row + 4, column=0, sticky=Tk.W)
+    settings.az_fiducial_chooser = Tk.ttk.OptionMenu(
+        settings.frm,
+        settings.az_contours_fiducial_axis,
+        settings.parent.GetPlotParam("az_contours_fiducial_axis") or "X",
+        *("X", "Y"),
+        command=lambda val: __change_az_fiducial_axis(settings, panel),
+    )
+    settings.az_fiducial_chooser.grid(row=az_row + 4, column=0, sticky=Tk.E)
+
+    fid_x_val = settings.parent.GetPlotParam("az_contours_fiducial_x")
+    settings.az_contours_fiducial_x = Tk.DoubleVar(
+        value=200.0 if fid_x_val is None else float(fid_x_val)
+    )
+    Tk.ttk.Label(settings.frm, text="Fiducial X:").grid(row=az_row + 4, column=1, sticky=Tk.W)
+    Tk.ttk.Entry(settings.frm, textvariable=settings.az_contours_fiducial_x, width=7).grid(
+        row=az_row + 4, column=1, sticky=Tk.E
+    )
+
 
 def __show_streamline_handler(settings, panel):
     """Handle what happens when the `show_streamlines` button is toggled."""
@@ -190,9 +214,29 @@ def __show_az_contours_handler(settings, panel):
         # Invalidate base level cache and tracker so levels recompute cleanly
         if hasattr(settings.parent.parent, "_az_base_level_cache"):
             settings.parent.parent._az_base_level_cache = None
+        if hasattr(settings.parent.parent, "_az_gauge_cache"):
+            settings.parent.parent._az_gauge_cache = None
         if hasattr(settings.parent.parent, "_lagrangian_tracker"):
             settings.parent.parent._lagrangian_tracker = None
         settings.parent.parent.LoadAllKeys()
+
+    settings.parent.parent.canvas.draw()
+    settings.parent.parent.canvas.get_tk_widget().update_idletasks()
+
+
+def __change_az_fiducial_axis(settings, panel):
+    """Handle what happens when the `az_contours_fiducial_axis` dropdown is changed."""
+    axis = settings.az_contours_fiducial_axis.get()
+    settings.parent.SetPlotParam("az_contours_fiducial_axis", axis, update_plot=False, NeedsRedraw=True)
+    if hasattr(settings.parent.parent, "_az_base_level_cache"):
+        settings.parent.parent._az_base_level_cache = None
+    if hasattr(settings.parent.parent, "_az_gauge_cache"):
+        settings.parent.parent._az_gauge_cache = None
+    if hasattr(settings.parent.parent, "_lagrangian_tracker"):
+        settings.parent.parent._lagrangian_tracker = None
+
+    if settings.parent.GetPlotParam("show_az_contours"):
+        refresh_az_contours(panel)
 
     settings.parent.parent.canvas.draw()
     settings.parent.parent.canvas.get_tk_widget().update_idletasks()
@@ -272,6 +316,33 @@ def az_contours_callback(settings, update_plot=True):
         if hasattr(settings.parent.parent, "_lagrangian_tracker"):
             settings.parent.parent._lagrangian_tracker = None
 
+    # Fiducial Axis Dropdown
+    if hasattr(settings, "az_contours_fiducial_axis") and settings.az_contours_fiducial_axis.get() != settings.parent.plot_param_dict.get("az_contours_fiducial_axis"):
+        val = settings.az_contours_fiducial_axis.get()
+        settings.parent.plot_param_dict["az_contours_fiducial_axis"] = val
+        settings.parent.SetPlotParam("az_contours_fiducial_axis", val, update_plot=update_plot)
+        if hasattr(settings.parent.parent, "_az_base_level_cache"):
+            settings.parent.parent._az_base_level_cache = None
+        if hasattr(settings.parent.parent, "_az_gauge_cache"):
+            settings.parent.parent._az_gauge_cache = None
+        if hasattr(settings.parent.parent, "_lagrangian_tracker"):
+            settings.parent.parent._lagrangian_tracker = None
+
+    # Fiducial X Entry
+    if hasattr(settings, "az_contours_fiducial_x") and settings.az_contours_fiducial_x.get() != settings.parent.plot_param_dict.get("az_contours_fiducial_x"):
+        try:
+            val = float(settings.az_contours_fiducial_x.get())
+            settings.parent.plot_param_dict["az_contours_fiducial_x"] = val
+            settings.parent.SetPlotParam("az_contours_fiducial_x", val, update_plot=update_plot)
+            if hasattr(settings.parent.parent, "_az_base_level_cache"):
+                settings.parent.parent._az_base_level_cache = None
+            if hasattr(settings.parent.parent, "_az_gauge_cache"):
+                settings.parent.parent._az_gauge_cache = None
+            if hasattr(settings.parent.parent, "_lagrangian_tracker"):
+                settings.parent.parent._lagrangian_tracker = None
+        except ValueError:
+            pass
+
 
 # ------------------------------------------------------------------------------
 # 3. STREAMLINES DRAWING
@@ -345,7 +416,7 @@ def remove_streamlines(panel):
 # 4. AZ (VECTOR POTENTIAL) CONTOURS
 # ------------------------------------------------------------------------------
 
-def compute_vector_potential_2d(bx, by, stride=1, dx=None):
+def compute_vector_potential_2d(bx, by, stride=1, dx=None, fiducial_axis="X", c_omp=None, x_fiducial=200.0):
     """Computes the 2D magnetic vector potential Az(x,y) from Bx, By components.
 
     By definition:
@@ -361,6 +432,13 @@ def compute_vector_potential_2d(bx, by, stride=1, dx=None):
     dx : float, optional
         Effective physical grid spacing in simulation cells (stride * istep).
         If None, defaults to float(stride).
+    fiducial_axis : str, optional
+        "X" for standard orientation (inflow along x, reconnection along y),
+        "Y" for rotated orientation (inflow along y, reconnection along x).
+    c_omp : float, optional
+        Electron skin depth (cells per c/omp).
+    x_fiducial : float, optional
+        Physical x coordinate of the fiducial point in c/omp (default: 200.0).
 
     Returns
     -------
@@ -368,22 +446,40 @@ def compute_vector_potential_2d(bx, by, stride=1, dx=None):
         Vector potential Az on the 2D grid
     """
     ny, nx = bx.shape
-    ymid = ny // 2
     Az = np.zeros((ny, nx), dtype=np.float32)
     step_dx = float(stride) if dx is None else float(dx)
 
-    # 1. Integrate along midplane x: dAz = -By dx -> Az(x, ymid) = - ∫ By(x, ymid) dx
-    Az[ymid, 1:] = -np.cumsum(0.5 * (by[ymid, 1:] + by[ymid, :-1]) * step_dx)
+    if str(fiducial_axis).upper() == "Y":
+        c_val = 1.0 if c_omp is None else float(c_omp)
+        x_idx = int(round(float(x_fiducial) * c_val / step_dx))
+        xmid = max(0, min(nx - 1, x_idx))
+        # 1. Integrate along midplane y: dAz = Bx dy -> Az(xmid, y) = ∫ Bx(xmid, y) dy
+        if ny > 1:
+            Az[1:, xmid] = np.cumsum(0.5 * (bx[1:, xmid] + bx[:-1, xmid]) * step_dx)
 
-    # 2. Integrate upward in y: dAz = Bx dy -> Az(y, x) = Az(ymid, x) + ∫ Bx dy
-    if ymid < ny - 1:
-        dAz_up = 0.5 * (bx[ymid+1:, :] + bx[ymid:-1, :]) * step_dx
-        Az[ymid+1:, :] = Az[ymid, :] + np.cumsum(dAz_up, axis=0)
+        # 2. Integrate rightward in x: dAz = -By dx -> Az(y, x) = Az(y, xmid) - ∫ By dx
+        if xmid < nx - 1:
+            dAz_right = -0.5 * (by[:, xmid+1:] + by[:, xmid:-1]) * step_dx
+            Az[:, xmid+1:] = Az[:, xmid:xmid+1] + np.cumsum(dAz_right, axis=1)
 
-    # 3. Integrate downward in y: dAz = -Bx dy
-    if ymid > 0:
-        dAz_down = -0.5 * (bx[ymid-1::-1, :] + bx[ymid:0:-1, :]) * step_dx
-        Az[ymid-1::-1, :] = Az[ymid, :] + np.cumsum(dAz_down, axis=0)
+        # 3. Integrate leftward in x: dAz = By (-dx)
+        if xmid > 0:
+            dAz_left = 0.5 * (by[:, xmid-1::-1] + by[:, xmid:0:-1]) * step_dx
+            Az[:, xmid-1::-1] = Az[:, xmid:xmid+1] + np.cumsum(dAz_left, axis=1)
+    else:
+        ymid = ny // 2
+        # 1. Integrate along midplane x: dAz = -By dx -> Az(x, ymid) = - ∫ By(x, ymid) dx
+        Az[ymid, 1:] = -np.cumsum(0.5 * (by[ymid, 1:] + by[ymid, :-1]) * step_dx)
+
+        # 2. Integrate upward in y: dAz = Bx dy -> Az(y, x) = Az(ymid, x) + ∫ Bx dy
+        if ymid < ny - 1:
+            dAz_up = 0.5 * (bx[ymid+1:, :] + bx[ymid:-1, :]) * step_dx
+            Az[ymid+1:, :] = Az[ymid, :] + np.cumsum(dAz_up, axis=0)
+
+        # 3. Integrate downward in y: dAz = -Bx dy
+        if ymid > 0:
+            dAz_down = -0.5 * (bx[ymid-1::-1, :] + bx[ymid:0:-1, :]) * step_dx
+            Az[ymid-1::-1, :] = Az[ymid, :] + np.cumsum(dAz_down, axis=0)
 
     return Az
 
@@ -420,29 +516,44 @@ def sample_bilinear_vec(grid, xs, ys):
 class LagrangianFieldLineTracker:
     """Tracks Lagrangian fluid markers via sub-stepped ExB advection across timesteps."""
 
-    def __init__(self, n_contours=18):
+    def __init__(self, n_contours=18, fiducial_axis="X", x_fiducial=200.0):
         self.n_contours = n_contours
+        self.fiducial_axis = fiducial_axis
+        self.x_fiducial = float(x_fiducial)
         self.history = {}  # step -> (xs, ys)
         self.last_step = None
         self.last_flds = None
 
-    def reset(self, n_contours=18):
+    def reset(self, n_contours=18, fiducial_axis="X", x_fiducial=200.0):
         self.n_contours = n_contours
+        self.fiducial_axis = fiducial_axis
+        self.x_fiducial = float(x_fiducial)
         self.history = {}
         self.last_step = None
         self.last_flds = None
 
-    def init_step(self, step, nx, ny):
-        ymid = ny // 2
-        xs = np.linspace(nx * 0.04, nx * 0.48, self.n_contours).astype(np.float32)
-        ys = np.full(len(xs), float(ymid), dtype=np.float32)
+    def init_step(self, step, nx, ny, c_omp=1.0, istep=1.0, stride=1):
+        if str(self.fiducial_axis).upper() == "Y":
+            eff_dx = max(1e-4, float(istep * stride))
+            c_val = float(c_omp) if c_omp else 1.0
+            x_idx = int(round(self.x_fiducial * c_val / eff_dx))
+            x_idx = max(0, min(nx - 1, x_idx))
+            ys = np.linspace(ny * 0.04, ny * 0.48, self.n_contours).astype(np.float32)
+            xs = np.full(len(ys), float(x_idx), dtype=np.float32)
+        else:
+            ymid = ny // 2
+            xs = np.linspace(nx * 0.04, nx * 0.48, self.n_contours).astype(np.float32)
+            ys = np.full(len(xs), float(ymid), dtype=np.float32)
         self.history[step] = (xs, ys)
         return xs, ys
 
     def get_markers(self, parent, cur_step, bx, by, ez, c_omp, istep=1.0, stride=1):
         ny, nx = bx.shape
         ymid = ny // 2
-        xmid = nx // 2
+        eff_dx = max(1e-4, float(istep * stride))
+        c_val = float(c_omp) if c_omp else 1.0
+        x_idx = int(round(self.x_fiducial * c_val / eff_dx))
+        x_idx = max(0, min(nx - 1, x_idx))
 
         if cur_step in self.history:
             self.last_step = cur_step
@@ -495,12 +606,18 @@ class LagrangianFieldLineTracker:
                 cur_xs = np.clip(cur_xs + vx, 0.0, nx - 1.0)
                 cur_ys = np.clip(cur_ys + vy, 0.0, ny - 1.0)
 
-            # Replenish left boundary markers if needed
+            # Replenish boundary markers if needed
             new_xs, new_ys = list(cur_xs), list(cur_ys)
-            left_xs = [x for x in cur_xs if x < xmid]
-            if len(left_xs) == 0 or min(left_xs) > nx * 0.10:
-                new_xs.append(nx * 0.02)
-                new_ys.append(float(ymid))
+            if str(self.fiducial_axis).upper() == "Y":
+                inflow_ys = [y for y in cur_ys if y < ymid]
+                if len(inflow_ys) == 0 or min(inflow_ys) > ny * 0.10:
+                    new_xs.append(float(x_idx))
+                    new_ys.append(ny * 0.02)
+            else:
+                left_xs = [x for x in cur_xs if x < (nx // 2)]
+                if len(left_xs) == 0 or min(left_xs) > nx * 0.10:
+                    new_xs.append(nx * 0.02)
+                    new_ys.append(float(ymid))
 
             xs = np.array(new_xs, dtype=np.float32)
             ys = np.array(new_ys, dtype=np.float32)
@@ -509,7 +626,7 @@ class LagrangianFieldLineTracker:
             self.last_flds = (bx, by, ez)
             return xs, ys
         else:
-            xs, ys = self.init_step(cur_step, nx, ny)
+            xs, ys = self.init_step(cur_step, nx, ny, c_omp=c_omp, istep=istep, stride=stride)
             self.last_step = cur_step
             self.last_flds = (bx, by, ez)
             return xs, ys
@@ -551,8 +668,60 @@ def _get_istep(obj):
     return 1.0
 
 
-def _get_gauge_integral(parent, cur_step, ny, nx, zSlice, stride=1):
-    """Computes or retrieves cached inductive gauge shift G(s) = ∫ Ez(xref, ymid) * c_omp * dt."""
+def _get_c_omp(obj):
+    """Safely retrieves the c_omp skin depth factor from a panel or parent object."""
+    c_omp = None
+    if hasattr(obj, "c_omp"):
+        c_omp = getattr(obj, "c_omp")
+    elif hasattr(obj, "parent") and hasattr(obj.parent, "c_omp"):
+        c_omp = getattr(obj.parent, "c_omp")
+    elif hasattr(obj, "parent") and hasattr(obj.parent, "DataDict") and "c_omp" in obj.parent.DataDict:
+        c_omp = obj.parent.DataDict["c_omp"]
+    elif hasattr(obj, "DataDict") and "c_omp" in obj.DataDict:
+        c_omp = obj.DataDict["c_omp"]
+
+    if c_omp is None:
+        target_pathdict = None
+        if hasattr(obj, "PathDict"):
+            target_pathdict = obj.PathDict
+        elif hasattr(obj, "parent") and hasattr(obj.parent, "PathDict"):
+            target_pathdict = obj.parent.PathDict
+
+        if target_pathdict and "Param" in target_pathdict and len(target_pathdict["Param"]) > 0:
+            try:
+                import h5py
+                with h5py.File(target_pathdict["Param"][0], "r") as fp:
+                    if "c_omp" in fp:
+                        c_omp = float(fp["c_omp"][0])
+            except Exception:
+                pass
+        elif target_pathdict and "Flds" in target_pathdict and len(target_pathdict["Flds"]) > 0:
+            try:
+                import h5py
+                with h5py.File(target_pathdict["Flds"][0], "r") as fp:
+                    if "c_omp" in fp:
+                        c_omp = float(fp["c_omp"][0])
+            except Exception:
+                pass
+
+    if c_omp is not None:
+        if isinstance(c_omp, np.ndarray) and c_omp.size > 0:
+            return float(c_omp.flat[0])
+        elif isinstance(c_omp, (int, float)):
+            return float(c_omp)
+    return 1.0
+
+
+def _get_fiducial_x_idx(nx, c_omp=1.0, istep=1.0, stride=1, x_fiducial=200.0):
+    """Calculates grid index in a 2D slice for physical x_fiducial in c/omp."""
+    eff_dx = max(1e-4, float(istep * stride))
+    c_val = float(c_omp) if c_omp else 1.0
+    idx = int(round(float(x_fiducial) * c_val / eff_dx))
+    return max(0, min(nx - 1, idx))
+
+
+def _get_gauge_integral(parent, cur_step, ny, nx, zSlice, stride=1, fiducial_axis="X", x_fiducial=200.0):
+    """Computes or retrieves cached inductive gauge shift G(s) = ∫ Ez(xref, yref) * c_omp * dt."""
     if not hasattr(parent, "_az_gauge_cache") or parent._az_gauge_cache is None:
         parent._az_gauge_cache = {}
 
@@ -561,15 +730,21 @@ def _get_gauge_integral(parent, cur_step, ny, nx, zSlice, stride=1):
         return 0.0
 
     cache = parent._az_gauge_cache
-    if "G" not in cache or len(cache["G"]) != num_flds:
-        c_omp = getattr(parent, "c_omp", 1.0)
-        if isinstance(c_omp, np.ndarray) and c_omp.size > 0:
-            c_omp = float(c_omp.flat[0])
-        elif not isinstance(c_omp, (int, float)):
-            c_omp = 1.0
+    if (
+        "G" not in cache
+        or len(cache["G"]) != num_flds
+        or cache.get("fiducial_axis") != fiducial_axis
+        or cache.get("x_fiducial") != x_fiducial
+    ):
+        c_omp = _get_c_omp(parent)
+        istep = _get_istep(parent)
 
-        ymid = ny // 2
-        xref = max(0, nx - max(2, nx // 20))
+        if str(fiducial_axis).upper() == "Y":
+            xr_grid = _get_fiducial_x_idx(nx, c_omp=c_omp, istep=istep, stride=stride, x_fiducial=x_fiducial)
+            yr_grid = max(0, ny - max(2, ny // 20))
+        else:
+            yr_grid = ny // 2
+            xr_grid = max(0, nx - max(2, nx // 20))
 
         times = []
         ez_vals = []
@@ -582,14 +757,19 @@ def _get_gauge_integral(parent, cur_step, ny, nx, zSlice, stride=1):
                     ez_name = "ez" if slice_plane == 0 else ("ey" if slice_plane == 1 else "ex")
                     if ez_name in f:
                         ez_arr = f[ez_name]
+                        if str(fiducial_axis).upper() == "Y":
+                            xr_fld = int(round(float(x_fiducial) * c_omp / istep))
+                        else:
+                            xr_fld = xr_grid * stride
+
                         if len(ez_arr.shape) == 3:
                             zs = min(zSlice, ez_arr.shape[0] - 1)
-                            ym = min(ymid * stride, ez_arr.shape[1] - 1)
-                            xr = min(xref * stride, ez_arr.shape[2] - 1)
+                            ym = min(yr_grid * stride, ez_arr.shape[1] - 1)
+                            xr = min(max(0, xr_fld), ez_arr.shape[2] - 1)
                             ez_val = float(ez_arr[zs, ym, xr])
                         elif len(ez_arr.shape) == 2:
-                            ym = min(ymid * stride, ez_arr.shape[0] - 1)
-                            xr = min(xref * stride, ez_arr.shape[1] - 1)
+                            ym = min(yr_grid * stride, ez_arr.shape[0] - 1)
+                            xr = min(max(0, xr_fld), ez_arr.shape[1] - 1)
                             ez_val = float(ez_arr[ym, xr])
                         else:
                             ez_val = 0.0
@@ -624,14 +804,16 @@ def _get_gauge_integral(parent, cur_step, ny, nx, zSlice, stride=1):
             G[i] = G[i-1] + 0.5 * (ez_vals[i] + ez_vals[i-1]) * c_omp * dt_step
 
         cache["G"] = G
-        cache["xref"] = xref
-        cache["ymid"] = ymid
+        cache["xref"] = xr_grid
+        cache["ymid"] = yr_grid
+        cache["fiducial_axis"] = fiducial_axis
+        cache["x_fiducial"] = x_fiducial
 
     step_idx = max(0, min(cur_step - 1, len(cache["G"]) - 1))
     return float(cache["G"][step_idx])
 
 
-def _compute_frame0_base_levels(parent, n_contours, zSlice, stride, istep=1.0):
+def _compute_frame0_base_levels(parent, n_contours, zSlice, stride, istep=1.0, fiducial_axis="X", x_fiducial=200.0):
     """Computes base A0 and delta using the first available snapshot in PathDict['Flds']."""
     num_flds = len(parent.PathDict.get("Flds", []))
     if num_flds == 0:
@@ -655,12 +837,19 @@ def _compute_frame0_base_levels(parent, n_contours, zSlice, stride, istep=1.0):
             bx0 = f[bx_name][sl]
             by0 = f[by_name][sl]
 
+        c_omp0 = _get_c_omp(parent)
         dx0 = float(stride * istep)
-        Az0 = compute_vector_potential_2d(bx0, by0, stride=stride, dx=dx0)
+        Az0 = compute_vector_potential_2d(
+            bx0, by0, stride=stride, dx=dx0, fiducial_axis=fiducial_axis, c_omp=c_omp0, x_fiducial=x_fiducial
+        )
         ny0, nx0 = Az0.shape
-        ymid0 = ny0 // 2
-        xref0 = max(0, nx0 - max(2, nx0 // 20))
-        Az0_corr = Az0 - Az0[ymid0, xref0]
+        if str(fiducial_axis).upper() == "Y":
+            xr0 = _get_fiducial_x_idx(nx0, c_omp=c_omp0, istep=istep, stride=stride, x_fiducial=x_fiducial)
+            yr0 = max(0, ny0 - max(2, ny0 // 20))
+        else:
+            yr0 = ny0 // 2
+            xr0 = max(0, nx0 - max(2, nx0 // 20))
+        Az0_corr = Az0 - Az0[yr0, xr0]
 
         az_min0, az_max0 = float(Az0_corr.min()), float(Az0_corr.max())
         width0 = max(az_max0 - az_min0, 1e-4)
@@ -673,26 +862,47 @@ def _compute_frame0_base_levels(parent, n_contours, zSlice, stride, istep=1.0):
         return 0.0, 0.05
 
 
-def _get_az_contour_levels(panel, Az, ny, nx, zSlice, n_contours, lagrangian, stride=1, istep=1.0):
+def _get_az_contour_levels(panel, Az, ny, nx, zSlice, n_contours, lagrangian, stride=1, istep=1.0, fiducial_axis="X", x_fiducial=200.0):
     """Computes contour levels for Az (Lagrangian fluid tracking or Faraday calibrated physical potential)."""
     parent = panel.parent
     cur_step = parent.TimeStep.value
+    c_omp = _get_c_omp(panel)
 
     # Inductive gauge reference point near wall
-    ymid = ny // 2
-    xref = max(0, nx - max(2, nx // 20))
-    ref_val = float(Az[ymid, xref])
+    if str(fiducial_axis).upper() == "Y":
+        xr = _get_fiducial_x_idx(nx, c_omp=c_omp, istep=istep, stride=stride, x_fiducial=x_fiducial)
+        yr = max(0, ny - max(2, ny // 20))
+    else:
+        yr = ny // 2
+        xr = max(0, nx - max(2, nx // 20))
+
+    ref_val = float(Az[yr, xr])
     Az_corr = Az - ref_val
 
     if not lagrangian:
         # Faraday Calibrated Physical Potential
-        G_val = _get_gauge_integral(parent, cur_step, ny, nx, zSlice, stride=stride)
+        G_val = _get_gauge_integral(parent, cur_step, ny, nx, zSlice, stride=stride, fiducial_axis=fiducial_axis, x_fiducial=x_fiducial)
         Az_physical = Az_corr - G_val
 
         cache = getattr(parent, "_az_base_level_cache", None)
-        if cache is None or cache.get("n_contours") != n_contours or cache.get("istep") != istep:
-            A0, delta = _compute_frame0_base_levels(parent, n_contours, zSlice, stride, istep=istep)
-            parent._az_base_level_cache = {"A0": A0, "delta": delta, "n_contours": n_contours, "istep": istep}
+        if (
+            cache is None
+            or cache.get("n_contours") != n_contours
+            or cache.get("istep") != istep
+            or cache.get("fiducial_axis") != fiducial_axis
+            or cache.get("x_fiducial") != x_fiducial
+        ):
+            A0, delta = _compute_frame0_base_levels(
+                parent, n_contours, zSlice, stride, istep=istep, fiducial_axis=fiducial_axis, x_fiducial=x_fiducial
+            )
+            parent._az_base_level_cache = {
+                "A0": A0,
+                "delta": delta,
+                "n_contours": n_contours,
+                "istep": istep,
+                "fiducial_axis": fiducial_axis,
+                "x_fiducial": x_fiducial,
+            }
         else:
             A0 = parent._az_base_level_cache["A0"]
             delta = parent._az_base_level_cache["delta"]
@@ -703,15 +913,14 @@ def _get_az_contour_levels(panel, Az, ny, nx, zSlice, n_contours, lagrangian, st
 
     # Lagrangian Fluid Tracking
     tracker = getattr(parent, "_lagrangian_tracker", None)
-    if tracker is None or tracker.n_contours != n_contours:
-        tracker = LagrangianFieldLineTracker(n_contours=n_contours)
+    if (
+        tracker is None
+        or tracker.n_contours != n_contours
+        or getattr(tracker, "fiducial_axis", "X") != fiducial_axis
+        or getattr(tracker, "x_fiducial", 200.0) != x_fiducial
+    ):
+        tracker = LagrangianFieldLineTracker(n_contours=n_contours, fiducial_axis=fiducial_axis, x_fiducial=x_fiducial)
         parent._lagrangian_tracker = tracker
-
-    c_omp = getattr(parent, "c_omp", 1.0)
-    if isinstance(c_omp, np.ndarray) and c_omp.size > 0:
-        c_omp = float(c_omp.flat[0])
-    elif not isinstance(c_omp, (int, float)):
-        c_omp = 1.0
 
     slice_plane = parent.MainParamDict["2DSlicePlane"]
     if slice_plane == 0:
@@ -741,7 +950,11 @@ def draw_az_contours(panel):
     remove_az_contours(panel)
 
     stride = max(1, int(panel.GetPlotParam("az_contours_stride")))
+    fiducial_axis = panel.GetPlotParam("az_contours_fiducial_axis") or "X"
+    fid_x_param = panel.GetPlotParam("az_contours_fiducial_x")
+    x_fiducial = 200.0 if fid_x_param is None else float(fid_x_param)
     istep = _get_istep(panel)
+    c_omp = _get_c_omp(panel)
     dx = float(stride * istep)
     slice_plane = panel.parent.MainParamDict["2DSlicePlane"]
 
@@ -767,12 +980,17 @@ def draw_az_contours(panel):
     if bx.ndim != 2 or by.ndim != 2:
         return
 
-    Az = compute_vector_potential_2d(bx, by, stride=stride, dx=dx)
+    Az = compute_vector_potential_2d(
+        bx, by, stride=stride, dx=dx, fiducial_axis=fiducial_axis, c_omp=c_omp, x_fiducial=x_fiducial
+    )
 
     n_contours = max(2, int(panel.GetPlotParam("az_contours_count")))
     lagrangian = bool(panel.GetPlotParam("az_contours_lagrangian"))
 
-    levels, Az_plot = _get_az_contour_levels(panel, Az, bx.shape[0], bx.shape[1], zSlice, n_contours, lagrangian, stride=stride, istep=istep)
+    levels, Az_plot = _get_az_contour_levels(
+        panel, Az, bx.shape[0], bx.shape[1], zSlice, n_contours, lagrangian,
+        stride=stride, istep=istep, fiducial_axis=fiducial_axis, x_fiducial=x_fiducial
+    )
 
     xmin = getattr(panel, "xmin", 0.0)
     xmax = getattr(panel, "xmax", float(bx.shape[1]))

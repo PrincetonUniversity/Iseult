@@ -5,7 +5,10 @@ import data_loading # Allows us the read the data files
 import time, string, io
 from PIL import Image
 import matplotlib
-matplotlib.use('TkAgg')
+try:
+    matplotlib.use('TkAgg')
+except Exception:
+    pass
 import new_cmaps
 import numpy as np
 from collections import deque
@@ -207,6 +210,9 @@ class SubPlotWrapper:
             if self.PlotParamsDict[ctype][pname] == 0 and val == 1:
                 self.Changedto2D = True
                 NeedsRedraw = True
+        if pname == 'oneD_axis':
+            if self.PlotParamsDict[ctype].get(pname) != val:
+                NeedsRedraw = True
 
         self.PlotParamsDict[ctype][pname] = val
         if update_plot or NeedsRedraw:
@@ -214,12 +220,24 @@ class SubPlotWrapper:
 
 
 
-    def GetPlotParam(self, pname, ctype = None):
+    def GetPlotParam(self, pname, ctype = None, default = None):
         ''' A function that returns the value of the plot param 'pname' for the
         ctype chart. If ctype is None, the currently shown subplot is used'''
 
         if ctype is None:
             ctype = self.chartType
+        if ctype in self.PlotParamsDict and pname in self.PlotParamsDict[ctype]:
+            return self.PlotParamsDict[ctype][pname]
+        # Check if the plot class defines this parameter in plot_param_dict
+        if hasattr(self, 'PlotTypeDict') and ctype in self.PlotTypeDict and hasattr(self.PlotTypeDict[ctype], 'plot_param_dict'):
+            if pname in self.PlotTypeDict[ctype].plot_param_dict:
+                val = self.PlotTypeDict[ctype].plot_param_dict[pname]
+                self.PlotParamsDict.setdefault(ctype, {})[pname] = val
+                return val
+        if default is not None:
+            return default
+        if pname.startswith(('show_', 'set_')):
+            return False
         return self.PlotParamsDict[ctype][pname]
 
     def SetGraph(self, ctype = None):
@@ -1788,6 +1806,9 @@ class MainApp(Tk.Tk):
         # A variable that keeps track of the first graph with spatial x & y axes
         self.first_x = None
         self.first_y = None
+        self.first_y_1d = None
+        self._syncing_y_axes = False
+        self._spatial_y_cids = []
 
         # An int that stores the current stride
         self.stride = 0
@@ -3111,6 +3132,99 @@ class MainApp(Tk.Tk):
             return tuple(self.freeze(value) for value in d)
         return d
 
+    def _sync_2d_y_to_1d_x(self, ax_2d):
+        if getattr(self, '_syncing_y_axes', False):
+            return
+        if self.first_y_1d is None:
+            return
+        subplot_1d = self.SubPlotList[self.first_y_1d[0]][self.first_y_1d[1]]
+        if not hasattr(subplot_1d, 'graph') or subplot_1d.graph is None or not hasattr(subplot_1d.graph, 'axes'):
+            return
+        ax_1d = subplot_1d.graph.axes
+        if ax_1d is None:
+            return
+        plane = self.MainParamDict['2DSlicePlane']
+        new_lim = ax_2d.get_xlim() if plane == 2 else ax_2d.get_ylim()
+        cur_lim = ax_1d.get_xlim()
+        if abs(cur_lim[0] - new_lim[0]) > 1e-7 or abs(cur_lim[1] - new_lim[1]) > 1e-7:
+            try:
+                self._syncing_y_axes = True
+                ax_1d.set_xlim(new_lim)
+                if hasattr(self, 'canvas') and self.canvas is not None:
+                    self.canvas.draw_idle()
+            finally:
+                self._syncing_y_axes = False
+
+    def _sync_1d_x_to_2d_y(self, ax_1d):
+        if getattr(self, '_syncing_y_axes', False):
+            return
+        if self.first_y is None:
+            return
+        subplot_2d = self.SubPlotList[self.first_y[0]][self.first_y[1]]
+        if not hasattr(subplot_2d, 'graph') or subplot_2d.graph is None or not hasattr(subplot_2d.graph, 'axes'):
+            return
+        ax_2d = subplot_2d.graph.axes
+        if ax_2d is None:
+            return
+        plane = self.MainParamDict['2DSlicePlane']
+        new_lim = ax_1d.get_xlim()
+        cur_lim = ax_2d.get_xlim() if plane == 2 else ax_2d.get_ylim()
+        if abs(cur_lim[0] - new_lim[0]) > 1e-7 or abs(cur_lim[1] - new_lim[1]) > 1e-7:
+            try:
+                self._syncing_y_axes = True
+                if plane == 2:
+                    ax_2d.set_xlim(new_lim)
+                else:
+                    ax_2d.set_ylim(new_lim)
+                if hasattr(self, 'canvas') and self.canvas is not None:
+                    self.canvas.draw_idle()
+            finally:
+                self._syncing_y_axes = False
+
+    def LinkSpatialAxes(self):
+        if hasattr(self, '_spatial_y_cids'):
+            for ax_obj, cid in self._spatial_y_cids:
+                try:
+                    ax_obj.callbacks.disconnect(cid)
+                except Exception:
+                    pass
+        self._spatial_y_cids = []
+
+        if self.MainParamDict['LinkSpatial'] not in [1, 2]:
+            return
+        if self.first_y is None or self.first_y_1d is None:
+            return
+
+        subplot_2d = self.SubPlotList[self.first_y[0]][self.first_y[1]]
+        subplot_1d = self.SubPlotList[self.first_y_1d[0]][self.first_y_1d[1]]
+        if not hasattr(subplot_2d, 'graph') or subplot_2d.graph is None or not hasattr(subplot_2d.graph, 'axes'):
+            return
+        if not hasattr(subplot_1d, 'graph') or subplot_1d.graph is None or not hasattr(subplot_1d.graph, 'axes'):
+            return
+        ax_2d = subplot_2d.graph.axes
+        ax_1d = subplot_1d.graph.axes
+        if ax_2d is None or ax_1d is None:
+            return
+
+        plane = self.MainParamDict['2DSlicePlane']
+        if plane not in [0, 2]:
+            return
+
+        new_lim = ax_2d.get_xlim() if plane == 2 else ax_2d.get_ylim()
+        cur_lim = ax_1d.get_xlim()
+        if abs(cur_lim[0] - new_lim[0]) > 1e-7 or abs(cur_lim[1] - new_lim[1]) > 1e-7:
+            try:
+                self._syncing_y_axes = True
+                ax_1d.set_xlim(new_lim)
+            finally:
+                self._syncing_y_axes = False
+
+        event_name = 'xlim_changed' if plane == 2 else 'ylim_changed'
+        cid_2d = ax_2d.callbacks.connect(event_name, self._sync_2d_y_to_1d_x)
+        cid_1d = ax_1d.callbacks.connect('xlim_changed', self._sync_1d_x_to_2d_y)
+        self._spatial_y_cids.append((ax_2d, cid_2d))
+        self._spatial_y_cids.append((ax_1d, cid_1d))
+
     def ReDrawCanvas(self, keep_view = True):
         for i in range(self.MainParamDict['NumOfRows']):
             for j in range(self.MainParamDict['NumOfCols']):
@@ -3141,44 +3255,63 @@ class MainApp(Tk.Tk):
         # Find the first position with a physical x,y & k axis:
         self.first_x = None
         self.first_y = None
+        self.first_y_1d = None
         self.first_k = None
-        k = 0
-        # find the first spatial x and y
+
+        # Pre-pass: identify primary subplots for axes sharing
         for i in range(self.MainParamDict['NumOfRows']):
             for j in range(self.MainParamDict['NumOfCols']):
-
-                # First handle the axes sharing
-                if self.SubPlotList[i][j].chartType == 'FFTPlots':
-                    # The plot type is a spectral plot, which has no spatial dim
+                subplot = self.SubPlotList[i][j]
+                ctype = subplot.chartType
+                if ctype == 'FFTPlots':
                     if self.first_k is None:
-                        self.first_k = (i,j)
-                elif self.SubPlotList[i][j].chartType == 'SpectraPlot':
-                    # The plot type is a spectral plot, which has no spatial dim
+                        self.first_k = (i, j)
+                elif ctype == 'SpectraPlot':
                     pass
-                elif self.MainParamDict['LinkSpatial'] != 1 and self.SubPlotList[i][j].chartType == 'PhasePlot':
-                    # If this is the case we don't care about the phase plots
-                    # as we don't want to share the axes
-                    pass
-                elif self.MainParamDict['LinkSpatial'] != 1 and self.SubPlotList[i][j].chartType == 'EnergyPlot':
-                    # If this is the case we don't care about the phase plots
-                    # as we don't want to share the axes
-                    pass
-                elif self.MainParamDict['LinkSpatial'] == 3 and self.SubPlotList[i][j].GetPlotParam('twoD'):
-                    # If the plot is twoD share the axes
-                    if self.first_x is None and self.SubPlotList[i][j].GetPlotParam('spatial_x'):
-                        self.first_x = (i,j)
-                    if self.first_y is None and self.SubPlotList[i][j].GetPlotParam('spatial_y'):
-                        self.first_y = (i,j)
+                elif self.MainParamDict['LinkSpatial'] == 3: # All 2-D spatial
+                    if hasattr(subplot, 'GetPlotParam') and subplot.GetPlotParam('twoD'):
+                        if self.first_x is None and subplot.GetPlotParam('spatial_x'):
+                            self.first_x = (i, j)
+                        if self.first_y is None and subplot.GetPlotParam('spatial_y'):
+                            self.first_y = (i, j)
+                elif self.MainParamDict['LinkSpatial'] != 0: # LinkSpatial in [1, 2]
+                    if self.MainParamDict['LinkSpatial'] != 1 and ctype in ['PhasePlot', 'EnergyPlot']:
+                        pass
+                    else:
+                        is_2d = False
+                        if hasattr(subplot, 'GetPlotParam'):
+                            try:
+                                is_2d = bool(subplot.GetPlotParam('twoD'))
+                            except KeyError:
+                                pass
 
-                else:
-                    # Just find the first spatial x and y direction.
-                    if self.first_x is None and self.SubPlotList[i][j].GetPlotParam('spatial_x'):
-                        self.first_x = (i,j)
-                    if self.first_y is None and self.SubPlotList[i][j].GetPlotParam('spatial_y'):
-                        self.first_y = (i,j)
+                        oneD_axis = 'x'
+                        if hasattr(subplot, 'GetPlotParam'):
+                            try:
+                                oneD_axis = subplot.GetPlotParam('oneD_axis')
+                            except KeyError:
+                                pass
 
-                # Now... We can draw the graph.
+                        if is_2d:
+                            if self.first_x is None and subplot.GetPlotParam('spatial_x'):
+                                self.first_x = (i, j)
+                            if self.first_y is None and subplot.GetPlotParam('spatial_y'):
+                                self.first_y = (i, j)
+                        else:
+                            if oneD_axis == 'y':
+                                if self.first_y_1d is None:
+                                    self.first_y_1d = (i, j)
+                            else:
+                                if self.first_x is None and subplot.GetPlotParam('spatial_x'):
+                                    self.first_x = (i, j)
+
+        # Draw all graphs
+        for i in range(self.MainParamDict['NumOfRows']):
+            for j in range(self.MainParamDict['NumOfCols']):
                 self.SubPlotList[i][j].DrawGraph()
+
+        # Connect 2D spatial y to 1D vs y horizontal axis
+        self.LinkSpatialAxes()
 
         if self.MainParamDict['ShowTitle']:
             tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].suffix
@@ -3200,7 +3333,10 @@ class MainApp(Tk.Tk):
         for i in range(self.MainParamDict['NumOfRows']):
             for j in range(self.MainParamDict['NumOfCols']):
                 if self.SubPlotList[i][j].chartType =='PhasePlot' or self.SubPlotList[i][j].chartType =='EnergyPlot':
-                    if self.SubPlotList[i][j].GetPlotParam('show_int_region'):
+                    is_vs_x = True
+                    if self.SubPlotList[i][j].chartType == 'PhasePlot':
+                        is_vs_x = (self.SubPlotList[i][j].GetPlotParam('oneD_axis') == 'x')
+                    if self.SubPlotList[i][j].GetPlotParam('show_int_region') and is_vs_x:
                         self.phase_plot_list.append([i,j])
                 if self.SubPlotList[i][j].chartType =='SpectraPlot':
                     self.spectral_plot_list.append([i,j])
@@ -3249,9 +3385,12 @@ class MainApp(Tk.Tk):
                 if subplot is not None and hasattr(subplot, 'graph') and subplot.graph is not None:
                     g = subplot.graph
                     if subplot.chartType in ['FieldsPlot', 'DensityPlot']:
-                        if hasattr(g, 'GetPlotParam') and g.GetPlotParam("show_vectors"):
-                            if hasattr(g, 'c_omp') and hasattr(g, 'istep'):
-                                vector_arrows.refresh_vectors(g)
+                        try:
+                            if hasattr(g, 'GetPlotParam') and g.GetPlotParam("show_vectors"):
+                                if hasattr(g, 'c_omp') and hasattr(g, 'istep'):
+                                    vector_arrows.refresh_vectors(g)
+                        except (KeyError, AttributeError):
+                            pass
 
         # Reset _in_refresh flag to False
         for i in range(self.MainParamDict['NumOfRows']):
@@ -3350,9 +3489,12 @@ class MainApp(Tk.Tk):
                 if subplot is not None and hasattr(subplot, 'graph') and subplot.graph is not None:
                     g = subplot.graph
                     if subplot.chartType in ['FieldsPlot', 'DensityPlot']:
-                        if hasattr(g, 'GetPlotParam') and g.GetPlotParam("show_vectors"):
-                            if hasattr(g, 'c_omp') and hasattr(g, 'istep'):
-                                vector_arrows.refresh_vectors(g)
+                        try:
+                            if hasattr(g, 'GetPlotParam') and g.GetPlotParam("show_vectors"):
+                                if hasattr(g, 'c_omp') and hasattr(g, 'istep'):
+                                    vector_arrows.refresh_vectors(g)
+                        except (KeyError, AttributeError):
+                            pass
 
         # Reset _in_refresh flag to False
         for i in range(self.MainParamDict['NumOfRows']):

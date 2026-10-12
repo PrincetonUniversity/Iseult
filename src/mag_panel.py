@@ -17,6 +17,7 @@ class BPanel:
     # A dictionary of all of the parameters for this plot with the default parameters
 
     plot_param_dict = {'twoD': 0,
+                       'oneD_axis': 'x',
                        'mag_plot_type':0, # 0 = theta_b, 2 = |deltaB|/B0, 3 = |deltaB_perp|/B0, 4 = |deltaB_para|/b0
                        'show_cbar': True,
                        'v_min': 0,
@@ -53,6 +54,12 @@ class BPanel:
         self.parent = parent
         self.chartType = 'MagPlots'
         self.figure = self.parent.figure
+        if self.GetPlotParam('twoD'):
+            self.param_dict['spatial_y'] = True
+            self.param_dict['spatial_x'] = True
+        else:
+            self.param_dict['spatial_y'] = False
+            self.param_dict['spatial_x'] = (self.GetPlotParam('oneD_axis') == 'x')
         self.InterpolationMethods = ['none','nearest', 'bilinear', 'bicubic', 'spline16',
             'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
@@ -85,6 +92,7 @@ class BPanel:
         # see if the axis values are saved in the data dict
         # x-values haven't been calculated yet, generate them then save them to the dictionary for later.
         self.xaxis_values = np.arange(getattr(output, 'bx')[0,:,:].shape[1])/self.c_omp*self.istep
+        self.yaxis_values = np.arange(getattr(output, 'bx')[0,:,:].shape[0])/self.c_omp*self.istep
 
 
         if self.GetPlotParam('mag_plot_type') == 0: # set f to thetaB
@@ -299,12 +307,19 @@ class BPanel:
         else:
             self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
 
+            is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
             self.annotate_pos = [0.8,0.9]
             # Make the 1-D plots
-            if self.parent.MainParamDict['Average1D']:
-                self.line = self.axes.plot(self.xaxis_values, np.average(self.f.reshape(-1,self.f.shape[-1]), axis = 0), color = self.mag_color)
+            if is_vs_y:
+                if self.parent.MainParamDict['Average1D']:
+                    self.line = self.axes.plot(self.yaxis_values, np.average(self.f, axis=(0, 2)), color = self.mag_color)
+                else:
+                    self.line = self.axes.plot(self.yaxis_values, self.f[self.parent.zSlice,:,self.parent.xSlice], color = self.mag_color)
             else:
-                self.line = self.axes.plot(self.xaxis_values, self.f[self.parent.zSlice,self.parent.ySlice,:], color = self.mag_color)
+                if self.parent.MainParamDict['Average1D']:
+                    self.line = self.axes.plot(self.xaxis_values, np.average(self.f.reshape(-1,self.f.shape[-1]), axis = 0), color = self.mag_color)
+                else:
+                    self.line = self.axes.plot(self.xaxis_values, self.f[self.parent.zSlice,self.parent.ySlice,:], color = self.mag_color)
 
             # Set the Ymin/Ymax. Unnecessary.
             min_max = [self.line[0].get_data()[1].min(), self.line[0].get_data()[1].max()]
@@ -316,7 +331,7 @@ class BPanel:
             self.shock_line = self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
                         PathEffects.Normal()])
 
-            self.shock_line.set_visible(self.GetPlotParam('show_shock'))
+            self.shock_line.set_visible(self.GetPlotParam('show_shock') and not is_vs_y)
 
             if int(matplotlib.__version__[0]) < 2:
                 self.axes.set_axis_bgcolor(self.GetPlotParam('face_color'))
@@ -325,22 +340,22 @@ class BPanel:
 
             self.axes.tick_params(labelsize = self.parent.MainParamDict['NumFontSize'], color=tick_color)#, tick1On= False, tick2On= False)
 
-            if self.parent.MainParamDict['SetxLim']:
-                if self.parent.MainParamDict['xLimsRelative']:
-                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
-                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+            if is_vs_y:
+                if self.parent.MainParamDict['SetyLim']:
+                    self.axes.set_xlim(self.parent.MainParamDict['yBottom'], self.parent.MainParamDict['yTop'])
                 else:
-                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+                    self.axes.set_xlim(self.yaxis_values[0], self.yaxis_values[-1])
+                self.axes.set_xlabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             else:
-                self.axes.set_xlim(self.xaxis_values[0],self.xaxis_values[-1])
-
-
-            if self.GetPlotParam('set_v_min'):
-                self.axes.set_ylim(bottom = self.GetPlotParam('v_min'))
-            if self.GetPlotParam('set_v_max'):
-                self.axes.set_ylim(top = self.GetPlotParam('v_max'))
-
-            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                if self.parent.MainParamDict['SetxLim']:
+                    if self.parent.MainParamDict['xLimsRelative']:
+                        self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                           self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+                    else:
+                        self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+                else:
+                    self.axes.set_xlim(self.xaxis_values[0],self.xaxis_values[-1])
+                self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             self.axes.set_ylabel(self.ylabel, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
         ####
@@ -387,27 +402,43 @@ class BPanel:
 
         # First do the 1D plots, because it is simpler
         if self.GetPlotParam('twoD') == 0:
-            if self.parent.MainParamDict['Average1D']:
-                self.line[0].set_data(self.xaxis_values, np.average(self.f.reshape(-1,self.f.shape[-1]), axis = 0))
+            is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
+            if is_vs_y:
+                if self.parent.MainParamDict['Average1D']:
+                    self.line[0].set_data(self.yaxis_values, np.average(self.f, axis=(0, 2)))
+                else:
+                    self.line[0].set_data(self.yaxis_values, self.f[self.parent.zSlice,:,self.parent.xSlice])
             else:
-                self.line[0].set_data(self.xaxis_values, self.f[self.parent.zSlice,self.parent.ySlice,:])
+                if self.parent.MainParamDict['Average1D']:
+                    self.line[0].set_data(self.xaxis_values, np.average(self.f.reshape(-1,self.f.shape[-1]), axis = 0))
+                else:
+                    self.line[0].set_data(self.xaxis_values, self.f[self.parent.zSlice,self.parent.ySlice,:])
 
             min_max = [self.line[0].get_data()[1].min(), self.line[0].get_data()[1].max()]
             dist = min_max[1]-min_max[0]
             min_max[0] -= 0.04*dist
             min_max[1] += 0.04*dist
             self.axes.set_ylim(min_max)
-            if self.GetPlotParam('show_shock'):
+            if self.GetPlotParam('show_shock') and not is_vs_y:
                 self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
-            # xlims
-            if self.parent.MainParamDict['SetxLim']:
-                if self.parent.MainParamDict['xLimsRelative']:
-                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
-                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
-                else:
-                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+                self.shock_line.set_visible(True)
             else:
-                self.axes.set_xlim(self.xaxis_values[0], self.xaxis_values[-1])
+                self.shock_line.set_visible(False)
+            # xlims
+            if is_vs_y:
+                if self.parent.MainParamDict['SetyLim']:
+                    self.axes.set_xlim(self.parent.MainParamDict['yBottom'], self.parent.MainParamDict['yTop'])
+                else:
+                    self.axes.set_xlim(self.yaxis_values[0], self.yaxis_values[-1])
+            else:
+                if self.parent.MainParamDict['SetxLim']:
+                    if self.parent.MainParamDict['xLimsRelative']:
+                        self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                           self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+                    else:
+                        self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+                else:
+                    self.axes.set_xlim(self.xaxis_values[0], self.xaxis_values[-1])
 
             if self.GetPlotParam('set_v_min'):
                 self.axes.set_ylim(bottom = self.GetPlotParam('v_min'))
