@@ -5,7 +5,10 @@ import data_loading # Allows us the read the data files
 import time, string, io
 from PIL import Image
 import matplotlib
-matplotlib.use('TkAgg')
+try:
+    matplotlib.use('TkAgg')
+except Exception:
+    pass
 import new_cmaps
 import numpy as np
 from collections import deque

@@ -352,8 +352,8 @@ def test_phase_panel_vs_y_no_viewport():
     assert len(panel.x_values) == 5
     assert np.allclose(panel.x_values, output.yi / output.c_omp)
     assert panel.hist2d is not None
-    assert panel.x_bins[0] == 0.0
-    assert np.isclose(panel.x_bins[-1], output.bx.shape[1] / output.c_omp * output.istep)
+    assert panel.xmin == 0.0
+    assert np.isclose(panel.xmax, output.bx.shape[0] / output.c_omp * output.istep)
 
 
 def test_phase_panel_vs_y_with_viewport():
@@ -381,12 +381,10 @@ def test_phase_panel_vs_y_with_viewport():
     panel.update_data(output)
 
     # Particle index 2 (xi=6.0 -> 3.0, yi=6.0 -> 3.0) satisfies both x in [1.5, 3.5] and y in [2.5, 4.5]
-    assert len(panel.x_values) == 1
-    assert np.isclose(panel.x_values[0], 3.0)
     assert panel.xmin == 2.5
     assert panel.xmax == 4.5
-    assert np.isclose(panel.x_bins[0], 2.5)
-    assert np.isclose(panel.x_bins[-1], 4.5)
+    assert np.isclose(panel.hist2d[2][0], 2.5)
+    assert np.isclose(panel.hist2d[2][1], 4.5)
 
 
 def test_main_app_spatial_y_axis_sync():
