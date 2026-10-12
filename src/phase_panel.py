@@ -39,8 +39,9 @@ class PhasePanel:
                        'set_p_min': False,
                        'set_p_max': False,
                        'spatial_x': True,
-                       'symmetric': False,
                        'spatial_y': False,
+                       'oneD_axis': 'x',
+                       'symmetric': False,
                        'interpolation': 'nearest',
                        'filter_by_viewport': True,
                        'face_color': 'gainsboro'}
@@ -79,6 +80,10 @@ class PhasePanel:
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
 
 
+        is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
+        self.param_dict['spatial_x'] = not is_vs_y
+        self.param_dict['spatial_y'] = False
+
         if self.GetPlotParam('prtl_type') == 1: #electons
             self.energy_color = self.parent.electron_color
         else:
@@ -104,7 +109,10 @@ class PhasePanel:
         for line in self.IntRegionLines:
             line.set_color(self.energy_color)
         #set the xlabels
-        if self.parent.MainParamDict['DoLorentzBoost'] and np.abs(self.parent.MainParamDict['GammaBoost'])>1E-8:
+        is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
+        if is_vs_y:
+            self.x_label = r'$y\ [c/\omega_{\rm pe}]$'
+        elif self.parent.MainParamDict['DoLorentzBoost'] and np.abs(self.parent.MainParamDict['GammaBoost'])>1E-8:
             self.x_label = r'$x\prime\ [c/\omega_{\rm pe}]$'
         else:
             self.x_label = r'$x\ [c/\omega_{\rm pe}]$'
@@ -190,6 +198,7 @@ class PhasePanel:
                     if (xlim_max - xlim_min) >= 0.98 * full_x_span and (ylim_max - ylim_min) >= 0.98 * full_y_span:
                         self.viewport = None
 
+        is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
         if self.parent.MainParamDict['DoLorentzBoost'] and np.abs(self.parent.MainParamDict['GammaBoost'])>1E-8:
             # Gotta boost it
             self.c_omp = getattr(output,'c_omp')
@@ -200,7 +209,8 @@ class PhasePanel:
 
             # x_min & x_max before boostin'
             self.xmin = 0
-            self.xmax = getattr(output,'bx').shape[2]/self.c_omp*self.istep
+            shape_idx = 1 if is_vs_y else 2
+            self.xmax = getattr(output,'bx').shape[shape_idx]/self.c_omp*self.istep
             self.xmax = self.xmax if (self.xmax != self.xmin) else self.xmin + 1
 
             # First calculate beta and gamma
@@ -221,7 +231,8 @@ class PhasePanel:
             # the velocity and LF in the boosted frame.
             if self.GetPlotParam('prtl_type') == 0:
                 # first load everything downstream frame
-                self.x_values = getattr(output,'xi')/self.c_omp
+                coord_key = 'yi' if is_vs_y else 'xi'
+                self.x_values = getattr(output, coord_key)/self.c_omp
 
                 u = getattr(output,'ui')
                 v = getattr(output,'vi')
@@ -230,7 +241,8 @@ class PhasePanel:
                     self.weights = getattr(output,'chi')
 
             if self.GetPlotParam('prtl_type') == 1: #electons
-                self.x_values = getattr(output,'xe')/self.c_omp
+                coord_key = 'ye' if is_vs_y else 'xe'
+                self.x_values = getattr(output, coord_key)/self.c_omp
                 u = getattr(output,'ue')
                 v = getattr(output,'ve')
                 w = getattr(output,'we')
@@ -292,44 +304,83 @@ class PhasePanel:
                 xlim_0, xlim_1, ylim_0, ylim_1, plane = self.viewport
                 xlim_min, xlim_max = min(xlim_0, xlim_1), max(xlim_0, xlim_1)
                 ylim_min, ylim_max = min(ylim_0, ylim_1), max(ylim_0, ylim_1)
-
-                if plane in [0, 1]:
-                    inRange &= (self.x_values >= xlim_min) & (self.x_values <= xlim_max)
-                    self.xmin = xlim_min
-                    self.xmax = xlim_max
-
                 prtl_type = self.GetPlotParam('prtl_type')
-                if plane == 0: # x-y plane
-                    y_key = 'yi' if prtl_type == 0 else 'ye'
-                    if hasattr(output, y_key):
-                        try:
-                            y_coord = getattr(output, y_key) / self.c_omp
-                            inRange &= (y_coord >= ylim_min) & (y_coord <= ylim_max)
-                        except Exception:
-                            pass
-                elif plane == 1: # x-z plane
-                    z_key = 'zi' if prtl_type == 0 else 'ze'
-                    if hasattr(output, z_key):
-                        try:
-                            z_coord = getattr(output, z_key) / self.c_omp
-                            inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
-                        except Exception:
-                            pass
-                elif plane == 2: # y-z plane
-                    y_key = 'yi' if prtl_type == 0 else 'ye'
-                    z_key = 'zi' if prtl_type == 0 else 'ze'
-                    if hasattr(output, y_key):
-                        try:
-                            y_coord = getattr(output, y_key) / self.c_omp
-                            inRange &= (y_coord >= xlim_min) & (y_coord <= xlim_max)
-                        except Exception:
-                            pass
-                    if hasattr(output, z_key):
-                        try:
-                            z_coord = getattr(output, z_key) / self.c_omp
-                            inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
-                        except Exception:
-                            pass
+
+                if is_vs_y:
+                    if plane == 0:
+                        inRange &= (self.x_values >= ylim_min) & (self.x_values <= ylim_max)
+                        self.xmin = ylim_min
+                        self.xmax = ylim_max
+                        x_key = 'xi' if prtl_type == 0 else 'xe'
+                        if hasattr(output, x_key):
+                            try:
+                                x_coord = getattr(output, x_key) / self.c_omp
+                                inRange &= (x_coord >= xlim_min) & (x_coord <= xlim_max)
+                            except Exception:
+                                pass
+                    elif plane == 1:
+                        x_key = 'xi' if prtl_type == 0 else 'xe'
+                        z_key = 'zi' if prtl_type == 0 else 'ze'
+                        if hasattr(output, x_key):
+                            try:
+                                x_coord = getattr(output, x_key) / self.c_omp
+                                inRange &= (x_coord >= xlim_min) & (x_coord <= xlim_max)
+                            except Exception:
+                                pass
+                        if hasattr(output, z_key):
+                            try:
+                                z_coord = getattr(output, z_key) / self.c_omp
+                                inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                            except Exception:
+                                pass
+                    elif plane == 2:
+                        inRange &= (self.x_values >= xlim_min) & (self.x_values <= xlim_max)
+                        self.xmin = xlim_min
+                        self.xmax = xlim_max
+                        z_key = 'zi' if prtl_type == 0 else 'ze'
+                        if hasattr(output, z_key):
+                            try:
+                                z_coord = getattr(output, z_key) / self.c_omp
+                                inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                            except Exception:
+                                pass
+                else:
+                    if plane in [0, 1]:
+                        inRange &= (self.x_values >= xlim_min) & (self.x_values <= xlim_max)
+                        self.xmin = xlim_min
+                        self.xmax = xlim_max
+
+                    if plane == 0: # x-y plane
+                        y_key = 'yi' if prtl_type == 0 else 'ye'
+                        if hasattr(output, y_key):
+                            try:
+                                y_coord = getattr(output, y_key) / self.c_omp
+                                inRange &= (y_coord >= ylim_min) & (y_coord <= ylim_max)
+                            except Exception:
+                                pass
+                    elif plane == 1: # x-z plane
+                        z_key = 'zi' if prtl_type == 0 else 'ze'
+                        if hasattr(output, z_key):
+                            try:
+                                z_coord = getattr(output, z_key) / self.c_omp
+                                inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                            except Exception:
+                                pass
+                    elif plane == 2: # y-z plane
+                        y_key = 'yi' if prtl_type == 0 else 'ye'
+                        z_key = 'zi' if prtl_type == 0 else 'ze'
+                        if hasattr(output, y_key):
+                            try:
+                                y_coord = getattr(output, y_key) / self.c_omp
+                                inRange &= (y_coord >= xlim_min) & (y_coord <= xlim_max)
+                            except Exception:
+                                pass
+                        if hasattr(output, z_key):
+                            try:
+                                z_coord = getattr(output, z_key) / self.c_omp
+                                inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                            except Exception:
+                                pass
 
             inRange &= np.logical_not(nan_ind)
 
@@ -371,7 +422,8 @@ class PhasePanel:
 
             # Choose the particle type and px, py, or pz
             if self.GetPlotParam('prtl_type') == 0: #protons
-                self.x_values = getattr(output,'xi')/self.c_omp
+                coord_key = 'yi' if is_vs_y else 'xi'
+                self.x_values = getattr(output, coord_key)/self.c_omp
                 if self.GetPlotParam('weighted'):
                     self.weights = getattr(output,'chi')
                 if self.GetPlotParam('mom_dim') == 0:
@@ -383,7 +435,8 @@ class PhasePanel:
 
             if self.GetPlotParam('prtl_type') == 1: #electons
                 self.energy_color = self.parent.electron_color
-                self.x_values = getattr(output,'xe')/self.c_omp
+                coord_key = 'ye' if is_vs_y else 'xe'
+                self.x_values = getattr(output, coord_key)/self.c_omp
                 if self.GetPlotParam('weighted'):
                     self.weights = getattr(output,'che')
                 if self.GetPlotParam('mom_dim') == 0:
@@ -394,7 +447,8 @@ class PhasePanel:
                     self.y_values = getattr(output,'we')
 
             self.xmin = 0
-            self.xmax = getattr(output,'bx').shape[2]/self.c_omp*self.istep
+            shape_idx = 1 if is_vs_y else 2
+            self.xmax = getattr(output,'bx').shape[shape_idx]/self.c_omp*self.istep
             self.xmax = self.xmax if (self.xmax != self.xmin) else self.xmin + 1
 
             inRange = np.ones(len(self.y_values), dtype=bool)
@@ -433,44 +487,83 @@ class PhasePanel:
                 xlim_0, xlim_1, ylim_0, ylim_1, plane = self.viewport
                 xlim_min, xlim_max = min(xlim_0, xlim_1), max(xlim_0, xlim_1)
                 ylim_min, ylim_max = min(ylim_0, ylim_1), max(ylim_0, ylim_1)
-
-                if plane in [0, 1]:
-                    inRange &= (self.x_values >= xlim_min) & (self.x_values <= xlim_max)
-                    self.xmin = xlim_min
-                    self.xmax = xlim_max
-
                 prtl_type = self.GetPlotParam('prtl_type')
-                if plane == 0: # x-y plane
-                    y_key = 'yi' if prtl_type == 0 else 'ye'
-                    if hasattr(output, y_key):
-                        try:
-                            y_coord = getattr(output, y_key) / self.c_omp
-                            inRange &= (y_coord >= ylim_min) & (y_coord <= ylim_max)
-                        except Exception:
-                            pass
-                elif plane == 1: # x-z plane
-                    z_key = 'zi' if prtl_type == 0 else 'ze'
-                    if hasattr(output, z_key):
-                        try:
-                            z_coord = getattr(output, z_key) / self.c_omp
-                            inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
-                        except Exception:
-                            pass
-                elif plane == 2: # y-z plane
-                    y_key = 'yi' if prtl_type == 0 else 'ye'
-                    z_key = 'zi' if prtl_type == 0 else 'ze'
-                    if hasattr(output, y_key):
-                        try:
-                            y_coord = getattr(output, y_key) / self.c_omp
-                            inRange &= (y_coord >= xlim_min) & (y_coord <= xlim_max)
-                        except Exception:
-                            pass
-                    if hasattr(output, z_key):
-                        try:
-                            z_coord = getattr(output, z_key) / self.c_omp
-                            inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
-                        except Exception:
-                            pass
+
+                if is_vs_y:
+                    if plane == 0:
+                        inRange &= (self.x_values >= ylim_min) & (self.x_values <= ylim_max)
+                        self.xmin = ylim_min
+                        self.xmax = ylim_max
+                        x_key = 'xi' if prtl_type == 0 else 'xe'
+                        if hasattr(output, x_key):
+                            try:
+                                x_coord = getattr(output, x_key) / self.c_omp
+                                inRange &= (x_coord >= xlim_min) & (x_coord <= xlim_max)
+                            except Exception:
+                                pass
+                    elif plane == 1:
+                        x_key = 'xi' if prtl_type == 0 else 'xe'
+                        z_key = 'zi' if prtl_type == 0 else 'ze'
+                        if hasattr(output, x_key):
+                            try:
+                                x_coord = getattr(output, x_key) / self.c_omp
+                                inRange &= (x_coord >= xlim_min) & (x_coord <= xlim_max)
+                            except Exception:
+                                pass
+                        if hasattr(output, z_key):
+                            try:
+                                z_coord = getattr(output, z_key) / self.c_omp
+                                inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                            except Exception:
+                                pass
+                    elif plane == 2:
+                        inRange &= (self.x_values >= xlim_min) & (self.x_values <= xlim_max)
+                        self.xmin = xlim_min
+                        self.xmax = xlim_max
+                        z_key = 'zi' if prtl_type == 0 else 'ze'
+                        if hasattr(output, z_key):
+                            try:
+                                z_coord = getattr(output, z_key) / self.c_omp
+                                inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                            except Exception:
+                                pass
+                else:
+                    if plane in [0, 1]:
+                        inRange &= (self.x_values >= xlim_min) & (self.x_values <= xlim_max)
+                        self.xmin = xlim_min
+                        self.xmax = xlim_max
+
+                    if plane == 0: # x-y plane
+                        y_key = 'yi' if prtl_type == 0 else 'ye'
+                        if hasattr(output, y_key):
+                            try:
+                                y_coord = getattr(output, y_key) / self.c_omp
+                                inRange &= (y_coord >= ylim_min) & (y_coord <= ylim_max)
+                            except Exception:
+                                pass
+                    elif plane == 1: # x-z plane
+                        z_key = 'zi' if prtl_type == 0 else 'ze'
+                        if hasattr(output, z_key):
+                            try:
+                                z_coord = getattr(output, z_key) / self.c_omp
+                                inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                            except Exception:
+                                pass
+                    elif plane == 2: # y-z plane
+                        y_key = 'yi' if prtl_type == 0 else 'ye'
+                        z_key = 'zi' if prtl_type == 0 else 'ze'
+                        if hasattr(output, y_key):
+                            try:
+                                y_coord = getattr(output, y_key) / self.c_omp
+                                inRange &= (y_coord >= xlim_min) & (y_coord <= xlim_max)
+                            except Exception:
+                                pass
+                        if hasattr(output, z_key):
+                            try:
+                                z_coord = getattr(output, z_key) / self.c_omp
+                                inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                            except Exception:
+                                pass
 
             # Calculate pmin and pmax after filtering!
             self.pmin = 0.0 if len(self.y_values[inRange]) == 0 else min(self.y_values[inRange])
@@ -501,6 +594,7 @@ class PhasePanel:
         # In order to speed up the plotting, we only recalculate everything
         # if necessary.
         self.IntRegionLines = []
+        is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
         # Figure out the color and ylabel
         # Choose the particle type and px, py, or pz
         self.UpdateLabelsandColors()
@@ -542,7 +636,7 @@ class PhasePanel:
 
         self.shock_line = self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
                    PathEffects.Normal()])
-        if not self.GetPlotParam('show_shock'):
+        if is_vs_y or not self.GetPlotParam('show_shock'):
             self.shock_line.set_visible(False)
 
 
@@ -632,8 +726,12 @@ class PhasePanel:
             self.CbarTickFormatter()
 
 
-        if self.GetPlotParam('show_shock'):
+        is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
+        if self.GetPlotParam('show_shock') and not is_vs_y:
             self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
+            self.shock_line.set_visible(True)
+        else:
+            self.shock_line.set_visible(False)
 
         self.UpdateLabelsandColors()
         self.axes.set_xlabel(self.x_label, labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
@@ -649,15 +747,21 @@ class PhasePanel:
 
         self.axes.set_ylim(self.ymin, self.ymax)
 
-        if self.parent.MainParamDict['SetxLim'] and self.parent.MainParamDict['LinkSpatial'] == 1:
-            if self.parent.MainParamDict['xLimsRelative']:
-                self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
-                                   self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+        if is_vs_y:
+            if self.parent.MainParamDict['SetyLim'] and self.parent.MainParamDict['LinkSpatial'] == 1:
+                self.axes.set_xlim(self.parent.MainParamDict['yBottom'], self.parent.MainParamDict['yTop'])
             else:
-                self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
-
+                self.axes.set_xlim(self.xmin, self.xmax)
         else:
-            self.axes.set_xlim(self.xmin,self.xmax)
+            if self.parent.MainParamDict['SetxLim'] and self.parent.MainParamDict['LinkSpatial'] == 1:
+                if self.parent.MainParamDict['xLimsRelative']:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+
+            else:
+                self.axes.set_xlim(self.xmin,self.xmax)
 
     def CbarTickFormatter(self):
         ''' A helper function that sets the cbar ticks & labels. This used to be

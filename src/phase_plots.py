@@ -40,6 +40,7 @@ class PhasePanel:
                        'set_p_max': False,
                        'spatial_x': True,
                        'spatial_y': False,
+                       'oneD_axis': 'x',
                        'symmetric': False,
                        'interpolation': 'nearest',
                        'filter_by_viewport': True,
@@ -77,6 +78,10 @@ class PhasePanel:
             'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
             'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
 
+        is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
+        self.SetPlotParam('spatial_x', not is_vs_y, update_plot=False)
+        self.SetPlotParam('spatial_y', False, update_plot=False)
+
         # A variable that controls whether the energy integration region
         # is shown
         self.IntRegVar = Tk.IntVar()
@@ -94,7 +99,7 @@ class PhasePanel:
         # This should only be called by the user-interaction when all the plots already exist...
         # so we can take some shortcut  s and assume a lot of things are already created.
         self.SetPlotParam('show_int_region', self.IntRegVar.get(), update_plot = False)
-        if self.IntRegVar.get() == True:
+        if self.IntRegVar.get() == True and self.GetPlotParam('oneD_axis') == 'x':
             # We need to show the integration region.
 
             # Look for all the spectra plots and plot the lines.
@@ -132,7 +137,7 @@ class PhasePanel:
 
         # CLOSES IF. NOW IF WE TURN OFF THE INTEGRATION REGIONS, we have to delete all the lines.
         else:
-            for i in xrange(len(self.IntRegionLines)):
+            for i in range(len(self.IntRegionLines)):
                 self.IntRegionLines.pop(0).remove()
         # Update the canvas
         self.parent.canvas.draw()
@@ -159,8 +164,9 @@ class PhasePanel:
         Need_Energy = Need_Energy or self.GetPlotParam('set_E_min')
         Need_Energy = Need_Energy or self.GetPlotParam('set_E_max')
 
+        is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
         if self.GetPlotParam('prtl_type') == 0:
-            self.arrs_needed.append('xi')
+            self.arrs_needed.append('yi' if is_vs_y else 'xi')
             if self.GetPlotParam('weighted'):
                 self.arrs_needed.append('chi')
             if Need_Energy:
@@ -175,7 +181,7 @@ class PhasePanel:
                 self.arrs_needed.append('wi')
 
         if self.GetPlotParam('prtl_type') == 1:
-            self.arrs_needed.append('xe')
+            self.arrs_needed.append('ye' if is_vs_y else 'xe')
             if self.GetPlotParam('weighted'):
                 self.arrs_needed.append('che')
             if Need_Energy:
@@ -195,13 +201,21 @@ class PhasePanel:
                 prtl_file = self.FigWrap.parent.PathDict['Prtl'][0]
                 with h5py.File(prtl_file, 'r') as f:
                     if self.GetPlotParam('prtl_type') == 0:
-                        if 'yi' in f or 'y_2' in f:
-                            self.arrs_needed.append('yi')
+                        if is_vs_y:
+                            if 'xi' in f or 'x_2' in f:
+                                self.arrs_needed.append('xi')
+                        else:
+                            if 'yi' in f or 'y_2' in f:
+                                self.arrs_needed.append('yi')
                         if 'zi' in f or 'z_2' in f:
                             self.arrs_needed.append('zi')
                     else:
-                        if 'ye' in f or 'y_1' in f:
-                            self.arrs_needed.append('ye')
+                        if is_vs_y:
+                            if 'xe' in f or 'x_1' in f:
+                                self.arrs_needed.append('xe')
+                        else:
+                            if 'ye' in f or 'y_1' in f:
+                                self.arrs_needed.append('ye')
                         if 'ze' in f or 'z_1' in f:
                             self.arrs_needed.append('ze')
             except Exception:
@@ -240,9 +254,14 @@ class PhasePanel:
         self.key_name += self.direction_opts[self.GetPlotParam('mom_dim')]
         self.key_name += str(int(self.parent.MainParamDict['PrtlStride']))
 
+        if self.GetPlotParam('oneD_axis') == 'y':
+            self.key_name += '_axis_y'
+
         if self.viewport is not None:
             xlim_0, xlim_1, ylim_0, ylim_1, plane = self.viewport
             self.key_name += f'_vp_{xlim_0:.4f}_{xlim_1:.4f}_{ylim_0:.4f}_{ylim_1:.4f}_{plane}'
+
+        is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
 
         if self.key_name in self.parent.DataDict.keys():
             self.hist2d = self.parent.DataDict[self.key_name]
@@ -257,7 +276,8 @@ class PhasePanel:
 
             # x_min & x_max before boostin'
             self.xmin = 0
-            self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.istep
+            shape_idx = 1 if is_vs_y else 2
+            self.xmax = self.FigWrap.LoadKey('bx').shape[shape_idx]/self.c_omp*self.istep
             self.xmax = self.xmax if (self.xmax != self.xmin) else self.xmin + 1
 
             # First calculate beta and gamma
@@ -278,7 +298,8 @@ class PhasePanel:
             # the velocity and LF in the boosted frame.
             if self.GetPlotParam('prtl_type') == 0:
                 # first load everything downstream frame
-                self.x_values = self.FigWrap.LoadKey('xi')/self.c_omp
+                coord_key = 'yi' if is_vs_y else 'xi'
+                self.x_values = self.FigWrap.LoadKey(coord_key)/self.c_omp
 
                 u = self.FigWrap.LoadKey('ui')
                 v = self.FigWrap.LoadKey('vi')
@@ -287,7 +308,8 @@ class PhasePanel:
                     self.weights = self.FigWrap.LoadKey('chi')
 
             if self.GetPlotParam('prtl_type') == 1: #electons
-                self.x_values = self.FigWrap.LoadKey('xe')/self.c_omp
+                coord_key = 'ye' if is_vs_y else 'xe'
+                self.x_values = self.FigWrap.LoadKey(coord_key)/self.c_omp
                 u = self.FigWrap.LoadKey('ue')
                 v = self.FigWrap.LoadKey('ve')
                 w = self.FigWrap.LoadKey('we')
@@ -349,40 +371,75 @@ class PhasePanel:
                 xlim_0, xlim_1, ylim_0, ylim_1, plane = self.viewport
                 xlim_min, xlim_max = min(xlim_0, xlim_1), max(xlim_0, xlim_1)
                 ylim_min, ylim_max = min(ylim_0, ylim_1), max(ylim_0, ylim_1)
-
-                if plane in [0, 1]:
-                    inRange &= (self.x_values >= xlim_min) & (self.x_values <= xlim_max)
-                    self.xmin = xlim_min
-                    self.xmax = xlim_max
-
                 prtl_type = self.GetPlotParam('prtl_type')
-                if plane == 0: # x-y plane
-                    y_key = 'yi' if prtl_type == 0 else 'ye'
-                    try:
-                        y_coord = self.FigWrap.LoadKey(y_key) / self.c_omp
-                        inRange &= (y_coord >= ylim_min) & (y_coord <= ylim_max)
-                    except KeyError:
-                        pass
-                elif plane == 1: # x-z plane
-                    z_key = 'zi' if prtl_type == 0 else 'ze'
-                    try:
-                        z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
-                        inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
-                    except KeyError:
-                        pass
-                elif plane == 2: # y-z plane
-                    y_key = 'yi' if prtl_type == 0 else 'ye'
-                    z_key = 'zi' if prtl_type == 0 else 'ze'
-                    try:
-                        y_coord = self.FigWrap.LoadKey(y_key) / self.c_omp
-                        inRange &= (y_coord >= xlim_min) & (y_coord <= xlim_max)
-                    except KeyError:
-                        pass
-                    try:
-                        z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
-                        inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
-                    except KeyError:
-                        pass
+
+                if is_vs_y:
+                    if plane == 0:
+                        inRange &= (self.x_values >= ylim_min) & (self.x_values <= ylim_max)
+                        self.xmin = ylim_min
+                        self.xmax = ylim_max
+                        x_key = 'xi' if prtl_type == 0 else 'xe'
+                        try:
+                            x_coord = self.FigWrap.LoadKey(x_key) / self.c_omp
+                            inRange &= (x_coord >= xlim_min) & (x_coord <= xlim_max)
+                        except KeyError:
+                            pass
+                    elif plane == 1:
+                        x_key = 'xi' if prtl_type == 0 else 'xe'
+                        z_key = 'zi' if prtl_type == 0 else 'ze'
+                        try:
+                            x_coord = self.FigWrap.LoadKey(x_key) / self.c_omp
+                            inRange &= (x_coord >= xlim_min) & (x_coord <= xlim_max)
+                        except KeyError:
+                            pass
+                        try:
+                            z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                            inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                        except KeyError:
+                            pass
+                    elif plane == 2:
+                        inRange &= (self.x_values >= xlim_min) & (self.x_values <= xlim_max)
+                        self.xmin = xlim_min
+                        self.xmax = xlim_max
+                        z_key = 'zi' if prtl_type == 0 else 'ze'
+                        try:
+                            z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                            inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                        except KeyError:
+                            pass
+                else:
+                    if plane in [0, 1]:
+                        inRange &= (self.x_values >= xlim_min) & (self.x_values <= xlim_max)
+                        self.xmin = xlim_min
+                        self.xmax = xlim_max
+
+                    if plane == 0: # x-y plane
+                        y_key = 'yi' if prtl_type == 0 else 'ye'
+                        try:
+                            y_coord = self.FigWrap.LoadKey(y_key) / self.c_omp
+                            inRange &= (y_coord >= ylim_min) & (y_coord <= ylim_max)
+                        except KeyError:
+                            pass
+                    elif plane == 1: # x-z plane
+                        z_key = 'zi' if prtl_type == 0 else 'ze'
+                        try:
+                            z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                            inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                        except KeyError:
+                            pass
+                    elif plane == 2: # y-z plane
+                        y_key = 'yi' if prtl_type == 0 else 'ye'
+                        z_key = 'zi' if prtl_type == 0 else 'ze'
+                        try:
+                            y_coord = self.FigWrap.LoadKey(y_key) / self.c_omp
+                            inRange &= (y_coord >= xlim_min) & (y_coord <= xlim_max)
+                        except KeyError:
+                            pass
+                        try:
+                            z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                            inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                        except KeyError:
+                            pass
 
             inRange &= np.logical_not(nan_ind)
 
@@ -424,7 +481,8 @@ class PhasePanel:
 
             # Choose the particle type and px, py, or pz
             if self.GetPlotParam('prtl_type') == 0: #protons
-                self.x_values = self.FigWrap.LoadKey('xi')/self.c_omp
+                coord_key = 'yi' if is_vs_y else 'xi'
+                self.x_values = self.FigWrap.LoadKey(coord_key)/self.c_omp
                 if self.GetPlotParam('weighted'):
                     self.weights = self.FigWrap.LoadKey('chi')
                 if self.GetPlotParam('mom_dim') == 0:
@@ -436,7 +494,8 @@ class PhasePanel:
 
             if self.GetPlotParam('prtl_type') == 1: #electons
                 self.energy_color = self.parent.electron_color
-                self.x_values = self.FigWrap.LoadKey('xe')/self.c_omp
+                coord_key = 'ye' if is_vs_y else 'xe'
+                self.x_values = self.FigWrap.LoadKey(coord_key)/self.c_omp
                 if self.GetPlotParam('weighted'):
                     self.weights = self.FigWrap.LoadKey('che')
                 if self.GetPlotParam('mom_dim') == 0:
@@ -447,7 +506,8 @@ class PhasePanel:
                     self.y_values = self.FigWrap.LoadKey('we')
 
             self.xmin = 0
-            self.xmax = self.FigWrap.LoadKey('bx').shape[2]/self.c_omp*self.istep
+            shape_idx = 1 if is_vs_y else 2
+            self.xmax = self.FigWrap.LoadKey('bx').shape[shape_idx]/self.c_omp*self.istep
             self.xmax = self.xmax if (self.xmax != self.xmin) else self.xmin + 1
 
             inRange = np.ones(len(self.y_values), dtype=bool)
@@ -486,40 +546,75 @@ class PhasePanel:
                 xlim_0, xlim_1, ylim_0, ylim_1, plane = self.viewport
                 xlim_min, xlim_max = min(xlim_0, xlim_1), max(xlim_0, xlim_1)
                 ylim_min, ylim_max = min(ylim_0, ylim_1), max(ylim_0, ylim_1)
-
-                if plane in [0, 1]:
-                    inRange &= (self.x_values >= xlim_min) & (self.x_values <= xlim_max)
-                    self.xmin = xlim_min
-                    self.xmax = xlim_max
-
                 prtl_type = self.GetPlotParam('prtl_type')
-                if plane == 0: # x-y plane
-                    y_key = 'yi' if prtl_type == 0 else 'ye'
-                    try:
-                        y_coord = self.FigWrap.LoadKey(y_key) / self.c_omp
-                        inRange &= (y_coord >= ylim_min) & (y_coord <= ylim_max)
-                    except KeyError:
-                        pass
-                elif plane == 1: # x-z plane
-                    z_key = 'zi' if prtl_type == 0 else 'ze'
-                    try:
-                        z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
-                        inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
-                    except KeyError:
-                        pass
-                elif plane == 2: # y-z plane
-                    y_key = 'yi' if prtl_type == 0 else 'ye'
-                    z_key = 'zi' if prtl_type == 0 else 'ze'
-                    try:
-                        y_coord = self.FigWrap.LoadKey(y_key) / self.c_omp
-                        inRange &= (y_coord >= xlim_min) & (y_coord <= xlim_max)
-                    except KeyError:
-                        pass
-                    try:
-                        z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
-                        inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
-                    except KeyError:
-                        pass
+
+                if is_vs_y:
+                    if plane == 0:
+                        inRange &= (self.x_values >= ylim_min) & (self.x_values <= ylim_max)
+                        self.xmin = ylim_min
+                        self.xmax = ylim_max
+                        x_key = 'xi' if prtl_type == 0 else 'xe'
+                        try:
+                            x_coord = self.FigWrap.LoadKey(x_key) / self.c_omp
+                            inRange &= (x_coord >= xlim_min) & (x_coord <= xlim_max)
+                        except KeyError:
+                            pass
+                    elif plane == 1:
+                        x_key = 'xi' if prtl_type == 0 else 'xe'
+                        z_key = 'zi' if prtl_type == 0 else 'ze'
+                        try:
+                            x_coord = self.FigWrap.LoadKey(x_key) / self.c_omp
+                            inRange &= (x_coord >= xlim_min) & (x_coord <= xlim_max)
+                        except KeyError:
+                            pass
+                        try:
+                            z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                            inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                        except KeyError:
+                            pass
+                    elif plane == 2:
+                        inRange &= (self.x_values >= xlim_min) & (self.x_values <= xlim_max)
+                        self.xmin = xlim_min
+                        self.xmax = xlim_max
+                        z_key = 'zi' if prtl_type == 0 else 'ze'
+                        try:
+                            z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                            inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                        except KeyError:
+                            pass
+                else:
+                    if plane in [0, 1]:
+                        inRange &= (self.x_values >= xlim_min) & (self.x_values <= xlim_max)
+                        self.xmin = xlim_min
+                        self.xmax = xlim_max
+
+                    if plane == 0: # x-y plane
+                        y_key = 'yi' if prtl_type == 0 else 'ye'
+                        try:
+                            y_coord = self.FigWrap.LoadKey(y_key) / self.c_omp
+                            inRange &= (y_coord >= ylim_min) & (y_coord <= ylim_max)
+                        except KeyError:
+                            pass
+                    elif plane == 1: # x-z plane
+                        z_key = 'zi' if prtl_type == 0 else 'ze'
+                        try:
+                            z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                            inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                        except KeyError:
+                            pass
+                    elif plane == 2: # y-z plane
+                        y_key = 'yi' if prtl_type == 0 else 'ye'
+                        z_key = 'zi' if prtl_type == 0 else 'ze'
+                        try:
+                            y_coord = self.FigWrap.LoadKey(y_key) / self.c_omp
+                            inRange &= (y_coord >= xlim_min) & (y_coord <= xlim_max)
+                        except KeyError:
+                            pass
+                        try:
+                            z_coord = self.FigWrap.LoadKey(z_key) / self.c_omp
+                            inRange &= (z_coord >= ylim_min) & (z_coord <= ylim_max)
+                        except KeyError:
+                            pass
 
             # Calculate pmin and pmax after filtering!
             self.pmin = 0.0 if len(self.y_values[inRange]) == 0 else min(self.y_values[inRange])
@@ -557,7 +652,10 @@ class PhasePanel:
         for line in self.IntRegionLines:
             line.set_color(self.energy_color)
         #set the xlabels
-        if self.parent.MainParamDict['DoLorentzBoost'] and np.abs(self.parent.MainParamDict['GammaBoost'])>1E-8:
+        is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
+        if is_vs_y:
+            self.x_label = r'$y\ [c/\omega_{\rm pe}]$'
+        elif self.parent.MainParamDict['DoLorentzBoost'] and np.abs(self.parent.MainParamDict['GammaBoost'])>1E-8:
             self.x_label = r'$x\prime\ [c/\omega_{\rm pe}]$'
         else:
             self.x_label = r'$x\ [c/\omega_{\rm pe}]$'
@@ -568,6 +666,7 @@ class PhasePanel:
         # In order to speed up the plotting, we only recalculate everything
         # if necessary.
         self.IntRegionLines = []
+        is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
         # Figure out the color and ylabel
         # Choose the particle type and px, py, or pz
         self.UpdateLabelsandColors()
@@ -595,13 +694,22 @@ class PhasePanel:
 
         self.gs = gridspec.GridSpecFromSubplotSpec(100,100, subplot_spec = self.parent.gs0[self.FigWrap.pos])#, bottom=0.2,left=0.1,right=0.95, top = 0.95)
 
-        if self.parent.MainParamDict['LinkSpatial'] == 1:
-            if self.FigWrap.pos == self.parent.first_x:
-                self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
+        if is_vs_y:
+            if self.parent.MainParamDict['LinkSpatial'] == 1:
+                if self.parent.first_y_1d is not None and self.FigWrap.pos != self.parent.first_y_1d:
+                    self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]], sharex = self.parent.SubPlotList[self.parent.first_y_1d[0]][self.parent.first_y_1d[1]].graph.axes)
+                else:
+                    self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
             else:
-                self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]], sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
+                self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
         else:
-            self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
+            if self.parent.MainParamDict['LinkSpatial'] == 1:
+                if self.parent.first_x is not None and self.FigWrap.pos != self.parent.first_x:
+                    self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]], sharex = self.parent.SubPlotList[self.parent.first_x[0]][self.parent.first_x[1]].graph.axes)
+                else:
+                    self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
+            else:
+                self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
 
         self.cax = self.axes.imshow(self.hist2d[0],
                                     cmap = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']],
@@ -615,7 +723,7 @@ class PhasePanel:
 
         self.shock_line = self.axes.axvline(self.parent.shock_loc, linewidth = 1.5, linestyle = '--', color = self.parent.shock_color, path_effects=[PathEffects.Stroke(linewidth=2, foreground='k'),
                    PathEffects.Normal()])
-        if not self.GetPlotParam('show_shock'):
+        if is_vs_y or not self.GetPlotParam('show_shock'):
             self.shock_line.set_visible(False)
 
 
@@ -631,34 +739,34 @@ class PhasePanel:
                                     cmap=new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']])
             # Make the colobar axis more like the real colorbar
             self.axC.tick_params(axis='x',
-                                which = 'both', # bothe major and minor ticks
-                                top = False, # turn off top ticks
-                                labelsize=self.parent.MainParamDict['NumFontSize'])
+                                 which = 'both', # bothe major and minor ticks
+                                 top = False, # turn off top ticks
+                                 labelsize=self.parent.MainParamDict['NumFontSize'])
 
             self.axC.tick_params(axis='y',          # changes apply to the y-axis
-                                which='both',      # both major and minor ticks are affected
-                                left=False,      # ticks along the bottom edge are off
-                                right=False,         # ticks along the top edge are off
-                                labelleft=False)
+                                 which='both',      # both major and minor ticks are affected
+                                 left=False,      # ticks along the bottom edge are off
+                                 right=False,         # ticks along the top edge are off
+                                 labelleft=False)
 
         else:
             self.cbar = self.axC.imshow(np.transpose(self.gradient)[::-1], aspect='auto',
                                     cmap=new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']])
             # Make the colobar axis more like the real colorbar
             self.axC.tick_params(axis='x',
-                                which = 'both', # bothe major and minor ticks
-                                top = False, # turn off top ticks
-                                bottom = False,
-                                labelbottom = False,
-                                labelsize=self.parent.MainParamDict['NumFontSize'])
+                                 which = 'both', # bothe major and minor ticks
+                                 top = False, # turn off top ticks
+                                 bottom = False,
+                                 labelbottom = False,
+                                 labelsize=self.parent.MainParamDict['NumFontSize'])
 
             self.axC.tick_params(axis='y',          # changes apply to the y-axis
-                                which='both',      # both major and minor ticks are affected
-                                left=False,      # ticks along the bottom edge are off
-                                right=True,         # ticks along the top edge are off
-                                labelleft=False,
-                                labelright=True,
-                                labelsize=self.parent.MainParamDict['NumFontSize'])
+                                 which='both',      # both major and minor ticks are affected
+                                 left=False,      # ticks along the bottom edge are off
+                                 right=True,         # ticks along the top edge are off
+                                 labelleft=False,
+                                 labelright=True,
+                                 labelsize=self.parent.MainParamDict['NumFontSize'])
 
         self.cbar.set_extent([0, 1.0, 0, 1.0])
 
@@ -705,8 +813,12 @@ class PhasePanel:
             self.CbarTickFormatter()
 
 
-        if self.GetPlotParam('show_shock'):
+        is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
+        if self.GetPlotParam('show_shock') and not is_vs_y:
             self.shock_line.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
+            self.shock_line.set_visible(True)
+        else:
+            self.shock_line.set_visible(False)
 
         self.UpdateLabelsandColors()
         self.axes.set_xlabel(self.x_label, labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
@@ -721,15 +833,21 @@ class PhasePanel:
             self.ymax = abs(self.ymin)
         self.axes.set_ylim(self.ymin, self.ymax)
 
-        if self.parent.MainParamDict['SetxLim'] and self.parent.MainParamDict['LinkSpatial'] == 1:
-            if self.parent.MainParamDict['xLimsRelative']:
-                self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
-                                   self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+        if is_vs_y:
+            if self.parent.MainParamDict['SetyLim'] and self.parent.MainParamDict['LinkSpatial'] == 1:
+                self.axes.set_xlim(self.parent.MainParamDict['yBottom'], self.parent.MainParamDict['yTop'])
             else:
-                self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
-
+                self.axes.set_xlim(self.xmin, self.xmax)
         else:
-            self.axes.set_xlim(self.xmin,self.xmax)
+            if self.parent.MainParamDict['SetxLim'] and self.parent.MainParamDict['LinkSpatial'] == 1:
+                if self.parent.MainParamDict['xLimsRelative']:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'] + self.parent.shock_loc,
+                                       self.parent.MainParamDict['xRight'] + self.parent.shock_loc)
+                else:
+                    self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
+
+            else:
+                self.axes.set_xlim(self.xmin,self.xmax)
 
     def CbarTickFormatter(self):
         ''' A helper function that sets the cbar ticks & labels. This used to be
@@ -838,18 +956,28 @@ class PhaseSettings(Tk.Toplevel):
                 value=i).grid(row = 2+i, sticky =Tk.W)
 
         # the Radiobox Control to choose the momentum dim
-        self.dimList = ['x-px', 'x-py', 'x-pz']
+        prefix = 'y' if self.parent.GetPlotParam('oneD_axis') == 'y' else 'x'
+        self.dimList = [f'{prefix}-px', f'{prefix}-py', f'{prefix}-pz']
         self.dimvar = Tk.IntVar()
         self.dimvar.set(self.parent.GetPlotParam('mom_dim'))
 
-        ttk.Label(frm, text='Dimenison:').grid(row = 1, column = 1, sticky = Tk.W)
+        ttk.Label(frm, text='Dimension:').grid(row = 1, column = 1, sticky = Tk.W)
 
+        self.dim_radiobuttons = []
         for i in range(len(self.dimList)):
-            ttk.Radiobutton(frm,
+            rb = ttk.Radiobutton(frm,
                 text=self.dimList[i],
                 variable=self.dimvar,
                 command = self.RadioDim,
-                value=i).grid(row = 2+i, column = 1, sticky = Tk.W)
+                value=i)
+            rb.grid(row = 2+i, column = 1, sticky = Tk.W)
+            self.dim_radiobuttons.append(rb)
+
+        self.AxisVar = Tk.StringVar()
+        self.AxisVar.set(self.parent.GetPlotParam('oneD_axis'))
+        ttk.Label(frm, text='Plot vs:').grid(row = 5, column = 0, sticky = Tk.W)
+        ttk.Radiobutton(frm, text='x', variable=self.AxisVar, value='x', command=self.AxisChanged).grid(row = 5, column = 1, sticky = Tk.W)
+        ttk.Radiobutton(frm, text='y', variable=self.AxisVar, value='y', command=self.AxisChanged).grid(row = 5, column = 1, sticky = Tk.E)
 
 
         # Control whether or not Cbar is shown
@@ -1022,7 +1150,8 @@ class PhaseSettings(Tk.Toplevel):
         if self.parent.GetPlotParam('show_shock')== self.ShockVar.get():
             pass
         else:
-            self.parent.shock_line.set_visible(self.ShockVar.get())
+            is_vs_y = (self.parent.GetPlotParam('oneD_axis') == 'y')
+            self.parent.shock_line.set_visible(self.ShockVar.get() and not is_vs_y)
             self.parent.SetPlotParam('show_shock', self.ShockVar.get())
 
 
@@ -1068,6 +1197,18 @@ class PhaseSettings(Tk.Toplevel):
             self.parent.UpdateLabelsandColors()
             self.parent.axes.set_ylabel(self.parent.y_label, labelpad = self.parent.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.parent.MainParamDict['AxLabelSize'])
             self.parent.SetPlotParam('mom_dim', self.dimvar.get())
+
+    def AxisChanged(self):
+        new_axis = self.AxisVar.get()
+        if new_axis == self.parent.GetPlotParam('oneD_axis'):
+            return
+        prefix = 'y' if new_axis == 'y' else 'x'
+        self.dimList = [f'{prefix}-px', f'{prefix}-py', f'{prefix}-pz']
+        for i, rb in enumerate(self.dim_radiobuttons):
+            rb.config(text=self.dimList[i])
+        self.parent.SetPlotParam('spatial_x', new_axis == 'x', update_plot=False)
+        self.parent.SetPlotParam('spatial_y', False, update_plot=False)
+        self.parent.SetPlotParam('oneD_axis', new_axis)
 
     def SymmetricHandler(self, *args):
         if self.parent.GetPlotParam('symmetric') == self.SymVar.get():
