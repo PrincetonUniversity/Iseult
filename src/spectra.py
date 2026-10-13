@@ -108,9 +108,13 @@ class SpectralPanel:
 
     def LoadData(self):
         self.c_omp = self.FigWrap.LoadKey('c_omp')
+        # The length, in cells, that the spatial axes are normalized by.
+        # Set centrally by MainApp.UpdateLengthScale(); equals c_omp when
+        # the electron-skin-depth normalization is selected.
+        self.length_scale = self.parent.length_scale
         self.istep = self.FigWrap.LoadKey('istep')
 #        self.gamma0 = self.FigWrap.LoadKey('gamma0')[0]
-        self.xsl = self.FigWrap.LoadKey('xsl')/self.c_omp
+        self.xsl = self.FigWrap.LoadKey('xsl')/self.length_scale
         # Load gamma-1 of the spectra
         self.gamma = self.FigWrap.LoadKey('gamma')
         self.massRatio = self.FigWrap.LoadKey('mi')/self.FigWrap.LoadKey('me')

@@ -54,6 +54,10 @@ class FFTPanel:
         ''' A Helper function that loads the data for the plot'''
         # Load c_omp, istep, and the line color
         self.c_omp = self.FigWrap.LoadKey('c_omp')
+        # The length, in cells, that the spatial axes are normalized by.
+        # Set centrally by MainApp.UpdateLengthScale(); equals c_omp when
+        # the electron-skin-depth normalization is selected.
+        self.length_scale = self.parent.length_scale
         self.istep = self.FigWrap.LoadKey('istep')
         self.line_color = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.5)
 
@@ -62,7 +66,7 @@ class FFTPanel:
             self.xaxis_values = self.parent.DataDict['xaxis_values']
         else:
             # x-values haven't been calculated yet, generate them then save them to the dictionary for later.
-            self.xaxis_values = np.arange(self.FigWrap.LoadKey('bx')[0,:,:].shape[1])/self.c_omp*self.istep
+            self.xaxis_values = np.arange(self.FigWrap.LoadKey('bx')[0,:,:].shape[1])/self.length_scale*self.istep
             self.parent.DataDict['xaxis_values'] = np.copy(self.xaxis_values)
 
         # Load the left & right locations
@@ -209,7 +213,7 @@ class FFTPanel:
         if self.GetPlotParam('set_y_max'):
             self.axes.set_ylim(top = self.GetPlotParam('y_max'))
 
-        self.axes.set_xlabel(r'$k \ [\omega_{pe}/c]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size  = self.parent.MainParamDict['AxLabelSize'])
+        self.axes.set_xlabel(self.parent.KLabel(), labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size  = self.parent.MainParamDict['AxLabelSize'])
         self.axes.set_ylabel(self.ylabel, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
     def refresh(self):

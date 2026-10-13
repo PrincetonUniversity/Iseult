@@ -77,6 +77,10 @@ class BPanel:
         # First see of the x_axis and y_axis values have already been calculated
         # and stored in the DataDict for this time step
         self.c_omp = getattr(output, 'c_omp')
+        # The length, in cells, that the spatial axes are normalized by.
+        # Set centrally by Oengus.UpdateLengthScale(); equals c_omp when
+        # the electron-skin-depth normalization is selected.
+        self.length_scale = self.parent.length_scale
         self.istep = getattr(output, 'istep')
 
 
@@ -91,8 +95,8 @@ class BPanel:
             self.cmap = self.GetPlotParam('cmap')
         # see if the axis values are saved in the data dict
         # x-values haven't been calculated yet, generate them then save them to the dictionary for later.
-        self.xaxis_values = np.arange(getattr(output, 'bx')[0,:,:].shape[1])/self.c_omp*self.istep
-        self.yaxis_values = np.arange(getattr(output, 'bx')[0,:,:].shape[0])/self.c_omp*self.istep
+        self.xaxis_values = np.arange(getattr(output, 'bx')[0,:,:].shape[1])/self.length_scale*self.istep
+        self.yaxis_values = np.arange(getattr(output, 'bx')[0,:,:].shape[0])/self.length_scale*self.istep
 
 
         if self.GetPlotParam('mag_plot_type') == 0: # set f to thetaB
@@ -204,9 +208,9 @@ class BPanel:
                                             aspect= 'auto')
 
             self.ymin = 0
-            self.ymax =  self.cax.get_array().shape[0]/self.c_omp*self.istep
+            self.ymax =  self.cax.get_array().shape[0]/self.length_scale*self.istep
             self.xmin = 0
-            self.xmax =  self.cax.get_array().shape[1]/self.c_omp*self.istep
+            self.xmax =  self.cax.get_array().shape[1]/self.length_scale*self.istep
 
             self.vmin = self.cax.get_array().min()
             if self.GetPlotParam('set_v_min'):
@@ -298,11 +302,11 @@ class BPanel:
                 self.axes.set_ylim(self.parent.MainParamDict['yBottom'],self.parent.MainParamDict['yTop'])
             else:
                 self.axes.set_ylim(self.ymin, self.ymax)
-            self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+            self.axes.set_xlabel(self.parent.LengthLabel('x'), labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             if self.parent.MainParamDict['2DSlicePlane'] == 0:
-                self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_ylabel(self.parent.LengthLabel('y'), labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             if self.parent.MainParamDict['2DSlicePlane'] == 1:
-                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_ylabel(self.parent.LengthLabel('z'), labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
         else:
             self.axes = self.figure.add_subplot(self.gs[self.parent.axes_extent[0]:self.parent.axes_extent[1], self.parent.axes_extent[2]:self.parent.axes_extent[3]])
@@ -345,7 +349,7 @@ class BPanel:
                     self.axes.set_xlim(self.parent.MainParamDict['yBottom'], self.parent.MainParamDict['yTop'])
                 else:
                     self.axes.set_xlim(self.yaxis_values[0], self.yaxis_values[-1])
-                self.axes.set_xlabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_xlabel(self.parent.LengthLabel('y'), labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             else:
                 if self.parent.MainParamDict['SetxLim']:
                     if self.parent.MainParamDict['xLimsRelative']:
@@ -355,7 +359,7 @@ class BPanel:
                         self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
                 else:
                     self.axes.set_xlim(self.xaxis_values[0],self.xaxis_values[-1])
-                self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_xlabel(self.parent.LengthLabel('x'), labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             self.axes.set_ylabel(self.ylabel, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
         ####
@@ -453,7 +457,7 @@ class BPanel:
                 self.cax.set_data(self.f[:,self.parent.ySlice,:])
 
             self.ymin = 0
-            self.ymax =  self.cax.get_array().shape[0]/self.c_omp*self.istep
+            self.ymax =  self.cax.get_array().shape[0]/self.length_scale*self.istep
             self.xmin = 0
             self.xmax = self.xaxis_values[-1]
             self.TwoDan.set_text(self.ann_label)
@@ -488,9 +492,9 @@ class BPanel:
 
             self.CbarTickFormatter()
             if self.parent.MainParamDict['2DSlicePlane'] == 0:
-                self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_ylabel(self.parent.LengthLabel('y'), labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             if self.parent.MainParamDict['2DSlicePlane'] == 1:
-                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_ylabel(self.parent.LengthLabel('z'), labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
             if self.GetPlotParam('show_shock'):
                 self.shockline_2d.set_xdata([self.parent.shock_loc,self.parent.shock_loc])

@@ -62,12 +62,16 @@ class FFTPanel:
         ''' A Helper function that loads the data for the plot'''
         # Load c_omp, istep, and the line color
         self.c_omp = getattr(output,'c_omp')
+        # The length, in cells, that the spatial axes are normalized by.
+        # Set centrally by Oengus.UpdateLengthScale(); equals c_omp when
+        # the electron-skin-depth normalization is selected.
+        self.length_scale = self.parent.length_scale
         self.istep = getattr(output,'istep')
         self.line_color = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.5)
 
         # Load the x-axis
         # x-values haven't been calculated yet, generate them then save them to the dictionary for later.
-        self.xaxis_values = np.arange(getattr(output,'bx')[0,:,:].shape[1])/self.c_omp*self.istep
+        self.xaxis_values = np.arange(getattr(output,'bx')[0,:,:].shape[1])/self.length_scale*self.istep
 
         # Load the left & right locations
         self.left_loc = self.parent.MainParamDict['FFTLeft'] + self.parent.shock_loc*self.parent.MainParamDict['FFTRelative']
@@ -183,7 +187,7 @@ class FFTPanel:
         if self.GetPlotParam('set_y_max'):
             self.axes.set_ylim(top = self.GetPlotParam('y_max'))
 
-        self.axes.set_xlabel(r'$k \ [\omega_{pe}/c]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size  = self.parent.MainParamDict['AxLabelSize'])
+        self.axes.set_xlabel(self.parent.KLabel(), labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size  = self.parent.MainParamDict['AxLabelSize'])
         self.axes.set_ylabel(self.ylabel, labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
     def GetPlotParam(self, keyname):

@@ -7,6 +7,7 @@ import pathlib
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1] / 'src'))
 
 from moments_panel import MomentsPanel
+import length_norms
 
 class MockParent:
     def __init__(self):
@@ -26,11 +27,23 @@ class MockParent:
             'zSlice': 0,
             'shock_loc': 0.0,
             'shock_color': 'r',
+            'LengthNorm': length_norms.DEFAULT_NORM,
         }
         self.ion_color = 'r'
         self.electron_color = 'b'
         self.figure = None
         self.SubPlotList = None
+        # The panels divide by parent.length_scale rather than by c_omp. With
+        # the default normalization this is just MockOutput.c_omp, so every
+        # expectation below is unchanged.
+        self.length_norm = length_norms.DEFAULT_NORM
+        self.length_scale = 2.0
+
+    def LengthLabel(self, axis = 'x', prime = False):
+        return length_norms.axis_label(self.length_norm, axis, prime = prime)
+
+    def KLabel(self):
+        return length_norms.k_axis_label(self.length_norm)
 
 class MockOutput:
     def __init__(self):
@@ -289,6 +302,17 @@ def test_fields_density_mag_panel_vs_y():
             self.b0 = 1.0
             self.SubPlotList = []
             self.figure = None
+            # The panels divide by parent.length_scale rather than by c_omp;
+            # with the default normalization it is just FieldOutput.c_omp.
+            self.MainParamDict['LengthNorm'] = length_norms.DEFAULT_NORM
+            self.length_norm = length_norms.DEFAULT_NORM
+            self.length_scale = 2.0
+
+        def LengthLabel(self, axis = 'x', prime = False):
+            return length_norms.axis_label(self.length_norm, axis, prime = prime)
+
+        def KLabel(self):
+            return length_norms.k_axis_label(self.length_norm)
 
     class FieldOutput:
         def __init__(self):
@@ -682,3 +706,64 @@ def test_subplot_wrapper_get_plot_param_fallback():
     assert wrapper.GetPlotParam('nonexistent_key', default='my_default') == 'my_default'
 
 
+
+
+# --- the spatial normalization actually reaching a panel -------------------
+# MockOutput has c_omp = 2 and mi/me = 16, so the ion skin depth is
+# c_omp*sqrt(16) = 8 cells, four times the electron skin depth. Switching the
+# normalization must therefore divide every plotted length by four.
+
+def _panel_at(norm, scale):
+    parent = MockParent()
+    parent.MainParamDict['LengthNorm'] = norm
+    parent.length_norm = norm
+    parent.length_scale = scale
+    panel = MomentsPanel(parent, (0, 0), {'filter_by_viewport': False})
+    panel.update_data(MockOutput())
+    return panel
+
+
+def test_panel_picks_up_the_parents_scale():
+    panel = _panel_at(length_norms.ION_SKIN_DEPTH, 8.0)
+    assert panel.length_scale == 8.0
+
+
+def test_ion_skin_depth_shrinks_the_x_extent_fourfold():
+    d_e = _panel_at(length_norms.ELECTRON_SKIN_DEPTH, 2.0)
+    d_i = _panel_at(length_norms.ION_SKIN_DEPTH, 8.0)
+    # xe runs 2..10 cells, i.e. 1..5 d_e but only 0.25..1.25 d_i
+    assert d_e.xmax == pytest.approx(5.0)
+    assert d_i.xmax == pytest.approx(1.25)
+    assert d_e.xmax / d_i.xmax == pytest.approx(4.0)
+
+
+def test_cells_normalization_plots_raw_cell_coordinates():
+    panel = _panel_at(length_norms.CELLS, 1.0)
+    assert panel.xmax == pytest.approx(10.0)
+    assert panel.xmin == pytest.approx(2.0)
+
+
+def test_histogram_bins_stay_in_cells_whatever_the_unit():
+    """The numba kernels take raw particle coordinates, so bin_width and xmin
+    are handed to them in cells. The binned result must be identical however
+    the axis is labelled."""
+    d_e = _panel_at(length_norms.ELECTRON_SKIN_DEPTH, 2.0)
+    d_i = _panel_at(length_norms.ION_SKIN_DEPTH, 8.0)
+    assert np.allclose(d_e.ecounts, d_i.ecounts)
+    assert np.allclose(d_e.ex, d_i.ex)
+    assert np.allclose(d_e.icounts, d_i.icounts)
+
+
+def test_x_bins_follow_the_unit():
+    d_e = _panel_at(length_norms.ELECTRON_SKIN_DEPTH, 2.0)
+    d_i = _panel_at(length_norms.ION_SKIN_DEPTH, 8.0)
+    # same physical edges, expressed in different units
+    assert np.allclose(d_e.x_bins * 2.0, d_i.x_bins * 8.0)
+
+
+def test_axis_label_follows_the_unit():
+    parent = MockParent()
+    parent.length_norm = length_norms.ION_SKIN_DEPTH
+    assert parent.LengthLabel('x') == r'$x\ [c/\omega_{\rm pi}]$'
+    parent.length_norm = length_norms.CELLS
+    assert parent.LengthLabel('x') == r'$x\ [{\rm cells}]$'

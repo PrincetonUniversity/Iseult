@@ -198,6 +198,10 @@ class FieldsPanel:
         # First see of the x_axis and y_axis values have already been calculated
         # and stored in the DataDict for this time step
         self.c_omp = self.FigWrap.LoadKey('c_omp')
+        # The length, in cells, that the spatial axes are normalized by.
+        # Set centrally by MainApp.UpdateLengthScale(); equals c_omp when
+        # the electron-skin-depth normalization is selected.
+        self.length_scale = self.parent.length_scale
         self.istep = self.FigWrap.LoadKey('istep')
         if self.GetPlotParam('cmap') == 'None':
             if self.GetPlotParam('UseDivCmap'):
@@ -220,31 +224,31 @@ class FieldsPanel:
         else:
             # x-values haven't been calculated yet, generate them then save them to the dictionary for later.
             if self.GetPlotParam('field_type') ==0 or self.GetPlotParam('field_type') == 3:
-                self.xaxis_values = np.arange(self.FigWrap.LoadKey('bx').shape[2])/self.c_omp*self.istep
+                self.xaxis_values = np.arange(self.FigWrap.LoadKey('bx').shape[2])/self.length_scale*self.istep
             elif self.GetPlotParam('field_type') ==1:
-                self.xaxis_values = np.arange(self.FigWrap.LoadKey('ex').shape[2])/self.c_omp*self.istep
+                self.xaxis_values = np.arange(self.FigWrap.LoadKey('ex').shape[2])/self.length_scale*self.istep
             elif self.GetPlotParam('field_type') ==2:
-                self.xaxis_values = np.arange(self.FigWrap.LoadKey('jx').shape[2])/self.c_omp*self.istep
+                self.xaxis_values = np.arange(self.FigWrap.LoadKey('jx').shape[2])/self.length_scale*self.istep
             elif self.GetPlotParam('field_type') == 4:
                 vkey = 'v3xi' if self.GetPlotParam('show_x') else ('v3yi' if self.GetPlotParam('show_y') else ('v3zi' if self.GetPlotParam('show_z') else 'v3xi'))
                 try:
-                    self.xaxis_values = np.arange(self.FigWrap.LoadKey(vkey).shape[2])/self.c_omp*self.istep
+                    self.xaxis_values = np.arange(self.FigWrap.LoadKey(vkey).shape[2])/self.length_scale*self.istep
                 except (AttributeError, KeyError):
                     fallback_key = 'bx' if 'bx' in self.parent.DataDict else ('ex' if 'ex' in self.parent.DataDict else None)
                     if fallback_key:
-                        self.xaxis_values = np.arange(self.FigWrap.LoadKey(fallback_key).shape[2])/self.c_omp*self.istep
+                        self.xaxis_values = np.arange(self.FigWrap.LoadKey(fallback_key).shape[2])/self.length_scale*self.istep
                     else:
-                        self.xaxis_values = np.arange(10)/self.c_omp*self.istep
+                        self.xaxis_values = np.arange(10)/self.length_scale*self.istep
             elif self.GetPlotParam('field_type') == 5:
                 vkey = 'v3x' if self.GetPlotParam('show_x') else ('v3y' if self.GetPlotParam('show_y') else ('v3z' if self.GetPlotParam('show_z') else 'v3x'))
                 try:
-                    self.xaxis_values = np.arange(self.FigWrap.LoadKey(vkey).shape[2])/self.c_omp*self.istep
+                    self.xaxis_values = np.arange(self.FigWrap.LoadKey(vkey).shape[2])/self.length_scale*self.istep
                 except (AttributeError, KeyError):
                     fallback_key = 'bx' if 'bx' in self.parent.DataDict else ('ex' if 'ex' in self.parent.DataDict else None)
                     if fallback_key:
-                        self.xaxis_values = np.arange(self.FigWrap.LoadKey(fallback_key).shape[2])/self.c_omp*self.istep
+                        self.xaxis_values = np.arange(self.FigWrap.LoadKey(fallback_key).shape[2])/self.length_scale*self.istep
                     else:
-                        self.xaxis_values = np.arange(10)/self.c_omp*self.istep
+                        self.xaxis_values = np.arange(10)/self.length_scale*self.istep
             self.parent.DataDict['xaxis_values'] = np.copy(self.xaxis_values)
 
         if 'yaxis_values' in self.parent.DataDict.keys():
@@ -259,7 +263,7 @@ class FieldsPanel:
                     ny = self.FigWrap.LoadKey('bx').shape[1]
             except Exception:
                 ny = 10
-            self.yaxis_values = np.arange(ny)/self.c_omp*self.istep
+            self.yaxis_values = np.arange(ny)/self.length_scale*self.istep
             self.parent.DataDict['yaxis_values'] = np.copy(self.yaxis_values)
 
         self.flagx = 0 # 0 means it didn't plot, 1 means it is 1D only, 2 means it returned a 3d object
@@ -634,9 +638,9 @@ class FieldsPanel:
                     self.cax = self.axes.imshow(np.ones([2,2]), norm = self.norm(), origin = 'lower', aspect = 'auto')
                 self.cax.set_data(np.ma.masked_array(np.empty([2,2]), mask = np.ones([2,2])))
             self.ymin = 0
-            self.ymax =  self.cax.get_array().shape[0]/self.c_omp*self.istep
+            self.ymax =  self.cax.get_array().shape[0]/self.length_scale*self.istep
             self.xmin = 0
-            self.xmax =  self.cax.get_array().shape[1]/self.c_omp*self.istep
+            self.xmax =  self.cax.get_array().shape[1]/self.length_scale*self.istep
             self.cax.set_cmap(new_cmaps.cmaps[self.cmap])
 
             if self.plotFlag>=0:
@@ -739,14 +743,14 @@ class FieldsPanel:
             else:
                 self.axes.set_ylim(self.ymin, self.ymax)
             if self.parent.MainParamDict['2DSlicePlane'] == 0:
-                self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
-                self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_xlabel(self.parent.LengthLabel('x'), labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_ylabel(self.parent.LengthLabel('y'), labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             if self.parent.MainParamDict['2DSlicePlane'] == 1:
-                self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
-                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_xlabel(self.parent.LengthLabel('x'), labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_ylabel(self.parent.LengthLabel('z'), labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             if self.parent.MainParamDict['2DSlicePlane'] == 2:
-                self.axes.set_xlabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
-                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_xlabel(self.parent.LengthLabel('y'), labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_ylabel(self.parent.LengthLabel('z'), labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
         else: # It's 1D
             is_vs_y = (self.GetPlotParam('oneD_axis') == 'y')
@@ -883,7 +887,7 @@ class FieldsPanel:
                     self.axes.set_xlim(self.parent.MainParamDict['yBottom'], self.parent.MainParamDict['yTop'])
                 else:
                     self.axes.set_xlim(self.yaxis_values[0], self.yaxis_values[-1])
-                self.axes.set_xlabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_xlabel(self.parent.LengthLabel('y'), labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             else:
                 if self.parent.MainParamDict['SetxLim']:
                     if self.parent.MainParamDict['xLimsRelative']:
@@ -893,7 +897,7 @@ class FieldsPanel:
                         self.axes.set_xlim(self.parent.MainParamDict['xLeft'], self.parent.MainParamDict['xRight'])
                 else:
                     self.axes.set_xlim(self.xaxis_values[0],self.xaxis_values[-1])
-                self.axes.set_xlabel(r'$x\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_xlabel(self.parent.LengthLabel('x'), labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
             if self.GetPlotParam('set_v_min'):
                 self.axes.set_ylim(bottom = self.GetPlotParam('v_min'))
@@ -1104,9 +1108,9 @@ class FieldsPanel:
             self.axC.set_visible(self.plotFlag !=-1)
             if self.plotFlag != -1:
                 self.ymin = 0
-                self.ymax =  self.cax.get_array().shape[0]/self.c_omp*self.istep
+                self.ymax =  self.cax.get_array().shape[0]/self.length_scale*self.istep
                 self.xmin = 0
-                self.xmax =  self.cax.get_array().shape[1]/self.c_omp*self.istep
+                self.xmax =  self.cax.get_array().shape[1]/self.length_scale*self.istep
                 self.clims = [self.cax.get_array().min(), self.cax.get_array().max()]
 
 
@@ -1151,12 +1155,12 @@ class FieldsPanel:
             if self.GetPlotParam('show_shock'):
                 self.shockline_2d.set_xdata([self.parent.shock_loc,self.parent.shock_loc])
             if self.parent.MainParamDict['2DSlicePlane'] == 0:
-                self.axes.set_ylabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_ylabel(self.parent.LengthLabel('y'), labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             if self.parent.MainParamDict['2DSlicePlane'] == 1:
-                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_ylabel(self.parent.LengthLabel('z'), labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
             if self.parent.MainParamDict['2DSlicePlane'] == 2:
-                self.axes.set_xlabel(r'$y\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
-                self.axes.set_ylabel(r'$z\ [c/\omega_{\rm pe}]$', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_xlabel(self.parent.LengthLabel('y'), labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+                self.axes.set_ylabel(self.parent.LengthLabel('z'), labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
 
         if self.GetPlotParam('show_streamlines') and self.GetPlotParam('twoD'):
             streamlines.refresh_streamlines(self)
