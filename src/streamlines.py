@@ -8,6 +8,8 @@ import numpy as np
 import matplotlib
 import matplotlib.patches
 
+import length_norms
+
 
 def add_streamline_plot_keys(panel):
     """Add magnetic and electric field components needed for streamlines or Az contours."""
@@ -184,6 +186,13 @@ def add_streamline_buttons(settings, panel, starting_row):
     Tk.ttk.Entry(settings.frm, textvariable=settings.az_contours_fiducial_x, width=7).grid(
         row=az_row + 4, column=1, sticky=Tk.E
     )
+
+    # Pinned to ELECTRON_SKIN_DEPTH on purpose: the fiducial is a fixed gauge
+    # reference and does NOT follow MainParamDict['LengthNorm'].
+    Tk.ttk.Label(
+        settings.frm,
+        text="[%s]" % length_norms.unit_plain(length_norms.ELECTRON_SKIN_DEPTH),
+    ).grid(row=az_row + 4, column=2, sticky=Tk.W)
 
 
 def __show_streamline_handler(settings, panel):
