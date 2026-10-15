@@ -27,6 +27,7 @@ from fft_plots import FFTPanel
 from total_energy_plots import TotEnergyPanel
 from moments import MomentsPanel
 import length_norms
+import time_norms
 from functools import partial
 import subprocess, yaml
 from PIL import Image
@@ -1080,27 +1081,39 @@ class SettingsFrame(Tk.Toplevel):
                                            *tuple(length_norms.NORM_NAMES))
         lengthNormChooser.grid(row =4, column = 1, sticky = Tk.W + Tk.E)
 
+        # Which unit time is reported in, built the same way as the length
+        # unit chooser directly above.
+        cur_time_name = time_norms.norm_name(self.parent.MainParamDict['TimeNorm'])
+        self.timeNormVar = Tk.StringVar(self)
+        self.timeNormVar.set(cur_time_name)
+        self.timeNormVar.trace('w', self.TimeNormChanged)
+
+        ttk.Label(frm, text="Time unit:").grid(row=5)
+        timeNormChooser = ttk.OptionMenu(frm, self.timeNormVar, cur_time_name,
+                                         *tuple(time_norms.NORM_NAMES))
+        timeNormChooser.grid(row =5, column = 1, sticky = Tk.W + Tk.E)
+
 
         # Make an entry to change the number of columns
         self.columnNum = Tk.StringVar(self)
         self.columnNum.set(self.parent.MainParamDict['NumOfCols']) # default value
         self.columnNum.trace('w', self.ColumnNumChanged)
-        ttk.Label(frm, text="# of columns:").grid(row=5)
+        ttk.Label(frm, text="# of columns:").grid(row=6)
         self.ColumnSpin = Spinbox(frm,  from_=1, to=self.parent.MainParamDict['MaxCols'], textvariable=self.columnNum, width = 6)
-        self.ColumnSpin.grid(row =5, column = 1, sticky = Tk.W + Tk.E)
+        self.ColumnSpin.grid(row =6, column = 1, sticky = Tk.W + Tk.E)
 
         # Make an entry to change the number of columns
         self.rowNum = Tk.StringVar(self)
         self.rowNum.set(self.parent.MainParamDict['NumOfRows']) # default value
         self.rowNum.trace('w', self.RowNumChanged)
-        ttk.Label(frm, text="# of rows:").grid(row=6)
+        ttk.Label(frm, text="# of rows:").grid(row=7)
         self.RowSpin = Spinbox(frm, from_=1, to=self.parent.MainParamDict['MaxRows'], textvariable=self.rowNum, width = 6)
-        self.RowSpin.grid(row =6, column = 1, sticky = Tk.W + Tk.E)
+        self.RowSpin.grid(row =7, column = 1, sticky = Tk.W + Tk.E)
 
         self.PrtlStrideVar = Tk.StringVar()
         self.PrtlStrideVar.set(str(self.parent.MainParamDict['PrtlStride']))
-        ttk.Entry(frm, textvariable = self.PrtlStrideVar, width =6).grid(row =7, column =1, sticky = Tk.W +Tk.E)
-        ttk.Label(frm, text='Particle stride').grid(row= 7,column =0)
+        ttk.Entry(frm, textvariable = self.PrtlStrideVar, width =6).grid(row =8, column =1, sticky = Tk.W +Tk.E)
+        ttk.Label(frm, text='Particle stride').grid(row= 8,column =0)
 
         # Control whether or not Title is shown
         self.TitleVar = Tk.IntVar()
@@ -1117,13 +1130,13 @@ class SettingsFrame(Tk.Toplevel):
         self.xright.set(str(self.parent.MainParamDict['xRight']))
 
 
-        ttk.Label(frm, text = 'min').grid(row= 8, column = 1, sticky = Tk.N)
-        ttk.Label(frm, text = 'max').grid(row= 8, column = 2, sticky = Tk.N)
+        ttk.Label(frm, text = 'min').grid(row= 9, column = 1, sticky = Tk.N)
+        ttk.Label(frm, text = 'max').grid(row= 9, column = 2, sticky = Tk.N)
         cb = ttk.Checkbutton(frm, text ='Set xlim',
                         variable = self.LimVar)
-        cb.grid(row = 9, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.xleft, width = 8).grid(row = 9, column =1, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.xright, width = 8).grid(row = 9, column =2, sticky = Tk.N)
+        cb.grid(row = 10, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.xleft, width = 8).grid(row = 10, column =1, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.xright, width = 8).grid(row = 10, column =2, sticky = Tk.N)
 
 
 
@@ -1140,9 +1153,9 @@ class SettingsFrame(Tk.Toplevel):
 
 
         ttk.Checkbutton(frm, text ='Set ylim',
-                        variable = self.yLimVar).grid(row = 10, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.yleft, width = 8 ).grid(row = 10, column =1, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.yright, width =8 ).grid(row = 10, column =2, sticky = Tk.N)
+                        variable = self.yLimVar).grid(row = 11, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.yleft, width = 8 ).grid(row = 11, column =1, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.yright, width =8 ).grid(row = 11, column =2, sticky = Tk.N)
 
         self.kLimVar = Tk.IntVar()
         self.kLimVar.set(self.parent.MainParamDict['SetkLim'])
@@ -1156,15 +1169,15 @@ class SettingsFrame(Tk.Toplevel):
         self.kright.set(str(self.parent.MainParamDict['kRight']))
 
 
-        ttk.Checkbutton(frm, text ='Set klim', variable = self.kLimVar).grid(row = 11, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.kleft, width = 8 ).grid(row = 11, column =1, sticky = Tk.N)
-        ttk.Entry(frm, textvariable=self.kright, width =8 ).grid(row = 11, column =2, sticky = Tk.N)
+        ttk.Checkbutton(frm, text ='Set klim', variable = self.kLimVar).grid(row = 12, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.kleft, width = 8 ).grid(row = 12, column =1, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.kright, width =8 ).grid(row = 12, column =2, sticky = Tk.N)
 
         self.xRelVar = Tk.IntVar()
         self.xRelVar.set(self.parent.MainParamDict['xLimsRelative'])
         self.xRelVar.trace('w', self.xRelChanged)
         ttk.Checkbutton(frm, text = "x limits & zooms relative to shock",
-                        variable = self.xRelVar).grid(row = 12, columnspan = 3, sticky = Tk.W)
+                        variable = self.xRelVar).grid(row = 13, columnspan = 3, sticky = Tk.W)
 
         framecb = ttk.Frame(frm)
 
@@ -1189,7 +1202,7 @@ class SettingsFrame(Tk.Toplevel):
                             command = self.RadioPlane,
                             value=2)
         self.yzbutton.pack(side = Tk.LEFT, expand = 0)
-        framecb.grid(row = 13, columnspan = 4)
+        framecb.grid(row = 14, columnspan = 4)
 
         framex = ttk.Frame(frm)
         self.xSliceVar = Tk.IntVar()
@@ -1222,7 +1235,7 @@ class SettingsFrame(Tk.Toplevel):
         self.sliderx.bind("<ButtonRelease-1>", self.xUpdateValue)
 
 
-        framex.grid(row = 14, columnspan =4)
+        framex.grid(row = 15, columnspan =4)
 
         framey = ttk.Frame(frm)
         self.ySliceVar = Tk.IntVar()
@@ -1255,7 +1268,7 @@ class SettingsFrame(Tk.Toplevel):
         self.slidery.bind("<ButtonRelease-1>", self.yUpdateValue)
 
 
-        framey.grid(row = 15, columnspan =4)
+        framey.grid(row = 16, columnspan =4)
 
         framez = ttk.Frame(frm)
         self.zSliceVar = Tk.IntVar()
@@ -1288,11 +1301,11 @@ class SettingsFrame(Tk.Toplevel):
             self.sliderz.state(['disabled'])
 
 
-        framez.grid(row = 16, columnspan =4)
+        framez.grid(row = 17, columnspan =4)
 
         cb = ttk.Checkbutton(frm, text = "Show Title",
                         variable = self.TitleVar)
-        cb.grid(row = 17, sticky = Tk.W)
+        cb.grid(row = 18, sticky = Tk.W)
         # Control whether or not axes are shared with a radio box:
         self.toLinkList = ['None', 'All spatial', 'All non p-x', 'All 2-D spatial']
         self.LinkedVar = Tk.IntVar()
@@ -1313,7 +1326,7 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Aspect = 1",
                                 variable = self.AspectVar)
-        cb.grid(row = 17, column = 1, sticky = Tk.W)
+        cb.grid(row = 18, column = 1, sticky = Tk.W)
 
         self.ConstantShockVar = Tk.IntVar()
         self.ConstantShockVar.set(self.parent.MainParamDict['ConstantShockVel'])
@@ -1321,12 +1334,12 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Constant Shock v",
                                 variable = self.ConstantShockVar)
-        cb.grid(row = 17, column = 2, sticky = Tk.W)
+        cb.grid(row = 18, column = 2, sticky = Tk.W)
 
         self.Average1DVar = Tk.IntVar()
         self.Average1DVar.set(self.parent.MainParamDict['Average1D'])
         self.Average1DVar.trace('w', self.AverageChanged)
-        ttk.Checkbutton(frm, text='1D Average',variable = self.Average1DVar).grid(row = 18, column = 2, sticky = Tk.W)
+        ttk.Checkbutton(frm, text='1D Average',variable = self.Average1DVar).grid(row = 19, column = 2, sticky = Tk.W)
 
         self.CbarOrientation = Tk.IntVar()
         self.CbarOrientation.set(self.parent.MainParamDict['HorizontalCbars'])
@@ -1334,7 +1347,7 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Horizontal Cbars",
                                 variable = self.CbarOrientation)
-        cb.grid(row = 18, sticky = Tk.W)
+        cb.grid(row = 19, sticky = Tk.W)
 
 
         self.LinkKVar = Tk.IntVar()
@@ -1343,18 +1356,18 @@ class SettingsFrame(Tk.Toplevel):
 
         cb = ttk.Checkbutton(frm, text = "Share k-axes",
                                 variable = self.LinkKVar)
-        cb.grid(row = 18, column =1, sticky = Tk.W)
+        cb.grid(row = 19, column =1, sticky = Tk.W)
 
 
 
         self.LorentzBoostVar = Tk.IntVar()
         self.LorentzBoostVar.set(self.parent.MainParamDict['DoLorentzBoost'])
         self.LorentzBoostVar.trace('w', self.LorentzBoostChanged)
-        cb = ttk.Checkbutton(frm, text='Boost PhasePlots', variable =  self.LorentzBoostVar).grid(row = 19, sticky = Tk.W)
-        ttk.Label(frm, text='Gamma/Beta = \r (- for left boost)').grid(row= 19, rowspan = 2,column =1, sticky = Tk.E)
+        cb = ttk.Checkbutton(frm, text='Boost PhasePlots', variable =  self.LorentzBoostVar).grid(row = 20, sticky = Tk.W)
+        ttk.Label(frm, text='Gamma/Beta = \r (- for left boost)').grid(row= 20, rowspan = 2,column =1, sticky = Tk.E)
         self.GammaVar = Tk.StringVar()
         self.GammaVar.set(str(self.parent.MainParamDict['GammaBoost']))
-        ttk.Entry(frm, textvariable=self.GammaVar, width = 7).grid(row = 19, column = 2, sticky = Tk.N)
+        ttk.Entry(frm, textvariable=self.GammaVar, width = 7).grid(row = 20, column = 2, sticky = Tk.N)
 
     def xScaleHandler(self, e):
         # if changing the scale will change the value of the parameter, do so
@@ -1463,6 +1476,26 @@ class SettingsFrame(Tk.Toplevel):
         else:
             self.parent.MainParamDict['LinkSpatial'] = self.LinkedVar.get()
             self.parent.RenewCanvas(ForceRedraw = True)
+    def TimeNormChanged(self, *args):
+        '''Changing the time unit only changes what is displayed: the stored
+        time stays in omega_pe^-1, so unlike the length unit there are no
+        stored limits to convert and no caches to purge. A redraw is enough.'''
+        new_norm = time_norms.norm_from_name(self.timeNormVar.get())
+        if new_norm == self.parent.MainParamDict['TimeNorm']:
+            return
+
+        self.parent.MainParamDict['TimeNorm'] = new_norm
+        self.parent.UpdateTimeScale()
+
+        # If the requested unit is undefined for this run, time_norms falls
+        # back; snap the menu to what is really being shown. MainParamDict is
+        # set first, so the re-entrant trace this write fires returns at the
+        # guard above.
+        self.parent.MainParamDict['TimeNorm'] = self.parent.time_norm
+        self.timeNormVar.set(time_norms.norm_name(self.parent.time_norm))
+
+        self.parent.RenewCanvas(ForceRedraw = True)
+
     def LengthNormChanged(self, *args):
         '''Changing the spatial normalization changes the meaning of every
         stored length, so the view limits are converted into the new units
@@ -2031,6 +2064,8 @@ class MainApp(Tk.Tk):
         # are set by UpdateLengthScale() once c_omp has been read.
         self.length_scale = 1.0
         self.length_norm = self.MainParamDict['LengthNorm']
+        self.time_scale = 1.0
+        self.time_norm = self.MainParamDict['TimeNorm']
 
         # now root.geometry() returns valid size/placement
         self.minsize(self.winfo_width(), self.winfo_height())
@@ -2209,6 +2244,10 @@ class MainApp(Tk.Tk):
                               # by. See src/length_norms.py; 0 == electron skin
                               # depth, which is what Iseult has always used.
                               'LengthNorm': length_norms.DEFAULT_NORM,
+                              # Which unit time is reported in. See
+                              # src/time_norms.py; 0 == 1/omega_pe, which is
+                              # what Iseult has always used.
+                              'TimeNorm': time_norms.DEFAULT_NORM,
                               'LinkSpatial': 1,
                               'HCbarExtent': [0, 4, 0, -1],
                               'Recording': False,
@@ -2236,6 +2275,8 @@ class MainApp(Tk.Tk):
         # 'LengthNorm' key, and a hand-edited .yml may hold anything at all.
         self.MainParamDict['LengthNorm'] = length_norms.sanitize(
             self.MainParamDict['LengthNorm'])
+        self.MainParamDict['TimeNorm'] = time_norms.sanitize(
+            self.MainParamDict['TimeNorm'])
         self.electron_color = self.MainParamDict['electron_color']
         self.ion_color = self.MainParamDict['ion_color']
         self.shock_color = self.MainParamDict['shock_color']
@@ -2604,6 +2645,48 @@ class MainApp(Tk.Tk):
         return length_norms.k_axis_label(getattr(self, 'length_norm',
                                                  self.MainParamDict['LengthNorm']))
 
+    def UpdateTimeScale(self, param_filepath = None):
+        '''Recompute the time unit, in omega_pe^-1, that displayed times are
+        divided by. Sets self.time_scale and self.time_norm.
+
+        Note this is a *display* scale only. self.DataDict['time'] stays in
+        omega_pe^-1 because shock_speed is derived from it (cells per
+        omega_pe^-1) and multiplied back out in shock_loc; rescaling the
+        stored value would silently move the shock marker.'''
+        if param_filepath is None:
+            param_filepath = self.PathDict['Param'][self.TimeStep.value-1]
+
+        requested = time_norms.sanitize(self.MainParamDict['TimeNorm'])
+
+        # c, mi & me are only needed by the derived units, and must not be
+        # fatal if absent -- time_norms falls back to 1/omega_pe.
+        params = {}
+        for key in ('c', 'mi', 'me', 'sigma'):
+            try:
+                params[key] = data_loading.load_dataset(param_filepath, key, slice(0,1))
+            except (KeyError, OSError, ValueError):
+                params[key] = None
+
+        self.time_scale, self.time_norm, msg = time_norms.time_scale(
+            requested, c_omp = self.c_omp, **params)
+        time_norms.warn_about(msg)
+        return self.time_scale
+
+    def TimeLabel(self):
+        '''The matplotlib axis label for a time axis, in the current unit.'''
+        return time_norms.axis_label(getattr(self, 'time_norm',
+                                             self.MainParamDict['TimeNorm']))
+
+    def DisplayTime(self, t):
+        '''A stored time (omega_pe^-1) converted to the displayed unit.'''
+        return np.asarray(t) / getattr(self, 'time_scale', 1.0)
+
+    def TitleTime(self):
+        '''The "t = ... [unit]" fragment for the figure title.'''
+        return time_norms.title_time(
+            getattr(self, 'time_norm', self.MainParamDict['TimeNorm']),
+            self.DisplayTime(self.DataDict['time']))
+
     def InvalidateLengthCache(self):
         '''Drop every cached quantity that could be expressed in normalized
         spatial units.
@@ -2667,6 +2750,7 @@ class MainApp(Tk.Tk):
         # downstream divides by self.length_scale (in cells) rather than by
         # c_omp, so this is the single place the convention is set.
         self.UpdateLengthScale(filepath)
+        self.UpdateTimeScale(filepath)
 
         # FIND THE SLICE
         filepath = self.PathDict['Flds'][self.TimeStep.value-1]
@@ -3480,7 +3564,7 @@ class MainApp(Tk.Tk):
 
         if self.MainParamDict['ShowTitle']:
             tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].suffix
-            self.f.suptitle(os.path.abspath(self.dirname)+ '/*'+tmpstr+r' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time']), size = 15)
+            self.f.suptitle(os.path.abspath(self.dirname)+ '/*'+tmpstr+' at time ' + self.TitleTime(), size = 15)
         if keep_view:
             self.LoadView()
 
@@ -3612,7 +3696,7 @@ class MainApp(Tk.Tk):
 
         if self.MainParamDict['ShowTitle']:
             tmpstr = self.PathDict['Prtl'][self.TimeStep.value-1].suffix
-            self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+r' at time t = %d $\omega_{pe}^{-1}$'  % round(self.DataDict['time']), size = 15)
+            self.f.suptitle(os.path.abspath(self.dirname)+ '/*.'+tmpstr+' at time ' + self.TitleTime(), size = 15)
 
         if keep_view:
             self.LoadView()
