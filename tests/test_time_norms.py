@@ -140,6 +140,43 @@ def test_title_fragment():
     assert tn.title_time(tn.TIMESTEPS, 205000.004) == r't = 205000 ${\rm steps}$'
 
 
+# --- title precision ------------------------------------------------------
+# A unit coarser than omega_pe^-1 (scale > 1) fits fewer of itself into the
+# same run, so an integer title throws away real precision.
+
+@pytest.mark.parametrize('norm', [tn.INVERSE_OMEGA_PI,
+                                  tn.INVERSE_OMEGA_CE,
+                                  tn.INVERSE_OMEGA_CI])
+def test_coarse_units_keep_a_decimal(norm):
+    assert tn.decimals(norm) == 1
+
+
+def test_decimals_follow_the_scale_being_coarse():
+    """The rule, rather than the table: anything with scale > 1 is coarser
+    than omega_pe^-1 and must keep a decimal."""
+    for norm in range(len(tn.NORM_NAMES)):
+        s, used, _ = tn.time_scale(norm, c=C, c_omp=C_OMP, mi=MI, me=ME,
+                                   sigma=SIGMA)
+        assert used == norm
+        assert tn.decimals(norm) == (1 if s > 1.0 else 0)
+
+
+def test_small_electron_gyration_time_is_not_rounded_away():
+    """sigma << 1 makes Omega_ce^-1 a long time, so few of them fit in a
+    run; t = 3 would be hiding most of the information."""
+    t_stored = 350.0
+    s, _, _ = tn.time_scale(tn.INVERSE_OMEGA_CE, sigma=1e-4)
+    assert tn.title_time(tn.INVERSE_OMEGA_CE, t_stored / s) == \
+        r't = 3.5 $\Omega_{\rm ce}^{-1}$'
+
+
+def test_ion_plasma_time_keeps_a_decimal_early_in_a_run():
+    t_stored = 100.0
+    s, _, _ = tn.time_scale(tn.INVERSE_OMEGA_PI, mi=1836.0, me=1.0)
+    assert tn.title_time(tn.INVERSE_OMEGA_PI, t_stored / s) == \
+        r't = 2.3 $\omega_{\rm pi}^{-1}$'
+
+
 @pytest.mark.parametrize('norm', [0, 1, 2, 3, 4])
 def test_every_norm_has_a_name_and_labels(norm):
     assert tn.NORM_NAMES[norm]
@@ -265,9 +302,11 @@ def test_ion_gyration_title_shows_one_decimal():
         r't = 18.0 $\Omega_{\rm ci}^{-1}$'
 
 
-@pytest.mark.parametrize('norm', [tn.INVERSE_OMEGA_PE, tn.INVERSE_OMEGA_PI,
-                                  tn.INVERSE_OMEGA_CE, tn.TIMESTEPS])
+@pytest.mark.parametrize('norm', [tn.INVERSE_OMEGA_PE, tn.TIMESTEPS])
 def test_other_units_title_stays_integer(norm):
+    """omega_pe^-1 is the reference, and a step is c/c_omp of one -- so the
+    step count is always the largest number on offer. Only these two can
+    safely round to an integer."""
     assert tn.decimals(norm) == 0
     assert '.' not in tn.title_time(norm, 1234.56).split('$')[0]
 

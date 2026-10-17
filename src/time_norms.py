@@ -90,13 +90,24 @@ _UNIT_PLAIN = {
 
 
 # How many decimals the figure title shows, by normalization id; anything
-# absent gets none.  An ion gyration time is a small number -- tens, or less
-# early in a run -- so rounding it to an integer throws away real precision.
+# absent gets none.
+#
+# The rule is the unit's own coarseness: a unit whose ``scale`` exceeds one
+# is coarser than ``omega_pe^{-1}``, so the same run spans fewer of them and
+# rounding to an integer throws away real precision.  That is every derived
+# unit except time steps, which are *finer* than ``omega_pe^{-1}`` (one step
+# is ``c/c_omp`` of them, well under one) and so always print large.
+#
+#   omega_pi^{-1}  t/sqrt(mi/me)        /43 at the true mass ratio
+#   Omega_ce^{-1}  t*sqrt(sigma)        /100 at sigma = 1e-4
+#   Omega_ci^{-1}  t*sqrt(sigma)*me/mi  tens, or less early in a run
 #
 # This is per-unit rather than adaptive on the value: a rule like "one decimal
 # below 100" would change the title's format partway through a run, which
 # looks like flicker when the frames are played as a movie.
 _UNIT_DECIMALS = {
+    INVERSE_OMEGA_PI: 1,
+    INVERSE_OMEGA_CE: 1,
     INVERSE_OMEGA_CI: 1,
 }
 
