@@ -76,52 +76,52 @@ class TotEnergyPanel:
         self.totalcolor = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.0)
         self.fieldcolor = new_cmaps.cmaps[self.parent.MainParamDict['ColorMap']](0.8)
 
-        self.electron_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalElectronEnergy,
+        self.electron_plot = self.axes.plot(self.parent.DisplayTime(self.parent.TotalEnergyTimes), self.parent.TotalElectronEnergy,
                                             ls= ':', marker = '^', markeredgecolor = self.prtlcolor,
                                             color = self.prtlcolor, visible = self.GetPlotParam('show_electron_E'))
-        self.ion_plot = self.axes.plot(self.parent.TotalEnergyTimes,  self.parent.TotalIonEnergy,
+        self.ion_plot = self.axes.plot(self.parent.DisplayTime(self.parent.TotalEnergyTimes),  self.parent.TotalIonEnergy,
                                        ls= ':', marker = 'v', markeredgecolor = self.prtlcolor,
                                        color = self.prtlcolor, visible = self.GetPlotParam('show_ion_E'))
-        self.prtl_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalElectronEnergy + self.parent.TotalIonEnergy,
+        self.prtl_plot = self.axes.plot(self.parent.DisplayTime(self.parent.TotalEnergyTimes), self.parent.TotalElectronEnergy + self.parent.TotalIonEnergy,
                                         ls= ':', marker = 'd', markeredgecolor = self.prtlcolor,
                                         color = self.prtlcolor, visible = self.GetPlotParam('show_prtl_KE'))
 
-        self.Bx_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalBxEnergy,
+        self.Bx_plot = self.axes.plot(self.parent.DisplayTime(self.parent.TotalEnergyTimes), self.parent.TotalBxEnergy,
                                        ls= ':', marker = '1', markeredgecolor = self.fieldcolor,
                                        color = self.fieldcolor, visible = self.GetPlotParam('show_Bx_energy'))
-        self.By_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalByEnergy,
+        self.By_plot = self.axes.plot(self.parent.DisplayTime(self.parent.TotalEnergyTimes), self.parent.TotalByEnergy,
                                        ls= ':', marker = '2', markeredgecolor = self.fieldcolor,
                                        color = self.fieldcolor, visible = self.GetPlotParam('show_By_energy'))
-        self.Bz_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalBzEnergy,
+        self.Bz_plot = self.axes.plot(self.parent.DisplayTime(self.parent.TotalEnergyTimes), self.parent.TotalBzEnergy,
                                        ls= ':', marker = '3', markeredgecolor = self.fieldcolor,
                                        color = self.fieldcolor, visible = self.GetPlotParam('show_Bz_energy'))
 
-        self.Ex_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalExEnergy,
+        self.Ex_plot = self.axes.plot(self.parent.DisplayTime(self.parent.TotalEnergyTimes), self.parent.TotalExEnergy,
                                        ls= ':', marker = '4', markeredgecolor = 'green',
                                        color = 'green', visible = self.GetPlotParam('show_Ex_energy'))
-        self.Ey_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalEyEnergy,
+        self.Ey_plot = self.axes.plot(self.parent.DisplayTime(self.parent.TotalEnergyTimes), self.parent.TotalEyEnergy,
                                        ls= ':', marker = 'CARETLEFT', markeredgecolor = 'green',
                                        color = 'green', visible = self.GetPlotParam('show_Ey_energy'))
-        self.Ez_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalEzEnergy,
+        self.Ez_plot = self.axes.plot(self.parent.DisplayTime(self.parent.TotalEnergyTimes), self.parent.TotalEzEnergy,
                                        ls= ':', marker = 'CARETRIGHT', markeredgecolor = 'green',
                                        color = 'green', visible = self.GetPlotParam('show_Ez_energy'))
 
-        self.mag_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy,
+        self.mag_plot = self.axes.plot(self.parent.DisplayTime(self.parent.TotalEnergyTimes), self.parent.TotalMagEnergy,
                                        ls= ':', marker = '*',  markersize = 10, markeredgecolor = self.fieldcolor,
                                        color = self.fieldcolor, visible = self.GetPlotParam('show_B_E'))
-        self.e_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalElectricEnergy,
+        self.e_plot = self.axes.plot(self.parent.DisplayTime(self.parent.TotalEnergyTimes), self.parent.TotalElectricEnergy,
                                      ls= ':', marker = 's', markeredgecolor = self.fieldcolor,
                                      color = self.fieldcolor, visible = self.GetPlotParam('show_E_E'))
-        self.field_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy + self.parent.TotalElectricEnergy,
+        self.field_plot = self.axes.plot(self.parent.DisplayTime(self.parent.TotalEnergyTimes), self.parent.TotalMagEnergy + self.parent.TotalElectricEnergy,
                                          ls= ':', marker = 'o', markeredgecolor = self.fieldcolor,
                                          color = self.fieldcolor, visible = self.GetPlotParam('show_field_E'))
 
-        self.total_plot = self.axes.plot(self.parent.TotalEnergyTimes, self.parent.TotalMagEnergy + self.parent.TotalElectricEnergy + self.parent.TotalElectronEnergy + self.parent.TotalIonEnergy,
+        self.total_plot = self.axes.plot(self.parent.DisplayTime(self.parent.TotalEnergyTimes), self.parent.TotalMagEnergy + self.parent.TotalElectricEnergy + self.parent.TotalElectronEnergy + self.parent.TotalIonEnergy,
                                          ls= ':', marker = 'x', markeredgecolor = self.totalcolor,
                                          color = self.totalcolor, visible = self.GetPlotParam('show_total_E'))
 
 
-        self.cur_time = self.axes.axvline(self.time, linewidth = 1.5, linestyle = '--',
+        self.cur_time = self.axes.axvline(self.parent.DisplayTime(self.time), linewidth = 1.5, linestyle = '--',
                                           color = 'k', alpha = .4,
                                           visible = self.GetPlotParam('show_current_time'))
 
@@ -208,7 +208,7 @@ class TotEnergyPanel:
             tmp_tup = float(self.GetPlotParam('legend_loc').split()[0]),float(self.GetPlotParam('legend_loc').split()[1])
             self.legend._set_loc(tmp_tup)
 
-        self.axes.set_xlabel(r'$t\ \  [\omega^{-1}_{pe}]$', labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
+        self.axes.set_xlabel(self.parent.TimeLabel(), labelpad = self.parent.MainParamDict['xLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
         self.axes.set_ylabel('Energy [arb. unit]', labelpad = self.parent.MainParamDict['yLabelPad'], color = 'black', size = self.parent.MainParamDict['AxLabelSize'])
     def refresh(self):
 
@@ -218,7 +218,7 @@ class TotEnergyPanel:
         between this and last time, is that we won't actually do any drawing in
         the plot. The plot will be redrawn after all subplots are refreshed. '''
 
-        self.cur_time.set_xdata([self.time,self.time])
+        self.cur_time.set_xdata([self.parent.DisplayTime(self.time),self.parent.DisplayTime(self.time)])
 
     def GetPlotParam(self, keyname):
         return self.param_dict[keyname]

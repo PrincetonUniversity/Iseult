@@ -20,6 +20,7 @@ from fft_panel import FFTPanel
 from total_energy_panel import TotEnergyPanel
 from moments_panel import MomentsPanel
 import length_norms
+import time_norms
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from PIL import Image
 
@@ -235,6 +236,10 @@ class Oengus():
                               # by. See src/length_norms.py; 0 == electron skin
                               # depth, which is what Iseult has always used.
                               'LengthNorm': length_norms.DEFAULT_NORM,
+                              # Which unit time is reported in. See
+                              # src/time_norms.py; 0 == 1/omega_pe, which is
+                              # what Iseult has always used.
+                              'TimeNorm': time_norms.DEFAULT_NORM,
                               'LinkSpatial': 1,
                               'HCbarExtent': [0, 4, 0, -1],
                               'Recording': False,
@@ -264,10 +269,14 @@ class Oengus():
         # 'LengthNorm' key, and a hand-edited .yml may hold anything at all.
         self.MainParamDict['LengthNorm'] = length_norms.sanitize(
             self.MainParamDict['LengthNorm'])
+        self.MainParamDict['TimeNorm'] = time_norms.sanitize(
+            self.MainParamDict['TimeNorm'])
         # Placeholder until the first output is in hand; UpdateLengthScale()
         # sets the real value.
         self.length_scale = 1.0
         self.length_norm = self.MainParamDict['LengthNorm']
+        self.time_scale = 1.0
+        self.time_norm = self.MainParamDict['TimeNorm']
         self.electron_color = self.MainParamDict['electron_color']
         self.ion_color = self.MainParamDict['ion_color']
         self.shock_color = self.MainParamDict['shock_color']
@@ -301,6 +310,37 @@ class Oengus():
             requested, c_omp, **params)
         length_norms.warn_about(msg)
         return self.length_scale
+
+    def UpdateTimeScale(self, output):
+        '''Recompute the time unit, in omega_pe^-1, that displayed times are
+        divided by. Display only: the stored time stays in omega_pe^-1 because
+        shock_speed is derived from it.'''
+        requested = time_norms.sanitize(self.MainParamDict['TimeNorm'])
+        params = {}
+        for key in ('c', 'c_omp', 'mi', 'me', 'sigma'):
+            try:
+                params[key] = getattr(output, key)
+            except (AttributeError, KeyError, OSError, ValueError):
+                params[key] = None
+        self.time_scale, self.time_norm, msg = time_norms.time_scale(
+            requested, **params)
+        time_norms.warn_about(msg)
+        return self.time_scale
+
+    def TimeLabel(self):
+        '''The matplotlib axis label for a time axis, in the current unit.'''
+        return time_norms.axis_label(getattr(self, 'time_norm',
+                                             self.MainParamDict['TimeNorm']))
+
+    def DisplayTime(self, t):
+        '''A stored time (omega_pe^-1) converted to the displayed unit.'''
+        return np.asarray(t) / getattr(self, 'time_scale', 1.0)
+
+    def TitleTime(self, t):
+        '''The "t = ... [unit]" fragment for the figure title.'''
+        return time_norms.title_time(
+            getattr(self, 'time_norm', self.MainParamDict['TimeNorm']),
+            self.DisplayTime(t))
 
     def LengthLabel(self, axis = 'x', prime = False):
         '''The matplotlib axis label for a spatial axis, in the units that are
@@ -361,6 +401,7 @@ class Oengus():
         # Work out the length the spatial axes are normalized by
         # before anything below divides by it.
         self.UpdateLengthScale(o)
+        self.UpdateTimeScale(o)
         # FIND THE SLICE
         self.MaxZInd = o.bx.shape[0]-1
         self.MaxYInd = o.bx.shape[1]-1
@@ -423,9 +464,9 @@ class Oengus():
 
         if self.MainParamDict['ShowTitle']:
             if len(self.sim_name) == 0:
-                self.figure.suptitle(os.path.abspath(self.dirname)+ '/*.'+o.fnum+' at time t = %d $\omega_{pe}^{-1}$'  % round(o.time), size = 15)
+                self.figure.suptitle(os.path.abspath(self.dirname)+ '/*.'+o.fnum+' at time ' + self.TitleTime(o.time), size = 15)
             else:
-                self.figure.suptitle(self.sim_name +', t = %d $\omega_{pe}^{-1}$'  % round(o.time), size = 15)
+                self.figure.suptitle(self.sim_name +', ' + self.TitleTime(o.time), size = 15)
         ####
         #
         # Write the lines to the phase plots
@@ -486,6 +527,7 @@ class Oengus():
         # Work out the length the spatial axes are normalized by
         # before anything below divides by it.
         self.UpdateLengthScale(o)
+        self.UpdateTimeScale(o)
         # FIND THE SLICE
         self.MaxZInd = o.bx.shape[0]-1
         self.MaxYInd = o.bx.shape[1]-1
@@ -548,9 +590,9 @@ class Oengus():
 
         if self.MainParamDict['ShowTitle']:
             if len(self.sim_name) == 0:
-                self.figure.suptitle(os.path.abspath(self.dirname)+ '/*.'+o.fnum+' at time t = %d $\omega_{pe}^{-1}$'  % round(o.time), size = 15)
+                self.figure.suptitle(os.path.abspath(self.dirname)+ '/*.'+o.fnum+' at time ' + self.TitleTime(o.time), size = 15)
             else:
-                self.figure.suptitle(self.sim_name +', t = %d $\omega_{pe}^{-1}$'  % round(o.time), size = 15)
+                self.figure.suptitle(self.sim_name +', ' + self.TitleTime(o.time), size = 15)
         ####
         #
         # Write the lines to the phase plots
