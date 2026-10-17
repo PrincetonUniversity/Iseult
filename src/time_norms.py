@@ -45,13 +45,13 @@ import length_norms
 # arrive as length-1 arrays, parameters that are absent entirely).
 _scalar = length_norms._scalar
 
-# Normalization ids.  The menu is ordered by id, so these also fix the order
-# the options appear in: the physical units first, then time steps last.
+# Normalization ids.  The GUI option menu is built by walking NORM_NAMES in
+# order, so these also fix the order the units are offered in: the physical
+# times first, then time steps last.
 #
-# They are persisted in the .yml view files, so once a value has shipped its
-# meaning must not change -- append new options rather than renumbering these.
-# This numbering was settled before the feature merged and while no saved view
-# carried a 'TimeNorm' key, which is the only reason reordering was free.
+# The ids are what gets written into the .yml view files, so the meaning of a
+# value must not change once it has shipped -- a new unit gets a new id
+# appended, never a renumbering of these.
 INVERSE_OMEGA_PE = 0
 INVERSE_OMEGA_PI = 1
 INVERSE_OMEGA_CE = 2
@@ -74,18 +74,18 @@ NORM_NAMES = [
 _UNIT_LATEX = {
     INVERSE_OMEGA_PE: r'\omega_{\rm pe}^{-1}',
     INVERSE_OMEGA_PI: r'\omega_{\rm pi}^{-1}',
-    TIMESTEPS: r'{\rm steps}',
     INVERSE_OMEGA_CE: r'\Omega_{\rm ce}^{-1}',
     INVERSE_OMEGA_CI: r'\Omega_{\rm ci}^{-1}',
+    TIMESTEPS: r'{\rm steps}',
 }
 
 # A short plain-text unit, for Tk labels and titles that cannot render LaTeX.
 _UNIT_PLAIN = {
     INVERSE_OMEGA_PE: '1/w_pe',
     INVERSE_OMEGA_PI: '1/w_pi',
-    TIMESTEPS: 'steps',
     INVERSE_OMEGA_CE: '1/W_ce',
     INVERSE_OMEGA_CI: '1/W_ci',
+    TIMESTEPS: 'steps',
 }
 
 

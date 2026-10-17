@@ -231,6 +231,15 @@ def test_every_norm_has_a_name_and_labels(norm):
     assert tn.axis_label(norm).startswith('$')
 
 
+def test_unit_tables_are_kept_in_id_order():
+    """A readability guard, not behaviour: dict order does not affect
+    anything, but the unit tables are read next to NORM_NAMES, which is
+    indexed by id, so they are kept in the same order."""
+    ids = list(range(len(tn.NORM_NAMES)))
+    assert list(tn._UNIT_LATEX) == ids
+    assert list(tn._UNIT_PLAIN) == ids
+
+
 # --- the conversion the call sites actually perform ----------------------
 
 @pytest.mark.parametrize('norm', [0, 1, 2, 3, 4])
