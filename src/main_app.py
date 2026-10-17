@@ -1477,15 +1477,22 @@ class SettingsFrame(Tk.Toplevel):
             self.parent.MainParamDict['LinkSpatial'] = self.LinkedVar.get()
             self.parent.RenewCanvas(ForceRedraw = True)
     def TimeNormChanged(self, *args):
-        '''Changing the time unit only changes what is displayed: the stored
-        time stays in omega_pe^-1, so unlike the length unit there are no
-        stored limits to convert and no caches to purge. A redraw is enough.'''
+        '''Changing the time unit leaves every stored quantity alone -- the
+        time itself stays in omega_pe^-1 -- so unlike the length unit there
+        are no caches to purge.
+
+        The time *axis* does change meaning though, so anything holding a
+        limit on it has to be converted, exactly as LengthNormChanged does
+        for the spatial axes: the total-energy panels store x_min/x_max in
+        the displayed unit, and the toolbar's zoom history holds views in
+        it.'''
         new_norm = time_norms.norm_from_name(self.timeNormVar.get())
         if new_norm == self.parent.MainParamDict['TimeNorm']:
             return
 
+        old_scale = float(getattr(self.parent, 'time_scale', 0.0) or 0.0)
         self.parent.MainParamDict['TimeNorm'] = new_norm
-        self.parent.UpdateTimeScale()
+        new_scale = float(self.parent.UpdateTimeScale())
 
         # If the requested unit is undefined for this run, time_norms falls
         # back; snap the menu to what is really being shown. MainParamDict is
@@ -1494,7 +1501,18 @@ class SettingsFrame(Tk.Toplevel):
         self.parent.MainParamDict['TimeNorm'] = self.parent.time_norm
         self.timeNormVar.set(time_norms.norm_name(self.parent.time_norm))
 
-        self.parent.RenewCanvas(ForceRedraw = True)
+        if old_scale > 0 and new_scale > 0:
+            self.parent.RescaleTimeLimits(old_scale / new_scale)
+
+        # The zoom history holds time limits in the old unit, so the
+        # back/forward buttons -- and the view ReDrawCanvas would otherwise
+        # restore, which copies non-spatial x limits over verbatim -- would
+        # frame the wrong interval. Private matplotlib API, hence the guard.
+        try:
+            self.parent.toolbar._nav_stack.clear()
+        except AttributeError:
+            pass
+        self.parent.RenewCanvas(keep_view = False, ForceRedraw = True)
 
     def LengthNormChanged(self, *args):
         '''Changing the spatial normalization changes the meaning of every
@@ -2671,6 +2689,39 @@ class MainApp(Tk.Tk):
             requested, c_omp = self.c_omp, **params)
         time_norms.warn_about(msg)
         return self.time_scale
+
+    def RescaleTimeLimits(self, ratio):
+        '''Convert every stored limit that lives on a time axis into a new
+        time unit, so the user keeps looking at the same physical interval.
+        ``ratio`` is old_scale/new_scale, the same convention as the spatial
+        rescaling in LengthNormChanged.
+
+        The total-energy panels are the only ones with time on x. Their
+        limits are stored per chart type, so this walks every panel's stored
+        TotalEnergyPlot params rather than only the panels currently showing
+        one -- a panel switched to total energy later would otherwise come up
+        with limits in the old unit.'''
+        if not np.isfinite(ratio) or ratio <= 0:
+            return
+
+        for row in self.SubPlotList:
+            for subplot in row:
+                params = subplot.PlotParamsDict.get('TotalEnergyPlot')
+                if not params:
+                    continue
+                for key in ('x_min', 'x_max'):
+                    if key in params:
+                        params[key] = float(params[key]) * ratio
+
+                # An open settings window would keep showing the old numbers.
+                if subplot.chartType != 'TotalEnergyPlot':
+                    continue
+                window = getattr(getattr(subplot, 'graph', None),
+                                 'settings_window', None)
+                for key, var_name in (('x_min', 'Xmin'), ('x_max', 'Xmax')):
+                    tkvar = getattr(window, var_name, None)
+                    if tkvar is not None:
+                        tkvar.set(str(params[key]))
 
     def TimeLabel(self):
         '''The matplotlib axis label for a time axis, in the current unit.'''
