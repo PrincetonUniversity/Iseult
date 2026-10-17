@@ -45,13 +45,13 @@ import length_norms
 # arrive as length-1 arrays, parameters that are absent entirely).
 _scalar = length_norms._scalar
 
-# Normalization ids.  The menu is ordered by id, so these also fix the order
-# the options appear in: the physical units first, then time steps last.
+# Normalization ids.  The GUI option menu is built by walking NORM_NAMES in
+# order, so these also fix the order the units are offered in: the physical
+# times first, then time steps last.
 #
-# They are persisted in the .yml view files, so once a value has shipped its
-# meaning must not change -- append new options rather than renumbering these.
-# This numbering was settled before the feature merged and while no saved view
-# carried a 'TimeNorm' key, which is the only reason reordering was free.
+# The ids are what gets written into the .yml view files, so the meaning of a
+# value must not change once it has shipped -- a new unit gets a new id
+# appended, never a renumbering of these.
 INVERSE_OMEGA_PE = 0
 INVERSE_OMEGA_PI = 1
 INVERSE_OMEGA_CE = 2
@@ -74,29 +74,40 @@ NORM_NAMES = [
 _UNIT_LATEX = {
     INVERSE_OMEGA_PE: r'\omega_{\rm pe}^{-1}',
     INVERSE_OMEGA_PI: r'\omega_{\rm pi}^{-1}',
-    TIMESTEPS: r'{\rm steps}',
     INVERSE_OMEGA_CE: r'\Omega_{\rm ce}^{-1}',
     INVERSE_OMEGA_CI: r'\Omega_{\rm ci}^{-1}',
+    TIMESTEPS: r'{\rm steps}',
 }
 
 # A short plain-text unit, for Tk labels and titles that cannot render LaTeX.
 _UNIT_PLAIN = {
     INVERSE_OMEGA_PE: '1/w_pe',
     INVERSE_OMEGA_PI: '1/w_pi',
-    TIMESTEPS: 'steps',
     INVERSE_OMEGA_CE: '1/W_ce',
     INVERSE_OMEGA_CI: '1/W_ci',
+    TIMESTEPS: 'steps',
 }
 
 
 # How many decimals the figure title shows, by normalization id; anything
-# absent gets none.  An ion gyration time is a small number -- tens, or less
-# early in a run -- so rounding it to an integer throws away real precision.
+# absent gets none.
+#
+# The rule is the unit's own coarseness: a unit whose ``scale`` exceeds one
+# is coarser than ``omega_pe^{-1}``, so the same run spans fewer of them and
+# rounding to an integer throws away real precision.  That is every derived
+# unit except time steps, which are *finer* than ``omega_pe^{-1}`` (one step
+# is ``c/c_omp`` of them, well under one) and so always print large.
+#
+#   omega_pi^{-1}  t/sqrt(mi/me)        /43 at the true mass ratio
+#   Omega_ce^{-1}  t*sqrt(sigma)        /100 at sigma = 1e-4
+#   Omega_ci^{-1}  t*sqrt(sigma)*me/mi  tens, or less early in a run
 #
 # This is per-unit rather than adaptive on the value: a rule like "one decimal
 # below 100" would change the title's format partway through a run, which
 # looks like flicker when the frames are played as a movie.
 _UNIT_DECIMALS = {
+    INVERSE_OMEGA_PI: 1,
+    INVERSE_OMEGA_CE: 1,
     INVERSE_OMEGA_CI: 1,
 }
 
@@ -104,6 +115,28 @@ _UNIT_DECIMALS = {
 def decimals(norm):
     """How many decimals the title shows for this unit."""
     return _UNIT_DECIMALS.get(sanitize(norm), 0)
+
+
+# Which output parameters each unit's scale actually needs.  The call sites
+# read these one at a time, out of an hdf5 file, every time an output is
+# loaded -- so reading only what the selected unit uses keeps the default
+# unit off the disk entirely, and stops a unit that does not care about a
+# parameter from warning when it happens to be absent.
+#
+# Kept beside time_scale rather than at the call sites so the two cannot
+# drift apart; test_required_params_matches_time_scale pins them together.
+_UNIT_PARAMS = {
+    INVERSE_OMEGA_PE: (),
+    INVERSE_OMEGA_PI: ('mi', 'me'),
+    INVERSE_OMEGA_CE: ('sigma',),
+    INVERSE_OMEGA_CI: ('sigma', 'mi', 'me'),
+    TIMESTEPS: ('c', 'c_omp'),
+}
+
+
+def required_params(norm):
+    """The output parameters ``time_scale`` needs to compute this unit."""
+    return _UNIT_PARAMS[sanitize(norm)]
 
 
 def electron_magnetization(sigma):

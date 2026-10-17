@@ -52,6 +52,53 @@ def test_pair_plasma_ion_and_electron_times_agree():
 
 # --- only output quantities may be used ----------------------------------
 
+# --- what each unit needs read from disk ---------------------------------
+
+@pytest.mark.parametrize('norm', [0, 1, 2, 3, 4])
+def test_required_params_matches_time_scale(norm):
+    """The drift guard. required_params exists so a call site can skip the
+    reads a unit has no use for, which is only safe while it names exactly
+    the parameters time_scale consumes: supplying them must succeed, and
+    withholding any one of them must fall back."""
+    full = dict(c=C, c_omp=C_OMP, mi=MI, me=ME, sigma=SIGMA)
+    needed = tn.required_params(norm)
+
+    given = {key: full[key] for key in needed}
+    s, used, msg = tn.time_scale(norm, **given)
+    assert used == norm, 'required_params is missing a parameter'
+    assert msg is None
+    assert np.isfinite(s) and s > 0
+
+    for withheld in needed:
+        partial = dict(given)
+        partial[withheld] = None
+        _, used, msg = tn.time_scale(norm, **partial)
+        assert used == tn.INVERSE_OMEGA_PE, \
+            f'{withheld} is listed but unused by norm {norm}'
+        assert msg is not None
+
+
+def test_the_default_unit_needs_nothing_read():
+    """Iseult's historical unit must not cost a single parameter read, since
+    the scale is 1.0 by definition and this runs on every output load."""
+    assert tn.required_params(tn.INVERSE_OMEGA_PE) == ()
+    s, used, msg = tn.time_scale(tn.INVERSE_OMEGA_PE)
+    assert (s, used, msg) == (1.0, tn.INVERSE_OMEGA_PE, None)
+
+
+def test_required_params_are_output_quantities():
+    """Same restriction as time_scale's signature: nothing input-only."""
+    import inspect
+    allowed = set(inspect.signature(tn.time_scale).parameters) - {'norm'}
+    for norm in range(len(tn.NORM_NAMES)):
+        assert set(tn.required_params(norm)) <= allowed
+
+
+@pytest.mark.parametrize('junk', [None, 'nonsense', 99, -1])
+def test_required_params_sanitizes_like_everything_else(junk):
+    assert tn.required_params(junk) == tn.required_params(tn.DEFAULT_NORM)
+
+
 def test_time_scale_takes_only_output_parameters():
     """The signature is the guard: anything beyond c/c_omp/mi/me would mean
     reading a parameter Tristan does not reliably write to its output."""
@@ -140,11 +187,57 @@ def test_title_fragment():
     assert tn.title_time(tn.TIMESTEPS, 205000.004) == r't = 205000 ${\rm steps}$'
 
 
+# --- title precision ------------------------------------------------------
+# A unit coarser than omega_pe^-1 (scale > 1) fits fewer of itself into the
+# same run, so an integer title throws away real precision.
+
+@pytest.mark.parametrize('norm', [tn.INVERSE_OMEGA_PI,
+                                  tn.INVERSE_OMEGA_CE,
+                                  tn.INVERSE_OMEGA_CI])
+def test_coarse_units_keep_a_decimal(norm):
+    assert tn.decimals(norm) == 1
+
+
+def test_decimals_follow_the_scale_being_coarse():
+    """The rule, rather than the table: anything with scale > 1 is coarser
+    than omega_pe^-1 and must keep a decimal."""
+    for norm in range(len(tn.NORM_NAMES)):
+        s, used, _ = tn.time_scale(norm, c=C, c_omp=C_OMP, mi=MI, me=ME,
+                                   sigma=SIGMA)
+        assert used == norm
+        assert tn.decimals(norm) == (1 if s > 1.0 else 0)
+
+
+def test_small_electron_gyration_time_is_not_rounded_away():
+    """sigma << 1 makes Omega_ce^-1 a long time, so few of them fit in a
+    run; t = 3 would be hiding most of the information."""
+    t_stored = 350.0
+    s, _, _ = tn.time_scale(tn.INVERSE_OMEGA_CE, sigma=1e-4)
+    assert tn.title_time(tn.INVERSE_OMEGA_CE, t_stored / s) == \
+        r't = 3.5 $\Omega_{\rm ce}^{-1}$'
+
+
+def test_ion_plasma_time_keeps_a_decimal_early_in_a_run():
+    t_stored = 100.0
+    s, _, _ = tn.time_scale(tn.INVERSE_OMEGA_PI, mi=1836.0, me=1.0)
+    assert tn.title_time(tn.INVERSE_OMEGA_PI, t_stored / s) == \
+        r't = 2.3 $\omega_{\rm pi}^{-1}$'
+
+
 @pytest.mark.parametrize('norm', [0, 1, 2, 3, 4])
 def test_every_norm_has_a_name_and_labels(norm):
     assert tn.NORM_NAMES[norm]
     assert tn.unit_latex(norm) and tn.unit_plain(norm)
     assert tn.axis_label(norm).startswith('$')
+
+
+def test_unit_tables_are_kept_in_id_order():
+    """A readability guard, not behaviour: dict order does not affect
+    anything, but the unit tables are read next to NORM_NAMES, which is
+    indexed by id, so they are kept in the same order."""
+    ids = list(range(len(tn.NORM_NAMES)))
+    assert list(tn._UNIT_LATEX) == ids
+    assert list(tn._UNIT_PLAIN) == ids
 
 
 # --- the conversion the call sites actually perform ----------------------
@@ -265,9 +358,11 @@ def test_ion_gyration_title_shows_one_decimal():
         r't = 18.0 $\Omega_{\rm ci}^{-1}$'
 
 
-@pytest.mark.parametrize('norm', [tn.INVERSE_OMEGA_PE, tn.INVERSE_OMEGA_PI,
-                                  tn.INVERSE_OMEGA_CE, tn.TIMESTEPS])
+@pytest.mark.parametrize('norm', [tn.INVERSE_OMEGA_PE, tn.TIMESTEPS])
 def test_other_units_title_stays_integer(norm):
+    """omega_pe^-1 is the reference, and a step is c/c_omp of one -- so the
+    step count is always the largest number on offer. Only these two can
+    safely round to an integer."""
     assert tn.decimals(norm) == 0
     assert '.' not in tn.title_time(norm, 1234.56).split('$')[0]
 
