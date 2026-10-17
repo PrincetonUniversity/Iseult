@@ -1,4 +1,6 @@
-"""Stored limits that live on a time axis must follow the selected unit.
+"""MainApp and Oengus time-normalization plumbing.
+
+Stored limits that live on a time axis must follow the selected unit.
 
 The total-energy panels are the only ones that plot time on x, and they keep
 x_min/x_max in the *displayed* unit. Switching the unit without converting
@@ -14,6 +16,7 @@ and a real MainApp needs a display.
 import numpy as np
 import pytest
 
+import oengus
 import time_norms as tn
 from main_app import MainApp, SettingsFrame
 
@@ -227,3 +230,42 @@ def test_handler_uses_the_unit_actually_applied_after_a_fallback():
     assert parent.MainParamDict['TimeNorm'] == tn.INVERSE_OMEGA_PE
     assert settings.timeNormVar.get() == tn.norm_name(tn.INVERSE_OMEGA_PE)
     assert parent.ratios == [pytest.approx(1.0)]
+
+
+# --- only the parameters the selected unit needs are read ----------------
+
+class CountingOutput:
+    """Stands in for an OutputPoint: every attribute is an hdf5 read."""
+
+    def __init__(self):
+        self.reads = []
+
+    def __getattr__(self, name):
+        if name.startswith('_'):
+            raise AttributeError(name)
+        self.reads.append(name)
+        return 1.0
+
+
+def oengus_stub(norm):
+    obj = type('Stub', (), {})()
+    obj.MainParamDict = {'TimeNorm': norm}
+    return obj
+
+
+@pytest.mark.parametrize('norm', [0, 1, 2, 3, 4])
+def test_update_time_scale_reads_only_what_the_unit_needs(norm):
+    """UpdateTimeScale runs on every output load, so a unit must not pull
+    parameters it has no use for -- and must not warn about them going
+    missing either."""
+    output = CountingOutput()
+    oengus.Oengus.UpdateTimeScale(oengus_stub(norm), output)
+    assert set(output.reads) == set(tn.required_params(norm))
+
+
+def test_the_default_unit_touches_no_parameter():
+    output = CountingOutput()
+    stub = oengus_stub(tn.INVERSE_OMEGA_PE)
+    assert oengus.Oengus.UpdateTimeScale(stub, output) == 1.0
+    assert output.reads == []
+    assert stub.time_norm == tn.INVERSE_OMEGA_PE

@@ -2675,11 +2675,19 @@ class MainApp(Tk.Tk):
             param_filepath = self.PathDict['Param'][self.TimeStep.value-1]
 
         requested = time_norms.sanitize(self.MainParamDict['TimeNorm'])
+        needed = time_norms.required_params(requested)
 
-        # c, mi & me are only needed by the derived units, and must not be
-        # fatal if absent -- time_norms falls back to 1/omega_pe.
+        # Only the derived units need these, and they must not be fatal if
+        # absent -- time_norms falls back to 1/omega_pe. Reading just what
+        # the selected unit uses matters because this runs on every output
+        # load: in the default unit it now touches no parameter at all, and
+        # a unit that does not use 'c' no longer warns about a v2 run that
+        # is missing 'algorithm:c'.
         params = {}
         for key in ('c', 'mi', 'me', 'sigma'):
+            if key not in needed:
+                params[key] = None
+                continue
             try:
                 params[key] = data_loading.load_dataset(param_filepath, key, slice(0,1))
             except (KeyError, OSError, ValueError):

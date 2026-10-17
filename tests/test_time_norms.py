@@ -52,6 +52,53 @@ def test_pair_plasma_ion_and_electron_times_agree():
 
 # --- only output quantities may be used ----------------------------------
 
+# --- what each unit needs read from disk ---------------------------------
+
+@pytest.mark.parametrize('norm', [0, 1, 2, 3, 4])
+def test_required_params_matches_time_scale(norm):
+    """The drift guard. required_params exists so a call site can skip the
+    reads a unit has no use for, which is only safe while it names exactly
+    the parameters time_scale consumes: supplying them must succeed, and
+    withholding any one of them must fall back."""
+    full = dict(c=C, c_omp=C_OMP, mi=MI, me=ME, sigma=SIGMA)
+    needed = tn.required_params(norm)
+
+    given = {key: full[key] for key in needed}
+    s, used, msg = tn.time_scale(norm, **given)
+    assert used == norm, 'required_params is missing a parameter'
+    assert msg is None
+    assert np.isfinite(s) and s > 0
+
+    for withheld in needed:
+        partial = dict(given)
+        partial[withheld] = None
+        _, used, msg = tn.time_scale(norm, **partial)
+        assert used == tn.INVERSE_OMEGA_PE, \
+            f'{withheld} is listed but unused by norm {norm}'
+        assert msg is not None
+
+
+def test_the_default_unit_needs_nothing_read():
+    """Iseult's historical unit must not cost a single parameter read, since
+    the scale is 1.0 by definition and this runs on every output load."""
+    assert tn.required_params(tn.INVERSE_OMEGA_PE) == ()
+    s, used, msg = tn.time_scale(tn.INVERSE_OMEGA_PE)
+    assert (s, used, msg) == (1.0, tn.INVERSE_OMEGA_PE, None)
+
+
+def test_required_params_are_output_quantities():
+    """Same restriction as time_scale's signature: nothing input-only."""
+    import inspect
+    allowed = set(inspect.signature(tn.time_scale).parameters) - {'norm'}
+    for norm in range(len(tn.NORM_NAMES)):
+        assert set(tn.required_params(norm)) <= allowed
+
+
+@pytest.mark.parametrize('junk', [None, 'nonsense', 99, -1])
+def test_required_params_sanitizes_like_everything_else(junk):
+    assert tn.required_params(junk) == tn.required_params(tn.DEFAULT_NORM)
+
+
 def test_time_scale_takes_only_output_parameters():
     """The signature is the guard: anything beyond c/c_omp/mi/me would mean
     reading a parameter Tristan does not reliably write to its output."""

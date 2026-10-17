@@ -117,6 +117,28 @@ def decimals(norm):
     return _UNIT_DECIMALS.get(sanitize(norm), 0)
 
 
+# Which output parameters each unit's scale actually needs.  The call sites
+# read these one at a time, out of an hdf5 file, every time an output is
+# loaded -- so reading only what the selected unit uses keeps the default
+# unit off the disk entirely, and stops a unit that does not care about a
+# parameter from warning when it happens to be absent.
+#
+# Kept beside time_scale rather than at the call sites so the two cannot
+# drift apart; test_required_params_matches_time_scale pins them together.
+_UNIT_PARAMS = {
+    INVERSE_OMEGA_PE: (),
+    INVERSE_OMEGA_PI: ('mi', 'me'),
+    INVERSE_OMEGA_CE: ('sigma',),
+    INVERSE_OMEGA_CI: ('sigma', 'mi', 'me'),
+    TIMESTEPS: ('c', 'c_omp'),
+}
+
+
+def required_params(norm):
+    """The output parameters ``time_scale`` needs to compute this unit."""
+    return _UNIT_PARAMS[sanitize(norm)]
+
+
 def electron_magnetization(sigma):
     """Tristan's ``sigma``, which *is* the electron magnetization.
 

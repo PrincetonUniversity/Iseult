@@ -316,8 +316,14 @@ class Oengus():
         divided by. Display only: the stored time stays in omega_pe^-1 because
         shock_speed is derived from it.'''
         requested = time_norms.sanitize(self.MainParamDict['TimeNorm'])
+        needed = time_norms.required_params(requested)
+        # Only read what the selected unit needs; the default unit needs
+        # nothing, and each of these is a read out of an hdf5 file.
         params = {}
         for key in ('c', 'c_omp', 'mi', 'me', 'sigma'):
+            if key not in needed:
+                params[key] = None
+                continue
             try:
                 params[key] = getattr(output, key)
             except (AttributeError, KeyError, OSError, ValueError):
