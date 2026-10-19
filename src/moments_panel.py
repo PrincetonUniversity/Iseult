@@ -542,7 +542,6 @@ class  MomentsPanel:
                     xmin_max[1] = max(xmin_max[1], np.max(self.t_plot_list[i].get_xdata()))
                     ymin_max[0] = min(ymin_max[0], np.min(self.t_plot_list[i].get_ydata()))
                     ymin_max[1] = max(ymin_max[1], np.max(self.t_plot_list[i].get_ydata()))
-                    self.axes.dataLim.update_from_data_xy(xy, ignore=False)
                     legend_handles.append(self.t_plot_list[i])
                     legend_labels.append(self.legend_labels[self.GetPlotParam('m_type')][2][i])
 
@@ -675,7 +674,6 @@ class  MomentsPanel:
                     xmin_max[1] = max(xmin_max[1], np.max(self.t_plot_list[i].get_xdata()))
                     ymin_max[0] = min(ymin_max[0], np.min(self.t_plot_list[i].get_ydata()))
                     ymin_max[1] = max(ymin_max[1], np.max(self.t_plot_list[i].get_ydata()))
-                    self.axes.dataLim.update_from_data_xy(xy, ignore=False)
 
 
         if np.isinf(xmin_max[0]):
